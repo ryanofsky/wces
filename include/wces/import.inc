@@ -24,14 +24,22 @@ define("TIME",16);              // class time
 define("LOCATION",17);          // class location
 define("CALLNUMBER",18);        // 5 digit call number
 
-function importregcsv($filename)
+/**
+* Import a regripper registrar file. If a year and semester are specified, all 
+* class listings for other year or semesters will be skipped.
+*
+* @param string  Path to uploaded file
+* @param string  4 digit year
+* @param string  1 digit semester (0 = spring, 1 = summer, 2 = summer)
+*/
+
+function importRegCsv($filename, $onlyYear = false, $onlySemester = false)
 {
   global $wces;
 
   $fp = fopen ($filename,"r");
   wces_connect();
 
-  $i = 0;
   $row = 0;
 
   $subject_cache = $school_cache = $div_cache = $dept_cache = array();
@@ -41,11 +49,28 @@ function importregcsv($filename)
     ++$row;
     if (count($data) != 19 && count($data) != 16)
     {
-      print("<b>Warning:</b> Row $row does not contain the correct number of fields. (19 expected, " . count($data) . " found)<br>\n");
+      bprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (19 expected, " . count($data) . " found)<br>\n");
     }
     else
     {
       $semester = $data[SEMESTER] == 'spring' ? 0 : $data[SEMESTER] == 'summer' ? 1 : 2;
+      
+      if ($onlyYear !== false && $onlyYear != $data[YEAR])
+        continue;
+        
+      if ($onlySemester !== false && $onlySemester != $semester)
+        continue;
+
+      // XXX: our database stores course numbers as integers while the registrar
+      // apparently stores them as strings of 4 characters. our database
+      // should be changed to handle these cases, but in the meantime this import
+      // script will skip over them:
+      if (!is_numeric($data[COURSECODE]))
+      {
+         bprint("<i>Skipping $data[SUBJECTCODE] $data[DIVISIONSCODE] $data[COURSECODE]</i>\n");
+         continue;
+      }
+
       $divstr = "${data[DIVISIONCODE]},{$data[DIVISIONSCODE]},{$data[DIVISION]}";
       $pstr = $data[INSTRUCTOR];
       $sdata = array_map("mnullquot",$data);
@@ -105,9 +130,8 @@ function importregcsv($filename)
         
       }
 
-      print($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (class_id = $class_id, course_id = $course_id,professor_id = $user_id)<br>\n");
+      bprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (class_id = $class_id, course_id = $course_id,professor_id = $user_id)<br>\n");
     };
-    if (((++$i) % 10) == 1) flush();
   }
   fclose ($fp);
 };
@@ -215,14 +239,12 @@ function importregpid($filename)
   return 0;
   global $db_debug, $wces_verbose;
 
-  taskwindow_start("Progress Window");
-  taskwindow_cprint("<h2>Importing Professor List</h2>\n");
-  taskwindow_flush();
+  print("<h2>Importing Professor List</h2>\n");
+  flush();
 
   $fp = fopen($filename,"r");
   $db = wces_connect();
 
-  $i = 0;
   $begin = "<tr><td>";
   $middle = "</td><td>";
   $end = "</td></tr>";
@@ -235,7 +257,7 @@ function importregpid($filename)
     $e = strpos($buffer, $end, $m);
 
     if ($b === false || $m === false || $e === false )
-      taskwindow_cprint("Skipping malformed row: '" . htmlspecialchars($buffer) . "'<br>\n");
+      bprint("Skipping malformed row: '" . htmlspecialchars($buffer) . "'<br>\n");
     else
     {
       $name = substr($buffer,$b + strlen($begin), $m - strlen($begin) - $b);
@@ -249,12 +271,10 @@ function importregpid($filename)
       $pids = array_merge($pids,prof_findwithpid($db,$regid));
       $pid = prof_merge($db,$pids,Array("name" => $full),Array("first" => $first, "middle" => $middlei, "last" => $last, "fullname" => $full, "pid" => $regid, "source" => "regpid"));
 
-      taskwindow_cprint("Adding Professor '$full' as #$pid<hr>\n");
+      bprint("Adding Professor '$full' as #$pid<hr>\n");
     }
-    if (((++$i) % 10) == 1) taskwindow_flush();
   }
   fclose ($fp);
-  taskwindow_end();
 };
 
 /**
@@ -271,10 +291,11 @@ function importregpid($filename)
                    "firstname" - column number of professor first name
 *                  "students" - column number containing number of students per class
 *                  "cunix" - optional column number containing a student's cunix id
+*                  "cruft" - column whose contents should be ignored
 * @access public
 */
 
-function importdeancsv($userfile, $year, $semester, $parent_topic, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
+function importDeanCsv($userfile, $year, $semester, $parent_topic, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
 {
   global $wces;
   
@@ -291,14 +312,13 @@ function importdeancsv($userfile, $year, $semester, $parent_topic, $fieldorder =
   
   $classcache = array();
 
-  $i = 0;
   $row = 0;
 
   while ($data = fgetcsv ($fp, 8192, ","))
   {
     ++$row;
     if (count($data) != count($fields))
-      print("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
+      bprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
 
     $coursecode = $data[$fields["coursecode"]];
     $section = $data[$fields["section"]];
@@ -346,7 +366,7 @@ function importdeancsv($userfile, $year, $semester, $parent_topic, $fieldorder =
       if ($parent_topic)
       	pg_query("INSERT INTO wces_topics(parent, class_id) values ($parent_topic, $class_id)", $wces, __FILE__, __LINE__);
       $GLOBALS['db_debug'] = false;
-      print("<p>$classcode added (class_id = $class_id, prof user_id = $user_id)</p>\n");
+      bprint("<p>$classcode added (class_id = $class_id, prof user_id = $user_id)</p>\n");
     }
     
     if (isset($fields["cunix"]))
@@ -358,14 +378,74 @@ function importdeancsv($userfile, $year, $semester, $parent_topic, $fieldorder =
         $user_id = (int)pg_result(pg_query("SELECT user_update($cunix,NULL,NULL,NULL,8,NULL,NULL)", $wces, __FILE__, __LINE__),0,0);
         if (!$user_id) die("user_id not found for $cunix on row $row");
         pg_query("SELECT enrollment_update($user_id, $class_id, 1, NULL)", $wces, __FILE__, __LINE__); 
-        print("$cunix enrolled in $classcode (class_id = $class_id, user_id = $user_id)<br>\n");
+        bprint("$cunix enrolled in $classcode (class_id = $class_id, user_id = $user_id)<br>\n");
       }
     }
-    if (((++$i) % 10) == 1) taskwindow_flush();
   }
   fclose ($fp);
-  taskwindow_end();
+};
 
+/**
+* Import one of the dean's professor listing excel spreadsheets after they've been converted to csv
+*
+* @param string  Path to uploaded file
+* @param array   array of strings indicating column order.
+*                  "firstname", "lastname", "cunix", "email", "cruft"
+* @access public
+*/
+
+function importProfessors($userfile, $fieldorder = array("lastname", "firstname", "email", "cunix"))
+{
+  global $wces;
+  
+  $fields = array_flip(array_values($fieldorder));
+  
+  if (!isset($fields['lastname'])) die(__FILE__ . ':' . __LINE__ . ' missing lastname column');
+  if (!isset($fields['firstname'])) die(__FILE__ . ':' . __LINE__ . ' missing firstname column');
+  
+  $fp = fopen($userfile,"r");   
+  wces_connect();
+  
+  $row = 0;
+
+  while ($data = fgetcsv ($fp, 8192, ","))
+  {
+    ++$row;
+    if (count($data) != count($fields))
+      print("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
+
+    $firstname = trim($data[$fields["firstname"]]);
+    $lastname = trim($data[$fields["lastname"]]);
+    
+    if (!$firstname &&  !$lastname) continue;
+   
+    $fullname = quot(trim("$firstname $lastname"));
+    $firstname = quot($firstname);
+    $lastname = quot($lastname);
+    $user_id = (int)pg_result(pg_query("SELECT professor_find($fullname, $firstname, NULL, $lastname, NULL, 4)", $wces, __FILE__, __LINE__),0,0) ;
+    if (!$user_id) die("user_id not found for professor $fullname on row $row");
+
+    if (isset($fields["cunix"]) && $cunix = trim($data[$fields["cunix"]]))
+    {
+      $result = pg_query("SELECT user_id FROM users WHERE uni = '" . addslashes($cunix) . "'", $wces, __FILE__, __LINE__);
+      $cunix_user_id = pg_numrows($result) == 1 ? (int)pg_result($result,0,0) : 0;
+      if ($cunix_user_id != $user_id) 
+      {
+        if ($cunix_user_id)
+          pg_query("SELECT cunix_associate($cunix_user_id, $user_id)");
+        else
+          pg_query("UPDATE users SET uni = '" . addslashes($cunix) . "' WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+      }
+    }
+    else 
+      $cunix_user_id = 0;
+    
+    if (isset($fields["email"]) && $email = trim($data[$fields["email"]]))
+      pg_query("UPDATE users SET email = '" . addslashes($email) . "' WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+
+    bprint("$firstname $lastname (user_id = $user_id, cunix = $cunix, email = $email, cunix_user_id = $cunix_user_id)<br>\n");
+  }
+  fclose($fp);
 };
 
 
