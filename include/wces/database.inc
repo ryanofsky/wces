@@ -1,7 +1,7 @@
 <?
 
-require_once("wces/general.inc");
-require_once("wces/taskwindow.inc");
+require_once("wbes/general.inc");
+require_once("wbes/taskwindow.inc");
 require_once("wces/database_selectmonster.inc");
 
 $db_debug = false;
