@@ -8,9 +8,11 @@ $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
+$wces_closed = true;
+
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces;
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
@@ -94,6 +96,7 @@ function showhelp(topic)
     page_link("Reporting Wizard", "administrators/report.php", $QSID);
     page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
     page_link("Data Import",      "administrators/import.php", $QSID);
+    page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
   }
 
   if ($status & login_professor)
@@ -107,10 +110,9 @@ function showhelp(topic)
       //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
       //page_link("Edit Profile",     "professors/infoedit.php", $QSID);
     }
-    page_link("Update Association", "login/profsearch.php");
   }
 
-  if ($status & login_student)
+  if (!$wces_closed && ($status & login_student))
   {
     if ($nospace) $nospace = false; else page_spacer();
     
