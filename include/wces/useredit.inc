@@ -121,6 +121,7 @@ class UserEditor extends ParentWidget
   var $show_prof = true;
   var $show_admin = true;
   var $done = false;
+  var $saved = false;
 
   var $message = "";
   var $errors = array();
@@ -264,8 +265,11 @@ class UserEditor extends ParentWidget
       if ($this->save())
       {
         $this->done = true;
+        $this->saved = true;
         $this->message = "<p><font color=blue>User Editor: Changes saved successfully</font></p>";
       }
+      else
+        $this->errors[] = "Save failed";
     }
     else if ($this->event->event == UserEditor_cancel)
     {

@@ -30,6 +30,12 @@ function login_protect($requiredstatus)
     login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
 };
 
+function login_refresh()
+{
+  return login_update($_SESSION["login/userid"], $_SESSION["login/fake"],
+    $_SESSION["login/fakeuni"]); 
+}
+
 function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 {
   global $wces;
