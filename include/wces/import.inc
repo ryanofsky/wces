@@ -3,7 +3,7 @@
 require_once("wbes/server.inc");
 require_once("wces/database.inc");
 require_once("wces/wces.inc");
-require_once("wces/taskwindow.inc");
+require_once("wbes/taskwindow.inc");
 
 /**
 * Import one of the dean's excel spreadsheets after they've been exported to csv and uploaded.

@@ -41,7 +41,7 @@ if ($data)
     "Impersonator",
     $data["profid"]
   );
-
+  redirect($wces_path);
   page_top("Fake Logon Success!");
   print("You are now logged in as '" . login_getuni() . ",' with " . login_whoami() . " privileges.<br>Use the links at the left to navigate the site as this user.");
 }
@@ -56,6 +56,7 @@ else if ($debug)
     "Impersonator",
     165
   );
+  redirect($wces_path);
   page_top("Fake Logon Success!");
   print("Debug mode enabled. You can access any area of the site.");
 }

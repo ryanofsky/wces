@@ -62,13 +62,19 @@ function showhelp(topic)
     page_link("Home", "index.php", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this);
   
   $nospace = true;
-  
-  if ($status & login_student)
+ 
+  if ($status & login_administrator)
   {
     if ($nospace) $nospace = false; else page_spacer();
-    page_link("Survey #1",      "students/survey.php?surveyid=1");
-    page_link("Survey #2",      "students/survey.php?surveyid=2");
-    page_link("Email Settings", "students/optout.php");
+    page_link("Student Usage",               "administrators/susage.php");
+    page_link("Professor Usage",             "administrators/pusage.php");
+    page_link("Mass Mailing",                "administrators/massmail.php");
+    page_link("Reporting Wizard",            "administrators/report.php");
+    page_link("Fake Login",                  "administrators/fakelogin.php");
+    page_link("Enrollment Viewer",           "administrators/enrollment.php");
+    page_link("Professor Listing",           "administrators/pstats.php");
+    page_link("New Semester Initialization", "administrators/semester.php");
+    page_link("Data Upload",                 "administrators/import.php");
   }
 
   if ($status & login_professor)
@@ -85,18 +91,12 @@ function showhelp(topic)
     page_link("Update Association", "login/profsearch.php");
   }
   
-  if ($status & login_administrator)
+  if ($status & login_student)
   {
     if ($nospace) $nospace = false; else page_spacer();
-    page_link("Student Usage",               "administrators/susage.php");
-    page_link("Professor Usage",             "administrators/pusage.php");
-    page_link("Mass Mailing",                "administrators/massmail.php");
-    page_link("Reporting Wizard",            "administrators/report.php");
-    page_link("Fake Login",                  "administrators/fakelogin.php");
-    page_link("Enrollment Viewer",           "administrators/enrollment.php");
-    page_link("Professor Listing",           "administrators/pstats.php");
-    page_link("New Semester Initialization", "administrators/semester.php");
-    page_link("Data Upload",                 "administrators/import.php");
+    page_link("Survey #1",      "students/survey.php?surveyid=1");
+    page_link("Survey #2",      "students/survey.php?surveyid=2");
+    page_link("Email Settings", "students/optout.php");
   }
   
   if ($nospace) $nospace = false; else page_spacer();

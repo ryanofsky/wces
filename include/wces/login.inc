@@ -328,7 +328,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
   if($luni)
   {
     if ($url && $rs && !($rs & login_getstatus()))
-      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><b>You are currently logged in as $luni with " . login_whoami() . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../contact.php\">let us know</a>.</b></p>");
+      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><b>You are currently logged in as $luni with " . login_whoami() . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../about/feedback.php\">let us know</a>.</b></p>");
     else     
       print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
   }
@@ -371,7 +371,8 @@ of this form, click <a href="<?= $securesite . $urlargs?>">here</a>.
 </font>
 <?  
   }
-  page_bottom();
+  page_bottom();  
+  exit();
 }
 
 ?>
