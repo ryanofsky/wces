@@ -121,14 +121,15 @@ function format_ccourse($c, $format = "%c %n", $link = false)
 
 function format_profs($profs, $link = false, $before = "", $after = "", $between = "")
 {
-  global $wces_path;
+  global $wces_path, $QSID;
   if (strlen($profs) == 0) return "";
   $c = explode("\n", $profs);
   $str = "";
   
   if ($link && !is_string($link))
   {
-    $link = "{$wces_path}administrators/info.php?user_id=";
+    $q = $QSID ? "$QSID&" : "?";
+    $link = "{$wces_path}administrators/info.php{$q}user_id=";
   };
   
   for ($i = 0; $i < count($c); $i += FORMAT_PROF_COUNT)
@@ -157,5 +158,37 @@ function picture_src($id)
   $r = pg_go("SELECT name FROM pictures WHERE file_id = $id", $wces, __FILE__, __LINE__);
   return $server_www_upload . pg_result($r, 0, 0);
 };
+
+function set_question_period($question_period_id)
+{
+  $_SESSION['wces/question_period_id'] = $question_period_id;
+}
+
+function get_question_period()
+{
+  if (isset($_SESSION['wces/question_period_id']))
+    return $_SESSION['wces/question_period_id'];
+  else
+  {
+    global $wces;
+    wces_connect();      
+    // give priority to current question periods according
+    // to which one began most recently, then to future
+    // question periods according to which one begins first
+    // then to past question periods according to which ended
+    // most recently
+    
+    $result = pg_go("
+      SELECT question_period_id, begindate < (SELECT NOW()) AS is_past
+      FROM question_periods
+      ORDER BY begindate < (SELECT NOW()), CASE WHEN begindate < (SELECT NOW()) THEN begindate - (SELECT NOW()) 
+        ELSE (SELECT NOW()) - enddate END
+      LIMIT 1
+    ", $wces, __FILE__, __LINE__);
+    
+    if (pg_numrows($result) == 0) return NULL;
+    return $_SESSION['wces/question_period_id'] = (int)pg_result($result, 0, 0);
+  }
+}
 
 ?>
