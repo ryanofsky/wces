@@ -238,7 +238,7 @@ class MassEmail extends FormWidget
 
     $result = pg_query("
       CREATE TEMPORARY TABLE studclasses AS
-      SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.response_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
+      SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = $status " . ($status == 1 ? "
@@ -299,8 +299,8 @@ class MassEmail extends FormWidget
     }
 
     $class_num = 0;
-    $class_row = pg_fetch_array($classes,$class_num,PGSQL_ASSOC);
     $class_count = pg_numrows($classes);
+    $class_row = $class_num < $class_count ? pg_fetch_array($classes,$class_num,PGSQL_ASSOC) : NULL;
     for($userno = 0; $userno < $total; ++$userno)
     {
       $user = pg_fetch_array($users,$userno,PGSQL_ASSOC);
@@ -319,7 +319,8 @@ class MassEmail extends FormWidget
         if (!$class_str) $class_str = $class_row["scode"] . $class_row["code"] . ' ' . $class_row["cname"] . ' Section ' . $class_row["section"];
         $class_str .= ($class_row["pname"] ? "\nProfessor " . $class_row["pname"] : '');
         
-        if ($class_row['class_id'] != $next_row['class_id'] || $user['user_id'] != $class_row['cluser_id'])
+        // handle classes with more than one professor
+        if ($class_row['class_id'] != $next_row['class_id'] || $user['user_id'] != $next_row['cluser_id'])
         {
           if ($class_row["surveyed"]) $cl = &$s_finishedclasses; else $cl = &$s_missingclasses;
           if ($cl) $cl .= "\n\n";
