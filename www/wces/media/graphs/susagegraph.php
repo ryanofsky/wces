@@ -2,7 +2,7 @@
 error_reporting (0);
 
 include('wces/server.inc');
-Header("Content-type: image/gif");
+Header("Content-type: image/png");
 
 if (function_exists('imagecreate'))
 {
@@ -29,7 +29,7 @@ phpdraw("piegraph", array(
 ));
 
 $fname = tempnam($server_tempdir, "graph");
-phpshow($fname,"gif");
+phpshow($fname,"png");
 readfile($fname);
 unlink($fname);
 }
