@@ -204,6 +204,8 @@ class SurveyWidget extends ParentWidget
     if (count($this->questionWidgets) == 0)
       print("<p><i>This survey contains no questions.</i></p>");
 
+    print("<p>Instructions: Fill in the form below and press the \"Submit Evaluation\" button when you are done. Note that you will not be able to go back and edit any part of the evaluation once it is submitted. This includes the comments section and the TA section.</p>");
+
     if ($this->showErrors)
     {
       $errortext = "";
@@ -256,10 +258,10 @@ class SurveyWidget extends ParentWidget
 ?>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
-  <td align=center bgcolor="#B5CFE7">
+  <td align=center bgcolor="#68ACFF">
     <? if ($prev) $this->event->displayButton("Previous Page", SurveyWidget_previous, false, ""); ?>
     <? if ($next) $this->event->displayButton("Next Page", SurveyWidget_next, false, ""); ?>
-    <? if ($save) $this->event->displayButton("Save responses", SurveyWidget_save, false, ""); ?>
+    <? if ($save) $this->event->displayButton("Submit Evaluation", SurveyWidget_save, false, ""); ?>
     <? if ($save) $this->event->displayButton("Cancel", SurveyWidget_cancel, false, " onclick=\"return confirm('You survey responses will be not be saved if you continue.\\n\\nPress OK to continue, or Cancel to keep filling out the survey.');\""); ?>
   </td>
 </tr>
