@@ -248,7 +248,13 @@ function acisget($uni,$pw)
   {
     $fname = tempnam($server_tempdir, "booty");
 
-    $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
+    // the following line doesn't work with new versions of curl:
+    //   $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
+    //
+    // workaround is to use stunnel:
+    //  /usr/sbin/stunnel -d 12345 -c -r www1.columbia.edu:443
+    
+    $ch = curl_init("http://localhost:12345/~rey4/info.html");
     $fp = fopen($fname, "w");
     curl_setopt($ch, CURLOPT_FILE, $fp);
     curl_setopt($ch, CURLOPT_USERPWD, "$uni:$pw");
