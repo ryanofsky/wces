@@ -20,7 +20,7 @@ function image_href($id)
   
   wces_connect();
   
-  $r = pg_query("SELECT name FROM pictures WHERE picture_id = $id", $wces, __FILE__, __LINE__);
+  $r = pg_go("SELECT name FROM pictures WHERE picture_id = $id", $wces, __FILE__, __LINE__);
   return "/image/" . pg_result($r, 0, 0);
 };
 
@@ -58,7 +58,7 @@ fields
 
 */
 
-class ImageUpload extends FormWidget
+class ImageUpload extends Widget
 {
   var $file_path;
   var $maxsize = 1048576; // 1 megabyte
@@ -67,28 +67,24 @@ class ImageUpload extends FormWidget
   var $errors = array();
   var $picture_id = NULL;
 
-  function ImageUpload($file_path, $prefix, $form, $formmethod)
+  function ImageUpload($file_path, $name, &$parent)
   {
-    $this->FormWidget($prefix, $form, $formmethod);
+    $this->Widget($name, $parent);
     $this->file_path = $file_path;
   }
 
-  function loadvalues()
+  function loadState()
   {
     global $wces;
-    global $HTTP_POST_VARS;
     
-   
-    $tname = $this->loadattribute("");
-    $fname = $this->loadattribute("name");
+    $tname = $this->readValue("");
+    $fname = $this->readValue("name");
     $extensions = array(1 => ".gif", 2 => ".jpg", 3 => ".png");
 
-    print("<h1>" . htmlspecialchars($HTTP_POST_VARS[$this->prefix]) . "</h1>");
+    print("<h1>" . htmlspecialchars($_POST[$this->prefix]) . "</h1>");
     
-    if (is_uploaded_file($GLOBALS[$this->prefix]))
+    if (is_uploaded_file($_POST[$this->prefix]))
     {
-      print("<h1>here</h1>");
-
       if (!$i = GetImageSize($tname) || !isset($extensions[$i[2]]))
       {
         $this->errors[] = "Uploaded file is not an image";
@@ -103,7 +99,7 @@ class ImageUpload extends FormWidget
       
       // get a unique number
       wces_connect();
-      $r = pg_query("SELECT nextval('picture_ids')", $wces, __FILE__, __LINE_);
+      $r = pg_go("SELECT nextval('picture_ids')", $wces, __FILE__, __LINE_);
       $picture_id = (int)pg_result($r, 0, 0);
 
       // resulting filename
@@ -117,27 +113,32 @@ class ImageUpload extends FormWidget
         return;
       };
         
-      $r = pg_query("INSERT INTO pictures (picture_id, $name) VALUES ($picture_id, '"
+      $r = pg_go("INSERT INTO pictures (picture_id, $name) VALUES ($picture_id, '"
         . addslashes($this->file_name) . "')", $wces__FILE__, __LINE__);
     }
     else
-      $this->picture_id = $this->loadAttribute("id");
+      $this->picture_id = $this->readValue("id");
   }
 
-  function display()
+  function printState()
   {
     if ($this->picture_id)
       $this->printattribute("id", $this->picture_id);
-
+  }
+  
+  function displayHidden()
+  {
+    $this->printState(); 
+  }
+  
+  function display()
+  {
+    $this->printState();
     print('<input name="' . $this->prefix . '" type=file>');
-  } 
+  }
 }
 
-define("UserEditor_save", 1);
-define("UserEditor_cancel", 2);
-define("UserEditor_preview", 3);
-
-class SqlBox extends FormWidget
+class SqlBox extends Widget
 {
   var $sql;
   var $multiple;
@@ -152,12 +153,25 @@ class SqlBox extends FormWidget
     $this->selected = $multiple ? array() : NULL;
   }
   
-  function display($hidden = false, $params="")
+  function printHidden()
   {
-    global $wces;
     $suffix = $this->multiple ? '[]' : '';
     $n = '"' . $this->prefix . $suffix . '"';
     if ($params) $params = " $params";
+
+  }
+  
+  function printVisible()
+  {
+    $suffix = $this->multiple ? '[]' : '';
+    $n = '"' . $this->prefix . $suffix . '"';
+    if ($params) $params = " $params";
+
+  }
+  
+  function display($hidden = false, $params="")
+  {
+    global $wces;
     
     if ($hidden)
     {
@@ -176,7 +190,7 @@ class SqlBox extends FormWidget
     {
       wces_connect();
 
-      $result = pg_query($this->sql, $wces, __FILE__, __LINE__);
+      $result = pg_go($this->sql, $wces, __FILE__, __LINE__);
       
       $n = pg_numrows($result);
       
@@ -193,9 +207,10 @@ class SqlBox extends FormWidget
     }
   }
 
-  function loadvalues()
+  function loadState()
   {
-    $selected = $this->loadattribute();
+    Widget::loadState();
+    $selected = $this->readValue();
     if (isset($selected))
     {
       if (!$this->multiple)
@@ -206,10 +221,14 @@ class SqlBox extends FormWidget
   }
 };
 
-class UserEditor extends FormWidget
+define("UserEditor_save", 1);
+define("UserEditor_cancel", 2);
+define("UserEditor_preview", 3);
+
+class UserEditor extends ParentWidget
 {
   var $done = false;
-  var $message =   "";
+  var $message = "";
   var $errors = array();
   
   var $show_prof = true;
@@ -245,7 +264,7 @@ class UserEditor extends FormWidget
     global $wces;
     
     wces_connect();
-    $r = pg_query("
+    $r = pg_go("
       SELECT u.firstname, u.lastname, u.email, u.department_id, d.url, 
        d.statement, d.profile, d.education, d.picture_id
       FROM users AS u
@@ -287,7 +306,7 @@ class UserEditor extends FormWidget
 
     $result = true;
     
-    $result = $result && pg_query("
+    $result = $result && pg_go("
       UPDATE users SET
         firstname = $fn, lastname = $ln, email = $em, department_id = $dt
       WHERE user_id = $this->user_id
@@ -301,7 +320,7 @@ class UserEditor extends FormWidget
       $ed = nullquot($this->education);
       $pi = (int)$this->picture->picture_id;
 
-      $r= pg_query("SELECT EXISTS(SELECT * FROM professor_data WHERE user_id = $this->user_id)", $wces, __FILE__, __LINE__);
+      $r= pg_go("SELECT EXISTS(SELECT * FROM professor_data WHERE user_id = $this->user_id)", $wces, __FILE__, __LINE__);
       if (pg_result($r, 0, 0) == 't')
       {
         $result = $result && pg_result("
@@ -409,7 +428,7 @@ class UserList extends FormWidget
   function loadValues()
   {
     $this->action->loadValues();
-    $a = (int)$this->loadAttribute("user_id");
+    $a = (int)$this->readValue("user_id");
     $editing = $a != 0;
     for(;;)
     if ($editing)
@@ -448,11 +467,11 @@ class UserList extends FormWidget
   {
     global $wces;
     wces_connect();
-    $ref = (int)pg_result(pg_query("SELECT references_user($user_id)", $wces, __FILE__, __LINE__),0,0);
+    $ref = (int)pg_result(pg_go("SELECT references_user($user_id)", $wces, __FILE__, __LINE__),0,0);
     if ($ref != 0)
       $this->message = "<p><font color=red>Unable to delete question period $user_id because there are survey responses associated with it.</font></p>";
     else
-      pg_query("DELETE FROM semester_users WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+      pg_go("DELETE FROM semester_users WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   }
   
   function display()
@@ -467,7 +486,7 @@ class UserList extends FormWidget
     }
 
     wces_connect();
-    $r = pg_query("SELECT user_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_users", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT user_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_users", $wces, __FILE__, __LINE__);
     $n = pg_numrows($r);
 
     print("<table border=1>\n");
