@@ -75,13 +75,13 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 function login_setup($userid, $uni, $status, $name, $deptid, $fake, $fakeuni)
 {
   session_initialize();
-  $_SESSION["userid"] = (int)$userid;
-  $_SESSION["uni"] = $uni;
-  $_SESSION["status"] = (int)$status;
-  $_SESSION["name"] = $name;
-  $_SESSION["depts"] = $deptid ? array($deptid) : false;
-  $_SESSION["fake"] = $fake;
-  $_SESSION["fakeuni"] = $fakeuni;
+  $_SESSION["login/userid"] = (int)$userid;
+  $_SESSION["login/uni"] = $uni;
+  $_SESSION["login/status"] = (int)$status;
+  $_SESSION["login/name"] = $name;
+  $_SESSION["login/depts"] = $deptid ? array($deptid) : false;
+  $_SESSION["login/fake"] = $fake;
+  $_SESSION["login/fakeuni"] = $fakeuni;
 };
 
 function login_logout()
@@ -94,56 +94,56 @@ function login_logout()
 
 function login_getstatus()
 {
-  return isset($_SESSION["status"]) ? $_SESSION["status"] : 0;
+  return isset($_SESSION["login/status"]) ? $_SESSION["login/status"] : 0;
 }
 
 function login_getuni()
 {
-  return isset($_SESSION["uni"]) ? $_SESSION["uni"] : 0;
+  return isset($_SESSION["login/uni"]) ? $_SESSION["login/uni"] : 0;
 };
 
 function login_getdepts()
 {
-  return isset($_SESSION["depts"]) ? $_SESSION["depts"] : false;
+  return isset($_SESSION["login/depts"]) ? $_SESSION["login/depts"] : false;
 };
 
 function login_getuserid()
 {
-  return isset($_SESSION["userid"]) ? $_SESSION["userid"] : false;
+  return isset($_SESSION["login/userid"]) ? $_SESSION["login/userid"] : false;
 };
 
 function login_getname()
 {
-  return isset($_SESSION["name"]) ? $_SESSION["name"] : false;
+  return isset($_SESSION["login/name"]) ? $_SESSION["login/name"] : false;
 };
 
 function login_getfake()
 {
-  return isset($_SESSION["fake"]) ? $_SESSION["fake"] : false;
+  return isset($_SESSION["login/fake"]) ? $_SESSION["login/fake"] : false;
 };
 
 function login_getfakeuni()
 {
-  return isset($_SESSION["fakeuni"]) ? $_SESSION["fakeuni"] : false;
+  return isset($_SESSION["login/fakeuni"]) ? $_SESSION["login/fakeuni"] : false;
 };
 
 
 function login_whoami()
 {
-  if (!isset($_SESSION["status"])) return "";
+  if (!isset($_SESSION["login/status"])) return "";
   
   $result = "";
   
-  if ($_SESSION["status"] & login_student)
+  if ($_SESSION["login/status"] & login_student)
     $result .= "student";
 
-  if ($_SESSION["status"] & login_professor)
+  if ($_SESSION["login/status"] & login_professor)
   {
     if ($result) $result .= ", ";
     $result .= "professor";
   }  
 
-  if ($_SESSION["status"] & login_administrator)
+  if ($_SESSION["login/status"] & login_administrator)
   {
     if ($result) $result .= ", ";
     $result .= "administrator";
@@ -168,7 +168,7 @@ function login_validate($uni,$password)
     
     login_update($user_id);
 
-  if ($_SESSION["status"] == 0)
+  if ($_SESSION["login/status"] == 0)
     sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
   
   $uni = str_replace("@columbia.edu","",$uni);
@@ -223,7 +223,7 @@ function login_validate($uni,$password)
   $user_id = (int)pg_result($result,0,0);
   login_update($user_id);
 
-  if ($_SESSION["status"] == 0)
+  if ($_SESSION["login/status"] == 0)
     sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
  
   return true;
