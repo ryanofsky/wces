@@ -1,7 +1,7 @@
 <?
 
 //---------------------------------
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("widgets/widgets.inc");
 
 $profimages_physical = "j:/server/shares/oracle/oracle/profimages/";
@@ -142,7 +142,7 @@ class ProfessorInfo extends FormWidget
   
   function display()
   {
-    global $server_wcespath;
+    global $wces_path;
 
     if ($this->professorid) $this->editor->display();
 
@@ -171,11 +171,11 @@ class ProfessorInfo extends FormWidget
         ORDER BY last, first
       ",$this->db,__FILE__,__LINE__);
       
-      $this->action->display(false,ProfessorInfo_print,0);
-      $this->action->display(false,ProfessorInfo_back,0);
+      ActionButton::dumpscript();
+      $this->action->display(false,"","");
 ?>
 <table><tr><td height=50>
-<span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?= $this->action->gethref($this->printable ? ProfessorInfo_back : ProfessorInfo_print , 0) ?>"><img src="<?=$server_wcespath?>media/report/<?= $this->printable ? "back" : "print"?>.gif" border=0 width=20 height=20 alt="Icon"><?=$this->printable ? "Back" : "Printable version of this page"?></a></span> 
+<span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?= $this->action->gethref($this->printable ? ProfessorInfo_back : ProfessorInfo_print , 0) ?>"><img src="<?=$wces_path?>media/report/<?= $this->printable ? "back" : "print"?>.gif" border=0 width=20 height=20 alt="Icon"><?=$this->printable ? "Back" : "Printable version of this page"?></a></span> 
 </td></tr></table>
 
 <form id=form1 name=form1>
@@ -203,7 +203,7 @@ class ProfessorInfo extends FormWidget
         $cunix = $email = $department = $url = $statement = $profile = $education = $picname = 0;
         extract($row);
         print("<tr>");
-        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$last, $first</a></td>\n");
+        print("  <td bgcolor=\"$color\"><a href=\"${wces_path}administrators/info.php?professorid=$professorid\">$last, $first</a></td>\n");
         print("  <td bgcolor=\"$color\">" . ($cunix ? "<a href=\"http://www.columbia.edu/cgi-bin/lookup.pl?$cunix\">$cunix</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">" . ($email ? "<a href=\"mailto:$email\">$email</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">$department</td>");
