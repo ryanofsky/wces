@@ -16,9 +16,7 @@ function format_date($timestamp, $time = true)
 
 function parse_date($str)
 {
-  if (strlen($str) == 0)
-     return false;
-  else if (($timestamp = strtotime(str_replace("-","/",$str))) === -1)
+  if (($timestamp = strtotime(str_replace("-","/",$str))) === -1)
     return false;
   else
     return $timestamp;
@@ -34,29 +32,29 @@ define("QuestionPeriodList_delete", 2);
 
 $dartSemesters = array("Spring", "Summer","Fall", "Winter");
 
-class QuestionPeriodEditor extends StatefullWidget
+class QuestionPeriodEditor extends FormWidget
 {
   var $done = false;
   var $message = "";
   var $errors = array();
   
-  function QuestionPeriodEditor($question_period_id, $name, &$parent)
+  function QuestionPeriodEditor($question_period_id, $prefix, $form, $formmethod)
   {
     global $dartSemesters;
     $this->question_period_id = (int)$question_period_id;
-    $this->StatefullWidget($name, $parent);
+    $this->FormWidget($prefix, $form, $formmethod);
     $this->question_period_id = (int)$question_period_id;
-    $this->displayName =& new TextBox(0, 30, "", "displayName", $this);
-    $this->beginDate =& new TextBox(0, 30, "", "beginDate", $this);
-    $this->endDate =& new TextBox(0, 30, "", "endDate", $this);
-    $this->year =& new TextBox(0, 4, "", "year", $this);
-    $this->semester =& new DropBox($dartSemesters, "semester", $this);
-    $this->profDate =& new TextBox(0, 30, "", "profDate", $this);
+    $this->displayName = new TextBox(0, 30, "", "{$prefix}_displayName", $form, $formmethod);
+    $this->beginDate = new TextBox(0, 30, "", "{$prefix}_beginDate", $form, $formmethod);
+    $this->endDate = new TextBox(0, 30, "", "{$prefix}_endDate", $form, $formmethod);
+    $this->year = new TextBox(0, 4, "", "{$prefix}_year", $form, $formmethod);
+    $this->semester = new DropBox($dartSemesters, "{$prefix}_semester", $form, $formmethod);
+    $this->action = new ActionButton("{$prefix}_action", $form, $formmethod);
+    $this->profDate = new TextBox(0, 30, "", "{$prefix}_profDate", $form, $formmethod);
   }
 
-  function loadInitialState()
+  function loadDefaults()
   {
-    StatefullWidget::loadInitialState();
     global $wces;
     if ($this->question_period_id > 0)
     {
@@ -86,14 +84,9 @@ class QuestionPeriodEditor extends StatefullWidget
     global $wces;
     wces_connect();
 
-    debugout("a");
     $bd = parse_date($this->beginDate->text);
-    debugout("b");
     $ed = parse_date($this->endDate->text);
-    debugout("c");
-    debugout(strlen($this->profDate->text), "profData = ");
     $rd = parse_date($this->profDate->text);
-    debugout("d");
     if ($bd === false) $this->errors[] = "Unable to parse begin date";
     if ($bd === false) $this->errors[] = "Unable to parse end date";
     if ($rd === false) $this->errors[] = "Unable to parse professor date";
@@ -129,23 +122,28 @@ class QuestionPeriodEditor extends StatefullWidget
     }
   }
   
-  function & handleEvent($event, $param, $isNew)
+  function loadValues()
   {
-    switch ($event)
+    $this->action->loadValues();
+    $this->displayName->loadValues();;
+    $this->beginDate->loadValues();
+    $this->endDate->loadValues();
+    $this->year->loadValues();
+    $this->semester->loadValues();
+    $this->profDate->loadValues();
+    if ($this->action->action == QuestionPeriodEditor_save)
     {
-      case QuestionPeriodEditor_save:
-        if ($this->save())
-        {
-          $this->done = true;
-          $this->message = "<p><font color=blue>Question Period Editor: Changes saved successfully</font></p>";
-        }     
-      break;
-
-      case QuestionPeriodEditor_cancel:
+      if ($this->save())
+      {
         $this->done = true;
-        $this->message = "<p><font color=red>Question Period Editor: No changes were saved.</font></p>";
-      break;
-    };
+        $this->message = "<p><font color=blue>Question Period Editor: Changes saved successfully</font></p>";
+      }
+    }
+    else if ($this->action->action == QuestionPeriodEditor_cancel)
+    {
+      $this->done = true;
+      $this->message = "<p><font color=red>Question Period Editor: No changes were saved.</font></p>";
+    }
   }
   
   function display()
@@ -165,38 +163,62 @@ class QuestionPeriodEditor extends StatefullWidget
 <tr><td>Begin Time:</td><td><? $this->beginDate->display(); ?></td></tr>
 <tr><td>End Time:</td><td><? $this->endDate->display(); ?></td></tr>
 <tr><td>Professor Results Date:</td><td><? $this->profDate->display(); ?></td></tr>
-<tr><td>&nbsp;</td><td><? $this->event->displayButton("Save", QuestionPeriodEditor_save); $this->event->displayButton("Cancel", QuestionPeriodEditor_cancel); ?></td></tr>
+<tr><td>&nbsp;</td><td><? $this->action->display("Save", QuestionPeriodEditor_save); $this->action->display("Cancel", QuestionPeriodEditor_cancel); ?></td></tr>
 </table>
 <?
-  }  
-};
-
-class QuestionPeriodList extends StatefullWidget
-{
-  var $question_period_id = 0;
-  var $editor = null;
-  var $modalChild = null;
-  var $message = "";
-
-  function QuestionPeriodList($name, &$parent)
-  {
-    $this->StatefullWidget($name, $parent);
   }
   
-  function & handleEvent($event, $param, $isNew)
-  {
-    switch ($event)
-    {
-      case QuestionPeriodList_edit:
-        if ($param == "new") $param = -1;
-        $this->editor =& new QuestionPeriodEditor($param, "editor", $this);
-        $this->loadChild($this->editor, $isNew);
-      return $this->editor;
+};
 
-      case QuestionPeriodList_delete:
-        $this->deleteq((int)$this->event->object);
-      break;
-    };
+class QuestionPeriodList extends FormWidget
+{
+  var $question_period_id = 0;
+  var $editor = NULL;
+  var $modalChild = NULL;
+  var $message = "";
+
+  function QuestionPeriodList($prefix, $form, $formmethod)
+  {
+    $this->FormWidget($prefix, $form, $formmethod);
+    $this->action = new ActionButton("{$prefix}_action", $form, $formmethod);
+  }
+  
+  function loadValues()
+  {
+    $this->action->loadValues();
+    $a = (int)$this->loadAttribute("question_period_id");
+    $editing = $a != 0;
+    for(;;)
+    if ($editing)
+    {
+      if ($a != 0) $this->question_period_id = $a;
+      $this->editor = new QuestionPeriodEditor($this->question_period_id, "{$this->prefix}_editor", $this->form, $this->formmethod);
+      if ($a != 0) $this->editor->loadValues(); else $this->editor->loadDefaults(); 
+      $this->message .= $this->editor->message;
+      if ($this->editor->done)
+        $this->question_period_id = 0;
+      else
+      {
+        $this->modalChild = &$this->editor;
+        $this->editor->modal = true;
+      }
+      return;
+    }   
+    else
+    {   
+      switch ($this->action->action)
+      {
+        case QuestionPeriodList_edit:
+          $editing = true;
+          $this->question_period_id = $this->action->object == "new" ? -1 : (int)$this->action->object;
+        break;
+        case QuestionPeriodList_delete:
+          $this->deleteq((int)$this->action->object);
+          return;  
+        default:
+          return;
+      }
+    }
   }
   
   function deleteq($question_period_id)
@@ -210,12 +232,16 @@ class QuestionPeriodList extends StatefullWidget
       pg_go("DELETE FROM semester_question_periods WHERE question_period_id = $question_period_id", $wces, __FILE__, __LINE__);
   }
   
-  function printVisible()
+  function display()
   {
     global $wces, $dartSemesters;
-    
-    if (isset($this->editor->message))
-      print($this->editor->message);
+    print($this->message);
+    $this->printAttribute("question_period_id", $this->question_period_id);
+    if ($this->modalChild)
+    {
+      $this->modalChild->display();
+      return;
+    }
 
     wces_connect();
     $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods", $wces, __FILE__, __LINE__);
@@ -230,29 +256,24 @@ class QuestionPeriodList extends StatefullWidget
       $bd = format_date($begindate);
       $ed = format_date($enddate);
       print("<tr><td>$question_period_id</td><td>$dartSemesters[$semester] $year</td><td>$displayname</td><td>$bd</td><td>$ed<td>");
-      $this->event->displayButton("Edit...", QuestionPeriodList_edit, $question_period_id);
-      $this->event->displayButton("Delete", QuestionPeriodList_delete, $question_period_id);
+      $this->action->display("Edit...", QuestionPeriodList_edit, $question_period_id);
+      $this->action->display("Delete", QuestionPeriodList_delete, $question_period_id);
       print("</td></tr>\n");
     }
     print("</table>\n");
     print("<p>");
-    $this->event->displayButton("New Question Period...", QuestionPeriodList_edit, "new");
+    $this->action->display("New Question Period...", QuestionPeriodList_edit, "new");
     print("</p>");
   }
 }
 
 page_top("Question Periods");
-
-$f =& new Form('form');
-$q =& new QuestionPeriodList("qpl", $f);
-$f->loadState();
-
 print("<form method=post>\n");
 print($ISID);
-$f->display();
+$q = new QuestionPeriodList("qpl", "f", WIDGET_POST);
+$q->loadValues();
 $q->display();
 print("</form>\n");
-
 page_bottom();
 
 ?>

@@ -8,8 +8,6 @@ require_once("wces/page.inc");
 require_once("wces/login.inc");
 require_once("wces/useredit.inc");
 
-param('user_id');
-
 login_protect(login_administrator | login_deptadmin);
 
 page_top("Question Periods");
@@ -23,13 +21,15 @@ if (isset($user_id)) $user_id = (int)$user_id; else $user_id = 0;
 print('<form enctype="multipart/form-data" method=post><input type=hidden name=MAX_FILE_SIZE value=1048576>');
 print("<input type=hidden name=user_id value=$user_id>");
 print($ISID);
-
-$f =& new Form("f");
-$q =& new UserEditor($user_id, "ue", $f);
-
-$f->loadState();
+$q = new UserEditor($user_id, "ue", "f", WIDGET_POST);
+$f = new Form("ue", "f", WIDGET_POST);
+$f->loadValues();
 $f->display();
 
+if ($f->isstale)
+  $q->loadValues();
+else
+  $q->loadDefaults();
 if (!$q->done)
   $q->display();
 else
