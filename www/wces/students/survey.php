@@ -48,7 +48,8 @@ $factories = array
   new TextFactory,
   new HeadingFactory,
   new PageBreakFactory,
-  new AbetFactory
+  new NewAbetFactory(),
+  new BioAbetFactory()     
 );
 $f =& new Form();
 $q =& new SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, 'survey', $f);
@@ -62,6 +63,12 @@ if ($q->done)
 }
 else
 {
+  $seconds = 3600;
+  session_cache_limiter('public');
+  header('Cache-Control: public');
+  header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
+  header('Last-Modified: ' . gmdate('D, d M Y H:i:s', getlastmod()) . ' GMT');
+
   page_top("Student Survey");
   $r = pg_go("SELECT get_profs($class_id)", $wces, __FILE__, __LINE__);
   $class = format_class($data['name']);
@@ -81,7 +88,7 @@ else
   
   function handleBeforeUnload()
   {
-    return "Your survey responses will not saved."; 
+    return "If you do, your survey responses will not be saved."; 
   }
   
   window.onbeforeunload = handleBeforeUnload
