@@ -1,5 +1,5 @@
 OPT=
-INC=/usr/src/postgresql-7.1.3-2/src/include
+INC=/usr/include/postgresql
 LIB=/lib/libpostgres.a
 OUTPUT=distribution.dll
 
