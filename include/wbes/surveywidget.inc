@@ -48,7 +48,7 @@ class SurveyWidget extends FormWidget
     $this->page = (int)$this->loadattribute("page");
     if (!$this->survey)
     {
-      $this->survey = unserialize((string)$this->loadattribute("survey"));
+      $this->survey = @unserialize((string)$this->loadattribute("survey"));
       if (get_class($this->survey) != "survey")
         $this->load();
     }

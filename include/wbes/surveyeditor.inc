@@ -57,7 +57,7 @@ class SurveyEditor extends FormWidget
  
   function loadvalues()
   {
-    $this->survey = unserialize((string)$this->loadattribute("survey"));
+    $this->survey = @unserialize((string)$this->loadattribute("survey"));
     if (get_class($this->survey) != "survey")
       $this->load();
 
