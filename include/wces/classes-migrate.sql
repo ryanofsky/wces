@@ -144,3 +144,52 @@ CREATE FUNCTION temp_useri(integer, integer) RETURNS integer AS '
 CREATE FUNCTION temp_userr(integer) RETURNS integer AS '
   SELECT newid FROM temp_user WHERE oldid = $1;
 ' LANGUAGE 'sql';
+
+CREATE TABLE temp_questionperiod
+(
+  oldid INTEGER NOT NULL PRIMARY KEY,
+  newid INTEGER UNIQUE NOT NULL
+);
+
+CREATE FUNCTION temp_questionperiodi(integer, integer) RETURNS integer AS '
+  INSERT INTO temp_questionperiod(oldid, newid) VALUES ($1, $2);
+  SELECT $2;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION temp_questionperiodr(integer) RETURNS integer AS '
+  SELECT newid FROM temp_questionperiod WHERE oldid = $1;
+' LANGUAGE 'sql';
+
+CREATE TABLE temp_topic
+(
+  oldid INTEGER NOT NULL PRIMARY KEY,
+  newid INTEGER UNIQUE NOT NULL REFERENCES survey_categories(survey_category_id)
+);
+
+CREATE FUNCTION temp_topici(integer, integer) RETURNS integer AS '
+  INSERT INTO temp_topic(oldid, newid) VALUES ($1, $2);
+  SELECT $2;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION temp_topicr(integer) RETURNS integer AS '
+  SELECT newid FROM temp_topic WHERE oldid = $1;
+' LANGUAGE 'sql';
+
+DROP FUNCTION topic_update(INTEGER, INTEGER, INTEGER);
+CREATE FUNCTION topic_update(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    parent_      ALIAS FOR $1; 
+    class_id_    ALIAS FOR $2; 
+    category_id_ ALIAS FOR $3; 
+    topic_id_ INTEGER;
+  BEGIN
+    SELECT INTO topic_id_ topic_id FROM wces_topics WHERE ((parent_ IS NULL AND parent IS NULL) OR parent = parent_) AND class_id = class_id_;
+    IF FOUND THEN
+      RETURN topic_id_;
+    ELSE
+      INSERT INTO wces_topics (parent,class_id,category_id)
+      VALUES (parent_,class_id_,category_id_);
+      RETURN currval(''topic_ids'');
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
