@@ -3,7 +3,8 @@
 require_once("wces/general.inc");
 require_once("wces/wces.inc");
 
-
+print("you must edit the source to execute this script");
+exit();
 
 $db = wces_connect();
 
