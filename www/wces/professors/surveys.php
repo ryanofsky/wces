@@ -14,6 +14,8 @@ require_once("wces/wces.inc");
 
 login_protect(login_professor);
 
+$pagename = $server_url->toString(false, true, false);
+
 param($topic_id);
 
 $factories = array
