@@ -252,7 +252,8 @@ CREATE TABLE acis_affiliations
 CREATE TABLE wces_topics
 (
   class_id INTEGER UNIQUE,
-  category_id INTEGER
+  category_id INTEGER,
+  course_id INTEGER
 )
 INHERITS (topics);
 
@@ -284,6 +285,7 @@ ALTER TABLE acis_groups ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
 ALTER TABLE acis_affiliations ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
 ALTER TABLE acis_affiliations ADD FOREIGN KEY (acis_group_id) REFERENCES acis_groups(acis_group_id);
 ALTER TABLE wces_topics ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
+ALTER TABLE wces_topics ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
 ALTER TABLE wces_topics ADD FOREIGN KEY (category_id) REFERENCES survey_categories(survey_category_id);
 
 CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
@@ -1184,14 +1186,27 @@ WITH (ISCACHABLE);
 DROP FUNCTION get_class(INTEGER);
 CREATE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
   SELECT COALESCE(s.code, '''') || ''\n'' 
-    || COALESCE(c.divisioncode, '''') || ''\n'' || COALESCE(c.code, '''')  || ''\n''
+    || COALESCE(c.divisioncode, '''') || ''\n'' 
+    || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
     || COALESCE(cl.section, '''')     || ''\n'' || COALESCE(cl.year, '''') || ''\n'' 
     || COALESCE(cl.semester, '''')    || ''\n'' || COALESCE(c.name, '''') || ''\n''
-    || COALESCE(cl.name, '''') || ''\n'' || $1
+    || COALESCE(cl.name, '''') || ''\n'' || $1 || ''\n'' || c.course_id
   FROM classes AS cl
   INNER JOIN courses AS c USING (course_id)
   INNER JOIN subjects AS s USING (subject_id)
   WHERE cl.class_id = $1
+' LANGUAGE 'sql' WITH (ISCACHABLE);
+
+DROP FUNCTION get_course(INTEGER);
+CREATE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
+  SELECT COALESCE(s.code, '''') || ''\n'' 
+    || COALESCE(c.divisioncode, '''') || ''\n'' 
+    || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
+    || COALESCE(c.name, '''') || ''\n''
+    ||  $1
+  FROM courses AS c
+  INNER JOIN subjects AS s USING (subject_id)
+  WHERE c.course_id = $1
 ' LANGUAGE 'sql' WITH (ISCACHABLE);
 
 CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
