@@ -86,14 +86,10 @@ class QuestionPeriodEditor extends StatefullWidget
     global $wces;
     wces_connect();
 
-    debugout("a");
     $bd = parse_date($this->beginDate->text);
-    debugout("b");
     $ed = parse_date($this->endDate->text);
-    debugout("c");
-    debugout(strlen($this->profDate->text), "profData = ");
     $rd = parse_date($this->profDate->text);
-    debugout("d");
+
     if ($bd === false) $this->errors[] = "Unable to parse begin date";
     if ($bd === false) $this->errors[] = "Unable to parse end date";
     if ($rd === false) $this->errors[] = "Unable to parse professor date";
