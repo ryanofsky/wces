@@ -39,31 +39,39 @@ else
 
 ///////////////////////////////////////////////////////////////////////////////
 
+$times = array();
+$times["begin"] = microtime();
 $questionperiodid = wces_Findquestionsetsta($db,"qsets",false,$topicid);
+$times["findquestionsets"] = microtime();
 
-db_exec("CREATE TEMPORARY TABLE surveyclasses(
-courseid INTEGER NOT NULL,
-classid INTEGER NOT NULL,
-section CHAR(3) NOT NULL,
-scode CHAR(4),
-code CHAR(5),
-name TINYTEXT,
-pname TINYTEXT,
-professorid INTEGER,
-students INTEGER,
-responses INTEGER,
-PRIMARY KEY(classid))",$db,__FILE__, __LINE__);
-db_exec("REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
-SELECT c.courseid, cc.classid, cl.section, s.code, c.code, c.name, p.name, p.professorid, IFNULL(cl.students,0), IFNULL(MAX(a.responses),0)
-FROM qsets AS cc
-LEFT JOIN classes AS cl USING (classid)
-LEFT JOIN courses AS c USING (courseid)
-LEFT JOIN subjects AS s USING (subjectid)
-LEFT JOIN professors AS p ON (cl.professorid = p.professorid)
-LEFT JOIN answersets AS a ON (cl.classid = a.classid AND a.questionperiodid = $questionperiodid)
-GROUP BY cc.classid",$db,__FILE__, __LINE__);
+db_exec("
+  CREATE TEMPORARY TABLE surveyclasses(
+  courseid INTEGER NOT NULL, classid INTEGER NOT NULL, section CHAR(3) NOT NULL,
+  scode CHAR(4), code CHAR(5), name TINYTEXT, pname TINYTEXT, 
+  professorid INTEGER, students INTEGER, responses INTEGER,
+  PRIMARY KEY(classid))
+",$db,__FILE__, __LINE__);
+
+$times["createtable"] = microtime();
+
+db_exec("
+  REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
+  SELECT c.courseid, cc.classid, cl.section, s.code, c.code, c.name, p.name, p.professorid, IFNULL(cl.students,0), IFNULL(MAX(a.responses),0)
+  FROM qsets AS cc
+  INNER JOIN classes AS cl ON (cl.classid = cc.classid)
+  INNER JOIN courses AS c ON (c.courseid = cl.courseid)
+  INNER JOIN subjects AS s ON (s.subjectid = c.subjectid)
+  LEFT JOIN professors AS p ON (cl.professorid = p.professorid)
+  LEFT JOIN answersets AS a ON (cc.questionsetid = a.questionsetid AND cl.classid = a.classid AND a.questionperiodid = '$questionperiodid')
+  WHERE cc.classid NOT IN (11499, 1653)
+  GROUP BY cl.classid",$db,__FILE__, __LINE__);
+
+$times["getbigclasslist"] = microtime();
 
 $y = db_exec("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$db,__FILE__, __LINE__);
+
+$times["sumclasslist"] = microtime();
+
 extract(mysql_fetch_array($y));
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -82,14 +90,14 @@ Number of surveys completed: <b><%=$responses%></b><br>
 
 <%
 
-$classes = mysql_query("SELECT * FROM surveyclasses ORDER BY (students - responses) DESC, students DESC",$db);
+$classes = mysql_query("SELECT IF(students < responses, responses, students) AS students, responses, classid, professorid, scode, code, section, name, pname FROM surveyclasses ORDER BY IF(students - responses < 0, 0, students - responses) DESC, students DESC",$db);
 print("<ul>\n");
 while ($class = mysql_fetch_array($classes))
 {
   $students = $responses = $classid = $professorid = 0; $scode = $code = $section = $name = $pname = "Unknown";
   extract($class);
   $numbers = $students == 0 ? "$responses surveys completed" : (($students - $responses) . " / $students surveys left");
-  print ("  <li>$numbers, <a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$pname</a></li>\n");
+  print ("  <li>$numbers, <a href=\"info.php?classid=$classid&surveys=1\">$scode$code$section <i>$name</i></a> - Professor <a href=\"info.php?professorid=$professorid&surveys=1\">$pname</a></li>\n");
 }
 print("</ul>");
 
@@ -112,7 +120,9 @@ db_exec("
   
 ", $db, __FILE__, __LINE__);
 
-$students = db_exec("SELECT cunix, IF(surveys-surveyed=0,1,0) AS didall, IF(surveyed>0,1,0) AS didone FROM studsurvs ORDER BY didall DESC, didone DESC, RAND()", $db, __FILE__, __LINE__);
+$times["getstudentusage"] = microtime();
+
+$students = db_exec("SELECT cunix, IF(surveys-surveyed<=0,1,0) AS didall, IF(surveyed>0,1,0) AS didone FROM studsurvs ORDER BY didall DESC, didone DESC, RAND()", $db, __FILE__, __LINE__);
 
 print("<h3>Individual Student Usage</h3>\n");
 
@@ -141,12 +151,7 @@ while ($student = mysql_fetch_array($students))
 }
 print("</blockquote>");
 
+printtimes($times);
+
 page_bottom();
 %>
-
-
-
-
-
-
-
