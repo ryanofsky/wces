@@ -3,6 +3,8 @@
 require_once("wces/wces.inc");
 require_once("wbes/postgres.inc");
 
+// todo: fill in header() methods
+
 //////////////////////////////////////////////////////////////////////////
 // Generally
 
@@ -45,6 +47,16 @@ function tuple_key()
 function topic_desc($topic_id)
 {
   return "Topic #$topic_id";
+}
+
+function escape_csv($field)
+{
+  return in_str('"', $field) ? str_replace('"', '""', $field) : $field;
+}
+
+function csv_row($row)
+{
+  return implode(",", array_map($row, "escape_csv"));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -136,11 +148,8 @@ class SurveyTreeNode extends TreeNode
   function header(&$row)
   {
     if (!empty($this->topic_id))
-      
-    
-    $row[$this->colno] = make_topic($this->topic_id);
+      $row[$this->colno] = make_topic($this->topic_id);
   }
-  
 }
 
 class TextNode
@@ -285,6 +294,7 @@ function make_page($rwtopic_ordinal)
     $par = (int) $row['parent_subsurvey'];
     $par_survey =& make_survey_node($survey_subs, $par);  
     $survey =& make_survey_node($survey_subs, $sub);
+    if ($par) $survey->topic_id = (int)$row['topic_id'];
     $par_survey->addChild($survey);
   }
 
@@ -340,17 +350,24 @@ function make_page($rwtopic_ordinal)
   $top_survey->number($col);
   
   $row = array_fill(array(), $cols, "") // xxx: arguments?
-  $top_survey->header();
+  $top_survey->header($row);
   
-  $top_survey
   
-  for ($i = 0; $i < $cols; ++$i)
+  print csv_row($row);
+
+  $textr = pg_go("
+    SELECT rt.revision_id, rt.item_id, rtext
+    FROM resps AS re
+    INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
+    ORDER BY re.top_ordinal
+  ", $wces, __FILE__, __LINE__);
+
+  $n = pg_num_rows($textr);
+  for ($i = 0; $i < $n; ++$i)
   {
     
   }
-
-  
-  
+    
 
 /*
 
@@ -394,11 +411,6 @@ function make_page($rwtopic_ordinal)
 
 
 */
-  $textr = pg_go("
-    SELECT rt.revision_id, rt.item_id, rtext
-    FROM resps AS re
-    INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
-  ", $wces, __FILE__, __LINE__);
 
 }
 
