@@ -46,22 +46,27 @@ function GetLineGraph($params, $datax, $datay, $title, $number, $initSrc)
   $y2 = $params['graphMargin'] + $params['graphHeight'];
 
   $n = count($datax);
-  $halfwidth = 0.5 * (float)$params['graphWidth'] / (float)($n-1);
-  $right = (float)($params['width'] - $params['graphMargin']);
+  $str = '';
   
-  $start = $number * $n;
-  
-  $str = "<map name=map$number>\n";
-  for($i = 0; $i < $n; ++$i)
+  if ($n > 1)
   {
-    $x = (float)$right - $params['graphWidth']*($n-$i-1)/($n-1);
-    $x1 = round($x - $halfwidth);
-    $x2 = round($x + $halfwidth);
-    $gn = $start + $i;
-    $str .= "<area shape=rect coords=\"$x1,$y1,$x2,$y2\" href=\"javascript:\" onmouseover=\"showImage('graph$number', $gn)\">\n";
+    $halfwidth = 0.5 * (float)$params['graphWidth'] / (float)($n-1);
+    $right = (float)($params['width'] - $params['graphMargin']);
+    
+    $start = $number * $n;
+    
+    $str = "<map name=map$number>\n";
+    for($i = 0; $i < $n; ++$i)
+    {
+      $x = (float)$right - $params['graphWidth']*($n-$i-1)/($n-1);
+      $x1 = round($x - $halfwidth);
+      $x2 = round($x + $halfwidth);
+      $gn = $start + $i;
+      $str .= "<area shape=rect coords=\"$x1,$y1,$x2,$y2\" href=\"javascript:\" onmouseover=\"showImage('graph$number', $gn)\">\n";
+    }
+    print("</map>");
   }
-  print("</map>");
- 
+  
   return "$str<img src=\"$graph_media/graphs/rline.php"
     . "?datax=" . urlencode(serialize($datax)) 
     . "&datay=" . urlencode(serialize($datay))
@@ -150,7 +155,7 @@ class ProfResponse extends ParentWidget
     wces_connect();
     
     if (isset($this->simpleResults)) return;
-    
+
     $r = pg_go("
       SELECT cl.class_id, get_class(cl.class_id) AS cl, 
         EXISTS (SELECT * FROM enrollments AS e WHERE e.user_id = $this->user_id 
@@ -162,7 +167,7 @@ class ProfResponse extends ParentWidget
     ", $wces, __FILE__, __LINE__);
     
     // Gather information into arrays
-    
+
     $this->classInfo = array();
     $this->otherClasses = array();
     
@@ -246,7 +251,7 @@ class ProfResponse extends ParentWidget
     wces_connect();
     
     $sr =& $this->simpleResults;
-    
+
     // figure out which classes to scan
     $result = pg_go("
       SELECT class_id, year, semester FROM classes 
@@ -339,7 +344,7 @@ class ProfResponse extends ParentWidget
       if ($this->readOnly)
         $this->userOnly->displayLabel("Hide results from class sections not taught by $firstname $lastname");
       else
-        $this->userOnly->displayLabel("Hide class sections not taught by me.");
+        $this->userOnly->displayLabel("Hide results from class sections not taught by me.");
         
         
       print("&nbsp;");

@@ -21,7 +21,12 @@ extract($params);
 // Setup the graph. 
 $graph = new Graph($width,$height,"auto");	
 $graph->img->SetMargin($graphMargin + $left, $graphMargin, $graphMargin, $graphMargin + $bottom);
-$graph->SetScale("textlin");
+if (count($datax) > 1)
+{
+  $graph->SetScale("textlin");
+}
+else 
+  $graph->SetScale("textlin", 0, $datay[0] * 2, 0, 1);
 $graph->SetMarginColor("silver");
 $graph->SetShadow();
 $graph->SetColor(array(254,254,254));

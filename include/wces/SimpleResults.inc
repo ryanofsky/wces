@@ -6,7 +6,7 @@ require_once("wces/wces.inc");
 // SimpleResults exists to provides a uniform interface for
 // retrieving responses to base questions
 
-$select_classes = "SELECT class_id FROM wces_topics WHERE make_public";
+$select_classes = "SELECT DISTINCT class_id FROM wces_topics WHERE make_public";
 $set_question_periods = "(2,23)";
 $base_item_id = 14; // comments
 $oracle_item_id = 13; // multiple choice except for quality of text question
@@ -19,7 +19,7 @@ function & array_get(&$array, $index)
   else
     return $array[count($array)+$index];
 }
-
+$db_debug = 0;
 class SimpleResults
 {
   var $class_ids; // an array of class_id's to retrieve results for
@@ -38,6 +38,7 @@ class SimpleResults
 
     $class_ids = array_unique($class_ids);
     $classes = implode(',', $class_ids);
+    $this->class_ids = $class_ids;
 
     ///////////////////////////////////////////////////////////////////////////
     // NEW RESPONSE STATISTICS
@@ -168,7 +169,6 @@ class SimpleResults
         $this->addBase($class_id, $qtext, $dist);
       }
     }
-    $this->class_ids = $class_ids;
   }
 
   function addStatistic($class_id, $students, $responses)
