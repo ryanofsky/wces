@@ -129,12 +129,14 @@ CREATE TABLE enrollments
 COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - professor, 0 - dropped class';
 
 CREATE INDEX class_idx ON enrollments (class_id);
+CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
 CREATE INDEX user_idx ON enrollments (user_id);
 CREATE INDEX report_user_idx ON report_topics (user_id);
 CREATE INDEX report_category_idx ON report_topics (category_id);
 CREATE INDEX report_course_idx ON report_topics (course_id);
 CREATE INDEX report_period_idx ON report_topics (question_period_id);
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
+CREATE INDEX ta_ratings_parent_idx ON ta_ratings (parent);
 
 CREATE TABLE professor_data
 (
@@ -234,6 +236,18 @@ CREATE TABLE report_topics (
   user_id INTEGER
 );
 
+CREATE OR REPLACE FUNCTION report_topics_update() RETURNS BOOLEAN AS '
+  LOCK report_topics IN ACCESS EXCLUSIVE MODE;
+  TRUNCATE report_topics;
+  INSERT INTO report_topics (topic_id, question_period_id, class_id, category_id, course_id, department_id, user_id)
+  SELECT DISTINCT t.topic_id, t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
+  FROM survey_responses AS r
+  INNER JOIN wces_topics AS t USING (topic_id)
+  INNER JOIN classes AS cl USING (class_id)
+  LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3;
+  SELECT BOOLEAN ''t''
+' LANGUAGE 'sql';
+  
 CREATE INDEX report_user_idx ON report_topics (user_id);
 CREATE INDEX report_category_idx ON report_topics (category_id);
 CREATE INDEX report_course_idx ON report_topics (course_id);
@@ -255,6 +269,13 @@ ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_user(user_id) REFERENCES us
 ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_group(acis_group_id) REFERENCES acis_groups(acis_group_id);
 ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_class(class_id) REFERENCES classes(class_id);
 ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_category(category_id) REFERENCES survey_categories(survey_category_id);
+
+CREATE OR REPLACE FUNCTION references_class (INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM wces_topics WHERE class_id = $1)                  THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM enrollments WHERE class_id = $1 AND status <> 3)  THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM acis_groups WHERE class_id = $1)                  THEN 4 ELSE 0 END;
+' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
   DECLARE
