@@ -1,5 +1,11 @@
 <?
 
+// XXX: This version of the TA component does not
+// use the lists of TAs stored in the database.
+// An incompatible TA component which does do this
+// was added on the fall-2002 branch in revision 1.9.2.2
+// Changes from that revision need to be merged in here.
+
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");
 
