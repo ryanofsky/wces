@@ -121,7 +121,15 @@ class ReportWizard extends Wizard
 
     //////////////////////////////// WIZARD SETUP ////////////////////////////////////////
 
-    $this->crawl(array(ReportWizard_aggreg => ($this->output->checked == ReportWizard_output_email) ? true : false, ReportWizard_order => ($this->output->checked == ReportWizard_output_email) ? true : false));
+    $this->crawl
+    (
+      array
+      (
+        ReportWizard_aggreg => $this->output->checked == ReportWizard_output_email,
+        ReportWizard_order =>  $this->output->checked == ReportWizard_output_email,
+        ReportWizard_output =>  true
+      )
+    );
 
     //////////////////////////////// CRITERIA SETUP //////////////////////////////////////
 
@@ -262,6 +270,7 @@ class ReportWizard extends Wizard
         else
         {
 ?>
+<p><font color=red>These options aren't working right now.</font></p>
 <p><b>Choose a report format:</b><br>
 <? $this->output->display(ReportWizard_output_www,   "onclick=\"show('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www, "Display Report on Web Page"); ?><br>
 <? $this->output->display(ReportWizard_output_email, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email, "Email Report to one or people"); ?><br>
