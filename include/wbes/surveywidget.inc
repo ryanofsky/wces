@@ -1,7 +1,6 @@
 <?
 
 require_once("widgets/basic.inc");
-require_once("wces/oldquestions.inc");
 
 define("SurveyWidget_save",1);
 define("SurveyWidget_cancel",2);
@@ -25,13 +24,18 @@ class SurveyWidget extends FormWidget
 
   var $action; // ActionButton widget
   var $form; // Form widget
-  var $showerrors; // boolean
+  var $showerrors = false; 
   var $survey = NULL;
   var $questionwidgets;
   var $page = 0;
   var $backup = true;
-  var $ta;
+  var $sawlastpage = false;
   var $message = "";
+
+  // to add a ta section to the survey, assign an instance of TASurvey to this: 
+  // $abc = new SurveyWidget(...);
+  // $abc->ta = new TASurvey(...);
+  var $ta = null;
 
   function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, $prefix, $form, $formmethod)
   {
@@ -44,14 +48,13 @@ class SurveyWidget extends FormWidget
 
     $this->action = new ActionButton("${prefix}_action",$form,$formmethod);
     $this->form = new Form("${prefix}_form",$form,$formmethod);
-    $this->showerrors = false;
-
-    $this->ta = new TASurvey("{$prefix}_ta", $form, $formmethod);
   }
 
   function loadvalues()
   {
     $this->page = (int)$this->loadattribute("page");
+    $this->showerrors = (bool)$this->loadattribute("showerrors");
+    $this->sawlastpage = (bool)$this->loadattribute("sawlastpage");
     if (!$this->survey)
     {
       $this->survey = unserialize((string)$this->loadattribute("survey"));
@@ -177,11 +180,9 @@ class SurveyWidget extends FormWidget
       print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:' . $server_feedback . '">' . $server_feedback . '</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
     }
     else
-    {
-      $this->finished = true;
       $this->message = "<p><font color=blue>Responses Saved</font></p>";      
-    }
 
+    $this->finished = true;
   }
 
   function display()
@@ -203,7 +204,7 @@ class SurveyWidget extends FormWidget
 
     $this->printattribute("survey",serialize($this->survey));
 
-    if ($this->ta->modal)
+    if ($this->ta && $this->ta->modal)
     {
       foreach(array_keys($this->questionwidgets) as $k)
       {
@@ -213,6 +214,7 @@ class SurveyWidget extends FormWidget
       return;
     }
 
+    $this->printattribute("showerrors",(int)$this->showerrors);
     if ($this->form->isstale) $this->optionbar();
     if ($this->showerrors)
     {
@@ -240,6 +242,8 @@ class SurveyWidget extends FormWidget
 
     print("<p>&nbsp;</p>\n");
     $this->optionbar();
+
+    $this->printattribute("sawlastpage", (int)$this->sawlastpage);
   }
 
   function optionbar()
@@ -248,7 +252,8 @@ class SurveyWidget extends FormWidget
 
     $prev = $this->page > 0;
     $next = $this->page < $this->pages && $this->pages > 0;
-    $save = (bool)$this->user_id;
+    if (!$next) $this->sawlastpage = true;
+    $save = ((bool)$this->user_id) && $this->sawlastpage;
 
     if ($save || $prev || $next)
     {
