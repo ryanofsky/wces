@@ -49,7 +49,8 @@ function explode_class($class)
   $c = explode("\n", $class);
   $courseCode = "{$c[FORMAT_CLASS_SUBJECT_CODE]} " . (int) $c[FORMAT_CLASS_NUMBER];
   $courseName = $className = $c[FORMAT_CLASS_NAME];
-  if ($c[FORMAT_CLASS_SNAME]) $className .= ": {$c[FORMAT_CLASS_SNAME]}";
+  $sectionName = $c[FORMAT_CLASS_SNAME];
+  if ($sectionName) $className .= ": $sectionName";
   $section = $c[FORMAT_CLASS_SECTION];
   $term = "";
   switch ((int)$c[FORMAT_CLASS_SEMESTER])
@@ -72,7 +73,7 @@ function explode_class($class)
   $term .= " {$c[FORMAT_CLASS_YEAR]}";
   $course_id = (int)$c[FORMAT_CLASS_COURSE_ID];
   $class_id = (int)$c[FORMAT_CLASS_CLASS_ID];
-  return compact("courseCode", "courseName", "className", "section", "term", "class_id", "course_id");
+  return compact("courseCode", "courseName", "className", "section", "term", "class_id", "course_id", "sectionName");
 }
 
 function explode_course($course)
@@ -84,13 +85,13 @@ function explode_course($course)
   return compact("courseCode", "courseName", "course_id");
 }
 
-function format_class($c, $format = "%c %n Section %s", $link = false)
+function format_class($c, $format = "%c %N Section %s", $link = false)
 {
   global $wces_path, $ASID;
   if (!is_array($c)) $c = explode_class($c);
   $str = str_replace(
-    array("%c", "%n", "%N", "%s", "%t"),
-    array($c['courseCode'], $c['courseName'], $c['className'], $c['section'], $c['term']),
+    array("%c", "%n", "%N", "%s", "%t", "%S"),
+    array($c['courseCode'], $c['courseName'], $c['className'], $c['section'], $c['term'], $c['sectionName']),
     $format
   );
 
