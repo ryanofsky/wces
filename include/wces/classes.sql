@@ -313,7 +313,6 @@ ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES
 ALTER TABLE temp_prof ADD CONSTRAINT prof_fk FOREIGN KEY (newid) REFERENCES users(user_id);
 ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
 ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
-ALTER TABLE tar ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users(user_id);
 
 CREATE OR REPLACE FUNCTION references_class(INTEGER) RETURNS INTEGER AS '
   SELECT
@@ -958,7 +957,7 @@ CREATE OR REPLACE FUNCTION enrollment_drop_ta(INTEGER, INTEGER) RETURNS VOID AS 
   UPDATE enrollments SET status = status & ~2
   WHERE user_id = $1 AND class_id = $2;
   DELETE FROM enrollments
-  WHERE status = 0 AND lastseen IS NULL AND user_id = $1 AND class_id = $2;
+  WHERE user_id = $1 AND class_id = $2 AND status = 0 AND lastseen IS NULL;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION enrollment_add_ta(INTEGER, INTEGER) RETURNS VOID AS '
@@ -981,6 +980,11 @@ CREATE OR REPLACE FUNCTION enrollment_add_ta(INTEGER, INTEGER) RETURNS VOID AS '
     RETURN;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION enrollment_count(INTEGER) RETURNS INTEGER AS '
+  SELECT COUNT(DISTINCT user_id)::INTEGER FROM enrollments 
+  WHERE class_id = $1 AND status & 1 <> 0;
+' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP WITH TIME ZONE,INTEGER) RETURNS INTEGER AS '
   DECLARE
