@@ -26,13 +26,14 @@ $LOGIN_PROMPTING = false;
 function login_protect($requiredstatus)
 {
   global $rs, $server_url, $wces_path;
-  if ($requiredstatus && !($requiredstatus & login_getstatus()))
+  if ($requiredstatus && !($requiredstatus & login_getstatus()) || !$requiredstatus && !login_getuserid())
     login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
 };
 
 function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 {
   global $wces;
+  wces_connect();
   
   $result = pg_query("
     select u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
@@ -45,7 +46,10 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
     group by u.user_id, u.flags, u.department_id, u.firstname, u.lastname, u.uni
   ", $wces, __FILE__, __LINE__);  
 
-  $row = pg_fetch_array($result,0,PGSQL_ASSOC);
+  if (pg_numrows($result) == 1)
+    $row = pg_fetch_array($result,0,PGSQL_ASSOC);
+  else
+    $row = array("uni" => "", "name" => "__", "flags" => 0, "dept" => 0, "known" => false);
   
   $status = 0;
   if ($row['flags'] & 8)
@@ -165,9 +169,11 @@ function login_whoami()
 //-----------------------------------------------------------------------------
 // PASSWORD VALIDATION ROUTINES
 
+$login_fail = false;
+
 function login_validate($uni,$password)
 {
-  global $wces, $LOGIN_SESSION;
+  global $wces, $LOGIN_SESSION, $login_fail;
   
   $uni = str_replace("@columbia.edu","",$uni);
   $uni = str_replace("@barnard.edu","",$uni);
@@ -177,11 +183,15 @@ function login_validate($uni,$password)
   if (!$dump)
   {
     sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
+    $login_fail = "Authentication Error. Login warning: Could not contact AcIS server.";
     return false;
   }
      
   if (strpos($dump,"no soup for you") !== false)
+  {
+    $login_fail = "Invalid username or password.";    
     return false; // BAD PASSWORD
+  }
   
   if(preg_match('/^REMOTE_USER=(.*)$/m', $dump, $matches))
     $cunix = $matches[1];
@@ -266,7 +276,7 @@ function acisget($uni,$pw)
 
 function login_prompt($url, $rs, $de = false, $uni = "")
 {
-  global $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING, $LOGIN_SESSION, $LOGIN_SESSION_VARS;
+  global $login_fail, $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING, $LOGIN_SESSION, $LOGIN_SESSION_VARS;
   $LOGIN_PROMPTING = true;
   session_initialize($LOGIN_SESSION_VARS, "login/");
 
@@ -280,8 +290,8 @@ function login_prompt($url, $rs, $de = false, $uni = "")
     else     
       print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
   }
-  else if ($uni)
-    print("<p><b><font color=red>Invalid username or password.</font></b></p>\n");
+  else if ($login_fail)
+    print("<p><b><font color=red>$login_fail</font></b></p>\n");
 
   $securesite = "$server_sbase${wces_path}login/login.php";
   $insecuresite = "$server_base${wces_path}login/login.php";
