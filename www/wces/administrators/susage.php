@@ -7,7 +7,7 @@ login_protect(login_administrator);
 param($topicid);
 
 $db = wces_connect();
-wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
+wces_GetCurrentQuestionPeriod($db, $questionperiodid, $questionperiod, $year, $semester);
 $semester = ucfirst($semester);
 page_top("Student Usage Data for $semester $year $questionperiod");
 
@@ -100,7 +100,7 @@ while ($class = mysql_fetch_array($classes))
   $students = $responses = $classid = $professorid = 0; $scode = $code = $section = $name = $pname = "Unknown";
   extract($class);
   $numbers = $students == 0 ? "$responses surveys completed" : (($students - $responses) . " / $students surveys left");
-  print ("  <li>$numbers, <a href=\"info.php?classid=$classid&surveys=1\">$scode$code$section <i>$name</i></a> - Professor <a href=\"info.php?professorid=$professorid&surveys=1\">$pname</a></li>\n");
+  print ("  <li>$numbers, <a href=\"${server_wcespath}notfound.html#info.php?classid=$classid&surveys=1\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}notfound.html#info.php?professorid=$professorid&surveys=1\">$pname</a></li>\n");
 }
 print("</ul>");
 
@@ -149,7 +149,7 @@ while ($student = mysql_fetch_array($students))
     $first = true;
   }  
   if ($first) $first = false; else print(", ");
-  print("\n  <a href=\"${server_wcespath}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
+  print("\n  <a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
   $oldlevel = $level;
 }
 print("</blockquote>");

@@ -344,7 +344,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       $plname = $pfname = $professorid = "";
       extract($listprofessors->row);
       $profname = ($pfname || $plname) ? "$pfname $plname" : "Unknown";
-      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
+      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
       if ($outtext) $pagetext .= " - Professor: $profname\n"; 
     }
     while($listprofessors->advance());
@@ -360,7 +360,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       if ($groups["questionperiods"])
         $classname .= " " . ucfirst($semester) . " $year";
       if ($outhtml)
-        $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
       if ($outtext)
         $pagetext .= " - Class: $classname\n"; 
     }
@@ -590,7 +590,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       if (!$groups["classes"] && ! $groups["professors"])
         $profname = "$pfname $plname"; 
           
-      if ($outhtml && $classname) $pagehtml .= "<h5><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a>" . ($profname ? " - Professor <a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "") . "</h5>";
+      if ($outhtml && $classname) $pagehtml .= "<h5><a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/info.php?classid=$classid\">$classname</a>" . ($profname ? " - Professor <a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "") . "</h5>";
       if ($outtext && $classname) $pagetext .= "$classname" . ($profname ? " - Professor $profname" : "") . "\n\n";
       
       for($j = 1; $j <= 2; ++$j)
@@ -638,7 +638,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
         $classname = "$ccode $name Section $section";
         if ($groups["questionperiods"])
           $classname .= " " . ucfirst($semester) . " $year";
-        if ($outhtml) $pagehtml .= "<tr><td colspan=8 align=center><b><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        if ($outhtml) $pagehtml .= "<tr><td colspan=8 align=center><b><a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
         if ($outtext) $pagetext .= "$classname\n\n";
         $lclassid = $classid;
       }

@@ -5,7 +5,7 @@ require_once("wces/page.inc");
 login_protect(login_administrator);
 
 $db = wces_connect();
-wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
+wces_GetCurrentQuestionPeriod($db, $questionperiodid, $questionperiod, $year, $semester);
 $semester = ucfirst($semester);
 
 page_top("Professor Usage Data for $semester $year $questionperiod");
@@ -80,7 +80,7 @@ function printproflist($title,$result,$count)
   {
     extract($row);
     if (!$name) $name = "** Unknown **";
-    print("<li><a href=\"info.php?professorid=$professorid&surveys=1\">$name</a> ($students students)</li>");
+    print("<li><a href=\"${server_wcespath}notfound.html#info.php?professorid=$professorid&surveys=1\">$name</a> ($students students)</li>");
   }
 print("</ul>");
 }
