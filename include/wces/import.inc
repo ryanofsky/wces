@@ -263,78 +263,109 @@ function importregpid($filename)
 * @param string  Path to uploaded file
 * @param string  4 digit year
 * @param string  1 digit semester (1 = spring, 2 = summer, 3 = summer)
-* @param array   Associative array which has integer column numbers at these values:
+* @param string  parent topic
+* @param array   array of strings indicating column order.
 *                  "coursecode" - column number of 9 digit course code (eg 'COMSW3203')
 *                  "section" - column number of 3 digit section number (eg '001', '002', 'R01')
-*                  "professor" - column number of professor name in Last, First format
+*                  "lastname" - column number of professor last name
+                   "firstname" - column number of professor first name
 *                  "students" - column number containing number of students per class
 *                  "cunix" - optional column number containing a student's cunix id
-* @param integer If this parameter is not 0, the courses in this file will be
-*                associated with the specified question set during upcoming
-*                question periods.
 * @access public
 */
 
-function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3), $questionsetid = 0)
+function importdeancsv($userfile, $year, $semester, $parent_topic, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
 {
+  global $wces;
+  
+  if (strlen($year) != 4 || strlen($semester) != 1 || ($semester != 1 && $semester != 2 && $semester != 3))
+    die("Invalid year or semester passed to importdeancsv in " . __FILE__ . ":" . __LINE__);
+  
+  $fields = array_flip(array_values($fieldorder));
+  
+  if (!isset($fields['coursecode']) || !isset($fields['section']))
+    die("Invalid field order passed to importdeancsv in" . __FILE__ . ":" . __LINE__);
+ 
+  $fp = fopen($userfile,"r");   
+  wces_connect();
+  
   $classcache = array();
 
-  if (strlen($year) == 4 && strlen($semester) && ($semester == 1 || $semester == 2 || $semester == 3) && is_array($fieldorder) && isset($fieldorder["coursecode"]) && isset($fieldorder["section"]) && isset($fieldorder["professor"]) && isset($fieldorder["students"]))
+  $i = 0;
+  $row = 0;
+
+  while ($data = fgetcsv ($fp, 8192, ","))
   {
-    $fp = fopen($userfile,"r");
-    $db = wces_connect();
+    ++$row;
+    if (count($data) != count($fields))
+      print("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
 
-    $i = 0;
-    $row = 0;
-
-    while ($data = fgetcsv ($fp, 8192, ","))
+    $coursecode = $data[$fields["coursecode"]];
+    $section = $data[$fields["section"]];
+    if (strlen($coursecode) != 9 && strlen($section) != 3)
+      die("<b>Warning:</b> Invalid course or section code (course = '$coursecode' && section = '$section') on row $row<br>\n");
+    
+    $classcode = "${coursecode}_${section}_${year}_${semester}";
+    if (isset($classcache[$classcode]))
+      $class_id = $classcache[$classcode];
+    else
     {
-      ++$row;
-      if (count($data) != count($fieldorder))
-        taskwindow_cprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
-      else
+      $sclasscode = "'" . addslashes($classcode) . "'";
+      $result = pg_query("SELECT class_find($sclasscode)", $wces, __FILE__, __LINE__);
+      if (!$result) die("Failed to find class_id for $classcode on row $row");
+      $classcache[$classcode] = $class_id = (int)pg_result($result,0,0);
+      
+      if (isset($fields["lastname"]) && isset($fields["firstname"]))
       {
-        $coursecode = $data[$fieldorder["coursecode"]];
-        $section = $data[$fieldorder["section"]];
-        if (strlen($coursecode) == 9 && strlen($section) == 3)
-        {
-          $classcode = "${coursecode}_${section}_${year}_${semester}";
-          if (isset($classcache[$classcode]))
-          {
-            $classid = $classcache[$classcode];
-          }
-          else
-          {
-            $classid = class_update($db, $classcode, $courseid);
-            $classcache[$classcode] = $classid;
-            db_exec("DELETE FROM enrollments WHERE classid = '$classid'", $db, __FILE__, __LINE__);
-            prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);
-            $pids = prof_findwithfirstlast($db, $first, $last);
-            $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
-            $i = Array("professorid" => $pid);
-            if ($data[$fieldorder["students"]]) $i["students"] = $data[$fieldorder["students"]];
-            db_updatevalues($db, "classes", Array("classid" => $classid), $i);
-            //if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
-          }
-          $cunix = $data[$fieldorder["cunix"]];
-          if ($cunix)
-          {
-            $userid = db_replace($db,"users", Array("cunix" => $cunix), false, "userid");
-            if ($userid) db_exec("REPLACE INTO enrollments(classid, userid) VALUES ('$classid','$userid')",$db,__FILE__,__LINE__);
-            taskwindow_cprint("<hr>");
-          }
-          else
-            $userid = "";
-          taskwindow_cprint("$coursecode Section $section added (courseid = $courseid, classid = $classid, professorid = $pid, userid = $userid)<br>\n");
-        }
-        else
-          taskwindow_cprint("<b>Warning:</b> Invalid course or section code (course = '$coursecode' && section = '$section')<br>\n");
-      };
-      if (((++$i) % 10) == 1) taskwindow_flush();
+        $firstname = $data[$fields["firstname"]];
+        $lastname = $data[$fields["lastname"]];
+      	
+      	if ($firstname || $lastname)
+      	{
+      	  pg_query("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__); 	
+
+          $fullname = quot(trim("$firstname $lastname"));
+          $firstname = quot($firstname);
+          $lastname = quot($lastname);
+          
+          $user_id = (int)pg_result(pg_query("SELECT professor_find($fullname, $firstname, NULL, $lastname, NULL, 4)", $wces, __FILE__, __LINE__),0,0) ;   
+          if (!$user_id) die("user_id not found for professor $fullname on row $row");
+          pg_query("SELECT enrollment_update($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
+      	}
+      	
+      }
+
+      if (isset($fields["cunix"]))
+        pg_query("UPDATE enrollments SET status = 0 WHERE class_id = $class_id AND status = 1", $wces, __FILE__, __LINE__);
+      	
+      $students = isset($fields["cunix"]) ? (int)$data[$fields["students"]] : 0;
+      if ($students)
+        pg_query("UPDATE classes set students = $students WHERE class_id = $class_id", $wces, __FILE__, __LINE__);
+        
+      $GLOBALS['db_debug'] = true;
+      if ($parent_topic)
+      	pg_query("INSERT INTO wces_topics(parent, class_id) values ($parent_topic, $class_id)", $wces, __FILE__, __LINE__);
+      $GLOBALS['db_debug'] = false;
+      print("<p>$classcode added (class_id = $class_id, prof user_id = $user_id)</p>\n");
     }
-    fclose ($fp);
-    taskwindow_end();
+    
+    if (isset($fields["cunix"]))
+    {
+      $cunix = $data[$fields["cunix"]];
+      if ($cunix) 
+      {
+        $cunix = "'" . addslashes($cunix) . "'";
+        $user_id = (int)pg_result(pg_query("SELECT user_update($cunix,NULL,NULL,NULL,8,NULL,NULL)", $wces, __FILE__, __LINE__),0,0);
+        if (!$user_id) die("user_id not found for $cunix on row $row");
+        pg_query("SELECT enrollment_update($user_id, $class_id, 1, NULL)", $wces, __FILE__, __LINE__); 
+        print("$cunix enrolled in $classcode (class_id = $class_id, user_id = $user_id)<br>\n");
+      }
+    }
+    if (((++$i) % 10) == 1) taskwindow_flush();
   }
+  fclose ($fp);
+  taskwindow_end();
+
 };
 
 
