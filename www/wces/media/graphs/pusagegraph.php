@@ -1,4 +1,4 @@
-<%
+<?
 error_reporting (0);
 
 include('wces/server.inc');
@@ -36,4 +36,4 @@ unlink($fname);
 }
 else
   readfile('http://160.39.128.25:63' . server_getrequest());
-%>
+?>
