@@ -43,6 +43,7 @@ class CheckBox extends FormWidget
   function CheckBox($prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
+    $this->checked = false;
   }
   
   function display($hidden = false)
@@ -145,12 +146,14 @@ class ActionButton extends FormWidget
   {
     if ($label === false)
     {
+      $value = 0;
       if ($action === false)
       {
         $action = $this->action;
         $object = $this->object;
+        if ($action) $value = 1;
       }
-      if ($action) print('<input type=hidden name="' . $this->prefix . '_' . $action . '_' . $object . '" value=1>');  
+      print('<input type=hidden name="' . $this->prefix . '_' . $action . '_' . $object . '" value="' . $value . '">');  
     }  
     else
     {
