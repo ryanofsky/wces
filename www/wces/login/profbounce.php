@@ -1,5 +1,5 @@
 <?
-  require_once("wces/server.inc");
+  require_once("wbes/server.inc");
   require_once("wces/login.inc");
   login_protect(login_professor);
   param($url);
