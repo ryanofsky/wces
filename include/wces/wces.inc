@@ -116,6 +116,13 @@ function format_course($c, $format = "%c %n", $link = false)
   return $str;
 }
 
+function format_ccourse($c, $format = "%c %n", $link = false)
+{
+  if (!is_array($c)) $c = explode_course($c);
+  registrar_clean($c['courseName']);
+  return format_course($c, $format, $link);
+};
+
 function format_profs($profs, $link = false, $before = "", $after = "", $between = "")
 {
   global $wces_path;
@@ -139,5 +146,11 @@ function format_profs($profs, $link = false, $before = "", $after = "", $between
   }
   return $str;
 }
+
+function registrar_clean(&$str)
+{
+  $str = str_replace(array("/", ","), array(" / ",", "), $str);
+  $str = str_replace(array(" - ", "Iv", "Iii", "Ii"), array("-", "IV", "III", "II"), ucwords(strtolower(str_replace("-", " - ", $str))));  
+};
 
 ?>
