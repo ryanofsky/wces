@@ -68,8 +68,9 @@ class SurveyEditor extends FormWidget
   function load()
   {
     global $db;
+    if (!isset($db)) $db = wces_connect();
    
-    $result = db_exec("SELECT dump FROM cheesyclasses WHERE classid IN (" . $this->editclass . ", 0) ORDER BY classid DESC LIMIT 1", $db, __FILE__, __LINE__);
+    $result = db_exec("SELECT s.dump FROM poorsurveys AS s INNER JOIN poortopics AS t ON t.currentsurvey = s.surveyid WHERE t.topicid = $this->topic_id", $db, __FILE__, __LINE__);
     
     if (mysql_num_rows($result) > 0)    
       $this->survey = unserialize(mysql_result($result,0));
@@ -80,15 +81,13 @@ class SurveyEditor extends FormWidget
   function save()
   {
     global $db;
-
-    $e = $this->editclass;
-
-    db_exec("DELETE FROM cheesyclasses WHERE classid = $e", $db, __FILE__, __LINE__);
+    if (!isset($db)) $db = wces_connect();
 
     $d = addslashes(serialize($this->survey));
     
-    db_exec("INSERT INTO cheesyclasses(classid, dump) VALUES('$e', '$d')", $db, __FILE__, __LINE__);
-    
+    db_exec("INSERT INTO poorsurveys(topicid, dump) VALUES($this->topic_id, '$d')", $db, __FILE__, __LINE__);
+    $c = mysql_insert_id($db);
+    db_exec("UPDATE poortopics SET currentsurvey = $c WHERE topicid = $this->topic_id", $db, __FILE__, __LINE__);
     $this->message = "<i><font color=blue>Survey Builder: Changes have been saved.</font></i><hr>";
     
   }
@@ -276,6 +275,7 @@ class SurveyEditor extends FormWidget
 rearrange survey components by moving your mouse over the blue orbs at the left
 and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
+<p><b>Use the "Save" button at the bottom of this page to save changes to your survey.</b></p>
 <?            
             print("<table border=0 cellpadding=0 cellspacing=0>\n");
             print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id={$this->prefix}_insertmarker name={$this->prefix}_insertmarker>\n");
@@ -317,7 +317,6 @@ by clicking above and below existing components.</p>
           } // if $ncomponents == 0      
         break;
         case SurveyEditor_done:
-          print("The survey has been saved.");
         break;
       } // switch
     } // if hidden
