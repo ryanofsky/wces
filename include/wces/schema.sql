@@ -244,6 +244,7 @@ CREATE TABLE groupings (
   linkid int(11) NOT NULL default '0',
   linktype enum('classes','professors','subjects','departments','courses') NOT NULL default 'classes',
   questionsetid int(11) NOT NULL default '0',
+  tarate enum('no','yes') NOT NULL default 'no',
   evaluationid int(11) default NULL,
   PRIMARY KEY (linkid,linktype,questionsetid)
 );
@@ -324,6 +325,33 @@ CREATE TABLE subjects (
   name tinytext,
   PRIMARY KEY (subjectid),
   UNIQUE KEY code(code)
+);
+
+CREATE TABLE tacomplete (
+  questionperiodid int(11) NOT NULL default '0',
+  classid int(11) NOT NULL default '0',
+  userid int(11) NOT NULL default '0',
+  PRIMARY KEY (questionperiodid,classid,userid)
+);
+
+CREATE TABLE taratings (
+  taratingid int(11) NOT NULL auto_increment,
+  tauserid int(11) default NULL,
+  questionperiodid int(11) default NULL,
+  classid int(11) default NULL,
+  name tinytext,
+  overall int(11) default NULL,
+  knowledgeability int(11) default NULL,
+  approachability int(11) default NULL,
+  availability int(11) default NULL,
+  communication int(11) default NULL,
+  comments text,
+  PRIMARY KEY (taratingid)
+);
+
+CREATE TABLE tausers (
+  tauserid int(11) NOT NULL auto_increment,
+  PRIMARY KEY (tauserid)
 );
 
 CREATE TABLE templinks (
