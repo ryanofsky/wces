@@ -27,21 +27,12 @@ private:
   CURL * _curl;
 };
 
-class WindowsSockets
-{
-public:
-  WindowsSockets() { if (::WSAStartup(MAKEWORD(1,1),&data) != 0) throw 0; }
-  ~WindowsSockets() { ::WSACleanup(); }
-  WSADATA data;
-};
-
 STDMETHODIMP CAffilGrabber::Validate(BSTR username, BSTR password, BSTR authurl, int * returnval)
 {
   try
   {
     *returnval = false;
     
-    WindowsSockets ws;
     Curl curl;
  
     USES_CONVERSION;

@@ -15,6 +15,7 @@
 
 
 CComModule _Module;
+WSADATA data;
 
 BEGIN_OBJECT_MAP(ObjectMap)
 OBJECT_ENTRY(CLSID_AffilGrabber, CAffilGrabber)
@@ -30,9 +31,14 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID /*lpReserved*/)
     {
         _Module.Init(ObjectMap, hInstance, &LIBID_AFLGRABLib);
         DisableThreadLibraryCalls(hInstance);
+        ::WSAStartup(MAKEWORD(1,1),&data);
     }
     else if (dwReason == DLL_PROCESS_DETACH)
-        _Module.Term();
+    {
+        
+      ::WSACleanup();  
+      _Module.Term();
+    }
     return TRUE;    // ok
 }
 
