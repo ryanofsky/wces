@@ -7,7 +7,7 @@ require_once("wbes/taskwindow.inc");
 function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
 {
   global $db_debug, $server_isproduction;
-  
+
   if ($db_debug) $t = microtime();
   $result = @pg_exec($db,$sql);
   if ($db_debug) $time = gettime(microtime()) - gettime($t);
@@ -25,6 +25,7 @@ function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
     else
       taskwindow_cprint("<br>Error: " . pg_errormessage($db));
     taskwindow_cprint("</p>\n");
+    taskwindow_flush();
     if ($server_isproduction && !$result)
       sendwarning("Query failed.\nError message: " . pg_errormessage() . "\nQuery: $sql",$file,$line);
   }
