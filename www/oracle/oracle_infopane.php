@@ -1,9 +1,8 @@
 <%
 
 require_once("wces/wces.inc");
-require_once("wces/reporting.inc");
+require_once("wces/report_help.inc");
 require_once("wces/general.inc");
-
 
 %>
 

@@ -1,4 +1,8 @@
 <%
+
+require_once("wces/report_wizard.inc");
+require_once("wces/report_generate.inc");
+
 //---------------------------------------------------------------------------------------------
 // Report Widget
 

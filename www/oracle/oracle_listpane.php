@@ -1,8 +1,11 @@
 <%
 
 require_once("wces/wces.inc");
-require_once("wces/reporting.inc");
 require_once("wces/general.inc");
+
+param($mode);
+param($searchfor);
+param($searchin);
 
 %>
 <head>
@@ -58,14 +61,6 @@ ul                      { font-family: Arial, Helvetica, sans-serif; list-style-
 </style>
 
 <%
-
-require_once("wces/wces.inc");
-require_once("wces/reporting.inc");
-require_once("wces/general.inc");
-
-param($mode);
-param($searchfor);
-param($searchin);
 
 function db_makesearch($text,$fields)
 {

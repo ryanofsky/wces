@@ -1,4 +1,10 @@
 <%
+
+require_once("widgets/basic.inc");
+require_once("widgets/wizard.inc");
+require_once("widgets/dynamiclist.inc");
+require_once("wces/database.inc");
+
 //---------------------------------------------------------------------------------------------
 // Report Wizard
 
@@ -370,7 +376,7 @@ class ReportWizard extends Wizard
         }
       break;
       case ReportWizard_aggreg:
-        if ($hidden)
+        if ($hidden || $this->output->checked == ReportWizard_output_email)
         {
           $this->groupclasses->display(true);
           $this->groupcourses->display(true);
@@ -378,7 +384,7 @@ class ReportWizard extends Wizard
           $this->groupdepartments->display(true);
           $this->groupquestionperiods->display(true);
         }
-        else
+        if (!$hidden)
         {
           if ($this->output->checked == ReportWizard_output_email)
             print("<p>Aggregation is not available in email reports. Choose a web based report to use this feature.</p>");
@@ -398,15 +404,19 @@ class ReportWizard extends Wizard
         };
       break;  
       case ReportWizard_order:
-        if ($hidden)
+        if ($hidden || $this->output->checked == ReportWizard_output_email)
           $this->order->display(true);
-        else if ($this->output->checked == ReportWizard_output_email)
-          print("<p>Ordering options are not available in email reports. Choose a web based report to use this feature.</p>");
-		else
-		{
-          print("<p>Report pages will be ordered by these properties (highest priority first):</p>");
-          $this->order->display();
-        }
+        
+        if (!$hidden)
+        {
+          if($this->output->checked == ReportWizard_output_email)
+            print("<p>Ordering options are not available in email reports. Choose a web based report to use this feature.</p>");
+          else
+          {
+            print("<p>Report pages will be ordered by these properties (highest priority first):</p>");
+            $this->order->display();
+          }
+        }  
       break;
       case ReportWizard_finish:
         if (!$hidden)
