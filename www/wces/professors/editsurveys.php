@@ -12,9 +12,9 @@
 
   page_top("Professors Page","0010");
 
-print("<p>This function is not available now.</p>");
-page_bottom();
-exit();
+//print("<p>This function is not available now.</p>");
+//page_bottom();
+//exit();
 
 
 

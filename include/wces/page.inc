@@ -203,6 +203,11 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
     window.treebranches = new Array();
   };    
 
+function openwin(htmlfile)
+{  
+  window.open(htmlfile, "_blank", "width=500,height=410,status=0,toolbar=0,menubar=0,scrollbars=0,screenX=0,screeny=0,left=0,top=0,resizable=0");
+}  
+
 //-->
 </script>
 </head>
@@ -295,6 +300,11 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
       </td>
     </tr>
     <tr><td><script>treehead_init("section4h","section4")</script>&nbsp;</td></tr>    
+    <tr id="logout" class="treeheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/menu/solid.gif" width="15" height="15" align="middle"></td>
+      <td class="treeheading" nowrap><a href="javascript:openwin('<?=$server_wcespath?>help/help.html')" class="treeheading">Help</a></td>
+    </tr>
+    <tr><td><script>treehead_init("logout")</script>&nbsp;</td></tr>     
     </table>
   </td>
   <td width="100%" bgcolor="#e5e6fa" background="<?=$server_wcespath?>media/paper2.jpg" valign="top">
