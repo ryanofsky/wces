@@ -92,7 +92,7 @@ class SurveyWidget extends ParentWidget
     foreach(array_keys($this->survey->components) as $k)
     {
       if ("pagebreak" == get_class($this->survey->components[$k])) ++$page;
-      $c =& $this->survey->components[$k]->getwidget("c$k", $this);
+      $c =& $this->survey->components[$k]->getwidget("c$k", $this, $this->topic_id);
       $c->page = $page;
       $this->loadChild($c, $newLoad);
       $this->questionWidgets[] = & $c;
@@ -117,8 +117,6 @@ class SurveyWidget extends ParentWidget
   function saveResponses()
   {
     global $wbes, $_POST, $server_feedback;
-
-    global $wbes;
 
     $this->showErrors = true;
     foreach(array_keys($this->questionWidgets) as $key)
