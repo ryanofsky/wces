@@ -21,6 +21,12 @@ CREATE TABLE ia_data
 
 CREATE SEQUENCE ia_ids INCREMENT 1 START 1;
 
+CREATE FUNCTION ia_new() RETURNS INTEGER AS '
+  BEGIN
+    RETURN ia_new(''{}'');
+  END;
+' LANGUAGE 'plpgsql';
+
 CREATE FUNCTION ia_new(INTEGER[]) RETURNS INTEGER AS '
   DECLARE
     a ALIAS FOR $1;
@@ -95,6 +101,26 @@ CREATE FUNCTION ia_get(INTEGER, SMALLINT) RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+CREATE FUNCTION ia_reverse(INTEGER) AS '
+  DECLARE
+    a ALIAS FOR $1;
+    rec RECORD;
+    i INTEGER;
+    l INTEGER;
+    t INTEGER;
+  BEGIN
+    SELECT INTO rec length, capacity FROM ia_data WHERE ia_id = a;
+    l := rec.length / 2;
+    FOR i IN 1..l LOOP
+      SELECT INTO t data[i] FROM ia_data WHERE ia_id = a;
+      UPDATE ia_data SET data[i] = data[rec.length - i -1] WHERE ia_id = a;
+      UPDATE ia_data SET data[rec.length - i - 1] = t WHERE ia_id = a;
+    END LOOP;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+  
+
 CREATE FUNCTION ia_set(INTEGER, SMALLINT, INTEGER) RETURNS INTEGER AS '
   DECLARE
     a ALIAS FOR $1;
@@ -123,6 +149,29 @@ CREATE FUNCTION ia_array(INTEGER) RETURNS INTEGER[] AS '
     rec RECORD;
   BEGIN
     SELECT INTO rec data[1:length] AS d FROM ia_data WHERE ia_id = a;
+    RETURN rec.d;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION ia_slice(INTEGER, INTEGER, INTEGER) RETURNS INTEGER[] AS '
+  DECLARE
+    a ALIAS FOR $1;
+    s ALIAS FOR $2;
+    e ALIAS FOR $3;
+    rec RECORD;
+  BEGIN
+    SELECT INTO rec data[s:e] AS d FROM ia_data WHERE ia_id = a;
+    RETURN rec.d;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION ia_tarray(INTEGER) RETURNS INTEGER[] AS '
+  DECLARE
+    a ALIAS FOR $1;
+    rec RECORD;
+  BEGIN
+    SELECT INTO rec data[1:length] AS d FROM ia_data WHERE ia_id = a;
+    DELETE FROM ia_data WHERE ia_id = a;
     RETURN rec.d;
   END;
 ' LANGUAGE 'plpgsql';
