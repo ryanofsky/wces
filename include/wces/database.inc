@@ -69,17 +69,17 @@ function db_exec($sql, $db, $file = __FILE__, $line = __LINE__)
   
   if ($db_debug || (!$result && !$server_isproduction))
   {
-    taskwindow_cprint("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
-    taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
-    taskwindow_cprint($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
+    print("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
+    print('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
+    print($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
     if ($result)
     {
       $rows = strcasecmp(substr(ltrim($result), 0, 6),"SELECT") == 0 ? mysql_num_rows($result) : mysql_affected_rows($db);
-      taskwindow_cprint("<br>Time: $time seconds<br>Affected Rows: $rows");
+      print("<br>Time: $time seconds<br>Affected Rows: $rows");
     }
     else
-      taskwindow_cprint("<br>Error " . mysql_errno() . ": " . mysql_error());
-    taskwindow_cprint("</p>\n");
+      print("<br>Error " . mysql_errno() . ": " . mysql_error());
+    print("</p>\n");
   }  
   else if (!$result)
     sendwarning("Query failed.\nError Code: " . mysql_errno() . "\nError message: " . mysql_error() . "\nQuery: $sql",$file,$line);
@@ -163,7 +163,7 @@ function db_updatevalues($db,$table,$keys,$values)
   }
   else
   {
-    if ($db_debug) taskwindow_cprint("<b>Error: Nothing to Update</b><br>");
+    if ($db_debug) print("<b>Error: Nothing to Update</b><br>");
     return false;
   }
     
@@ -200,7 +200,7 @@ function db_getrow($db,$table,$keys,$columns)
   {
     if ($db_debug)
     { 
-      taskwindow_cprint ("<b>ERROR: DUPLICATE ROWS FOUND IN '$table'</b><br>");
+      print ("<b>ERROR: DUPLICATE ROWS FOUND IN '$table'</b><br>");
       while ($j = mysql_fetch_assoc($result))
         db_printrow($j);
       flush();  
@@ -278,38 +278,38 @@ function db_delete($db,$table,$keys)
 
 function db_printrow($row)
 {
-  taskwindow_cprint("<table border=1>");
+  print("<table border=1>");
   foreach($row as $key => $value)
   {
     if (!($key === $key + 0))
-      taskwindow_cprint("<tr><td>$key</td><td>$value</td></tr>");
+      print("<tr><td>$key</td><td>$value</td></tr>");
   }
-  taskwindow_cprint("</table>\n");
+  print("</table>\n");
 };
 
 function db_printresult($result)
 {
   if ($result)
   {
-    taskwindow_cprint("<table border=1>\n<tr>\n");
+    print("<table border=1>\n<tr>\n");
     $n = mysql_num_fields($result);
     for($i=0; $i<$n; ++$i)
-      taskwindow_cprint("  <td>" . mysql_field_name($result,$i) . "</td>\n");
+      print("  <td>" . mysql_field_name($result,$i) . "</td>\n");
     print("</tr>\n");   
  
     while ($row = mysql_fetch_row($result))
     {
-      taskwindow_cprint("<tr>");
+      print("<tr>");
       for($i=0; $i<$n; ++$i)
-        taskwindow_cprint("<td>" . $row[$i] . "</td>");
-      taskwindow_cprint("</tr>\n"); 
+        print("<td>" . $row[$i] . "</td>");
+      print("</tr>\n"); 
     };
   }
   else  
   {
-    taskwindow_cprint("<tr><td><b>Bad Result</b></td></tr>");
+    print("<tr><td><b>Bad Result</b></td></tr>");
   }
-  taskwindow_cprint("</table>");  
+  print("</table>");  
 }
 
 ?>
