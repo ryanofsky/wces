@@ -76,7 +76,9 @@ function page_links()
         extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
         if ($surveyed) break;
         if ($i == 0) page_spacer();
-        page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id&question_period_id=$question_period_id", $QSID, "");
+        $cn = format_class($name,'%n');
+        if (!$cn) $cn = format_class($name, '%c');
+        page_link($cn, "students/survey.php?class_id=$class_id&question_period_id=$question_period_id", $ASID, "");
       }
     }
   }
@@ -98,16 +100,16 @@ function get_surveys()
    
     $user_id = login_getuserid();
     $survey_listing = pg_go("
-      SELECT q.question_period_id, t.topic_id, t.class_id, get_class(t.class_id) AS name,
+      SELECT q.question_period_id, t.specialization_id AS topic_id, t.class_id, get_class(t.class_id) AS name,
         CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
       FROM question_periods AS q
       INNER JOIN question_periods_topics AS qt USING (question_period_id)
-      INNER JOIN wces_topics AS t USING (topic_id)
+      INNER JOIN wces_topics AS t ON t.specialization_id = qt.topic_id
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = cl.class_id AND e.status = 1
-      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = q.question_period_id AND sr.user_id = $user_id
+      LEFT JOIN survey_responses AS sr ON sr.specialization_id = t.specialization_id AND sr.question_period_id = q.question_period_id AND sr.user_id = $user_id
       WHERE q.begindate < (SELECT NOW()) AND q.enddate > (SELECT NOW())
-      GROUP BY q.question_period_id, t.topic_id, t.class_id, sr.user_id
+      GROUP BY q.question_period_id, t.specialization_id, t.class_id, sr.user_id
       ORDER BY surveyed, name
     ", $wces, __FILE__, __LINE__);      
     
