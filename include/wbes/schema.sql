@@ -1414,7 +1414,7 @@ CREATE OR REPLACE FUNCTION survey_save(INTEGER, INTEGER[]) RETURNS INTEGER AS '
   BEGIN
     IF list_changed(component_id_, item_ids) THEN
       INSERT INTO survey_components (type) VALUES (1);
-      RETURN list_insert(currval(''component_ids''), item_ids);
+      RETURN list_insert(currval(''component_ids'')::integer, item_ids);
     ELSE
       RETURN component_id_;
     END IF;
