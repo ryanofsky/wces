@@ -56,7 +56,7 @@ class ComponentFactory
       $loadKeys[] = $key;
     }
 
-    $this->loadComponents($components);
+    $this->loadComponents($components, $surveyGlobals);
 
     foreach ($loadKeys as $key)
     {
@@ -113,12 +113,10 @@ class ComponentFactory
 
         $children[] = false;
         $newLoad =& $surveyGlobals->getLoad($result->row['type'], $result->row['component_id'], $load->specialization_id);
-        $newLoad->addTarget($children, $i, $result->row['revision_id'], $result->row['item_id']);
-        
+        $newLoad->addTarget(new SurveyLoadTarget($children, $i, $result->row['revision_id'], $result->row['item_id']));        
         ++$i;
 
         $result->advance();
-
       }
     }
   }

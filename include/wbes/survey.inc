@@ -2,34 +2,9 @@
 
 require_once("wbes/wbes.inc");
 
-function get_base($specialization_id)
-{
-  global $wces;
-  wces_connect();
-  for(;;)
-  {
-    if ($specialization_id == 1)
-      return 1;
-    if ($specialization_id == 1481)
-      return 609;
-    else if ($specialization_id == 1482)
-      return 611;
-    else if ($specialization_id == 1483)
-      return 612;
-    else
-    {
-      $r = pg_go("SELECT parent FROM specializations WHERE specialization_id = $specialization_id", $wces, __FILE__, __LINE__);
-      if (pg_numrows($r) == 0) return 1;
-      $specialization_id = (int)pg_result($r, 0, 0);
-    }
-  }
-}
-
 class SurveyGlobals
 {
-  var $user_id;
   var $factories;
-  var $question_period_id;
 
   // references to factories indexed by component type number
   var $cfactories = array();
@@ -47,10 +22,9 @@ class SurveyGlobals
 
   var $loadComplete = array();
 
-  function SurveyGlobals(&$factories, $user_id, $save_id = null)
+  function SurveyGlobals(&$factories, $save_id)
   {
     $this->factories =& $factories;
-    $this->user_id = $user_id;
 
     foreach(array_keys($this->factories) as $i)
     {
@@ -71,13 +45,17 @@ class SurveyGlobals
       $loadIndex = $this->loadIndices[$type][$key];
       $load =& $this->loads[$type][$loadIndex];
     }
-    else
+    else if (isset($this->loads[$type]))
     {
       $this->loadComplete[$type] = false;
       $loadIndex = count($this->loads[$type]);
       $load =& new SurveyLoad($component_id, $specialization_id);
       $this->loads[$type][] =& $load;
       $this->loadIndices[$type][$key] = $loadIndex;
+    }
+    else
+    {
+      print("<p><b>Warning:</b> Component of unknown type $type was not loaded.</p>"); 
     }
     return $load;
   }
@@ -97,6 +75,14 @@ class SurveyLoadTarget
     $this->revision_id = $revision_id;
     $this->item_id = $item_id;
   }
+  
+  function finishLoad(&$component)
+  {
+    $d =& $this->destArray[$this->destIndex];
+    $d = $component; // intentional clone
+    $d->revision_id = $this->revision_id;
+    $d->item_id = $this->item_id;     
+  }
 };
 
 class SurveyLoad
@@ -112,25 +98,27 @@ class SurveyLoad
     $this->specialization_id = $specialization_id;
   }
 
-  function addTarget(&$destArray, $destIndex, $revision_id, $item_id)
+  function addTarget(&$target)
   {
-    $this->targets[] =& new SurveyLoadTarget($destArray, $destIndex, $revision_id, $item_id);
+    $this->targets[] =& $target;
   }
 };
 
 
-function & LoadSurvey($item_id, $specialization_id, &$surveyGlobals)
+function & LoadSurvey($item_id, $specialization_id, &$factories, $save_id = null)
 {
   global $wbes;
   wbes_connect();
-  $save_id = $surveyGlobals->save_id ? $surveyGlobals->save_id : 'NULL';
+  $surveyGlobals =& new SurveyGlobals($factories, $save_id);
+  
+  $save_id = $save_id ? $save_id : 'NULL';
   $dest = array(false);
   $r = pg_go("SELECT branch_latest($item_id, $specialization_id, $save_id)", $wbes, __FILE__, __LINE__);
   $revision_id = (int)pg_result($r, 0, 0);
   $r = pg_go("SELECT revision_component($revision_id)", $wbes, __FILE__, __LINE__);
   $component_id = (int)pg_result($r, 0, 0);
   $load =& $surveyGlobals->getLoad(1, $component_id, $specialization_id);
-  $load->addTarget($dest, 0, $revision_id, $item_id);
+  $load->addTarget(new SurveyLoadTarget($dest, 0, $revision_id, $item_id));
 
   foreach (array_keys($surveyGlobals->loads) as $type)
     while (!$surveyGlobals->loadComplete[$type])
@@ -148,11 +136,7 @@ function & LoadSurvey($item_id, $specialization_id, &$surveyGlobals)
       foreach (array_keys($load->targets) as $tk)
       {
         $target =& $load->targets[$tk];
-        $d =& $target->destArray[$target->destIndex];
-        
-        $d = $load->component; // intentional clone
-        $d->revision_id = $target->revision_id;
-        $d->item_id = $target->item_id;
+        $target->finishLoad($load->component);
       }
     }
   }
@@ -169,8 +153,6 @@ function SaveSurvey(&$survey, $specialization_id, $user_id)
     SELECT currval('save_ids')
   ", $wbes, __FILE__, __LINE__);
   $save_id = (int)pg_result($result,0,0);
-
-  debugout($save_id, 'save_id = ');
 
   $sql = $survey->save($specialization_id, $save_id);
 
