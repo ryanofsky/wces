@@ -2,20 +2,16 @@
 
 error_reporting(0);
 
-// Example for use of JpGraph, 
-// ljp, 01/03/01 20:32
 include ("jpgraph/jpgraph.php");
 include ("jpgraph/jpgraph_bar.php");
+require_once("wces/report_help.inc");
 
 $datax = @unserialize($datax);
 $datay = @unserialize($datay);
 
-$graphWidth = 300;
-$graphHeight = 200;
-$graphMargin = 30;
-
-$bottom = $height - $graphHeight - 2 * $graphMargin;
-$left = $width - $graphWidth - 2 * $graphMargin;
+$params = compact("width", "height");
+GraphSize($params, $datax);
+extract($params);
 
 // Setup the graph. 
 $graph = new Graph($width,$height,"auto");	
@@ -30,7 +26,7 @@ $graph->title->SetFont(FF_VERDANA,FS_NORMAL,18);
 $graph->title->SetColor("darkred");
 
 // Setup font for axis
-$graph->xaxis->SetFont(FF_VERDANA,FS_NORMAL,12);
+$graph->xaxis->SetFont($family,$style,$size);
 $graph->yaxis->SetFont(FF_VERDANA,FS_NORMAL,11);
 
 // Show 0 label on Y-axis (default is not to show)
@@ -38,7 +34,7 @@ $graph->yscale->ticks->SupressZeroLabel(false);
 
 // Setup X-axis labels
 $graph->xaxis->SetTickLabels($datax);
-$graph->xaxis->SetLabelAngle(50);
+$graph->xaxis->SetLabelAngle($angle);
 
 // Create the bar pot
 $bplot = new BarPlot($datay);

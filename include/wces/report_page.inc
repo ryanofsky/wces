@@ -15,58 +15,6 @@ define("DEPARTMENTS",      0x08);
 define("PROFESSORS",       0x10);
 define("CATEGORIES",       0x20);
 
-function MakeGraph($datax, $datay)
-{
-  global $server_media;
-  
-  $angle = 50;
-  $size = 12;
-  $family = FF_VERDANA;
-  $style = FS_NORMAL;
-  $graphWidth = 300;
-  $graphHeight = 200;
-  $graphMargin = 30;
-
-  $ttf = new TTF();
-  $file = $ttf->File($family, $style);
-
-  $lowest = -1000; $highest = 1000;
-  $xmargin = 0;
-  $p = 0;
-  $segmentWidth = (double)$graphWidth / (double)count($datax);
-  foreach($datax as $txt)
-  {
-    $leftest = 1000; $rightest = -1000;
-    $bbox = ImageTTFBBox($size,$angle,$file,$txt);
-    for($i = 0; $i < 4; ++$i)
-    {
-      $x = $bbox[2 * $i];
-      $y = $bbox[2 * $i + 1 ];
-      if ($y > $lowest) $lowest = $y;
-      if ($y < $highest) $highest = $y;
-      if ($x < $leftest) $leftest = $x;
-      if ($x > $rightest) $rightest = $x;
-    };
-    
-    if ($rightest - $leftest)
-    {
-      $nx = $rightest - $leftest - ($p + 0.5 )* $segmentWidth;
-      if ($nx > $xmargin) $xmargin = $nx;
-    }
-    ++$p;
-  };
-  
-  $ymargin = $lowest - $highest;
-  $imgx = (int)($graphWidth + 2 * $graphMargin + $xmargin);
-  $imgy = (int)($graphHeight + 2 * $graphMargin + $ymargin);
-
-  return "<img src=\"$server_media/graphs/bars.php"
-    . "?datax=" . htmlspecialchars(serialize($datax)) 
-    . "&datay=" . htmlspecialchars(serialize($datay))
-    . "&width=$imgx&height=$imgy"
-    . "\" width=$imgx height=$imgy>";
-}
-
 function report_findtopics($tempname, $criteria, $needprof = true)
 {
   global $wces;
