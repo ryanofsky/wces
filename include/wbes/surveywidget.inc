@@ -166,6 +166,7 @@ class SurveyWidget extends FormWidget
     {
       $errortext = "";
       foreach($this->questionwidgets as $questionwidget)
+        if (isset($questionwidget->errors))
         foreach($questionwidget->errors as $error)
           $errortext .= "  <li>$error</li>\n";
       if ($errortext) print("<p><strong>The form is not complete. The missing fields are highlighted in <font color=red>red</font>.</strong></p>\n<ul>\n$errortext</ul>\n");
@@ -201,7 +202,7 @@ class SurveyWidget extends FormWidget
 ?>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
-  <td align=center bgcolor=gray background="<?=$wces_path?>media/0x000000.gif">
+  <td align=center bgcolor="#B5CFE7">
     <? if ($prev) $this->action->display("Previous Page", SurveyWidget_previous, false, ""); ?>
     <? if ($next) $this->action->display("Next Page", SurveyWidget_next, false, ""); ?>
     <? if ($save) $this->action->display("Save responses", SurveyWidget_save, false, ""); ?>
