@@ -746,7 +746,7 @@ class ChoiceWidget extends ComponentWidget
 
     $this->questions = array();
     foreach($c->questions as $k => $v)
-      $this->questions[$k] = nl2br(htmlspecialchars($v->text));
+      $this->questions[$k] = $v->text;
     
     if (!$c->is_html)
     {
