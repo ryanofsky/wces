@@ -142,7 +142,7 @@ class ReportWizard extends Wizard
     if (!is_array($t) || !(count($t) > 0))
     {
       wces_connect();
-      $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0));
+      $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
     }
     else if (in_array("all",$t)) $t = false;
 

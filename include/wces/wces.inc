@@ -46,7 +46,7 @@ function format_class($class, $link = false, $code = true, $name = true, $semest
   if ($code)
   {
     if ($str) $str .= " ";
-    $str .= "{$c[FORMAT_CLASS_SUBJECT_CODE]} {$c[FORMAT_CLASS_DIVISION_CODE]}{$c[FORMAT_CLASS_NUMBER]}";
+    $str .= "{$c[FORMAT_CLASS_SUBJECT_CODE]} {$c[FORMAT_CLASS_NUMBER]}";
   }
   if ($name)
   {
