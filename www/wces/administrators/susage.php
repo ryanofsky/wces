@@ -2,158 +2,87 @@
 require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
+
 login_protect(login_administrator);
 
-param('survey_category_id');
+param('category_id');
 param('sort');
+param('question_period_id');
 
 wces_connect();
 
-/*
+// generate lists of options
+$questionPeriodChoices = usage_sql_array("
+  SELECT q.question_period_id, q.displayname
+  FROM semester_question_periods AS q
+  WHERE EXISTS (SELECT * FROM wces_topics AS t WHERE t.question_period_id = q.question_period_id)
+  ORDER BY begindate
+", $wces, __FILE__, __LINE__);
 
-class QuestionPeriodSelector extends SqlBox
-{
-  function QuestionPeriodSelector($name, &$parent)
-  {
-    $this->SqlBox("
-      SELECT displayname AS name, question_period_id AS id
-      FROM semester_question_periods AS q
-      WHERE EXISTS (SELECT * FROM question_periods_topics AS qt WHERE qt.question_period_id = q.question_period_id)
-    ", false, $name, $parent);
-  }
-  
-  function loadInitialState()
-  {
-    $this->id = getQuestionPeriod();
-  }
-  
-  function getQuestionPeriod()
-  {
-    if (isset($_SESSION['question_period_id']))
-      return $_SESSION['question_period_id'];
-    else
-    {
-      global $wces;
-      wces_connect();      
-      $result = pg_go("
-        curtime := NOW();
-        SELECT INTO question_period_id, CASE WHEN begindate > (SELECT NOW()) < begindate THEN 1 ELSE 0 END AS future
-        FROM question_periods
-        WHERE enddate > (SELECT NOW())
-        ORDER BY future DESC, begindate DESC
-        RETURN i;
-      ", $wces, __FILE__, __LINE__);
-      $q = (int)pg_result($result, 0, 0);
-      if (!$q) return NULL;
-      $_SESSION['question_period_id'] = $q;
-      return $q;
-    }
-  }
-}
+$categoryChoices = usage_sql_array("
+  SELECT 0 AS id, 'None'
+  UNION
+  SELECT c.survey_category_id, c.name
+  FROM survey_categories AS c
+  ORDER BY id
+", $wces, __FILE__, __LINE__);
 
+$sortChoices = array("Course Code", "Number of surveys left", "Number of surveys completed"); 
+$sortSql = array("cl", "students - responses DESC", "responses DESC");
 
-$f =& new Form("f");
-$question_period =& new SqlBox($user_id, "ue", $f);
-$f->loadState();
+// figure out current values
+if (!isset($sort) || !isset($sortChoices[$sort])) $sort = 0;
+if (!isset($category_id) || !isset($categoryChoices[$category_id])) $category_id = 0;
+if (isset($question_period_id) && isset($questionPeriodChoices[$question_period_id]))
+  set_question_period($question_period_id);
+else
+  $question_period_id = get_question_period();
 
-*/
+$currentValues = array('question_period_id' => $question_period_id,
+  'category_id' => $category_id, 'sort' => $sort);
 
-$question_period_id = 23; // SELECT get_question_period()
-
+// get information about selected question period
 $result = pg_go("
   SELECT question_period_id, displayname, year, semester
   FROM semester_question_periods
   WHERE question_period_id = $question_period_id
 ", $wces, __FILE__, __LINE__);
+
 extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
 page_top("Student Usage Data for $displayname");
 
-$f->display();
 
-if (!$q->done)
-  $q->display();
-else
-  print($q->message);
+print("<p>Question Period: "); 
+usage_menu($questionPeriodChoices, 'question_period_id', $currentValues);
+print("<br>\n");
+
+print("Filtering: "); 
+usage_menu($categoryChoices, 'category_id', $currentValues);
+print("<br>\n");
+
+print("Sorting: "); 
+usage_menu($sortChoices, 'sort', $currentValues);
+print("</p>\n");
 
 
-///////////////////////////////////////////////////////////////////////////////
-$ssid = $survey_category_id = (int) $survey_category_id;
-print("<p>Filtering: ");
-$survey_categories = pg_go("
-  SELECT c.survey_category_id, c.name
-  FROM survey_categories AS c
-  WHERE c.survey_category_id IN
-  (
-    SELECT category_id FROM question_periods_topics AS qt
-    INNER JOIN wces_topics AS t USING (topic_id) 
-    WHERE qt.question_period_id = $question_period_id 
-  )
-", $wces, __FILE__, __LINE__);
-$first = true;
-$foundfilter = false;
-$n = pg_numrows($survey_categories);
-for($i=0; $i < $n; ++$i)
-{
-  $survey_category = pg_fetch_array($survey_categories,$i,PGSQL_ASSOC);
-  if ($first) $first = false; else print (" | ");
-  if ($survey_category["survey_category_id"] == $survey_category_id)
-  {
-    $foundfilter = true;
-    print($survey_category["name"]);
-  }
-  else
-    print('<a href="susage.php?survey_category_id=' 
-      . $survey_category["survey_category_id"] . '&sort='. $sort . $ASID . '">'
-      . $survey_category["name"] . "</a>");
-}
-if (!$first) print (" | ");
-if (!$foundfilter)
-{
-  $survey_category_id = 0;
-  print("None</p>");
-}
-else
-  print('<a href="susage.php$QSID">None</a><br>');
-///////////////////////////////////////////////////////////////////////////////
 
-print("Sorting: ");
-
-$ordersql = array("cl", "students - responses DESC", "responses DESC");
-$order = array("Course Code", "Number of surveys left", "Number of surveys completed"); 
-
-$sort = (int)$sort;
-if (!isset($order[$sort])) $sort = 0;
-
-$first = true;
-foreach($order as $k => $v)
-{
-  if ($first) $first = false; else print (" | ");
-  if ($sort == $k)
-    print($v);
-  else
-    print('<a href="susage.php?survey_category_id=' 
-      . $ssid . "&sort=" . $k  . $ASID . '">'
-      . $v . "</a>");
-}
-print("</p>");
 
 ///////////////////////////////////////////////////////////////////////////////
 
 $times = array();
 $times["begin"] = microtime();
 
-$cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
+$cat = $category_id ? "AND t.category_id = $category_id" : "";
 
 //todo: use user_id instead of response_id
 pg_go("
   CREATE TEMPORARY TABLE surveycounts AS
   SELECT t.class_id, COUNT(DISTINCT response_id)::INTEGER AS responses
-  FROM question_periods_topics AS qt
-  INNER JOIN wces_topics AS t USING (topic_id)
+  FROM wces_topics AS t
   INNER JOIN classes AS cl USING (class_id)
-  LEFT JOIN survey_responses AS s ON (s.topic_id = t.topic_id AND s.question_period_id = qt.question_period_id)
-  WHERE qt.question_period_id = $question_period_id $cat
+  LEFT JOIN survey_responses AS s USING (topic_id)
+  WHERE t.question_period_id = $question_period_id $cat
   GROUP BY t.class_id
 ",$wces,__FILE__, __LINE__);
 
@@ -193,7 +122,7 @@ Number of surveys completed: <b><?=$responses?></b><br>
 $classes = pg_go("
   SELECT CASE WHEN students < responses THEN responses ELSE students END AS students, responses, get_class(class_id) AS cl, get_profs(class_id) AS p
   FROM surveyclasses
-  ORDER BY $ordersql[$sort]
+  ORDER BY $sortSql[$sort]
 ",$wces, __FILE__, __LINE__);
 
 $times["get_names"] = microtime();
