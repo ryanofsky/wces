@@ -267,14 +267,12 @@ class ResultPage extends ParentWidget
         CATEGORIES => false
       );
 
-      $sort = array(QUESTION_PERIODS, COURSES, DEPARTMENTS, PROFESSORS, CATEGORIES);
       $groups = array(QUESTION_PERIODS => 1, CLASSES => 1, COURSES => 1, DEPARTMENTS => 1, PROFESSORS => 1, CATEGORIES => 0);
 
       global $wces;
       wces_connect();
 
-      report_findtopics("rwtopics", $criteria);
-      report_findgroups("rwtopics", $groups, $sort);
+      report_findtopics("rwtopics", $criteria, true);
 
       $html = $text = false;
       $options = array('skipLines' => true);
