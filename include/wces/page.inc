@@ -6,10 +6,11 @@ require_once("wces/oracle.inc");
 
 $wces_path = "/wces/";
 $wces_this = $server_url->path;
+$wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING;
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"> 
 <html>
@@ -22,14 +23,14 @@ function page_top($title, $minimal = false)
 
 function showhelp(topic)
 {
-  var remote = open("<?=$wces_path?>help.php?help=" + topic,"help","height=400,width=400,alwaysLowered=0,alwaysRaised=0,channelmode=0,dependent=0,directories=0,fullscreen=0,hotkeys=1,location=0,menubar=0,resizable=1,scrollbars=0,status=0,titlebar=1,toolbar=0,z-lock=0");
+  var remote = open("<?=$wces_path?>help.php?help=" + topic,"help","height=435,width=435,alwaysLowered=0,alwaysRaised=0,channelmode=0,dependent=0,directories=0,fullscreen=0,hotkeys=1,location=0,menubar=0,resizable=1,scrollbars=0,status=0,titlebar=1,toolbar=0,z-lock=0");
   remote.focus();
 }
 
 // -->
 </script>
 </head>
-<body>
+<body class=main>
 <table width="100%" border=0 cellspacing=0 cellpadding=0>
 <tr> 
   <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
@@ -75,7 +76,7 @@ function showhelp(topic)
     page_link("Log In","index.php", !$LOGIN_PROMPTING);
 
   if ($uni)
-    page_link("Home", "index.php", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this);
+    page_link("Home", "index.php", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
   
   $nospace = true;
  
@@ -98,7 +99,7 @@ function showhelp(topic)
     if ($nospace) $nospace = false; else page_spacer();
     if ($status & login_knownprofessor)
     {
-      page_link("Upcoming Surveys", "professors/editsurveys.php");
+      page_link("Upcoming Surveys", "professors/editsurveys.php", $wces_ns4 ? "/ns4?auto=1" : "");
       page_link("Survey Results",   "professors/seeresults.php");
       //page_link("Survey Responses", "professors/respond/multiclasses.php");
       //page_link("Past Averages",    "professors/respond/historygraph.php");
@@ -109,8 +110,8 @@ function showhelp(topic)
   
   if ($status & login_student)
   {
-    if ($nospace) $nospace = false; else page_spacer();
-    page_link("Survey",      "students/survey.php");
+    //if ($nospace) $nospace = false; else page_spacer();
+    //page_link("Survey",      "students/survey.php");
     //page_link("Survey #1",      "students/survey.php?surveyid=1");
     //page_link("Survey #2",      "students/survey.php?surveyid=2");
     //page_link("Email Settings", "students/optout.php");
@@ -159,13 +160,18 @@ function page_bottom($minimal = false)
 <?
 }
 
-function page_link($caption,$link,$islink = 0)
+function page_link($caption,$link,$extlink = "")
 {
   global $wces_path, $wces_this;
-  if (((boolean)$islink) !== $islink)
+  if (((boolean)$extlink) === $extlink)
+  {
+    $islink = $extlink;
+    $extlink = "";
+  }  
+  else
     $islink = "$wces_path$link" != $wces_this;
   if ($islink)  
-    print("    <p><a href=\"$wces_path$link\" class=navlinks>$caption</a></p>\n");
+    print("    <p><a href=\"$wces_path$link$extlink\" class=navlinks>$caption</a></p>\n");
   else
     print("    <p class=navlinks>$caption</p>\n");
 }

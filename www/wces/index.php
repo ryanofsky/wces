@@ -48,7 +48,7 @@ your listing and save the association.</p><p>&nbsp;</p>
 ?>
 <p><?=$pimg?>Here is a list of the options currently available for professors:</p>
 <ul>
-  <li><a href="<?=$wces_path?>professors/editsurveys.php<?=$QSID?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
+  <li><a href="<?=$wces_path?>professors/editsurveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
   <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys</li>
 <? /*
   <li><a href="<?=$wces_path?>professors/respond/multiclasses.php<?=$QSID?>">Survey Responses</a> - Post responses to your survey results</li>
@@ -64,12 +64,14 @@ your listing and save the association.</p><p>&nbsp;</p>
   {
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
-<p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>Choose a class to evaluate from the list below.</p>
+<p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
+The WCES will open for Midterm Evaluations on Friday, October 6.<p>
+<!-- Choose a class to evaluate from the list below.</p>
 <ul>
   <li><a href="<?=$wces_path?>students/survey.php?surveyid=1<?=$ASID?>">Survey 1</a></li>
   <li><a href="<?=$wces_path?>students/survey.php?surveyid=2<?=$ASID?>">Survey 2</a></li>
 </ul>
-<p>Sick of automated emails? Adjust your <a href="<?=$wces_path?>students/optout.php<?=$QSID?>">email settings</a>.</p>
+<p>Sick of automated emails? Adjust your <a href="<?=$wces_path?>students/optout.php<?=$QSID?>">email settings</a>.</p> -->
 <?
   }  
   
