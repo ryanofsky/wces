@@ -1,11 +1,17 @@
+survey editor
+  - fill in user_id field in saves table
+
+mass mailing 
+  - prevent from sending mail for deleted classes
+
 reporting wizard
   - add spaces between tables
   - add table indices where they can improve speed
   - update the options on the "output" page of the wizard
   - fix professor email function (or just remove)
+  - N/A results affect numerical averages
 
 fix data import script (classmove.php)
-  - don't insert blank responses
   - do insert completion id's
 
 subsurveys
@@ -28,5 +34,8 @@ professor profile editor
   - needs to be updated for postgres database
 
 dartmouth
-  - commit their changes to cvs
   - merge changes from trunk
+
+scripts
+  load missing names and email addresses from ldap.columbia.edu
+  
