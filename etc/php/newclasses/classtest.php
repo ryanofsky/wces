@@ -116,7 +116,7 @@ $db = server_pginit("wces");
 // pg_show($result,"professors");
 // print("<p>&nbsp;</p>"); 
 
-pg_query("execute class_update(2, '023', 2342, 2, 'maa class', 'time', 'location', 32, 32210, 1, 4, 1)", $db, __FILE__, __LINE__);
+//pg_query("execute class_update(2, '023', 2342, 2, 'maa class', 'time', 'location', 32, 32210, 1, 4, 1)", $db, __FILE__, __LINE__);
 
 $result = pg_query("SELECT * FROM users",$db, __FILE__, __LINE__);
 pg_show($result,"users");
@@ -159,5 +159,8 @@ $result = pg_query("SELECT * FROM divisions",$db, __FILE__, __LINE__);
 pg_show($result,"divisions");
 print("<p>&nbsp;</p>");
 
+$result = pg_query("SELECT * FROM professor_hooks",$db, __FILE__, __LINE__);
+pg_show($result,"professor_hooks");
+print("<p>&nbsp;</p>");
 
 ?>
