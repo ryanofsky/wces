@@ -27,14 +27,15 @@ class SurveyWidget extends ParentWidget
   // widgets  
   var $ta = null;
   var $event;
-  var $questionWidgets;
+  var $questionWidgets = array();
   
   // private
   var $isStale = true;
+  var $pages = 0;
 
-  // to add a ta section to the survey, assign an instance of TASurvey to this member:
-  // $abc = & new SurveyWidget(...);
-  // $abc->ta = & new TASurvey(...);
+  // to add a ta section to the survey, assign an instance of TASurvey to $this->ta:
+  // $abc =& new SurveyWidget(...);
+  // $abc->ta =& new TASurvey(...);
 
   function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, &$factories, $name, &$parent)
   {
@@ -89,12 +90,11 @@ class SurveyWidget extends ParentWidget
   function makeWidgets($newLoad)
   {
     assert(get_class($this->survey) == "survey");
-    
     $page = 0;
     foreach(array_keys($this->survey->components) as $k)
     {
       if ("pagebreak" == get_class($this->survey->components[$k])) ++$page;
-      $c = & $this->survey->components[$k]->getwidget("c$k", $this);
+      $c =& $this->survey->components[$k]->getwidget("c$k", $this);
       $c->page = $page;
       $this->loadChild($c, $newLoad);
       $this->questionWidgets[] = & $c;
@@ -103,7 +103,6 @@ class SurveyWidget extends ParentWidget
     if ($this->ta)
     {
       $this->ta->page = $page;
-      $this->loadChild($c, $newLoad);
       $this->questionWidgets[] = &$this->ta;
     }
 
@@ -112,7 +111,7 @@ class SurveyWidget extends ParentWidget
 
   function saveResponses()
   {
-    global $wbes, $HTTP_POST_VARS, $server_feedback;
+    global $wbes, $_POST, $server_feedback;
 
     $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
@@ -141,7 +140,7 @@ class SurveyWidget extends ParentWidget
     foreach(array_keys($this->questionWidgets) as $key)
       $failure = $failure || !$this->questionWidgets[$key]->save($response_id);
 
-    $fields = "'" . addslashes(serialize($HTTP_POST_VARS)) . "'";
+    $fields = "'" . addslashes(serialize($_POST)) . "'";
 
     // temporary, ensure that even if results not saved correctly, they will still
     // be recoverable
