@@ -22,6 +22,12 @@ DROP FUNCTION temp_schr(integer);
 DROP TABLE temp_user;
 DROP FUNCTION temp_useri(integer,integer);
 DROP FUNCTION temp_userr(integer);
+DROP TABLE temp_questionperiod;
+DROP FUNCTION temp_questionperiodi(integer, integer);
+DROP FUNCTION temp_questionperiodr(integer);
+DROP TABLE temp_topic;
+DROP FUNCTION temp_topici(integer, integer);
+DROP FUNCTION temp_topicr(integer);
 
 CREATE TABLE temp_subj
 (
@@ -103,7 +109,7 @@ CREATE FUNCTION temp_courser(integer, char(1)) RETURNS integer AS '
 CREATE TABLE temp_prof
 (
   oldid INTEGER NOT NULL PRIMARY KEY,
-  newid INTEGER UNIQUE NOT NULL REFERENCES users(user_id)
+  newid INTEGER NOT NULL REFERENCES users(user_id)
 );
 
 CREATE FUNCTION temp_profi(integer, integer) RETURNS integer AS '
@@ -133,7 +139,7 @@ CREATE FUNCTION temp_schr(integer) RETURNS integer AS '
 CREATE TABLE temp_user
 (
   oldid INTEGER NOT NULL PRIMARY KEY,
-  newid INTEGER UNIQUE NOT NULL REFERENCES users(user_id)
+  newid INTEGER NOT NULL REFERENCES users(user_id)
 );
 
 CREATE FUNCTION temp_useri(integer, integer) RETURNS integer AS '
@@ -185,6 +191,9 @@ CREATE FUNCTION topic_update(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   BEGIN
     SELECT INTO topic_id_ topic_id FROM wces_topics WHERE ((parent_ IS NULL AND parent IS NULL) OR parent = parent_) AND class_id = class_id_;
     IF FOUND THEN
+      IF category_id_ IS NOT NULL THEN
+        UPDATE wces_topics SET category_id = category_id_ WHERE topic_id = topic_id_;
+      END IF;
       RETURN topic_id_;
     ELSE
       INSERT INTO wces_topics (parent,class_id,category_id)
