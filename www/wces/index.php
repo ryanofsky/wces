@@ -41,7 +41,7 @@
 ?>
 <p><img align=right src="<?=$wces_path?>media/admin.jpg" width=125 height=125>Here is a list of the options currently available for department administrators:</p>
 <ul>
-  <li><a href="<?=$wces_path?>administrators/choose.php<?=$QSID?>">Reporting Wizard</a> - View and print past survey results for courses within your department.</li>
+  <li><a href="<?=$wces_path?>administrators/report_choose.php<?=$QSID?>">Reporting Wizard</a> - View and print past survey results for courses within your department.</li>
 </ul>
 <?
   }

@@ -146,7 +146,7 @@ function showhelp(topic)
     if ($status & LOGIN_DEPT_ADMIN)
     {
       $this->printSpacer();
-      $this->printLink("Reporting Wizard", "administrators/report.php", $QSID);
+      $this->printLink("Reporting Wizard", "administrators/report_choose.php", $QSID);
     }
   
     if ($status & LOGIN_PROFESSOR)
