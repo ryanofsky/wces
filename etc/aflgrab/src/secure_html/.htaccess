@@ -1,7 +1,0 @@
-AuthType Basic
-AuthName "everybody"
-AuthKrbUserType krb
-ErrorDocument 401 "no soup for you!
-<Limit PUT GET>
-require valid-user
-</Limit>
