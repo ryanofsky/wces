@@ -1,5 +1,5 @@
 <%
-  define("server_mode","oracle"); // "oracle" "yahweh" "yahwehisapi" or "james"
+  define("server_mode","oracle"); // "oracle" "yahweh" "yahwehisapi" "james" or "athlon"
   
   if (server_mode == "yahweh")
   {
@@ -11,7 +11,7 @@
        
     function server_getrequest()
     {
-      global $HTTP_ENV_VARS,$PHP_SELF;
+      global $HTTP_ENV_VARS, $PHP_SELF;
       $qs = $HTTP_ENV_VARS["QUERY_STRING"];
       return $qs ? $PHP_SELF . "?" . $qs : $PHP_SELF;
     };
@@ -26,7 +26,6 @@
     {
       return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
     };    
-    
   }
   else if (server_mode == "yahwehisapi")
   {
@@ -53,7 +52,6 @@
     {
       return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
     };    
-    
   }
   else if (server_mode == "oracle")
   {
@@ -77,7 +75,6 @@
     {
       return mysql_connect("localhost","root","------");
     };    
-    
   }
   else if (server_mode == "james")
   {
@@ -104,8 +101,33 @@
     {
       return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
     };    
-    
   }  
+  else if (server_mode == "athlon")
+  {
+    $server_docroot = "I:/server/shares/oracle/";
+    $server_cgiroot = $server_docroot . "cgi-bin" . "/";
+    $server_wcespath = "/wces/";
+    $server_win32 = true;
+    $server_tempdir = "I:/server/shares/temp";
+
+    function server_getrequest()
+    {
+      global $HTTP_ENV_VARS,$PHP_SELF;
+      $qs = $HTTP_ENV_VARS["QUERY_STRING"];
+      return $qs ? $PHP_SELF . "?" . $qs : $PHP_SELF;
+    };
+
+    function server_secure()
+    {
+      global $HTTP_ENV_VARS;
+      return $HTTP_ENV_VARS["HTTPS"] == 'on';
+    };
+    
+    function server_sqlinit()
+    {
+      return mysql_connect("localuser","root","------");
+    };    
+  }
   else
     die("invalid server type");
 %>
