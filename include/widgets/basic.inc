@@ -114,6 +114,7 @@ class ActionButton extends FormWidget
   function ActionButton($prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix, $form, $formmethod);
+    $this->action = $this->object = "";
   }
   
   function loadvalues() // public abstract
@@ -140,7 +141,7 @@ class ActionButton extends FormWidget
     }
   }
 
-  function display($label = false, $action = false,$object = false, $attribs = "")
+  function display($label = false, $action = false, $object = false, $attribs = "")
   {
     if ($label === false)
     {
@@ -148,11 +149,8 @@ class ActionButton extends FormWidget
       {
         $action = $this->action;
         $object = $this->object;
-        $value = 1;
       }
-      else
-        $value = 0;
-      print('<input type=hidden name="' . $this->prefix . '_' . $action . '_' . $object . '" value="' . $value . '">');  
+      if ($action) print('<input type=hidden name="' . $this->prefix . '_' . $action . '_' . $object . '" value=1>');  
     }  
     else
     {
