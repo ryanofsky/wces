@@ -46,18 +46,17 @@ class Wizard extends ParentWidget
     // and displayHidden() methods.
     //
     //   $stepno contains the step number to display
-    // 
-    //   $hiddenChildren is a boolean. When it is true, the printStep()
-    //     implementation should call the displayHidden() methods on
-    //     any children widgets used for step $stepno. It will be true
-    //     when the wizard is visible and step $stepno is not active.
     //
-    //   $hidden is a boolean. When it is true, the printStep() implementation
-    //     should print any hidden fields or values needed to maintain state
-    //     for step $stepno. When it is false, step $stepno should be displayed.
-
-    // If $hiddenChildren is true, then $hidden will always be true. In other
-    // words:  $hiddenChildren == $hidden && $hiddenChildren
+    //   $visible is a boolean. When it is true, step $stepno's controls and 
+    //     text should be displayed. When it is false, hidden fields needed
+    //     to preserve the state of the step should be printed. Even when visible
+    //     is false, the displayHidden() methods on the step's children widgets
+    //     should not be called unless $hiddenChildren is true.
+    //    
+    //   $hiddenChildren is a boolean that is only true when $visible is false. 
+    //     When it is true the printStep implementation should call the 
+    //     displayHidden() methods on any children widgets associated with the
+    //     step $stepno.
   }
 
   function crawl($skipsteps = array())
@@ -119,7 +118,7 @@ class Wizard extends ParentWidget
   {
     $this->printValue("done", (int)$this->done);
     foreach($this->steps as $key => $value)
-      $this->printStep($key, true, false);
+      $this->printStep($key, false, false);
   }
 
   function printVisible()
@@ -180,7 +179,7 @@ class Wizard extends ParentWidget
     foreach($this->steps as $key => $value)
     {
       $hidden = $key != $showStep;
-      $this->printStep($key, $hidden, $hidden);
+      $this->printStep($key, !$hidden, $hidden);
     }
 
     $cancelName = $this->fullName('cancel');
