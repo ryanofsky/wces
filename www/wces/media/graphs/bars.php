@@ -2,8 +2,8 @@
 
 error_reporting(0);
 
-include ("jpgraph/jpgraph.php");
-include ("jpgraph/jpgraph_bar.php");
+require_once("jpgraph/jpgraph.php");
+require_once("jpgraph/jpgraph_bar.php");
 require_once("wces/report_help.inc");
 
 $datax = @unserialize($datax);
@@ -19,6 +19,8 @@ $graph->img->SetMargin($graphMargin + $left, $graphMargin, $graphMargin, $graphM
 $graph->SetScale("textlin");
 $graph->SetMarginColor("silver");
 $graph->SetShadow();
+$graph->SetColor(array(254,254,254));
+$graph->img->SetTransparent("white");
 
 // Set up the title for the graph
 //$graph->title->Set("Example bar gradient fill");
