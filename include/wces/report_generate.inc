@@ -101,7 +101,6 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //      $report_always_graph
 //   topicsTable: string
 //     name of table that maps a topic_id to an item_id and specialization_id
-//   uglyHackTa, uglyHackText
 
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
@@ -168,7 +167,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     {
       $result = pg_go("
         SELECT DISTINCT t.ordinal, t.question_period_id, qp.displayname
-        FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
+        FROM rwtopics AS t
         INNER JOIN question_periods AS qp USING (question_period_id)
         ORDER BY t.ordinal
       ", $wces, __FILE__, __LINE__);
@@ -223,38 +222,30 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   if (!isset($options['textResponses']) || $options['textResponses'])
   {
-    if (isset($options['uglyHackText']))
-      $result = $options['uglyHackText'];
-    else    
-    {
-      $result = pg_go("
-        SELECT t.ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext, tr.response_id
-        FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
-        INNER JOIN $options[surveyResponses] AS r USING (topic_id)
-        INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
-        INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
-        INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
-        ORDER BY t.ordinal, tr.item_id, tr.revision_id
-      ", $wces, __FILE__, __LINE__);
-    }
+    $result = pg_go("
+      SELECT t.ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext, tr.response_id
+      FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
+      INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
+      INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
+      INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
+      ORDER BY t.ordinal, tr.item_id, tr.revision_id
+    ", $wces, __FILE__, __LINE__);
 
     $textresponses =& new pg_segmented_wrapper($result, array("ordinal", "item_id", "revision_id"));
   }
 
   if (!isset($options['taResponses']) || $options['taResponses'])
   {
-    if (isset($options['uglyHackTa']))
-      $result = $options['uglyHackTa'];
-    else
-      $result = pg_go("
-        SELECT t.ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
-          tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
-        FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
-        INNER JOIN $options[surveyResponses] AS r USING (topic_id)
-        INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
-        LEFT JOIN users AS u ON u.user_id = tr.user_id
-        ORDER BY t.ordinal, u.lastname, u.firstname, u.user_id, name, tr.response_id
-      ", $wces, __FILE__, __LINE__);
+    $result = pg_go("
+      SELECT t.ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
+        tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
+      FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
+      INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
+      LEFT JOIN users AS u ON u.user_id = tr.user_id
+      ORDER BY t.ordinal, u.lastname, u.firstname, u.user_id, name, tr.response_id
+    ", $wces, __FILE__, __LINE__);
 
     $taresponses =& new pg_segmented_wrapper($result, array('ordinal', 'user_id'));  
   }
