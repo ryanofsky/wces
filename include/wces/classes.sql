@@ -1217,7 +1217,6 @@ CREATE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
   WHERE c.course_id = $1
 ' LANGUAGE 'sql' WITH (ISCACHABLE);
 
-DROP FUNCTION get_question_period();
 CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
   DECLARE
     curtime DATETIME;
@@ -1232,7 +1231,6 @@ CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
 
-DROP FUNCTION get_next_question_period();
 CREATE FUNCTION get_next_question_period() RETURNS INTEGER AS '
   DECLARE
     curtime DATETIME;
@@ -1243,6 +1241,26 @@ CREATE FUNCTION get_next_question_period() RETURNS INTEGER AS '
     FROM question_periods
     WHERE curtime < enddate
     ORDER BY enddate;
+    RETURN i;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION get_anext_question_period () RETURNS integer AS '
+  DECLARE
+    curtime DATETIME;
+    i INTEGER;
+  BEGIN
+    curtime := NOW();
+    SELECT INTO i question_period_id
+    FROM question_periods
+    WHERE curtime < enddate
+    ORDER BY enddate;
+   
+    IF NOT FOUND THEN
+      SELECT INTO i question_period_id
+      FROM question_periods
+      ORDER BY enddate DESC;
+    END IF;
     RETURN i;
   END;
 ' LANGUAGE 'plpgsql';
