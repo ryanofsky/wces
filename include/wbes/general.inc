@@ -304,6 +304,7 @@ function bprint($str, $mod = 10)
   if (++$i % $mod == 0)
   {
     $i = 0;
+    ob_flush();
     flush();
   }
 }
