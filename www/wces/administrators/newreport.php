@@ -26,6 +26,11 @@ function method_thunk(&$instance, $method, $args)
                          . "return \$instance->$method($call_args);");
 }
 
+function numeric_array($size, $val)
+{
+  return array_fill(array(), $size, $val); //xxx: look up function
+}
+
 function list_insert(&$list, &$item)
 {
   if (isset($list))
@@ -79,15 +84,20 @@ class Node
   function sort() { }
 }
 
-class ParentNode extends Node
+class ChildList
 {
-  // associative array
+  // list of child nodes in no particular order
   var $children = array();
 
-  // list of keys
+  // list of keys into the $children array, of keys determines
+  // how how the tree is traversed
   var $childOrds = array();
-
-  function ParentNode($item_id)
+  
+  // ordinals indexed by $item_id indicating relative order of items
+  // this is intermediate data, used to sort the $childOrds array
+  var $itemOrds = array();
+  
+  function ChildList()
   {
     $this->cmp_func = method_thunk($this, 'cmp', '$key1, $key2');
   }
@@ -113,26 +123,35 @@ class ParentNode extends Node
     return cmp($this->itemOrds[$i1->item_id], $this->itemOrds[$i2->item_id]);
   }
   
+
+  
+
+}
+
+class ParentNode extends Node
+{
+
+
+
+  function ParentNode($item_id)
+  {
+    
+  }
+
   function header(&$row)
   {
     foreach($this->childOrds as $k)
       $this->children[$k]->header());  
   }
-    
-  function getChild($keys) { assert(0); }
-  function setChild(&$node, $keys) { assert(0); }
 }
 
-class SurveyTreeNode extends TreeNode
+class SurveyNode extends TreeNode
 {
   var $subsurvey_id;
   var $topic_id;
 
-  // ordinals indexed by $item_id indicating relative order of items
-  var $itemOrds = array();
 
-  // Constructor
-  function SurveyTreeNode($subsurvey_id)
+  function SurveyNode($subsurvey_id)
   {
     $this->subsurvey_id = $subsurvey_id;
   }
@@ -152,7 +171,7 @@ class SurveyTreeNode extends TreeNode
   }
 }
 
-class TextNode
+class TextNode extends TreeNode
 {
   var $textnode;
   
@@ -179,6 +198,34 @@ class TextNode
   }
 };
 
+class ChoiceNode extends ParentNode
+{
+  function ChoiceNode($item_id, $revision_id, $choices, $first_number, $last_number, $flags)
+  {
+    $this->ParentNode($item_id);
+    $this->revision_id = $revision_id;
+    $this->choices = $choices;
+    $this->first_number = $first_number;
+    $this->last_number = $last_number;
+    $this->flags = $flags;
+  }
+  
+  function cmp($a, $b)
+  {
+    // this is a hack, which relies on the fact that php passes on
+    // the $this variable when you call a method from another class
+    // inside a member function. i'm not sure what is a clean
+    // way of sharing this code with the TextNode class without
+    // using multiple inheritance
+    return TextNode::cmp($a, $b);
+  }
+}
+
+class ChoiceQuestionNode
+{
+  
+}
+
 function make_page($rwtopic_ordinal)
 {
   // each subsurvey needs to have its own id so grouping can
@@ -198,7 +245,7 @@ function make_page($rwtopic_ordinal)
   pg_go("
     CREATE TEMPORARY TABLE subsurveys
     (
-      subsurvey_id INTEGER NOT NULL DEFAULT NEXTVAL...
+      subsurvey_id INTEGER NOT NULL DEFAULT NEXTVAL('subsurvey_ids'),
       item_id INTEGER NOT NULL DEFAULT NEXTVAL,
       topic_id INTEGER,
       parent INTEGER
@@ -231,7 +278,7 @@ function make_page($rwtopic_ordinal)
 
   pg_go("
     CREATE TEMPORARY TABLE resps AS
-    SELECT t.topic_id, r.response_id, r.parent AS parent_topic, 0 AS depth,
+    SELECT t.topic_id, r.response_id, r.parent AS parent_response, 0 AS depth,
       r.item_id AS survey_item_id, r.revision_id AS survey_revision_id,
       r.response_id AS top_response_id, random() AS top_ordinal,
       get_subsurvey_id(NULL, NULL, r.item_id) AS subsurvey_id
@@ -248,7 +295,7 @@ function make_page($rwtopic_ordinal)
     foreach ($tables as $table)
     {
       $fillup .= "
-        INSERT INTO resps (topic_id, response_id, parent_topic, depth, survey_item_id, survey_revision_id, top_response_id, top_ordinal, subsurvey_id)
+        INSERT INTO resps (topic_id, response_id, parent_response, depth, survey_item_id, survey_revision_id, top_response_id, top_ordinal, subsurvey_id)
         SELECT t.topic_id, t.response_id, t.parent, $depth, t.item_id, t.revision_id, r.top_response_id, r.top_ordinal
         FROM resps AS r
         INNER JOIN $table[name] AS t ON t.parent = r.response_id
@@ -269,7 +316,7 @@ function make_page($rwtopic_ordinal)
   $resps = pg_go("
     SELECT DISTINCT r1.subsurvey_id, r2.subsurvey_id AS r2.parent_subsurvey
     FROM resps AS r1
-    INNER JOIN resps AS r2 ON r2.topic_id = r1.parent_topic
+    INNER JOIN resps AS r2 ON r2.response_id_id = r1.parent_reponse
   ", $wces, __FILE__, __LINE__);
   
   // all SurveyNodes indexed by subsurvey_id
@@ -282,7 +329,7 @@ function make_page($rwtopic_ordinal)
   function & make_survey_node(&$survey_subs, $subsurvey_id)
   {
     if (!isset($survey_subs[$subsurvey_id]))
-      $survey_subs[$subsurvey_id] =& new SurveyTreeNode($subsurvey_id);
+      $survey_subs[$subsurvey_id] =& new SurveyNode($subsurvey_id);
     return $survey_subs[$subsurvey_id];
   }
    
@@ -318,9 +365,9 @@ function make_page($rwtopic_ordinal)
   }
 
   $textq = pg_go("
-    SELECT tt.subsurvey_id, tt.revision_id, tt.item_id, c.ctext
+    SELECT tt.subsurvey_id, tt.item_id, tt.revision_id, c.ctext
     FROM
-    ( SELECT DISTINCT re.subsurvey_id, rt.revision_id, rt.item_id
+    ( SELECT DISTINCT re.subsurvey_id, rt.item_id, rt.revision_id
       FROM resps AS re
       INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
     ) AS tt
@@ -349,22 +396,58 @@ function make_page($rwtopic_ordinal)
   $cols = 0;
   $top_survey->number($col);
   
-  $row = array_fill(array(), $cols, "") // xxx: arguments?
+  $row = numeric_array($cols, "");
   $top_survey->header($row);
-  
   
   print csv_row($row);
 
-  $textr = pg_go("
-    SELECT rt.revision_id, rt.item_id, rtext
-    FROM resps AS re
-    INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
-    ORDER BY re.top_ordinal
+  $resps = pg_go("
+    SELECT top_ordinal, response_id
+    FROM resps WHERE parent_response IS NULL
+    ORDER BY top_ordinal, response_id
   ", $wces, __FILE__, __LINE__);
 
-  $n = pg_num_rows($textr);
+  $n = pg_numrows($resps)
+
+  $r = pg_go("
+    SELECT re.top_ordinal, re.top_response_id, 
+      rt.subsurvey_id, rt.item_id, rt.revision_id, r.ttext
+    FROM resps AS re
+    INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
+    ORDER BY re.top_ordinal, re.top_response_id
+  ", $wces, __FILE__, __LINE__);
+  
+  $textr =& new pg_segmented_wrapper($r, array("top_ordinal", "top_response_id"));
+
+  $r = pg_go("
+    SELECT re.top_ordinal, re.top_response_id, 
+    FROM resps AS re
+    INNER JOIN responses_choice AS rc ON rc.parent = re.response_id
+    INNER JOIN responses_choice_question AS rq ON rq.parent = rc.parent
+  ", $wces, __FILE__, __LINE__);
+  
+  
+  
   for ($i = 0; $i < $n; ++$i)
   {
+    $rrow = numeric_array($resps);
+    $top_ordinal = $rrow['top_ordinal'];
+    $top_response_id = $rrow['top_response_id'];
+   
+    while (($trow = $textr->row) && $top_ordinal == $trow['top_ordinal'] && $trow['top_response_id'])
+    {
+      $sub = $trow['subsurvey_id'];
+      $iid = $trow['item_id'];
+      $rev = $trow['revision_id'];
+      $item =& $survey_items[tuple_key($sub, $iid, $rev)];
+      $row[$item->col] = $trow['text'];
+      
+    }
+   
+   )
+   
+    $drow = pg_fetch_row($textr, $i, PGSQL_ASSOC);
+    $item =& $survey_items[tuple_key($sub, $iid, $rev)];  
     
   }
     
