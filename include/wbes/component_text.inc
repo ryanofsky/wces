@@ -66,10 +66,13 @@ class TextWidget extends ComponentWidget
   {
   }
   
-  function display()
+  function display($hidden = false, $showerrors = true)
   {
-    $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
-    print($text);
+    if(!$hidden)
+    {
+      $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
+      print($text);
+    }
   }  
 }
 
