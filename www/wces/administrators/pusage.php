@@ -9,11 +9,11 @@ wces_connect();
 $result = pg_query("
   SELECT question_period_id, displayname, year, semester
   FROM semester_question_periods
-  WHERE question_period_id = (SELECT get_question_period())
+  WHERE question_period_id = (SELECT get_next_question_period())
 ", $wces, __FILE__, __LINE__);
 extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
-page_top("Professor Usage Data for $displayname]");
+page_top("Professor Usage Data for $displayname");
 
 pg_query("
   CREATE TEMPORARY TABLE profcounts AS
@@ -27,15 +27,13 @@ pg_query("
 
 $y = pg_query("
   CREATE TEMPORARY TABLE pu AS
-  SELECT pc.class_id, pc.topic_id, s.code || c.divisioncode || c.code AS code, c.name AS cname, cl.section,
+  SELECT pc.class_id, pc.topic_id, get_class(pc.class_id) as classinfo, 
     cl.students, u.user_id, u.uni, u.firstname, u.lastname, u.lastlogin,
     CASE WHEN u.lastlogin >= '2002-04-05' THEN 1 ELSE 0 END AS loggedin,
     pc.customized
   FROM profcounts AS pc
   INNER JOIN classes AS cl USING (class_id)
-  INNER JOIN courses AS c USING (course_id)
-  INNER JOIN subjects AS s USING (subject_id)
-  INNER JOIN enrollments AS e ON (e.class_id = cl.class_id AND e.status = 3)
+  INNER JOIN enrollments AS e ON (e.class_id = pc.class_id AND e.status = 3)
   INNER JOIN users AS u USING (user_id)
 ",$wces,__FILE__,__LINE__);
 
@@ -56,14 +54,12 @@ Number of classes with professors who created custom surveys: <b><?=(int)$profcu
 <h3>Individual Class Usage</h3>
 
 <?
-
 $result = pg_query("
-  SELECT user_id, class_id, topic_id, code, section, students, firstname, lastname, uni, loggedin,
-   cname, to_char(lastlogin,'YYYY-MM-DD') AS lastlogin, customized
+  SELECT user_id, class_id, classinfo, topic_id, students, firstname, lastname, uni, loggedin,
+   to_char(lastlogin,'YYYY-MM-DD') AS lastlogin, customized
   FROM pu
-  ORDER BY customized DESC, loggedin DESC, code, section
+  ORDER BY customized DESC, loggedin DESC, classinfo
 ", $wces, __FILE__, __LINE__);
-
 $n = pg_numrows($result);
 
 pg_query("DROP TABLE profcounts; DROP TABLE pu;", $wces, __FILE__, __LINE__);
@@ -77,7 +73,6 @@ $stage = 0;
 for($i=0; $i<$n; ++$i)
 {
   extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
-
   if (!$lastlogin) $lastlogin = "<i>never</i>";
 
   if ($stage == 0 && $lastcustom && !$customized)
@@ -103,8 +98,16 @@ for($i=0; $i<$n; ++$i)
 
   $pname = "$firstname $lastname";
   if ($uni) $pname .= " ($uni)";
+ 
+  $cr = explode_class($classinfo); 
+  
+  print("<tr><td nowrap><a href=\"{$wces_path}administrators/info.php?class_id=$class_id\">" 
+   . format_class($cr, "%c %s") 
+   . "</a></td><td><a href=\"{$wces_path}administrators/surveys.php?topic_id=$topic_id\">"
+   . format_class($cr, "%N") 
+   . "</a></td><td>$students</td><td><a href=\"{$wces_path}administrators/info.php?user_id=$user_id\">"
+   . $pname . "</a></td><td nowrap>$lastlogin</td></tr>");
 
-  print("<tr><td nowrap><a href=\"{$wces_path}administrators/info.php?class_id=$class_id\">$code $section</a></td><td><a href=\"{$wces_path}administrators/surveys.php?topic_id=$topic_id\">$cname</a></td><td>$students</td><td><a href=\"{$wces_path}administrators/info.php?user_id=$user_id\">$pname</a></td><td nowrap>$lastlogin</td></tr>");
   ++$lastcnt;
   $lastcustom = $customized;
   $lastloggedin = $loggedin;
