@@ -226,7 +226,7 @@ class legacy_Report extends legacy_FormWidget
     }  
     else
     {
-      print("<h3>Email legacy_Report</h3>\n");
+      print("<h3>Email Report</h3>\n");
       print("<h4>Professors Included</h4>\n");
       $q = $this->wizard->query;
       $q->addcolumn("p.professorid, p.name AS pname, IFNULL(p.email,u.email) AS email, COUNT(DISTINCT cl.classid, qp.questionperiodid) AS pages");
