@@ -105,7 +105,9 @@ function page_links()
       extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
       if ($surveyed) break;
       if ($i == 0) page_spacer();
-      page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id&question_period_id=$question_period_id", $QSID, "");
+      $cn = format_class($name,'%n');
+      if (!$cn) $cn = format_class($name, '%c');
+      page_link($cn, "students/survey.php?class_id=$class_id&question_period_id=$question_period_id", $ASID, "");
     }
   }
 
