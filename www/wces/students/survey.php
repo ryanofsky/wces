@@ -6,7 +6,7 @@ require_once("wces/wces.inc");
 require_once("wces/oldquestions.inc");
   
 login_protect(login_student);
-page_top("Student Survey","0100");
+page_top("Student Survey");
 
 print("<p>WCES is closed until the next evaluation period begins.</p>");
 

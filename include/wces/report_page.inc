@@ -312,7 +312,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
 
 function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$listclasses, &$listprofessors, &$ratings, &$abet, &$responses, &$tas)
 {
-  global $server_wcespath, $TAQUESTIONS, $TAVALUES, $ABETQUESTIONS;
+  global $wces_path, $TAQUESTIONS, $TAVALUES, $ABETQUESTIONS;
   
   $pagetext = "";
   $pagehtml = "";
@@ -344,7 +344,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       $plname = $pfname = $professorid = "";
       extract($listprofessors->row);
       $profname = ($pfname || $plname) ? "$pfname $plname" : "Unknown";
-      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
+      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${wces_path}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
       if ($outtext) $pagetext .= " - Professor: $profname\n"; 
     }
     while($listprofessors->advance());
@@ -360,7 +360,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       if ($groups["questionperiods"])
         $classname .= " " . ucfirst($semester) . " $year";
       if ($outhtml)
-        $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${wces_path}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
       if ($outtext)
         $pagetext .= " - Class: $classname\n"; 
     }
@@ -385,7 +385,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
     $pagehtml .= "<tr><td>Total Students:</td><td><b>$students</b></td></tr>\n";
     $pagehtml .= "<tr><td>Students Evaluated:</td><td><b>$response</b></td></tr>\n";
     $pagehtml .= "</table>\n";
-    if ($options["pies"]) $pagehtml .= '<img src="' . "${server_wcespath}media/graphs/susagegraph.php?blank=" . ($students-$response) . "&filled=$response\" width=200 height=200><img src=\"${server_wcespath}media/graphs/susagelegend.gif\" width=147 height=31>";
+    if ($options["pies"]) $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$response) . "&filled=$response\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
   }
 
   $header->advance();
@@ -440,14 +440,14 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
             $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2 RULES=ALL FRAME=VOID>\n";
             $pagehtml .= "<thead style=\"page-break-inside: avoid\">\n<tr>\n";
             $pagehtml .= "  <td>&nbsp;</td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/50.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/40.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/30.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/20.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/10.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/avg.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/mode.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/sd.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/50.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/40.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/30.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/20.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/10.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/avg.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/mode.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/sd.gif\"></center></td>\n";
             $pagehtml .= "  <td width=120><p><b>Average (Graphical)</p></b></td>\n";
             $pagehtml .= "</tr>\n</thead>";
           };
@@ -538,9 +538,9 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
             $pagehtml .= "  <td width=20><center><strong>3</strong></center></td>\n";
             $pagehtml .= "  <td width=20><center><strong>4</strong></center></td>\n";
             $pagehtml .= "  <td width=20><center><strong>5</strong></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/avg.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/mode.gif\"></center></td>\n";
-            $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/sd.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/avg.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/mode.gif\"></center></td>\n";
+            $pagehtml .= "  <td width=20><center><img src=\"${wces_path}/media/report/sd.gif\"></center></td>\n";
             $pagehtml .= "  <td width=120><p><b>Average (Graphical)</p></b></td>\n";
             $pagehtml .= "</tr>\n</thead>\n";
           };
@@ -590,7 +590,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       if (!$groups["classes"] && ! $groups["professors"])
         $profname = "$pfname $plname"; 
           
-      if ($outhtml && $classname) $pagehtml .= "<h5><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a>" . ($profname ? " - Professor <a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "") . "</h5>";
+      if ($outhtml && $classname) $pagehtml .= "<h5><a href=\"${wces_path}administrators/info.php?classid=$classid\">$classname</a>" . ($profname ? " - Professor <a href=\"${wces_path}administrators/info.php?professorid=$professorid\">$profname</a>" : "") . "</h5>";
       if ($outtext && $classname) $pagetext .= "$classname" . ($profname ? " - Professor $profname" : "") . "\n\n";
       
       for($j = 1; $j <= 2; ++$j)
@@ -638,7 +638,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
         $classname = "$ccode $name Section $section";
         if ($groups["questionperiods"])
           $classname .= " " . ucfirst($semester) . " $year";
-        if ($outhtml) $pagehtml .= "<tr><td colspan=8 align=center><b><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        if ($outhtml) $pagehtml .= "<tr><td colspan=8 align=center><b><a href=\"${wces_path}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
         if ($outtext) $pagetext .= "$classname\n\n";
         $lclassid = $classid;
       }

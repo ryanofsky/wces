@@ -268,7 +268,7 @@ class OldSurvey extends FormWidget
  
   function display()
   {
-    global $server_wcespath, $TAQUESTIONS, $TAVALUES;
+    global $wces_path, $TAQUESTIONS, $TAVALUES;
     
     if (count($this->questionsets) == 0 && !is_array($this->tas))
     {  
@@ -314,19 +314,19 @@ class OldSurvey extends FormWidget
 
             $taname = $value->name ? $value->name : "ALL TAs";
             print("<table cellspacing=0 cellpadding=1 border=1 bordercolor=black RULES=NONE FRAME=BOX>\n");
-            print("<tr><td colspan=2 bgcolor=black background=\"${server_wcespath}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
+            print("<tr><td colspan=2 bgcolor=black background=\"${wces_path}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
             foreach($TAQUESTIONS as $answerkey => $question)
             {
               print("<tr>\n");
-              print("  <td valign=top bgcolor=\"0xEEEEEE\" background=\"${server_wcespath}media/0xEEEEEE.gif\">$question:</td>\n");
-              print("  <td bgcolor=white background=\"${server_wcespath}media/0xFFFFFF.gif\">" . $TAVALUES[$value->answers[$answerkey]] . "</td>\n");
+              print("  <td valign=top bgcolor=\"0xEEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">$question:</td>\n");
+              print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . $TAVALUES[$value->answers[$answerkey]] . "</td>\n");
               print("</tr>");
             };
             if ($value->comments)
             {
               print("<tr>\n");
-              print("  <td valign=top bgcolor=\"0xEEEEEE\" background=\"${server_wcespath}media/0xEEEEEE.gif\">Comments:</td>\n");
-              print("  <td bgcolor=white background=\"${server_wcespath}media/0xFFFFFF.gif\">" . htmlspecialchars(nl2br($value->comments)) . "</td>\n");
+              print("  <td valign=top bgcolor=\"0xEEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">Comments:</td>\n");
+              print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . htmlspecialchars(nl2br($value->comments)) . "</td>\n");
               print("</tr>");                
             };
             print("</table>\n");
@@ -354,13 +354,13 @@ class OldSurvey extends FormWidget
   
   function optionbar()
   {
-    global $server_wcespath;
+    global $wces_path;
     if ($this->userid)
     {
 ?>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
-  <td align=center bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">
+  <td align=center bgcolor=black background="<?=$wces_path?>media/0x000000.gif">
     <? $this->action->display("Save responses", OldSurvey_save, false, ""); ?>
     <? $this->action->display("Return to class list without saving", OldSurvey_cancel, false, ""); ?>
   </td>
@@ -583,7 +583,7 @@ class OldQuestionSet extends FormWidget
   
   function display($hidden = false, $showerrors = false)
   {
-    global $server_wcespath;
+    global $wces_path;
     if ($hidden)
     {
       foreach($this->answers as $key => $value)
@@ -633,17 +633,17 @@ class OldQuestionSet extends FormWidget
 </thead>
 <tbody>
 <tr>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>0</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>1</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>2</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>3</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>4</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>5</STRONG></font></td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif" align=center><font color=white><STRONG>0</STRONG></font></td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif" align=center><font color=white><STRONG>1</STRONG></font></td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif" align=center><font color=white><STRONG>2</STRONG></font></td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif" align=center><font color=white><STRONG>3</STRONG></font></td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif" align=center><font color=white><STRONG>4</STRONG></font></td>
+  <td bgcolor=black background="<?=$wces_path?>media/0x000000.gif" align=center><font color=white><STRONG>5</STRONG></font></td>
 </tr>
 <?
         $choices = array(0 => "a", 1 => "b", 2 => "c", 3 => "d", 4 => "e", 5 => "f");
@@ -652,7 +652,7 @@ class OldQuestionSet extends FormWidget
         {
           $text = $showerrors && isset($this->errors[$fieldname]) ? "<font color=red>" . htmlspecialchars($text) . "</font>" : htmlspecialchars($text);
           $val = $this->answers[$fieldname];
-          $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $server_wcespath . 'media/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $server_wcespath . 'media/0xEEEEEE.gif"';
+          $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $wces_path . 'media/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $wces_path . 'media/0xEEEEEE.gif"';
           print("<tr><td colspan=5 $color>$text</td>");
           foreach($choices as $choice)
           {
@@ -680,7 +680,7 @@ class OldQuestionSet extends FormWidget
     foreach($this->mc as $fieldname => $text)
     {
       $field = "";
-      simplesplit('_',$fieldname,false,&$field);
+      simplesplit('_',$fieldname,$null,$field);
       $choice = $this->answers[$fieldname];
       if (in_array($choice,$choices) && $field)
         $sql .= ", $field$choice = $field$choice + 1";
@@ -691,7 +691,7 @@ class OldQuestionSet extends FormWidget
     foreach($this->fr as $fieldname => $text)
     {
       $field = "";
-      simplesplit('_',$fieldname,false,&$field);
+      simplesplit('_',$fieldname,$null,$field);
       $result = addslashes(addcslashes($this->answers[$fieldname],"\t\\"));
       $sql .= ", $field = concat($field, '\t$result')";
     }
@@ -701,7 +701,7 @@ class OldQuestionSet extends FormWidget
     {
       $choice = $this->answers[$fieldname];
       $field = "";
-      simplesplit('_',$fieldname,false,&$field);
+      simplesplit('_',$fieldname,$null,$field);
       if (in_array($choice,$choices))
       	$sql .= ", $field$choice = $field$choice + 1";
       else

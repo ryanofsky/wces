@@ -2,17 +2,17 @@
 
 function report_meter($percent)
 {
-  global $server_wcespath;
-  $out = "<img src=\"${server_wcespath}/media/meter/left.gif\" width=6 height=13>";
+  global $wces_path;
+  $out = "<img src=\"${wces_path}/media/meter/left.gif\" width=6 height=13>";
   for($i = 0; $i < 5; ++$i)
   {
     $num = $percent - 20 * $i;
     if ($num < 0) $num = 0;
     if ($num < 10) $num = "0" . $num;
     if ($num > 20) $num = 20;
-    $out .= "<img src=\"${server_wcespath}media/meter/mid${num}.gif\" width=21 height=13>";
+    $out .= "<img src=\"${wces_path}media/meter/mid${num}.gif\" width=21 height=13>";
   };
-  $out .= "<img src=\"${server_wcespath}media/meter/right.gif\" width=5 height=13>";
+  $out .= "<img src=\"${wces_path}media/meter/right.gif\" width=5 height=13>";
   return $out;
 };
 
