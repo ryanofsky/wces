@@ -668,7 +668,16 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       if ($outtext) $sectiontext .= "$ctext\n\n";
     }
 
-    if ($outhtml) $sectionhtml .= "  <li>" . nl2br($rtext) . "</li>";
+    
+
+    if ($outhtml)
+    {
+       $sectionhtml .= "  <li>";
+       if ($report_debug) $sectionhtml .= "<font color=red><i>response_id = $response_id</i></font> ";
+       $sectionhtml .= nl2br($rtext);
+       $sectionhtml .= "</li>";
+    }
+    
     if ($outtext) $sectiontext  .= " - " . str_replace("\n","\n   ",wordwrap("$rtext",73)) . "\n";
 
     $textresponses->advance();
