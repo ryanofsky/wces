@@ -298,7 +298,7 @@ class ChoiceEditor extends ComponentEditor
       $this->choices->items = $this->component->choices;
       $this->first_label->text = "";
       $this->last_label->text = "";
-      if ($this->component->first_number || $this->component->first_number)
+      if (is_numeric($this->component->first_number) && is_numeric($this->component->last_number) && $this->component->first_number != $this->component->last_number)
         $this->ctype->selected = "ntext";
       else
       {
@@ -452,10 +452,11 @@ class ChoiceEditor extends ComponentEditor
       $c->questions = $questions;
     }
 
-    if ($this->ctype->selected == "text" || $this->ctype->selected == "ntext")
-      $c->choices = $this->choices->items;
-    else if ($this->ctype->selected == "num")
+
+    if ($this->ctype->selected == "num")
       $c->choices = array($this->first_label->text,$this->last_label->text);
+    else
+      $c->choices = $this->choices->items;
 
     if ($this->ctype->selected == "text")
     {
