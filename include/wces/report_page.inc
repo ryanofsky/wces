@@ -24,11 +24,11 @@ function report_findtopics($tempname, $criteria, $needprof = true)
 
   $where = "";
 
+  $where .= $where ? "  AND " : "WHERE ";
   if ($criteria[QUESTION_PERIODS])
-  {
-    $where .= $where ? "  AND " : "WHERE ";
-    $where .= "t.question_period_id IN (" . implode($criteria[QUESTION_PERIODS],",") . ")\n    ";
-  }
+    $where .= "t.question_period_id IN (" . implode($criteria[QUESTION_PERIODS],",") . ")\n";
+  else
+    $where .= "t.question_period_id <> -1\n";
   
   if ($criteria[CATEGORIES])
   {
@@ -65,11 +65,11 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   if ($needprof)
   {
     $pcol = ", e.user_id";
-    $pjoin = "LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3\n";
+    $pjoin = "LEFT JOIN enrollments_p AS e ON e.class_id = cl.class_id\n";
   }
   else
     $pcol = $pjoin = "";
-  
+
   wces_connect();
   pg_go("
     CREATE TEMPORARY TABLE $tempname AS
