@@ -32,6 +32,17 @@
 </ul>
 <?
   }
+
+  if ($status & login_deptadmin)
+  {
+    if ($onemenu) $onemenu = false; else print("<h4>Read-only Administrator Options</h4>");
+?>
+<p><img align=right src="<?=$wces_path?>media/admin.jpg" width=125 height=125>Here is a list of the options currently available for department administrators:</p>
+<ul>
+  <li><a href="<?=$wces_path?>administrators/report.php<?=$QSID?>">Reporting Wizard</a> - View and print past survey results for courses.</li>
+</ul>
+<?
+  }
   
   if ($status & login_professor)
   {
