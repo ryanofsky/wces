@@ -1,10 +1,18 @@
 <?
 
+require_once("wbes/component_text.inc");
+require_once("wbes/component_heading.inc");
+require_once("wbes/component_choice.inc");
+require_once("wbes/component_textresponse.inc");
+
+require_once("wbes/server.inc");
 require_once("wbes/surveyeditor.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 
-$q = new SurveyEditor(0,1,"prefix","f",WIDGET_POST);
+print("<center><a href=questionedit.php>Reset</a></center><hr>\n");
+
+$q = new SurveyEditor(1, array("Choice","TextResponse","Text","Heading"), "prefix","f",WIDGET_POST);
 $q->loadvalues();
 
 if ($q->barepage) 
@@ -29,7 +37,6 @@ print("</form>");
 if ($q->state == SurveyEditor_done)
 {
   print($q->message);
-  print("Return to the <a href=\"{$topic_path}index.php\">Home Page</a> or the <a href=\"{$topic_path}builder.php\">Survey Builder</a>");
 }
 
 if (!$q->barepage) page_bottom();
