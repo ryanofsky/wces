@@ -17,3 +17,14 @@ CREATE FUNCTION int_mdistf(integer[], integer[]) RETURNS integer[] AS
   '/home/httpd/etc/postgres/distribution.so', 'int_mdistf'
 LANGUAGE 'c' WITH (iscachable);
 
+CREATE AGGREGATE choice_dist (
+    basetype = INTEGER,
+    stype = INTEGER[],
+    sfunc = int_distf
+);
+
+CREATE AGGREGATE choice_dist (
+    basetype = INTEGER[],
+    stype = INTEGER[],
+    sfunc = int_mdistf
+);
