@@ -8,6 +8,11 @@ require_once("wces/oldquestions.inc");
 login_protect(login_student);
 page_top("Student Survey","0100");
 
+print("<p>WCES is closed until the next evaluation period begins.</p>");
+
+page_bottom();
+exit();
+
 $db = wces_connect();
 $userid = login_getuserid();
 
