@@ -2,8 +2,8 @@
 require_once("wces/page.inc");
 require_once("wces/import.inc");
 
-param($upload);
-param($import);
+param('upload');
+param('import');
 
 function printform()
 { ?>
@@ -38,7 +38,7 @@ function printform()
   <?
 };
 
-login_protect(login_administrator);
+LoginProtect(LOGIN_ADMIN);
 
 page_top("WCES Mission");
 

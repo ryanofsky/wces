@@ -4,7 +4,7 @@ require_once("wces/page.inc");
 require_once("wces/login.inc");
 require_once("legacy/wces/report_widget.inc");
 
-login_protect(login_administrator | login_deptadmin);
+LoginProtect(LOGIN_ADMIN | LOGIN_DEPT_ADMIN);
 
 $db = wces_oldconnect();
  

@@ -3,7 +3,7 @@
 require_once('wces/login.inc');
 require_once('wces/page.inc');
 
-login_protect(login_administrator);
+LoginProtect(LOGIN_ADMIN);
 
 require_once('wces/TopicEditor.inc');
 

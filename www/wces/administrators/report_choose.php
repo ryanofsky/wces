@@ -1,7 +1,7 @@
 <?
 require_once("wces/login.inc");
 require_once("wces/page.inc");
-login_protect(login_administrator | login_deptadmin);
+LoginProtect(LOGIN_ADMIN | LOGIN_DEPT_ADMIN);
 page_top("Reporting Wizard");
 ?>
 <p>Which semesters do you need data from?</p>

@@ -42,7 +42,7 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
   {
     $head = "<font size=1>[ $page / $pages ]</font>\n";
     $head .= "<h4>Report Information</h4>\n";
-    $head .= "<table border=0><tr><td>Administrator ID: </td><td><b>" . login_getuni() . "</b></td></tr><tr><td>Date:</td><td><b>" . date("l, F j, Y") . "</b></td></tr><tr><td>Time:</td><td><b>" . date("g:i:s A") . "</b></td></tr></table>";
+    $head .= "<table border=0><tr><td>Administrator ID: </td><td><b>" . LoginValue('uni') . "</b></td></tr><tr><td>Date:</td><td><b>" . date("l, F j, Y") . "</b></td></tr><tr><td>Time:</td><td><b>" . date("g:i:s A") . "</b></td></tr></table>";
     $head .= "<h4>Report Specification</h4><pre>" . htmlspecialchars($wizard->summarize(true)) . "</pre>";
 
     if ($outhtml) $html = $head;
@@ -53,7 +53,7 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
   {
     $text = "{$line}[ $page / $pages ]\n\n";
     $text .= "Report Information\n\n";
-    $text .= " - Administrator ID: " . login_getuni() . "\n";
+    $text .= " - Administrator ID: " . LoginValue('uni') . "\n";
     $text .= " - Date: " . date("l, F j, Y") . "\n";
     $text .= " - Time: " . date("g:i:s A") . "\n";
   }

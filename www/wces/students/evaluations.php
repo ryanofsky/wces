@@ -2,7 +2,7 @@
   require_once("wces/page.inc");
   require_once("wces/login.inc");
   require_once("wces/wces.inc");
-  login_protect(login_student);
+  LoginProtect(LOGIN_STUDENT);
   page_top("Evaluation Listing","0100");
   
     

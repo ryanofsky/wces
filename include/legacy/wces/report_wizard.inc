@@ -53,7 +53,7 @@ class legacy_ReportWizard extends legacy_Wizard
       $prefix,$form,$formmethod
     );
     
-    if (!(login_getstatus() & login_administrator))
+    if (!(login_getstatus() & LOGIN_ADMIN))
     {
       $this->depts = array();
       $d = login_getdepts();    

@@ -59,7 +59,7 @@ function PrintUser(&$uni, &$user_id)
   print("<h3>$head</h3>\n");
   print("<table>\n");
 
-  if ((login_getstatus() & login_administrator) || $user_id == login_getuserid())
+  if ((LoginValue('status') & LOGIN_ADMIN) || $user_id == LoginValue('user_id'))
   {  
     if (!$row['lastlogin']) $row['lastlogin'] = "<i>unknown</i>";
     print("<tr><td><strong>Last Login:</strong></td><td>$row[lastlogin]</td></tr>\n");
@@ -79,10 +79,10 @@ function PrintUser(&$uni, &$user_id)
   print("<tr><td><strong>Access:</strong></td><td>" . implode(", ", $access) . "</td></tr>\n");  
   print("</table>\n");
   
-  if (login_getstatus() & login_administrator)
+  if (LoginValue('status') & LOGIN_ADMIN)
   {
     print("<p>");
-    if ($user_id != login_getuserid())
+    if ($user_id != LoginValue('user_id'))
     {
       print ("<a href=\"info.php?fake=$user_id$ASID\">Log on as this user...</a><br>\n");
     }
@@ -102,22 +102,22 @@ function DeleteEnrollment($user_id, $class_id)
 {
   global $wces;
   wces_connect();
-  if (login_getstatus() & login_administrator)
+  if (LoginValue('status') & LOGIN_ADMIN)
   {
     $user_id = (int)$user_id; $class_id = (int)$class_id; 
-    pg_go("UPDATE enrollments SET status = 0 WHERE status = 1 AND user_id = $user_id and class_id = $class_id", $wces, __FILE__, __LINE__); 
+    pg_go("UPDATE enrollments SET status = status & ~1 WHERE user_id = $user_id and class_id = $class_id", $wces, __FILE__, __LINE__); 
   }
 }
 
 function PrintEnrollments($user_id)
 {
-  global $wces, $wces_path, $server_url, $ASID, $PHP_SELF;
+  global $wces, $wces_path, $server_url, $ASID;
   
   print("<h3>Known Enrollments</h3>");
   
-  $userid = (int)login_getuserid();
-  $restricted = !(login_getstatus() & login_administrator) && $user_id != $userid;
-  $surveys = (bool)(login_getstatus() & login_administrator);
+  $userid = (int)LoginValue('user_id');
+  $restricted = !(LoginValue('status') & LOGIN_ADMIN) && $user_id != $userid;
+  $surveys = (bool)(LoginValue('status') & LOGIN_ADMIN);
 
   $question_period_id = get_question_period();
 
@@ -141,7 +141,7 @@ function PrintEnrollments($user_id)
     ORDER BY cl.year DESC, cl.semester DESC, class"
   ,$wces,__FILE__,__LINE__);
 
-  $stats = array(0 => "dropped", 1 => "student", 2 => "ta", 3 => "professor");
+  $stats = array(0 => "dropped", 1 => "student", 2 => "ta", 3 => "student and ta", 4 => "professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
   print("  <tr><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Section</b></td><td><b>Name</b></td><td><b>Professor</b></td><td><b>Status</b></td>");
@@ -163,7 +163,7 @@ function PrintEnrollments($user_id)
       . "<td>$c[className]</td><td>$p</td><td>$status</td>");
     if ($surveys)
     {
-      $delete = "<a href=\"$PHP_SELF?user_id=$user_id&delete_enrollment=$c[class_id]\" " 
+      $delete = "<a href=\"$_SERVER[PHP_SELF]?user_id=$user_id&delete_enrollment=$c[class_id]\" " 
         . "onclick=\"return confirm('Click OK to drop this enrollment:\\n\\n   " 
         . addslashes(format_class($c, "%c Section %s $c[className]")) 
         . "\\n\\nClick Cancel to return without saving changes.')\">Drop</a>";
@@ -177,7 +177,7 @@ function PrintEnrollments($user_id)
 
   if ($restricted)
   {
-    print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "$ASID\">Log in as an administrator to see more enrollments...</a></p>\n");
+    print("<p><a href=\"" . LoginLink(LOGIN_ADMIN) . "\">Log in as an administrator to see more enrollments...</a></p>\n");
   }
  
   print("<hr>\n");
@@ -187,8 +187,8 @@ function PrintAffils($user_id)
 {
   global $wces, $wces_path, $server_url;
   
-  $userid = (int)login_getuserid();
-  $restricted = !(login_getstatus() & login_administrator) && $user_id != $userid;
+  $userid = (int)LoginValue('user_id');
+  $restricted = !(LoginValue('status') & LOGIN_ADMIN) && $user_id != $userid;
 
   $result = pg_go("
     SELECT g.acis_group_id, g.code
@@ -214,7 +214,7 @@ function PrintAffils($user_id)
     print("</ul>\n");
     
     if ($restricted)
-      print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "\">Log in as an administrator to see more affiliations...</a></p>\n");
+      print("<p><a href=\"" . LoginLink(LOGIN_ADMIN) . "\">Log in as an administrator to see more affiliations...</a></p>\n");
 
     print("<hr>\n");
   }  
@@ -334,17 +334,17 @@ function PrintClassInfo($class_id)
 
   print("<hr>\n<h3>Known Enrollments</h3>");
 
-  if (login_getstatus() & login_administrator)
+  if (LoginValue('status') & LOGIN_ADMIN)
     $restricted = false;
   else
   {
-    $userid = (int)login_getuserid();
+    $userid = (int)LoginValue('user_id');
     $result = pg_go("SELECT COUNT(*) FROM enrollments WHERE user_id = $userid AND class_id = $class_id", $wces, __FILE__, __LINE__);
     $restricted = pg_result($result,0,0) ? false : true;
   }
 
   $surveys = false;
-  if (login_getstatus() & login_administrator)
+  if (LoginValue('status') & LOGIN_ADMIN)
   {
     $question_period_id = get_question_period();
   
@@ -373,7 +373,7 @@ function PrintClassInfo($class_id)
     ORDER BY e.status DESC, u.lastname, u.firstname, u.uni
   ",$wces,__FILE__,__LINE__);
 
-  $stat = array(0 => "Dropped", 1 => "Student", 2 => "TA", 3 => "Professor");
+  $stat = array(0 => "Dropped", 1 => "Student", 2 => "TA", 3 => "Student and TA", 4 => "Professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
   print("  <tr><td><b>Status</b></td><td><b>UNI</b></td><td><b>Name</b></td>");
@@ -395,9 +395,7 @@ function PrintClassInfo($class_id)
   print("</table>\n");
   
   if ($restricted)
-  {
-    print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "$ASID\">Log in as an administrator to see more enrollments...</a></p>\n");
-  }  
+    print("<p><a href=\"" . LoginLink(LOGIN_ADMIN) . "\">Log in as an administrator to see more enrollments...</a></p>\n");
  
   print("<hr>\n");
 }
@@ -644,17 +642,18 @@ function SearchPage()
 
 wces_connect();
 
-if ($fake && (login_getstatus() & login_administrator))
+if ($fake && (LoginValue('status') & LOGIN_ADMIN))
 {
   global $QSID;
-  login_update($fake, login_getuserid(), login_getuni());
+  $login =& LoginInstance();
+  $login->update($fake, LoginValue('user_id'), LoginValue('uni'));
   redirect("{$wces_path}index.php$QSID");  
 }
 
-if ($nofake && ($fake = login_getfake()))
+if ($nofake && ($fake = LoginValue('fake_id')))
 {
-  $user_id = login_getuserid();
-  login_update($fake);
+  $login =& LoginInstance();
+  $login->update($fake);
 }
 
 page_top("Information Viewer");
