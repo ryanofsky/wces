@@ -178,8 +178,7 @@ if (!$hidden)
 <%  
 }
   }
-  
-  
+
   function dumpscript()
   {
     global $Wizard_dumped;
@@ -217,11 +216,5 @@ function hide(id)
 <%      
     }
   }
-
-
-
 }
-
-
-
 %>
