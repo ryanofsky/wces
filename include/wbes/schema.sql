@@ -235,7 +235,7 @@ CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
 
 CREATE TABLE responses
 (
-  response_id INTEGER DEFAULT NEXTVAL ('response_ids'),
+  response_id INTEGER PRIMARY KEY DEFAULT NEXTVAL ('response_ids'),
   revision_id INTEGER NOT NULL,
   parent INTEGER
 );
@@ -280,6 +280,89 @@ create index text_responses_parent_idx ON textresponse_responses (parent);
 create index choice_responses_parent_idx ON choice_responses (parent);
 create index choiceq_responses_parent_idx ON choice_question_responses (parent);
 create index mchoiceq_responses_parent_idx ON mchoice_question_responses (parent);
+
+ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
+
+-- Add these foreign keys when a future version of postgres supports them on inherited tables
+-- 
+-- ALTER TABLE revisions ADD FOREIGN KEY (parent) REFERENCES revisions(revision_id);
+-- ALTER TABLE revisions ADD FOREIGN KEY (branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
+-- ALTER TABLE revisions ADD FOREIGN KEY (merged) REFERENCES revisions(revision_id);
+-- 
+-- ALTER TABLE branches ADD FOREIGN KEY (topic_id) REFERENCES topics(topic_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (base_branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (parent) REFERENCES branches(branch_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (latest_id) REFERENCES revisions(revision_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (content_id) REFERENCES revisions(revision_id);
+-- 
+-- ALTER TABLE branch_topics_cache ADD FOREIGN KEY (base_branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branch_topics_cache ADD FOREIGN KEY (branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branch_topics_cache ADD FOREIGN KEY (topic_id) REFERENCES topics(topic_id);
+-- 
+-- ALTER TABLE branch_ancestor_cache ADD FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branch_ancestor_cache ADD FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
+-- 
+-- ALTER TABLE list_items ADD FOREIGN KEY (revision_id) REFERENCES revisions(revision_id); 
+-- ALTER TABLE list_items ADD FOREIGN KEY (item_id) REFERENCES branches(branch_id);
+-- 
+-- ALTER TABLE topics ADD FOREIGN KEY (parent) REFERENCES topics(topic_id);
+-- 
+-- ALTER TABLE responses ADD FOREIGN KEY (revision_id) REFERENCES revisions(revision_id);
+-- ALTER TABLE responses ADD FOREIGN KEY (parent) REFERENCES responses(response_id);
+-- 
+-- ALTER TABLE survey_responses ADD FOREIGN KEY (question_period_id) REFERENCES question_periods(question_period_id);
+-- ALTER TABLE survey_responses ADD FOREIGN KEY (topic_id) REFERENCES topics(topic_id);
+
+-- in lieu of foreign keys, use these functions to quickly see if a branch,
+-- topic, or revision is being referenced from some table
+
+CREATE FUNCTION references_branch(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE branch_id = $1)                 THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE base_branch_id = $1)             THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE parent = $1)                     THEN 4 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_topics_cache WHERE base_branch_id = $1)  THEN 8 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_topics_cache WHERE branch_id = $1)       THEN 16 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_ancestor_cache WHERE ancestor_id = $1)   THEN 32 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_ancestor_cache WHERE descendant_id = $1) THEN 64 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM list_items WHERE item_id = $1)                  THEN 128 ELSE 0 END;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION references_revisions(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE parent = $1)       THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE merged = $1)       THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE latest_id = $1)     THEN 4 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE content_id = $1)    THEN 8 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM list_items WHERE revision_id = $1) THEN 16 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM responses WHERE revision_id = $1)  THEN 32 ELSE 0 END;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION references_topic(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE topic_id = $1)            THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_topics_cache WHERE topic_id = $1) THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE topic_id = $1)    THEN 4 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM topics WHERE parent = $1)                THEN 8 ELSE 0 END;
+' LANGUAGE 'sql';
+
+
+-- how to wipe out all customizations (ruins results for customizations) for a particular topic
+--
+-- delete from branch_topics_cache where topic_id = 999998;
+-- delete from branch_ancestor_cache where ancestor_id IN (select branch_id from branches where topic_id = 999998);
+-- delete from branch_ancestor_cache where descendant_id IN (select branch_id from branches where topic_id = 999998);
+-- 
+-- select revision_id, references_revisions(revision_id) from revisions where branch_id IN (select branch_id from branches where topic_id = 999998);
+-- delete from list_items where revision_id IN (select revision_id from revisions where branch_id IN (select branch_id from branches where topic_id = 999998));
+-- 
+-- select revision_id, references_revision(revision_id) from revisions where branch_id IN (select branch_id from branches where topic_id = 999998);
+-- delete from revisions where branch_id IN (select branch_id from branches where topic_id = 999998);
+-- 
+-- select branch_id, references_branch(branch_id) from branches where topic_id = 999998;
+-- delete from branches where topic_id = 999998;
+
 
 -- needed because there is no way currently to directly declare an array variable in plpgsql
 CREATE TABLE array_int_composite(a INTEGER[]);
@@ -549,7 +632,7 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
       i := branch_id_;
       LOOP
         SELECT INTO j revision_id FROM revisions
-        WHERE branch_id = branch_id_ AND save_id <= saveid_
+        WHERE branch_id = branch_id_ AND save_id <= save_id_
         ORDER BY save_id_ DESC;
 
         IF j IS NOT NULL THEN RETURN j; END IF;
