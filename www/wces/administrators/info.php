@@ -71,6 +71,7 @@ function PrintUser(&$uni, &$user_id)
   print("<tr><td><strong>Email:</strong></td><td>$row[email]</td></tr>\n");
 
   $access = array();
+  if ($flags & 16) $access[] = "ta";
   if ($flags & 8) $access[] = "student";
   if ($flags & 4) $access[] = "professor";
   if ($flags & 2) $access[] = "$row[code] department administrator";
