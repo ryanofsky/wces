@@ -284,11 +284,6 @@ CREATE OR REPLACE FUNCTION references_specialization(INTEGER) RETURNS INTEGER AS
   CASE WHEN EXISTS (SELECT * FROM specializations WHERE parent = $1)                 THEN 4 ELSE 0 END;
 ' LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION references_question_period(INTEGER) RETURNS INTEGER AS '
-  SELECT
-  CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE question_period_id = $1) THEN 1 ELSE 0 END;
-' LANGUAGE 'sql';
-
 CREATE OR REPLACE FUNCTION references_component(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM revisions WHERE component_id = $1)  THEN 1 ELSE 0 END |
@@ -408,7 +403,171 @@ CREATE OR REPLACE FUNCTION branch_find(INTEGER, INTEGER) RETURNS INTEGER AS '
 -- given a branch id this function returns the latest revision on the branch.
 -- If the latest existing revision is out of date, a new revision will be
 -- generated and returned
+CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    branch_id_ ALIAS FOR $1;
+    branch_info RECORD;
+    arrays RECORD;
+    array_length INTEGER;
+    parent RECORD;
+    bid INTEGER;
+    type_ INTEGER;
+  BEGIN
+    -- get information about the branch
+    SELECT INTO branch_info outdated, latest_id
+    FROM branches AS b WHERE branch_id = branch_id_;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''branch_latest(%) called with invalid branch_id'', $1;
+    END IF;
 
+    IF NOT branch_info.outdated THEN RETURN branch_info.latest_id; END IF;
+
+    -- loop to lock and gather information about ancestor branches
+    array_length := 0;
+    bid := branch_id_;
+
+    DECLARE
+      branch RECORD;
+      latest RECORD;
+
+      -- current version of plpgsql (7.2) allows only read access to arrays,
+      -- it is not possible to declare array variables or make assignments
+      -- into arrays. this code gets around that restriction by putting
+      -- numbers into strings, then casting those strings into array
+      -- fields in a RECORD variable.
+      --
+      -- alternately, this code could be rewritten to use recursion instead of loops
+      -- and array storage, since the arrays are really only used as stacks. The reason
+      -- I didn''t do this is that it would require the recursive functions to return
+      -- two integer values and currently there isn''t a clean way of returning
+      -- multiple values from postgres functions.
+
+      s_bids  TEXT := '''';  -- stringed array of branch_ids for each branch level
+      s_rids  TEXT := '''';  -- stringed array of latest revision ids for each branch
+      s_prids TEXT := '''';  -- stringed array of latest revisions'' parents for each branch
+      s_cids  TEXT := '''';  -- stringed array of component ids for each branch
+      s_types TEXT := '''';  -- stringed array of component revision''s type for each branch level
+      sep     TEXT := '''';
+    BEGIN
+      -- loop through branch_id_''s ancestors accumulating information
+      -- about latest revisions. stop loop when an ancestor is found
+      -- which is not outdated.
+      LOOP
+        SELECT INTO branch latest_id, parent
+        FROM branches WHERE branch_id = bid AND outdated FOR UPDATE;
+
+        IF NOT FOUND THEN EXIT; END IF;
+
+        SELECT INTO latest r.parent, r.revision, r.component_id, c.type
+        FROM revisions AS r
+        INNER JOIN components AS c USING (component_id)
+        WHERE revision_id = branch.latest_id;
+
+        s_bids  := s_bids  || sep || bid::TEXT;
+        s_rids  := s_rids  || sep || branch.latest_id::TEXT;
+        s_prids := s_prids || sep || latest.parent::TEXT;
+        s_cids  := s_cids  || sep || latest.component_id::TEXT;
+        s_types := s_types || sep || latest.type::TEXT;
+
+        array_length := array_length + 1;
+        bid := branch.parent;
+        sep := '','';
+      END LOOP;
+
+      -- assemble arrays
+      SELECT INTO arrays
+        array_integer_cast(''{'' || s_bids  || ''}'') AS bids,
+        array_integer_cast(''{'' || s_rids  || ''}'') AS rids,
+        array_integer_cast(''{'' || s_prids || ''}'') AS prids,
+        array_integer_cast(''{'' || s_cids  || ''}'') AS cids,
+        array_integer_cast(''{'' || s_types || ''}'') AS types;
+
+      SELECT INTO parent latest_id, revision_component(latest_id) AS component_id
+      FROM branches WHERE branch_id = bid;
+
+      IF NOT FOUND THEN
+        -- this could occur if a root branch is marked as outdated.
+        -- this would not make any sense and indicates a corrupt database
+        RAISE EXCEPTION ''branch_latest(%) fails. impossible condition reached, branch % not found'', $1, bid;
+      END IF;
+    END;
+
+    -- next is a loop to bring ancestral branches up to date
+
+    -- Example of merge:
+    -- Say these revisions exist in the database:
+    --
+    --   1.4
+    --   1.4.2.3.3.2
+    --   1.4.2.17
+    --   1.5
+    --
+    -- And branch_latest is called for branch 1.*.2.*.3.*, then the following
+    -- merges need to occur:
+    --
+    -- merge(1.4,     1.4.2.17,    1.5,     1.5.2.1)
+    -- merge(1.4.2.3, 1.4.2.3.3.2, 1.5.2.1, 1.5.2.1.3.1)
+    --
+    -- during this process two new revisions are created:
+    --
+    --   1.5.2.1 with a merge field pointing to 1.4.2.17
+    --   1.5.2.1.3.1 with a merge field pointing to 1.4.2.3.3.2
+    --
+    -- at this point in the code, the arrays variable will hold information about
+    -- these revisions:
+    --
+    --   1.4.2.17
+    --   1.4.2.3.3.2
+    --
+    -- and the record variable parent will start out with information about revision 1.5
+
+    DECLARE
+      i INTEGER;
+      j INTEGER;
+      revision_ INTEGER;
+      common_id INTEGER;
+      primary_id INTEGER;
+      secondary_id INTEGER;
+      common_component_id INTEGER;
+      primary_component_id INTEGER;
+      secondary_component_id INTEGER;
+    BEGIN
+      FOR j IN REVERSE array_length..1 LOOP
+        bid := arrays.bids[j];
+        type_ := arrays.types[j];
+        common_id := arrays.prids[j];
+        primary_id := arrays.rids[j];
+        secondary_id := parent.latest_id;
+        common_component_id := revision_component(common_id);
+        primary_component_id = arrays.cids[j];
+        secondary_component_id := parent.component_id;
+
+        -- If common, primary, or secondary ids are equivalent, the new revision can
+        -- be a just link to a preexisting component instead of a merge.
+
+        parent.component_id := component_merge(common_component_id,
+          primary_component_id, secondary_component_id, type_);
+
+        -- helpful revision numbering convention, not at all neccessary
+        IF parent.component_id = secondary_component_id THEN
+          revision_ := 0;
+        ELSE
+          revision_ := 1;
+        END IF;
+
+        INSERT INTO revisions (parent, branch_id, revision, save_id, merged, component_id)
+        VALUES (secondary_id, bid, revision_, revision_save(secondary_id), primary_id, parent.component_id);
+        parent.latest_id := currval(''revision_ids'');
+
+        UPDATE branches SET
+          outdated = false, latest_id = parent.latest_id
+        WHERE branch_id = bid;
+      END LOOP;
+    END;
+
+    RETURN parent.latest_id;
+  END;
+' LANGUAGE 'plpgsql';
 
 -- when save_id_ is null, does the same as branch_latest(INTEGER). otherwise
 -- save_id_ is used to intentionally retrieve out of date revisions with
@@ -1158,6 +1317,10 @@ CREATE OR REPLACE FUNCTION branch_set_outdated(INTEGER) RETURNS INTEGER AS '
   SELECT 1;
 ' LANGUAGE 'sql';
 
+CREATE OR REPLACE FUNCTION specialization_modified(INTEGER, INTEGER) RETURNS BOOLEAN AS '
+  SELECT EXISTS(SELECT * FROM item_specializations WHERE item_id = $1 AND specialization_id = $2)
+' LANGUAGE 'sql';
+
 CREATE OR REPLACE FUNCTION component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     common_id    ALIAS FOR $1;
@@ -1351,7 +1514,7 @@ CREATE OR REPLACE FUNCTION textresponse_component_save(INTEGER, TEXT, INTEGER, I
 
     IF NOT changed THEN RETURN component_id_; END IF;
 
-    INSERT INTO choice_components(type, ctext, flags, rows, cols)
+    INSERT INTO textresponse_components (type, ctext, flags, rows, cols)
     VALUES (3, ctext_, flags_, rows_, cols_);
 
     RETURN currval(''component_ids'');
@@ -1757,4 +1920,3 @@ CREATE OR REPLACE FUNCTION func_last (text[],text[]) RETURNS text[] AS '
 --DROP AGGREGATE first text[];
 CREATE AGGREGATE last ( BASETYPE = text[], SFUNC = func_last, STYPE = text[]);
 CREATE AGGREGATE first ( BASETYPE = text[], SFUNC = func_first, STYPE = text[]);
-
