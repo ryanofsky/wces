@@ -25,7 +25,8 @@ class SurveyGlobals
   function SurveyGlobals(&$factories, $save_id)
   {
     $this->factories =& $factories;
-
+    $this->save_id = $save_id;
+    
     foreach(array_keys($this->factories) as $i)
     {
       $f =& $this->factories[$i];
