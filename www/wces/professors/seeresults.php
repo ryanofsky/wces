@@ -1,5 +1,7 @@
 <?
 
+error_reporting (55); 
+
 //  SELECT cl.classid, CONCAT(s.code, c.code) AS code, cl.section, c.name, p.name, u.cunix
 //  FROM cheesyclasses AS cc
 //  INNER JOIN classes AS cl USING (classid)
@@ -532,6 +534,31 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
     }
   }
   print("\n");
+
+  /////////////////////////////////////////////////////////////////////////////
+  // TA SECTION
+  
+  $sqloptions = array ("standard" => false, "custom" => false);
+  $groups = Array("classes" => $classid ? true : false, "courses" => false, "professors" => true, "departments" => true, "questionperiods" => true);
+  $ratings = $listclasses = $listprofessors = $abet = $responses = false;
+  $tas = $header = true; 
+  
+  $sort = array("classes","questionperiods","professors","courses","departments");
+  $criteria = array("professors" => array($profid), "classes" => $classid ? array($classid) : false, "topics" => false, "questionperiods" => array($questionperiodid), "departments" => false, "courses" => false);
+  
+  report_makequeries($db, $sqloptions, $criteria, $groups,
+    $sort, $header, $listclasses, $listprofessors, $ratings, $abet, 
+    $responses, $tas);
+  
+  $displayoptions = array("pies" => false);
+
+  $outhtml = "<br>"; $text = false;
+  report_makepage($text, $outhtml, $displayoptions, $groups, $header, $listclasses,
+    $listprofessors, $ratings, $abet, $responses, $tas, true);
+    
+  print($outhtml);
+
+  /////////////////////////////////////////////////////////////////////////////
 
   $url = "seeresults.php/results.csv?nquestionperiodid=$questionperiodid&classid=$classid";
 

@@ -310,7 +310,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
 // possible options: 
 // - "pies"
 
-function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$listclasses, &$listprofessors, &$ratings, &$abet, &$responses, &$tas)
+function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$listclasses, &$listprofessors, &$ratings, &$abet, &$responses, &$tas, $dataonly = false)
 {
   global $wces_path, $TAQUESTIONS, $TAVALUES, $ABETQUESTIONS;
   
@@ -322,7 +322,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
   $students = $response = $clusterid = $dname = $dcode = $semester = $year = $description = "";
   extract($header->row);
   
-  if ($outhtml)
+  if ($outhtml && !$dataonly)
   {
     $pagehtml .= "<h4>On this page</h4>\n";
     $pagehtml .= "<table border=0>\n";
@@ -367,7 +367,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
     while($listclasses->advance());
   }  
 
-  if ($outhtml) $pagehtml .= "</table>\n";
+  if ($outhtml && !$dataonly) $pagehtml .= "</table>\n";
 
   //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
   
@@ -378,7 +378,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
     $pagetext .= " - Students Evaluated: $response\n\n";
   }
 
-  if ($outhtml)
+  if ($outhtml && !$dataonly)
   {
     $pagehtml .= "<h4>Response Statistics</h4>";
     $pagehtml .= "<table border=0>\n";
@@ -623,7 +623,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
       $pagehtml .= "<h4>TA Ratings</h4>\n<table border=1 cellspacing=0 cellpadding=2>\n<thead style=\"page-break-inside: avoid\">\n<tr>\n  <td>Name</td>\n";
       foreach($TAQUESTIONS as $question)
         $pagehtml .= "  <td><div style=\"writing-mode:tb-rl\"><b>" . str_replace(" ","&nbsp;",$question) . "</b></div></td>\n";
-      $pagehtml .= "<td><b>Comments</b></td><td><b>Student #</b></td></thead></tr>\n";  
+      $pagehtml .= "<td><b>Comments</b></td><td><b>Student #</b></td></tr></thead>\n";  
       $avg = array();
       $num = 0;
     }
