@@ -272,7 +272,7 @@ class LoginWidget extends ParentWidget
       if (!$login->meetsStatus($this->requestedStatus))
         print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as $luni with " . (($x = $login->whatami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$this->destUrl\">$this->destUrl</a>. If this is a mistake, please <a href=\"$GLOBALS[WCES_CONFIG_PATH]about/feedback.php\">let us know</a>.</small></p>");
       else
-        print("<p>You are currently logged in as $luni. Click <a href=\"${WBES_LOGIN_LOGOUT}\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
+        print("<p>You are currently logged in as $luni. Click <a href=\"${WBES_LOGIN_LOGOUT}\">here</a> to logout or use the form below to log in as someone else.</p>");
     }
     
     if ($this->error)
@@ -295,8 +295,11 @@ class LoginWidget extends ParentWidget
       {
         print("<p><font size=\"-1\"><b>Note:</b> The information entered in "
           . "this form will be transmitted using your browser's SSL "
-          . "encryption. If you would like to connect with no encryption, "
-          . "click <a href=\"$plainUrl\">here</a>.");
+          . "encryption.");
+	  
+	if (empty($GLOBALS['WBES_LOGIN_SSL_ONLY']))
+	  print("\nIf you would like to connect with no encryption, click "
+	    . "<a href=\"$plainUrl\">here</a>.");
         
         if (!empty($GLOBALS['WBES_LOGIN_SECURE_HANDLER']))
         {

@@ -42,6 +42,9 @@ $WBES_LOGIN_BOUNCER = 'https://oracle.seas.columbia.edu/wces/login/bouncer.php';
 // this case, this handler will be used by default to perform authentication.
 $WBES_LOGIN_SECURE_HANDLER = 'https://oracle.seas.columbia.edu/wces/login/login.php';
 
+// Only allow logins over ssl connections
+$WBES_LOGIN_SSL_ONLY = true;
+
 $WBES_CONFIG_MEDIA_PATH = "{$WCES_CONFIG_PATH}media/";
 
 $WCES_DISABLE_LINKS = false;
