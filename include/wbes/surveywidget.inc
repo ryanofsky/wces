@@ -29,6 +29,7 @@ class SurveyWidget extends FormWidget
   var $questionwidgets;
   var $page = 0;
   var $backup = true;
+  var $sawlastpage = false;
   
   function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, $prefix, $form, $formmethod)
   {
@@ -47,6 +48,7 @@ class SurveyWidget extends FormWidget
   function loadvalues()
   {
     $this->page = (int)$this->loadattribute("page");
+    $this->sawlastpage = (bool)$this->loadattribute("sawlastpage");
     if (!$this->survey)
     {
       $this->survey = unserialize((string)$this->loadattribute("survey"));
@@ -210,6 +212,8 @@ class SurveyWidget extends FormWidget
 
     print("<p>&nbsp;</p>\n");
     $this->optionbar();
+
+    $this->printattribute("sawlastpage", (int)$this->sawlastpage);
   }
 
   function optionbar()
@@ -218,7 +222,8 @@ class SurveyWidget extends FormWidget
 
     $prev = $this->page > 0;
     $next = $this->page < $this->pages && $this->pages > 0;
-    $save = (bool)$this->user_id;
+    if (!$next) $this->sawlastpage = true;
+    $save = ((bool)$this->user_id) && $this->sawlastpage;
 
     if ($save || $prev || $next)
     {
