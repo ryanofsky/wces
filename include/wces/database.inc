@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/general.inc");
 require_once("wces/taskwindow.inc");
@@ -272,4 +272,4 @@ function db_printresult($result)
   taskwindow_cprint("</table>");  
 }
 
-%>
+?>
