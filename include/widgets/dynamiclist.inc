@@ -28,9 +28,8 @@ class DynamicList extends FormWidget
   function loadstrarray($attr, $separator = "\t")
   {
     $data = $this->loadattribute($attr);
-    if (!isset($data)) return array();
-    $r = explode($separator,$data);
-    if (is_array($r)) return $r; else return array($r);
+    if (!isset($data) || $data === "") return array();
+    return explode($separator,$data);
   }
   
   function loadvalues($strongchecking = true) // public inherited
@@ -148,13 +147,10 @@ class DynamicList extends FormWidget
     if (this.selectedIndex >= 0)
     {
       var s = prompt("Change the name of this item",this.options[this.selectedIndex].text);
-      if (s && s!="")
-      {
-        this.options[this.selectedIndex].text = s;
-        this.options[this.selectedIndex].value = s;
-      }
-      else
+      if (s == "")
         this.remove();
+      else if (s)
+        this.options[this.selectedIndex].text = s;
     }
   }
 
