@@ -42,7 +42,7 @@ class ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, is_html, flags FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+    $r = pg_query("SELECT revision_id, ctext, flags FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = new $cn();
