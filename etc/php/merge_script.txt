@@ -1,6 +1,0 @@
-<%
-require_once("wces.inc");
-$db_debug = true;
-$db = wces_connect();
-prof_merge($db,Array(3074,5667),0,0);
-%>
