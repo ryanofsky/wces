@@ -202,14 +202,12 @@ function savequestions($qsets,$classid)
     };
     
     $sql .= " WHERE answersetid = $answersetid";
+
+    if (!db_exec("INSERT INTO CompleteSurveys(userid,answersetid) VALUES ($userid,$answersetid)",$db) || mysql_affected_rows($db) != 1)
+      return false;    
     
     if (!db_exec($sql,$db))
       return false;
-
-    if (!db_exec("INSERT INTO CompleteSurveys(userid,answersetid) VALUES ($userid,$answersetid)",$db))
-      return false;    
-    
-    mysql_query($sql,$db);
   }
   return true;
 };
