@@ -93,11 +93,6 @@ class pg_wrapper
   }
 }
 
-function array_fill($num, $val)
-{
-  return array_pad(array(), $num, $val); 
-}
-
 class pg_segmented_wrapper
 {
   var $result;
