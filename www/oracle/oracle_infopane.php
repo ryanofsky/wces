@@ -28,11 +28,20 @@ if ($professorid && $info = db_getrow($db,"professors",Array("professorid" => $p
   print("<h3>$name</h3>");
   if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>");
 %>
-<h4>courses Taught</h4>
+<h4>Courses Taught</h4>
 <form method=get name=classes>
 <p><select name=classid onchange="this.form.submit()" size=1>
 <%
-  $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM classes as cl INNER JOIN answersets USING (classid) LEFT JOIN courses AS c ON (cl.courseid = c.courseid) LEFT JOIN subjects AS s USING (subjectid) WHERE cl.professorid = '$professorid' ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
+  $classes = mysql_query("
+
+  SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode
+  FROM classes as cl
+  INNER JOIN answersets AS a USING (classid)
+  INNER JOIN courses AS c ON (cl.courseid = c.courseid)
+  INNER JOIN subjects AS s USING (subjectid)
+  WHERE cl.professorid = '$professorid' AND a.questionperiodid < 6
+  GROUP BY cl.classid 
+  ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
   while ($class = mysql_fetch_array($classes))
   {
     extract($class);
@@ -86,7 +95,17 @@ else if ($classid || $courseid)
     <h4>Section</h4>
     <p><select name=classid onchange="this.form.submit()" size=1>
 <%
-  $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester FROM classes as cl INNER JOIN answersets USING (classid) WHERE cl.courseid = '$courseid' GROUP BY cl.classid ORDER BY cl.year DESC, cl.semester, cl.section DESC LIMIT 50",$db);
+  $classes = mysql_query("
+
+  SELECT cl.classid, cl.section, cl.year, cl.semester
+  FROM classes as cl
+  INNER JOIN answersets AS a USING (classid)
+  WHERE cl.courseid = '$courseid' AND a.questionperiodid < 6
+  GROUP BY cl.classid
+  ORDER BY cl.year DESC, cl.semester, cl.section DESC LIMIT 50
+
+  ",$db);
+
   while ($class = mysql_fetch_array($classes))
     print ("      <option value=" . $class['classid'] . ($classid == $class['classid'] ? " selected" : "") . ">" . ucfirst($class['semester']) . " " . $class['year'] . " - Section " . $class['section'] . "</option>\n");
 %>    </select></p>
