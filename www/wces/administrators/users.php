@@ -1,7 +1,5 @@
 <?
 
-require_once("widgets/widgets.inc");
-require_once("widgets/basic.inc");
 require_once("wces/wces.inc");
 require_once("wbes/postgres.inc");
 require_once("wces/page.inc");
@@ -15,8 +13,6 @@ login_protect(login_administrator | login_deptadmin);
 page_top("User Edit");
 
 print("<p><a href=\"info.php?user_id=$user_id\">Back</a></p>");
-
-$server_isproduction = false;
 
 if (isset($user_id)) $user_id = (int)$user_id; else $user_id = 0;
 
