@@ -47,7 +47,8 @@ $topic_id = (int)$data['topic_id'];
 $f =& new Form();
 
 $q =& new SurveyWidget($item_id, $specialization_id, $user_id, $topic_id, 'survey', $f);
-//$q->ta =& new TASurvey('ta', $q);
+$q->anonymous = true;
+$q->ta =& new TASurvey($data['class_id'], 'ta', $q);
 $f->loadState();
 
 if ($q->done)
