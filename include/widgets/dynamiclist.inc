@@ -7,37 +7,57 @@ class DynamicList extends FormWidget
 {
   var $width;
   var $height;
-  var $items;
-  var $orderonlyitems;
+  var $orderonly = false;
+  
+  var $items = array();
+  var $keys = array();
   
   function DynamicList($width,$height,$orderonlyitems,$prefix,$form,$formmethod) // public constructor inherited
   {
     $this->FormWidget($prefix,$form,$formmethod);
-    $this->width = $width;
-    $this->height = $height;
-    $this->orderonlyitems = $orderonlyitems;
-    $this->items = is_array($orderonlyitems) ? array_keys($orderonlyitems) : array();    
+    $this->width = (int)$width;
+    $this->height = (int)$height;
+    if (is_array($orderonlyitems))
+    {
+      $this->keys = array_keys($orderonlyitems);
+      $this->items = array_values($orderonlyitems);
+      $this->orderonly = true;
+    }
+  }
+  
+  function loadstrarray($attr, $separator = "\t")
+  {
+    $data = $this->loadattribute($attr);
+    if (!isset($data)) return array();
+    $r = explode($separator,$data);
+    if (is_array($r)) return $r; else return array($r);
   }
   
   function loadvalues($strongchecking = true) // public inherited
   {
-    $d = $this->loadattribute("data");
-    if($d)
+    if (!$this->orderonly)
     {
-      $this->items = explode(is_array($this->orderonlyitems) ? "." : "\t", $d);
-      if (!is_array($this->items)) $this->items = array($this->items);
-      
-      if (is_array($this->orderonlyitems) && $strongchecking)
-      {
-        $keys = array_keys($this->orderonlyitems);
-        $this->items = array_unique(array_intersect($this->items,$keys));
-        $this->items = array_merge($this->items, array_diff($keys,$this->items));
-      }
-    }
-    else if (is_array($this->orderonlyitems))
-      $this->items = array_keys($this->orderonlyitems);
+      $this->items = $this->loadstrarray("items");
+      $this->keys = $this->loadstrarray("keys");
+    }  
     else
-      $this->items = array();
+    {  
+      $items = $keys = array();
+      foreach ($this->loadstrarray("keys") as $k)
+      if (($i = array_search($k,$this->keys)) !== false)
+      { 
+        $items[] = $this->items[$i];
+        $keys[] = $k;
+        unset($this->keys[$i]);
+      }
+      foreach($this->keys as $i => $k)
+      {
+        $items[] = $this->items[$i];
+        $keys[] = $k;
+      }
+      $this->items = $items;
+      $this->keys = $keys;
+    }   
   }
  
   function dumpscript() //public static inherited
@@ -55,13 +75,14 @@ class DynamicList extends FormWidget
   function DynamicList(formname,prefix)
   {
     var form = document.forms[formname];
-    var listbox = form[prefix + "_items"];
-    listbox.data = form[prefix + "_data"];
-    listbox.add = DynamicList_add;
-    listbox.remove = DynamicList_remove;
-    listbox.modify = DynamicList_modify;
-    listbox.move = DynamicList_move;
-    listbox.save = DynamicList_save;
+    var box = form[prefix + "_box"];
+    box.items = form[prefix + "_items"];
+    box.keys = form[prefix + "_keys"];
+    box.add = DynamicList_add;
+    box.remove = DynamicList_remove;
+    box.modify = DynamicList_modify;
+    box.move = DynamicList_move;
+    box.save = DynamicList_save;
     
     if (!form.DynamicList_lists)
     {
@@ -70,19 +91,11 @@ class DynamicList extends FormWidget
       form.onsubmit = DynamicList_onsubmit;
     }
 
-    form.DynamicList_lists[form.DynamicList_lists.length] = listbox;
-    
-    if (form[prefix + "_additem"])
-    {
-      DynamicList_GenericButton(form[prefix + "_additem"]    ,listbox, "this.list.add()");
-      DynamicList_GenericButton(form[prefix + "_modifyitem"] ,listbox, "this.list.modify()");
-      DynamicList_GenericButton(form[prefix + "_removeitem"] ,listbox, "this.list.remove()");
-      listbox.orderonly = false;
-    }
-    else
-      listbox.orderonly = true;
-      
-    return listbox;
+    form.DynamicList_lists[form.DynamicList_lists.length] = box;
+    DynamicList_GenericButton(form[prefix + "_additem"]    , box, "this.list.add()");
+    DynamicList_GenericButton(form[prefix + "_modifyitem"] , box, "this.list.modify()");
+    DynamicList_GenericButton(form[prefix + "_removeitem"] , box, "this.list.remove()");
+    return box;
   };
 
   function DynamicList_onsubmit()
@@ -99,15 +112,17 @@ class DynamicList extends FormWidget
   function DynamicList_save()
   {
     var o = this.options;
-    var d = this.data;
-    d.value = "";
-    var first = true;
+    var sep = '';
+
+    this.items.value = "";
+    this.keys.value = "";
+    
     for(var i = 0; i < o.length; ++i)
     {
-      if (first) first = false; else d.value += this.orderonly ? "." : String.fromCharCode(9);
-      d.value += this.orderonly ? o[i].value : o[i].text;
+      this.items.value += sep + o[i].text;
+      this.keys.value  += sep + o[i].value;
+      sep = '\t';
     }
-    //alert(d.value);
   };
 
   function DynamicList_add()
@@ -115,7 +130,11 @@ class DynamicList extends FormWidget
     var s = prompt("Enter the name of an item to add to the list","");
     var o = this.options;
     if (s && s!="")
-      o[o.length] = new Option(s,o.length,true,true);
+    {
+      var v = new Option(s);
+      v.value = "";
+      o[o.length] = v;
+    }
   }
 
   function DynamicList_remove()
@@ -132,7 +151,7 @@ class DynamicList extends FormWidget
       if (s && s!="")
       {
         this.options[this.selectedIndex].text = s;
-	    this.options[this.selectedIndex].value = s;
+        this.options[this.selectedIndex].value = s;
       }
       else
         this.remove();
@@ -173,46 +192,36 @@ class DynamicList extends FormWidget
   {
     global $wces_path, $server_media;
 
-	if ($hidden)
-	{
-	  $this->preserveattribute("data");
-	  return;
-	}
+    if ($hidden)
+    {
+      $this->preserveattribute("keys");
+      $this->preserveattribute("items");
+      return;
+    }
     
     $this->dumpscript();
     
-    $dowidth = ($this->width > 0) && (!is_array($this->items) || count($this->items) <= 0);
-    
+    $dowidth = $this->width > 0 && count($this->items) <= 0;
 ?>  
 <!-- begin FormWidget <?=$this->prefix?> -->
 <table border="0" cellpadding="2" cellspacing="0">
   <tr>
     <td align=center>
-      <select size="<?=$this->height?>" name="<?=$this->prefix?>_items">
+      <select size="<?=$this->height?>" name="<?=$this->prefix?>_box">
 <?
   if ($dowidth)
-  {
-   $this->width = abs($this->width);
-   print("<option>");
-   //print(str_repeat('&nbsp;',$this->width)); // nicer, but does not work on netscape in *nixes
-   print(str_repeat('-',$this->width));
-   print("</option>\n");
-  }
+    print("<option>" . str_repeat('-',$this->width) . "</option>\n");
 
-  if ($this->orderonlyitems)
+  foreach(array_keys($this->items) as $i)
   {
-    foreach($this->items as $item)
-      print('<option value="' . $item . '">' . htmlspecialchars($this->orderonlyitems[$item]) . "</option>\n");
-  }
-  else
-  {
-    foreach($this->items as $k => $value)
-      print("<option value=$k>$value</option>\n");
+    $v = isset($this->keys[$i]) ? ' value="' . htmlspecialchars($this->keys[$i]) . '"' : "";
+    $t = htmlspecialchars($this->items[$i]);
+    print("<option$v>$t</option>\n");
   }
 ?>
       </select>
     </td>
-<? if (!is_array($this->orderonlyitems)) { ?>
+<? if (!$this->orderonly) { ?>
     <td>
       <input type="button" value="Add..." name="<?=$this->prefix?>_additem" style="width: 75px"><br>
       <input type="button" value="Modify..." name="<?=$this->prefix?>_modifyitem" style="width: 75px"><br>
@@ -229,16 +238,14 @@ class DynamicList extends FormWidget
       AttachPushed('<?=$this->prefix?>_movedown',"movedown_pushed.gif"); 
     //-->
     </script>
-  </td><? if (!is_array($this->orderonlyitems)) { ?><td>&nbsp;</td><? } ?></tr>  
+  </td><? if (!$this->orderonly) { ?><td>&nbsp;</td><? } ?></tr>  
 </table>
-<input type="hidden" name="<?=$this->prefix?>_data">
+<input type="hidden" name="<?=$this->prefix?>_items">
+<input type="hidden" name="<?=$this->prefix?>_keys">
 <script language="javascript">
 <!--
     <?=$this->prefix?>_controller = DynamicList('<?=$this->form?>','<?=$this->prefix?>');
-    <? if($dowidth) print($this->prefix . "_controller.selectedIndex = 0;\n    " . $this->prefix . "_controller.remove();\n"); ?>
-    //<?=$this->prefix?>_controller.save();
-    //alert(document.forms["<?=$this->form?>"]["<?=$this->prefix?>_data"].value);
-    //window.onload = new Function('alert("100: " + document.forms["<?=$this->form?>"]["<?=$this->prefix?>_data"].value);');
+    <? if($dowidth) print("{$this->prefix}_controller.selectedIndex = 0;\n    {$this->prefix}_controller.remove();\n"); ?> 
 // -->
 </script>
 <!-- end FormWidget <?=$this->prefix?> -->
