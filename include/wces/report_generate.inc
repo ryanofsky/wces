@@ -210,16 +210,16 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   if (!isset($options['textResponses']) || $options['textResponses'])
   {
     $result = pg_go("
-      SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, r.item_id
+      SELECT DISTINCT t.ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext
       FROM rwtopics AS t
       INNER JOIN $options[surveyResponses] AS r USING (topic_id)
       INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
       INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
       INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
-      ORDER BY t.ordinal, tr.revision_id
+      ORDER BY t.ordinal, tr.item_id, tr.revision_id
     ", $wces, __FILE__, __LINE__);
 
-    $textresponses =& new pg_segmented_wrapper($result, array("ordinal", "revision_id"));
+    $textresponses =& new pg_segmented_wrapper($result, array("ordinal", "item_id", "revision_id"));
   }
   else
     $textresponses = NULL;
@@ -243,30 +243,65 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   if (!isset($options['multipleChoice']) || $options['multipleChoice'])
   {
-    $result = pg_go("
-      SELECT t.ordinal, cr.revision_id AS crevision_id, qr.revision_id AS qrevision_id, cr.item_id,
-        first(c.choices) AS component_choices, c.flags, c.first_number, c.last_number, c.other_choice,
-        c.ctext, q.qtext, choice_dist(qr.answer) AS dist
+    // this is the most expensive query made during reporting. It could be
+    // vastly sped up with a cache table (materialized view) that contained:
+    //
+    //  SELECT t.topic_id, cr.item_id, cr.revision_id, qr.item_id,
+    //    qr.revision_id, choice_dist(qr.answer) AS dist
+    //  FROM rwtopics AS t
+    //  INNER JOIN survey_responses AS r USING (topic_id)
+    //  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+    //  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+    //  GROUP BY t.topic_id, cr.revision_id, cr.item_id, qr.revision_id, qr.item_id
+    
+    $tabname = substr(uniqid('tab'),0,31);
+    
+    pg_go("
+      CREATE TEMPORARY TABLE $tabname AS
+      SELECT t.ordinal, cr.item_id AS citem_id, cr.revision_id AS crevision_id,
+        qr.item_id AS qitem_id, qr.revision_id AS qrevision_id,
+        choice_dist(qr.answer) AS dist
       FROM rwtopics AS t
       INNER JOIN $options[surveyResponses] AS r USING (topic_id)
       INNER JOIN $options[choiceResponses] AS cr ON cr.parent = r.response_id
       INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-      INNER JOIN revisions AS crv ON crv.revision_id = cr.revision_id
-      INNER JOIN revisions AS qrv ON qrv.revision_id = qr.revision_id
-      INNER JOIN choice_questions AS q ON q.component_id = qrv.component_id
-      INNER JOIN choice_components AS c ON c.component_id = crv.component_id
-      GROUP BY t.ordinal, cr.revision_id, qr.revision_id, c.flags, c.first_number,
-        c.last_number, c.other_choice, cr.item_id, c.ctext, q.qtext
-      ORDER BY t.ordinal, cr.revision_id, qr.revision_id
+      GROUP BY t.ordinal, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id;
+    ", $wces, __FILE__, __LINE__);
+    
+    $result = pg_go("
+      SELECT DISTINCT ON (t.ordinal, t.citem_id, t.crevision_id) t.ordinal, 
+        t.citem_id, t.crevision_id, c.choices, c.flags,
+        c.first_number, c.last_number, c.other_choice, c.ctext
+      FROM $tabname AS t
+      INNER JOIN revisions AS r ON r.revision_id = t.crevision_id
+      INNER JOIN choice_components AS c USING (component_id)
+      ORDER BY t.ordinal, t.citem_id, t.crevision_id;
     ", $wces, __FILE__, __LINE__);
 
-    $choices =& new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
+    $choiceComponents = new pg_wrapper($result);
+    
+    $result = pg_go("
+      SELECT t.ordinal, t.citem_id, t.crevision_id, t.qitem_id, 
+        t.qrevision_id, q.qtext
+      FROM $tabname AS t
+      INNER JOIN revisions AS r ON r.revision_id = t.qrevision_id
+      INNER JOIN choice_questions AS q USING (component_id)
+      ORDER BY t.ordinal, t.citem_id, t.crevision_id, t.qitem_id, t.qrevision_id;
+    ", $wces, __FILE__, __LINE__);
+    
+    $choiceQuestions = new pg_wrapper($result);    
+
+    $result = pg_go("
+      SELECT * 
+      FROM $tabname AS t
+      ORDER BY t.ordinal, t.citem_id, t.crevision_id, t.qitem_id, t.qrevision_id;
+    ", $wces, __FILE__, __LINE__);
+
+    $choiceResponses = new pg_segmented_wrapper($result, array('ordinal', 'citem_id', 'crevision_id', 'qitem_id', 'qrevision_id'));
   }
   else
-    $choices = NULL;
+    $choiceComponents = $choiceQuestions = $choiceResponses = NULL;
 
-  //
-  
   $result = pg_go("
     SELECT ordinal FROM rwtopics GROUP BY ordinal ORDER BY ordinal
   ", $wces, __FILE__, __LINE__);
@@ -314,7 +349,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     else
       $pagehtml = ($outhtml || $stdout) ? '' : false;
 
-    report_makepage($pacer, $text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords, $taresponses, $options);
+    report_makepage($pacer, $text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choiceComponents, $choiceQuestions, $choiceResponses, $ords, $taresponses, $options);
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;

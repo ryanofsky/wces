@@ -146,13 +146,13 @@ class ReportWizard extends Wizard
         FROM rwtopics AS t
         INNER JOIN courses AS c USING (course_id)
         INNER JOIN subjects AS s USING (subject_id)
-        GROUP BY t.course_id, s.code, c.divisioncode, c.code, c.name
-        ORDER BY s.code, c.code",
+        GROUP BY s.code, c.divisioncode, c.code, t.course_id, c.name
+        ORDER BY s.code, c.divisioncode, c.code",
       PROFESSORS => "
         SELECT t.user_id AS id, u.lastname || ', ' || u.firstname AS name
         FROM rwtopics AS t
         INNER JOIN users AS u USING (user_id)
-        GROUP BY t.user_id, u.lastname, u.firstname
+        GROUP BY u.lastname, u.firstname, t.user_id
         ORDER BY u.lastname, u.firstname
       "
     );

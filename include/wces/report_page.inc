@@ -296,7 +296,7 @@ class Sections
 // to facilitate situations where both formats of a report are needed at
 // once, such as when we want to make multiformat MIME messages.
 
-function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords, &$taresponses, $options)
+function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choiceComponents, &$choiceQuestions, &$choiceResponses, &$ords, &$taresponses, $options)
 {
   global $wces_path, $TAQUESTIONS, $TAVALUES, $report_debug;
 
@@ -409,28 +409,43 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
   $sections = new Sections($branchorder);
 
-  while(isset($choices->row) && $choices->row['ordinal'] == $ordinal)
+  while(isset($choiceResponses->row) && $choiceResponses->row['ordinal'] == $ordinal)
   {
     $ctext = '';
-    extract($choices->row);
 
-    if ($choices->split[1])
+    if ($choiceResponses->split[2])
     {
-      $is_single = $choices->peek(0) || $choices->peek(1);      
+      $is_single = $choiceResponses->peek(0) || $choiceResponses->peek(1)
+        || $choiceResponses->peek(2);      
       $ag = isset($options['alwaysGraph']) && $options['alwaysGraph'];
-      $sp = $choices->row['qrevision_id'] == 221;
+      $sp = $choiceResponses->row['qrevision_id'] == 221;
       $show_dist = $ag || ($is_single && !$sp);
       
       $sectionhtml = $sectiontext = "";
       $s = '; page-break-before: always';
       $sectionhtml .= "<div style=\"page-break-inside: avoid$s\">\n";
 
+      $citem_id = $choiceResponses->row['citem_id'];
+      $crevision_id = $choiceResponses->row['crevision_id'];
+      
+      assert($choiceComponents->row['ordinal'] == $ordinal);
+      assert($choiceComponents->row['citem_id'] == $citem_id);      
+      assert($choiceComponents->row['crevision_id'] == $crevision_id);      
+      $choices = pg_explode($choiceComponents->row['choices']);
+      $ctext = $choiceComponents->row['ctext'];
+      $flags = $choiceComponents->row['flags'];
+      $first_number = $choiceComponents->row['first_number'];
+      $last_number = $choiceComponents->row['last_number'];
+      $other_choice = $choiceComponents->row['other_choice'];
+      
       // set variables which will be used to interpret data and print headers:
-      // $headings, $component_choices, $values, $showstats, $textformat, $textrows
+      //
+      // arrays indexed by choice keys: 
+      //   $headings - choice text
+      //   $values - choice numeric values
+      //   $vheadings - choice text with numeric values in parentheses if applicable
 
-      $cchoices = pg_explode($component_choices);
-
-      $values = array(); // indexed by choice keys, holds numeric values of choices
+      $values = array(); // 
 
       if ($flags & FLAG_ISNUMERIC)
       {
@@ -444,12 +459,12 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       else
       {
         $showstats = is_numeric($first_number) && is_numeric($last_number) && $first_number != $last_number;
-        $headings = $cchoices;
+        $headings = $choices;
 
-        foreach($cchoices as $ci => $ct)
+        foreach($choices as $ci => $ct)
         {
           $values[] = $showstats ? $first_number + ($ci
-            / (count($cchoices)-1)) * ($last_number - $first_number) : false;
+            / (count($choices)-1)) * ($last_number - $first_number) : false;
         }
       }
 
@@ -462,19 +477,19 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       if ($flags & FLAG_NACHOICE)
       {
         $headings[] = "N/A";
-        $values[] = NULL;
+        $values[] = false;
       }
 
       $vheadings = array();
       foreach ($headings as $hk => $hv)
       {
         $str = $hv;
-        if ($showstats && isset($values[$hk]))
+        if ($showstats && $values[$hk] !== false)
           $str .= sprintf(" (%.1f)",$values[$hk]);
         $vheadings[$hk] = $str;
       }
 
-      // information about the question set is now readily available, so
+      // information about the question set is now available, so
       // begin doing html / text formatting
 
       // do html header
@@ -482,14 +497,14 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       {
         if ($report_debug) 
         {
-          $sectionhtml .= "<h5><font color=red><i>Component revision_id = $crevision_id</i></font></h5>\n";        
+          $sectionhtml .= "<h5><font color=red><i>Component item_id = $citem_id, revision_id = $crevision_id</i></font></h5>\n";        
         }
 
         if ($ctext) $sectionhtml .= "$ctext<br>";
         if (!$show_dist)
         {
           if ($flags & FLAG_ISNUMERIC)
-            $sectionhtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
+            $sectionhtml .= "($first_number = $choices[0], $last_number = $choices[1])<br>";
 
           $sectionhtml .= "<table border=1 cellspacing=0 cellpadding=2 summary=\"multiple choice response distributions\">\n";
           $sectionhtml .= "<thead style=\"page-break-inside: avoid\">\n";
@@ -518,11 +533,11 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       if ($outtext)
       {
         if ($flags & FLAG_ISNUMERIC)
-          $sectiontext .= "($first_number = $cchoices[0], $last_number = $cchoices[1])\n";
+          $sectiontext .= "($first_number = $choices[0], $last_number = $choices[1])\n";
         else
         {
           $key = "";
-          foreach ($cchoices as $ci => $ct)
+          foreach ($choices as $ci => $ct)
           {
              // don't print numeric value for columns that don't have, like N/A
             if ($showstats && $values[$ci] === false) continue;
@@ -565,32 +580,40 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
         }
         $textrows[] = $header;
       }
-    } // if ($choices->split[1])
+    } // if ($choicesResponses->split[2])
+
+    $qitem_id = $choiceResponses->row['qitem_id'];
+    $qrevision_id = $choiceResponses->row['qrevision_id'];
+    $dist = pg_explode($choiceResponses->row['dist']);
+    $dist = array_pad($dist, count($values), 0);
+
+    assert($choiceQuestions->row['ordinal'] == $ordinal);
+    assert($choiceQuestions->row['citem_id'] == $citem_id);    
+    assert($choiceQuestions->row['crevision_id'] == $crevision_id);      
+    assert($choiceQuestions->row['qitem_id'] == $qitem_id);        
+    assert($choiceQuestions->row['qrevision_id'] == $qrevision_id);  
+
+    $qtext = pg_explode($choiceComponents->row['choices']);
+    $first_number = $choiceComponents->row['first_number'];
+    $last_number = $choiceComponents->row['last_number'];
 
     if ($report_debug)
     {
-      $qtext = "<font color=red><i>revision_id = $qrevision_id</i></font> $qtext";
+      $qtext = "<font color=red><i>item_id = $qitem_id, revision_id = $qrevision_id</i></font> $qtext";
     }
 
     // done with header, format individual questions within the set
 
-    // get the numbers
-    $sums = array_pad(pg_explode($dist), count($headings), 0);
-    
-    $dist = false;
     if ($showstats)
     {
+      $s = array();
       foreach($values as $vi => $vk)
-        $dist[$vk] = $sums[$vi];
+        if ($vk !== false) $s[$vk] = $dist[$vi];
 
-      // don't include the N/A in the computation
-      if ($flags & FLAG_NACHOICE)
-        unset($dist[end(array_keys($dist))]);
-
-      $avg = report_avg($dist);
-      $mode = report_mode($dist);
-      $sd = report_sd($dist, $avg);
-      $md = report_median($dist);
+      $avg = report_avg($s);
+      $mode = report_mode($s);
+      $sd = report_sd($s, $avg);
+      $md = report_median($s);
     }
 
     if ($outhtml)
@@ -599,11 +622,11 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       {
         $sectionhtml .= "<h5>$qtext</h5>";
         $sectionhtml .= "<p>";
-        $sectionhtml .= MakeGraph($headings, $sums);
+        $sectionhtml .= MakeGraph($headings, $dist);
         $sectionhtml .= "</p>\n<table>\n";
 
         foreach($vheadings as $k => $v)
-          $sectionhtml .= "<tr><td><b>$v</b>:</td><td>$sums[$k]</td></tr>\n";
+          $sectionhtml .= "<tr><td><b>$v</b>:</td><td>$dist[$k]</td></tr>\n";
 
         if ($showstats)
         {
@@ -619,7 +642,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       {
         $sectionhtml .= "<tr>\n  <td>$qtext</td>\n";
         foreach($values as $vi => $vk)
-          $sectionhtml .= "  <td>$sums[$vi]</td>\n";
+          $sectionhtml .= "  <td>$dist[$vi]</td>\n";
         if ($showstats)
           $sectionhtml .= sprintf("  <td>%.1f</td>\n  <td>%.1f</td>\n  <td>%.1f</td>\n", $avg, $mode, $sd);
         $sectionhtml .= "</tr>\n";
@@ -630,15 +653,16 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
     {
       $row = array($qtext);
       foreach($values as $vi => $vk)
-        $row[] = $sums[$vi];
+        $row[] = $dist[$vi];
       if ($showstats)
         array_push($row, sprintf("%.1f",$avg), sprintf("%.1f",$mode), sprintf("%.1f",$sd));
       $textrows[] = $row;
     }
 
-    $choices->advance();
+    $choiceResponses->advance();
+    $choiceQuestions->advance();
 
-    if ($choices->split[1])
+    if ($choiceResponses->split[2])
     {
       if ($outhtml && !$show_dist) $sectionhtml .= "</table>\n";
       if ($outhtml) $sectionhtml .= "</div>\n<br>\n";
@@ -648,6 +672,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
         $sectiontext .= "\n\n";
       }
       $sections->addSection($item_id, $sectiontext, $sectionhtml);
+      $choiceComponents->advance();
     }
   } // while($choices->row ...)
 
