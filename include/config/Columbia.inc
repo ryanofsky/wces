@@ -44,4 +44,6 @@ $WBES_LOGIN_SECURE_HANDLER = 'https://oracle.seas.columbia.edu/wces/login/login.
 
 $WBES_CONFIG_MEDIA_PATH = "{$WCES_CONFIG_PATH}media/";
 
+$WCES_DISABLE_LINKS = false;
+
 ?>

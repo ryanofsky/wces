@@ -92,9 +92,6 @@ and make the rest of the site accessible to you.
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
-<p><b>New!</b> Are you TAing this semester? If so, you can 
-<a href="<?=$wces_path?>students/taregister.php">register</a>
-with WCES to have your name appear on your class's survey.</p>
 <?
     
     $survey_listing = get_surveys();
@@ -127,6 +124,10 @@ with WCES to have your name appear on your class's survey.</p>
           $complete = true;
           if ($surveyed)  
             print ("  <LI>Survey Complete: $name</LI>\n");
+          else if ($WCES_DISABLE_LINKS)
+          {
+            print ("  <LI>Temporarily Unavailable: $name</LI>\n");
+          }
           else
           {
             $complete = false;
@@ -137,6 +138,12 @@ with WCES to have your name appear on your class's survey.</p>
         print ("</UL>");
 
         print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
+?>
+<br>
+<p><b>New!</b> Are you TAing this semester? If so, you can 
+<a href="<?=$wces_path?>students/taregister.php">register</a>
+with WCES to have your name appear on your class's survey.</p>
+<?
       }
     }
   }

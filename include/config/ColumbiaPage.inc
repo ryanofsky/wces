@@ -167,10 +167,8 @@ function showhelp(topic)
     if ($status & LOGIN_STUDENT)
     {
       $this->printSpacer();
-      $survey_listing = get_surveys();
-      $wces_closed = !$survey_listing;
   
-      if ($survey_listing)
+      if (!$GLOBALS['WCES_DISABLE_LINKS'] && ($survey_listing = get_surveys()))
       {
         $n = pg_numrows($survey_listing);
         for($i = 0; $i < $n; ++$i)
