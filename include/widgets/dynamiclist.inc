@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("widgets/widgets.inc");
 require_once("wces/server.inc");
@@ -52,7 +52,7 @@ class DynamicList extends FormWidget
     {
       $DynamicList_dumped = true;
       ImageButton::dumpscript();
-?>
+%>
 <!-- begin DynamicList FormWidget script -->
 <script language="javascript">
 <!--
@@ -144,7 +144,7 @@ class DynamicList extends FormWidget
 // -->
 </script>
 <!-- end DynamicList FormWidget script -->
-<? 
+<% 
     }
   }
   
@@ -162,13 +162,13 @@ class DynamicList extends FormWidget
     
     $dowidth = ($this->width < 0) || !is_array($this->items) || (count($this->items) <=0);
     
-?>  
-<!-- begin FormWidget <?=$this->prefix?> -->
+%>  
+<!-- begin FormWidget <%=$this->prefix%> -->
 <table border="0" cellpadding="2" cellspacing="0">
   <tr>
     <td align=center>
-      <select size="<?=$this->height?>" name="<?=$this->prefix?>_items">
-<?
+      <select size="<%=$this->height%>" name="<%=$this->prefix%>_items">
+<%
   if ($dowidth)
   {
    $this->width = abs($this->width);
@@ -188,38 +188,38 @@ class DynamicList extends FormWidget
     foreach($this->items as $value)
       print("<option>$value</option>\n");
   }
-?>
+%>
       </select>
     </td>
-<? if (!is_array($this->orderonlyitems)) { ?>    
-    <td><input type="button" value="Add..." name="<?=$this->prefix?>_additem" style="width=75"><br>
-      <input type="button" value="Modify..." name="<?=$this->prefix?>_modifyitem" style="width=75"><br>
-      <input type="button" value="Remove" name="<?=$this->prefix?>_removeitem" style="width=75"><br>
+<% if (!is_array($this->orderonlyitems)) { %>    
+    <td><input type="button" value="Add..." name="<%=$this->prefix%>_additem" style="width=75"><br>
+      <input type="button" value="Modify..." name="<%=$this->prefix%>_modifyitem" style="width=75"><br>
+      <input type="button" value="Remove" name="<%=$this->prefix%>_removeitem" style="width=75"><br>
     </td>
-<? } ?>          
+<% } %>          
   </tr>
   <tr><td align=center>
-    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.move(-1)"   onmouseup="button_unpush('<?=$this->prefix?>_moveup')"   onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_moveup"   src="<?=$server_wcespath?>media/dynamiclist/moveup.gif" border=0></a>
-    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.move( 1)" onmouseup="button_unpush('<?=$this->prefix?>_movedown')" onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_movedown" src="<?=$server_wcespath?>media/dynamiclist/movedown.gif" border=0></a>
+    <a onmousedown="button_push('<%=$this->prefix%>_moveup'); <%=$this->prefix%>_controller.move(-1)"   onmouseup="button_unpush('<%=$this->prefix%>_moveup')"   onmouseout="button_unpush('<%=$this->prefix%>_moveup')" href="javascript:void(<%=$this->prefix%>_controller.move(-1))" onclick="return false;"><img name="<%=$this->prefix%>_moveup"   src="<%=$server_wcespath%>media/dynamiclist/moveup.gif" border=0></a>
+    <a onmousedown="button_push('<%=$this->prefix%>_movedown'); <%=$this->prefix%>_controller.move( 1)" onmouseup="button_unpush('<%=$this->prefix%>_movedown')" onmouseout="button_unpush('<%=$this->prefix%>_moveup')" href="javascript:void(<%=$this->prefix%>_controller.move(-1))" onclick="return false;"><img name="<%=$this->prefix%>_movedown" src="<%=$server_wcespath%>media/dynamiclist/movedown.gif" border=0></a>
     <script>
     <!--
-      AttachPushed('<?=$this->prefix?>_moveup',"moveup_pushed.gif");
-      AttachPushed('<?=$this->prefix?>_movedown',"movedown_pushed.gif"); 
+      AttachPushed('<%=$this->prefix%>_moveup',"moveup_pushed.gif");
+      AttachPushed('<%=$this->prefix%>_movedown',"movedown_pushed.gif"); 
     //-->
     </script>
-  </td><? if (!is_array($this->orderonlyitems)) { ?><td>&nbsp;</td><? } ?></tr>  
+  </td><% if (!is_array($this->orderonlyitems)) { %><td>&nbsp;</td><% } %></tr>  
 </table>
-<input type="hidden" name="<?=$this->prefix?>_data"value="">
+<input type="hidden" name="<%=$this->prefix%>_data"value="">
 <script language="javascript">
 <!--
-    <?=$this->prefix?>_controller = DynamicList('<?=$this->form?>','<?=$this->prefix?>');
-    <? if($dowidth) print($this->prefix . "_controller.selectedIndex = 0;\n    " . $this->prefix . "_controller.remove();\n"); ?>
-    <?=$this->prefix?>_controller.save();
+    <%=$this->prefix%>_controller = DynamicList('<%=$this->form%>','<%=$this->prefix%>');
+    <% if($dowidth) print($this->prefix . "_controller.selectedIndex = 0;\n    " . $this->prefix . "_controller.remove();\n"); %>
+    <%=$this->prefix%>_controller.save();
 // -->
 </script>
-<!-- end FormWidget <?=$this->prefix?> -->
-<?
+<!-- end FormWidget <%=$this->prefix%> -->
+<%
   }
 };
 
-?>
+%>
