@@ -1,6 +1,6 @@
 <?
 
-define("IMAGE_PATH", "/home/httpd/www/wces/upload");
+define("IMAGE_PATH", "/home/httpd/apps/wces/www/wces/upload");
 
 /*
 
@@ -72,13 +72,9 @@ class ImageUpload extends FormWidget
       $ext = $extensions[$i[2]];
       $j = strlen($ext);
       
-      print("<h1>$fname</h1>");
-      
       if (strlen($fname) < $j || strcasecmp($ext, substr($fname, -$j)) != 0)
         $fname .= $ext;
         
-      print("<h1>$fname</h1>");
-      
       // get a unique number
       wces_connect();
       $r = pg_go("SELECT nextval('picture_ids')", $wces, __FILE__, __LINE__);
@@ -255,7 +251,7 @@ class UserEditor extends FormWidget
       $this->picture->picture_id = $picture_id;  
     };
     
-    $this->optout->checked = (bool)($flags & 16);
+    $this->optout->checked = (bool)($flags & 128);
   }
   
   function save()
@@ -272,7 +268,7 @@ class UserEditor extends FormWidget
     $ln = quot($this->lastName->text);
     $em = nullquot($this->email->text);
     $dt = $this->department->selected ? (int)$this->department->selected : "NULL";
-    $oo = $this->optout->checked ? "flags | 16" : "flags & ~16";
+    $oo = $this->optout->checked ? "flags | 128" : "flags & ~128";
     $result = true;
     
     $result = $result && pg_go("
