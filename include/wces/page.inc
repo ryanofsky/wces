@@ -8,7 +8,6 @@ $wces_path = "/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
-$wces_closed = false;
 $absolutePrintStr = $headPrintStr = "";
 
 function page_top($title, $minimal = false)
@@ -104,20 +103,25 @@ function showhelp(topic)
     }
   }
 
-  if (!$wces_closed && ($status & login_student))
+  if (($status & login_student))
   {
     wces_connect();
     
     $result = pg_query("
-      SELECT question_period_id, displayname, year, semester
+      SELECT question_period_id, displayname, year, semester, 
+        CASE WHEN begindate < NOW() THEN 0 ELSE 1 END AS closed
       FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_question_period())
+      WHERE question_period_id = (SELECT get_next_question_period())
     ", $wces, __FILE__, __LINE__);
 
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
     
+    $wces_closed = (bool)$closed;
+  }
+
+  if (!$wces_closed && ($status & login_student))
+  {
     $user_id = login_getuserid();
-    wces_connect();
     
     $survey_listing = pg_query("
       SELECT t.class_id, get_class(t.class_id) AS name,
