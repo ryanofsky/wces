@@ -71,6 +71,7 @@ class TextEditor extends ComponentEditor
 <tr>
   <td valign=top><strong><? $this->fieldname("Text:",$this->text->broken); ?></strong></td>
   <td><? $this->text->display(false); ?><br><? $this->is_html->display(false); $this->is_html->displaylabel("Contains HTML Tags"); ?></td>
+  <td><? $this->locking->display(false); ?><br><? $this->is_html->display(false); $this->is_html->displaylabel("Lock this component"); ?></td>
 </tr>
 </table>
 <?    
