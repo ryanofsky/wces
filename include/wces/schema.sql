@@ -3,6 +3,7 @@ CREATE TABLE answersets (
   questionsetid int(11) NOT NULL default '0',
   questionperiodid int(11) NOT NULL default '0',
   classid int(11) NOT NULL default '0',
+  topicid int(11) default NULL,
   responses smallint(6) NOT NULL default '0',
   MC1a smallint(6) NOT NULL default '0',
   MC1b smallint(6) NOT NULL default '0',
