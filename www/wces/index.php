@@ -40,7 +40,7 @@
 <p><?=$pimg?>Before you will be able to use WCES, your CUNIX account has to be associated
 with your listing in the SEAS course database. You can use this 
 <a href="<?=$wces_path?>login/profsearch.php<?=$QSID?>">search form</a> to find
-your listing and save the association.</p>
+your listing and save the association.</p><p>&nbsp;</p>
 <?
     }
     else

@@ -3,7 +3,7 @@ require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
-require_once("wces/taskwindow.inc");
+require_once("wbes/taskwindow.inc");
 require_once("wces/import.inc");
 login_protect(login_administrator);
 page_top("New Semester Initialization");
