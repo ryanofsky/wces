@@ -87,7 +87,7 @@ CREATE TABLE CompleteSurveys (
 CREATE TABLE Courses (
   courseid int(11) NOT NULL auto_increment,
   subjectid int(11) NOT NULL default '0',
-  code varchar(5) NOT NULL default '',
+  code int(11) default NULL,
   name tinytext,
   information text,
   departmentid int(11) default NULL,
