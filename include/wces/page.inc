@@ -12,7 +12,7 @@ function page_top($title, $minimal = false)
 {
   global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
-?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"> 
+?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
 <head>
 <title><?=$title?></title>
@@ -32,16 +32,16 @@ function showhelp(topic)
 </head>
 <body class=main>
 <table width="100%" border=0 cellspacing=0 cellpadding=0>
-<tr> 
+<tr>
   <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
 </tr>
-<tr> 
+<tr>
   <td colspan=2 bgcolor="#68ACFF"><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt=spacer></td>
 </tr>
-<tr> 
-  <td colspan=2> 
+<tr>
+  <td colspan=2>
     <table width="100%" border=0 cellspacing=0 cellpadding=0>
-    <tr bgcolor="#FFFDEC"> 
+    <tr bgcolor="#FFFDEC">
       <td><a href="<?=$wces_path?>index.php<?=$QSID?>"><img src="<?=$wces_path?>media/page/Left_Logo.gif" width=164 height=72 border=0 alt=Home></a></td>
       <td><img src="<?=$wces_path?>media/page/Middle_Header.gif" width=396 height=72 alt="Columbia University Web Based Course Evaluation System"></td>
       <td bgcolor="#FFFDEC" align=right><img src="<?=$wces_path?>media/page/Right_Logo.gif" width=113 height=72 alt=Crown></td>
@@ -50,7 +50,7 @@ function showhelp(topic)
   </td>
 </tr>
 </table><table width="100%" border=0 cellspacing=0 cellpadding=0>
-<tr> 
+<tr>
   <td bgcolor="#68ACFF">&nbsp;</td>
   <td bgcolor="#68ACFF" align=right class=extlinks>
     <a href="http://www.columbia.edu/">Columbia University</a> |
@@ -58,13 +58,13 @@ function showhelp(topic)
     <a href="<?=$wces_path?>about/feedback.php<?=$QSID?>">Feedback</a>
   </td>
 </tr>
-<tr> 
+<tr>
   <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
 </tr>
 <? if ($minimal) { ?>
 </table>
 <? } else { ?>
-<tr> 
+<tr>
   <td valign=top bgcolor="#DEDEDE" class=sidelinks>
 <?
   $uni = login_getuni();
@@ -73,26 +73,26 @@ function showhelp(topic)
   if ($uni)
   {
     page_link("Log off $uni","login/logout.php$QSID",true);
-    if ($fake = login_getfake())
-      page_link("Log off fake", "administrators/info.php?nofake=1$ASID", true);
+    if ($fake = login_getfakeuni())
+      page_link("Log on as $fake", "administrators/info.php?nofake=1$ASID", true);
   }
   else
     page_link("Log In","index.php$QSID", !$LOGIN_PROMPTING);
 
   if ($uni)
     page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
-  
+
   $nospace = true;
- 
+
   if ($status & login_administrator)
   {
     if ($nospace) $nospace = false; else page_spacer();
-    page_link("Student Usage",           "administrators/susage.php", $QSID);
-    page_link("Professor Usage",         "administrators/pusage.php", $QSID);
-    page_link("Mass Mailing",            "administrators/massmail.php", $QSID);
-    page_link("Reporting Wizard",        "administrators/report.php", $QSID);
-    page_link("Course Database",         "administrators/info.php", $QSID);
-    page_link("Professor Listing",       "administrators/pstats.php", $QSID);
+    page_link("Student Usage",    "administrators/susage.php", $QSID);
+    page_link("Professor Usage",  "administrators/pusage.php", $QSID);
+    page_link("Course Database",  "administrators/info.php", $QSID);
+    page_link("Reporting Wizard", "administrators/report.php", $QSID);
+    page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
+    page_link("Data Import",      "administrators/import.php", $QSID);
   }
 
   if ($status & login_professor)
@@ -108,22 +108,22 @@ function showhelp(topic)
     }
     page_link("Update Association", "login/profsearch.php");
   }
-  
+
   if (false && ($status & login_student))
   {
     // show classes
   }
-  
+
   if ($nospace) $nospace = false; else page_spacer();
   page_link("System Overview", "about/overview.php", $QSID);
   page_link("Feedback", "about/feedback.php", $QSID);
   page_link("Credits", "about/credits.php", $QSID);
 ?>
   </td>
-  <td valign="top" width="99%" background="<?=$wces_path?>media/page/Background_Logo.gif"> 
+  <td valign="top" width="99%" background="<?=$wces_path?>media/page/Background_Logo.gif">
     <table width="100%" border=0 cellspacing=0 cellpadding=0>
     <tr>
-      <td valign="top"> 
+      <td valign="top">
 <? } // if minimal ?>
 <div class=pagecontents>
 <!-- BEGIN PAGE CONTENT -->
@@ -158,18 +158,18 @@ function page_bottom($minimal = false)
 function page_link($caption,$link,$extlink = "",$params='style="white-space: nowrap;"')
 {
   global $wces_path, $wces_this;
-  
+
   if (is_string($extlink))
   {
     $islink = strpos($wces_this, "$wces_path$link") !== 0;
-  }  
+  }
   else
   {
     $islink = $extlink;
     $extlink = "";
-  }  
-    
-  if ($islink)  
+  }
+
+  if ($islink)
     print("    <p><a href=\"$wces_path$link$extlink\" class=navlinks $params>$caption</a></p>\n");
   else
     print("    <p class=navlinks $params>$caption</p>\n");
