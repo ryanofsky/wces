@@ -16,22 +16,50 @@ function sendwarning($dump, $file, $line)
 {
   global $server_url, $server_isproduction;
   
-  $uni = function_exists("login_getuni") ? login_getuni() : "";
-  $url = $server_url->toString(true,true,true);
   $errorid = 0;
-  if ($uni) $uni = "'$uni' was logged in at the time\n";
-  $message = "The SEAS Oracle would like you to know about an error it recently encountered in $file, line $line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
-  if ($server_isproduction)
+  $url = $server_url->toString(true,true,true);
+  $uni = function_exists("login_getuni") ? login_getuni() : "";
+  
+  if ($server_isproduction && function_exists("wces_oldconnect"))
   {
-    if (function_exists("wces_oldconnect"))
-    {
-      $db = wces_oldconnect();
-      $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
-    }  
-    mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\n$message"));
-  }
+    $db = wces_oldconnect();
+    $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
+  }  
+
+  if ($uni) $uni = "'$uni' was logged in at the time\n";
+  $message = "An error was encountered at $file:$line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
+
+  if ($server_isproduction)
+    mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap($message));
   else 
     print("<pre>" . wordwrap($message) . "</pre>");  
+}
+
+function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
+{
+  global $HTTP_SERVER_VARS, $LOGIN_SESSION;
+  if (!$from) $from = "Anonymous";
+  mail("wces@columbia.edu",$subject,"Feedback from $from\n\n$comments");
+  $comments .= "\n\n----------------------------------------\n";
+ 
+  if (isset($HTTP_SERVER_VARS) && is_array($HTTP_SERVER_VARS))
+  { 
+    $comments .= "SERVER VARIABLES\n\n";
+    foreach($HTTP_SERVER_VARS as $key => $value)
+    {
+      $comments .= "$key = $value\n";
+    }
+  }  
+  
+  if (isset($LOGIN_SESSION) && is_array($LOGIN_SESSION))
+  {
+    $comments .= "\nLOGIN SESSION VARIABLES\n\n";
+    foreach($LOGIN_SESSION as $key => $value)
+    {
+      $comments .= "$key = $value\n";
+    }
+  }
+  mail("rey4@columbia.edu","$subject+","Feedback from $from\n\n$comments");
 }
 
 /**
@@ -95,8 +123,8 @@ function redirect($url)
 */	
 function sloppyredirect($url)
 {
-  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
-  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  //print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
+  //print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
   print("Click <a href=\"$url\">here</a> to proceed.");
   exit();
 }
@@ -218,5 +246,14 @@ function aarray_map($func, &$aa) // associative safe, in place array_map
     $aa[$key] = $func($aa[$key]);
 }
 
+function addurlparam($url, $param)
+{
+  if (strlen($param) == 0)
+    return $url;
+  else if (strpos($url,'?') === false)
+    return "$url?$param";
+  else
+    return "$url&$param";
+}
 
 ?>
