@@ -646,6 +646,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
     sid INTEGER;
     cbid INTEGER;
     sibling RECORD;
+    t RECORD;
   BEGIN
     -- this preliminary check is not neccessary for correctness, but
     -- avoids unneccessary locking in most cases
@@ -657,7 +658,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
 
     sid := specialization_id_;
 
-    SELECT * FROM specializations WHERE specialization_id = sid FOR UPDATE;
+    SELECT INTO t * FROM specializations WHERE specialization_id = sid FOR UPDATE;
 
     LOOP
       SELECT INTO bid branch_id FROM item_specializations
