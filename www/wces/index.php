@@ -1,8 +1,9 @@
 <%
-require_once("page.inc");
+require_once("wces/page.inc");
 page_top("WCES Mission");
 %>
       <table>
+      <tr>
       <td width=590> 
       <h3>System Overview</h3>
       <p><img src="media/pencil.gif" width="74" height="42" align="left" valign="top">
@@ -27,11 +28,9 @@ page_top("WCES Mission");
       <p><b>Professors. </b>Choose "Home" under the professors section at the left to log in
       to wces. Once you have logged in you will be able to add custom questions to upcoming surveys
       and see results of already completed ones.</p>
-      
-        
       </td>
+      </tr>
       </table>
 <%
 page_bottom();
-%></body>
-</html>
+%>
