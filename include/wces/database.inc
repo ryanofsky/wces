@@ -41,38 +41,27 @@ function db_addrow($db,$table,$values)
 {
   global $db_debug;
   
-  if (is_array($values) && count($values) > 0)
+  $query = "INSERT INTO $table (";
+  $vals = " VALUES (";
+  $first = true;
+  foreach($values as $key => $value)
   {
-    $query = "INSERT INTO $table (";
-    $vals = " VALUES (";
-    $first = true;
-    foreach($values as $key => $value)
-    {
-      if ($first) $first = false; else { $query .= ", "; $vals .= ", "; }
-      $query .= "$key";
-      if ($value === false)
-        $vals .= "NULL";
-      else if (is_array($value))
-        $vals .= db_set($value);
-      else
-        $vals .= "'" . addslashes($value) . "'";
-    };
-    $query = $query . ")" . $vals . ")";
-    
-    if ($db_debug) taskwindow_cprint("$query<br>");
+    if ($first) $first = false; else { $query .= ", "; $vals .= ", "; }
+    $query .= "$key";
+    if ($value === false)
+      $vals .= "NULL";
+    else if (is_array($value))
+      $vals .= db_set($value);
+    else
+      $vals .= "'" . addslashes($value) . "'";
+  };
+  $query = $query . ")" . $vals . ")";
   
-    if (!mysql_query($query,$db))
-    {
-      if ($db_debug) taskwindow_cprint("<b>Query Syntax Error</b><br>");
-      return false;
-    }
-    return mysql_insert_id($db);
-  }
-  else
-  {
-    if ($db_debug) taskwindow_cprint("<b>Error: Nothing to Insert!</b><br>");
-    return false;  
-  };  
+  if ($db_debug) taskwindow_cprint("$query<br>");
+  
+  if (!db_exec($query,$db, __FILE__, __LINE__)) return false;
+  $insertid = mysql_insert_id($db);
+  return $insertid ? $insertid : true;
 };
 
 function db_whereclause($keys) //used internally
@@ -235,9 +224,7 @@ function db_delete($db,$table,$keys)
   global $db_debug;
   $query = "DELETE FROM $table" . db_whereclause($keys);
   if ($db_debug) taskwindow_cprint("$query<br>");
-  $result = mysql_query($query,$db);
-  if (!$result && $db_debug) taskwindow_cprint("<b>SQL Syntax Error</b><br>");
-  return $result;
+  return db_exec($query, $db, __FILE__, __LINE__);
 };
 
 function db_printrow($row)
