@@ -1,4 +1,4 @@
-<%
+<?
 require_once("wces/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
@@ -79,19 +79,19 @@ extract(mysql_fetch_array($y));
 
 ///////////////////////////////////////////////////////////////////////////////
 
-%>
+?>
 
 <h3>Aggregate Student Usage</h3>
 
-Total number of surveys: <b><%=$students%></b><br>
-Number of surveys completed: <b><%=$responses%></b><br>
+Total number of surveys: <b><?=$students?></b><br>
+Number of surveys completed: <b><?=$responses?></b><br>
 
-<img src="<%=$server_wcespath%>media/graphs/susagegraph.php?blank=<%=$students-$responses%>&filled=<%=$responses%>" width=200 height=200><img src="<%=$server_wcespath%>media/graphs/susagelegend.gif" width=147 height=31><br>
+<img src="<?=$server_wcespath?>media/graphs/susagegraph.php?blank=<?=$students-$responses?>&filled=<?=$responses?>" width=200 height=200><img src="<?=$server_wcespath?>media/graphs/susagelegend.gif" width=147 height=31><br>
 
 <h3>Individual Class Usage</h3>
 <p><font size="-1">Sorted by number of surveys that haven't been filled out</font></p>
 
-<%
+<?
 
 $classes = mysql_query("SELECT IF(students < responses, responses, students) AS students, responses, classid, professorid, scode, code, section, name, pname FROM surveyclasses ORDER BY IF(students - responses < 0, 0, students - responses) DESC, students DESC",$db);
 print("<ul>\n");
@@ -157,4 +157,4 @@ print("</blockquote>");
 printtimes($times);
 
 page_bottom();
-%>
+?>

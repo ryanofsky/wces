@@ -1,4 +1,4 @@
-<%
+<?
 require_once("wces/page.inc");
 require_once("wces/import.inc");
 
@@ -6,7 +6,7 @@ param($upload);
 param($import);
 
 function printform()
-{ %>
+{ ?>
 
   <FORM ENCTYPE="multipart/form-data" METHOD=POST name=form1>
   <INPUT TYPE="hidden" name="MAX_FILE_SIZE" value="8388608">
@@ -35,7 +35,7 @@ function printform()
   </FIELDSET>
   </FORM>
 
-  <%
+  <?
 };
 
 login_protect(login_administrator);
@@ -61,7 +61,7 @@ if (count($HTTP_POST_VARS))
 
 page_bottom();
 
-%>
+?>
 
 
 

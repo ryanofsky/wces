@@ -1,4 +1,4 @@
-<%
+<?
 require_once("wces/page.inc");
 page_top("Feedback");
 
@@ -6,7 +6,7 @@ param($comments);
 
 if (!$comments)
 {
-%>
+?>
 <p>Thank You for visiting the SEAS Oracle and WCES. In order for us to further improve this site, we would appreciate your feedback.</p>
 <form name=mail method=post action="feedback.php">
 <table>
@@ -15,7 +15,7 @@ if (!$comments)
 <tr><td valign=top>&nbsp;</td><td><input type=submit name=submit value="Submit"></td></tr>
 </table>
 </form>
-<%
+<?
 }
 else
 {
@@ -24,4 +24,4 @@ else
   print('Your comments have been sent to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>. Thank you for taking the time to help us.');
 };
 page_bottom();
-%>
+?>
