@@ -182,7 +182,7 @@ $f->loadState();
 
 page_top("TA Registration");
 
-print("<form name=\"$f->formName\">\n");
+print("<form name=\"$f->formName\">\n$ISID\n");
 $f->display();
 $t->display();
 print("</form>");

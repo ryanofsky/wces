@@ -141,7 +141,7 @@ and make the rest of the site accessible to you.
 ?>
 <br>
 <p><b>New!</b> Are you TAing this semester? If so, you can 
-<a href="<?=$wces_path?>students/taregister.php">register</a>
+<a href="<?=$wces_path?>students/taregister.php<?=$QSID?>">register</a>
 with WCES to have your name appear on your class's survey.</p>
 <?
       }
