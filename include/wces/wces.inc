@@ -44,28 +44,24 @@ define("FORMAT_PROF_USER_ID",        0);
 define("FORMAT_PROF_LASTNAME",       1);
 define("FORMAT_PROF_FIRSTNAME",      2);
 
+$wces_semesters = array
+( 0 => 'Spring',
+  1 => 'Summer',
+  2 => 'Fall'
+);
+
 function explode_class($class)
 {
+  global $wces_semesters;
+  
   $c = explode("\n", $class);
   $courseCode = "{$c[FORMAT_CLASS_SUBJECT_CODE]} {$c[FORMAT_CLASS_DIVISION_CODE]}" . (int) $c[FORMAT_CLASS_NUMBER];
   $courseName = $className = $c[FORMAT_CLASS_NAME];
   if ($c[FORMAT_CLASS_SNAME]) $className .= ": {$c[FORMAT_CLASS_SNAME]}";
   $section = $c[FORMAT_CLASS_SECTION];
   $term = "";
-  switch ((int)$c[FORMAT_CLASS_SEMESTER])
-  {
-    case 0:
-      $term .= "Spring";
-      break;
-    case 1:
-      $term .= "Summer";
-      break;
-    case 2:
-      $term .= "Fall";
-     break;
-    default:
-      $term .= "???";
-  }
+  
+  $term = $wces_semesters[(int)$c[FORMAT_CLASS_SEMESTER]];
   $term .= " {$c[FORMAT_CLASS_YEAR]}";
   $course_id = (int)$c[FORMAT_CLASS_COURSE_ID];
   $class_id = (int)$c[FORMAT_CLASS_CLASS_ID];
