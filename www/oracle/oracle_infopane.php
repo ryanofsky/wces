@@ -10,8 +10,8 @@ h4                      { font-family: Arial, Helvetica, sans-serif; }
 
 <body bgcolor="#6699CC"><table vspace=20 hspace=20 width=100% height=100% bordercolor=black border=1 cellpadding=5 cellspacing=0><tr>
 <%
-require_once("wces.inc");
-require_once("reporting.inc");
+require_once("wces/wces.inc");
+require_once("wces/reporting.inc");
 
 $professorid = $professorid + 0;
 $courseid = $courseid + 0;
@@ -21,7 +21,8 @@ $db = wces_connect();
 
 if ($professorid && $info = db_getrow($db,"Professors",Array("professorid" => $professorid),0)){
   print("<td bgcolor=\"#B5CFE8\" valign=top>");
-  extract($info);  $cunix = db_getvalue($db,"Users",Array("userid" => $userid),"cunix");  print("<h3>$name</h3>");
+  extract($info);
+  $cunix = db_getvalue($db,"Users",Array("userid" => $userid),"cunix");  print("<h3>$name</h3>");
   if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>");
 %><h4>Courses Taught</h4>
 <form method=get name=classes>
@@ -51,15 +52,17 @@ else if ($classid || $courseid)
     $classid = mysql_result(mysql_query("SELECT classid FROM Classes WHERE courseid = '" . addslashes($courseid) . "'",$db),0);
 
   $infoq = mysql_query(
-  "SELECT cl.section, cl.year, cl.semester, cl.students, p.name as pname, p.professorid, c.code, c.name, c.description, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname
+  "SELECT cl.section, cl.year, cl.semester, cl.students, cl.name as cname, p.name as pname, p.professorid, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname
   FROM Classes as cl
   LEFT JOIN Courses as c USING (courseid)
   LEFT JOIN Departments as d USING (departmentid)
   LEFT JOIN Subjects as s ON (c.subjectid = s.subjectid)
-  LEFT JOIN Divisions as dv ON (c.divisionid = dv.divisionid)
+  LEFT JOIN Divisions as dv ON (cl.divisionid = dv.divisionid)
   LEFT JOIN Schools as sc ON (c.schoolid = sc.schoolid)
   LEFT JOIN Professors as p ON (cl.professorid = p.professorid)
   WHERE cl.classid = '$classid'", $db);
+
+  if ($cname) $name .= " - $cname";
 
   $info = mysql_fetch_array($infoq);
   extract($info);  print("<h3>$name</h3>\n");
@@ -75,7 +78,7 @@ else if ($classid || $courseid)
     </form>
   </td>
   <td width=50% valign=top>
-    <h4>Professor</h4>    <p><a href="?professorid=<%=$professorid%>"><%=$pname%></a></p>
+    <h4>Professor</h4>    <p><a href="oracle_infopane.php?professorid=<%=$professorid%>"><%=$pname%></a></p>
   </td>
 </tr>
 </table>    
@@ -96,7 +99,7 @@ else if ($classid || $courseid)
     print("<h4>Survey Results</h4>");    print('<table border=0 cellpadding=0 cellspacing=5');
     print("<tr><td colspan=3><p><i>" . $result['responses'] . " of " . $result['students'] . " students responded</i></p></td></tr>\n");    for($i = 1; $i <= 10; ++$i)
     if ($result["MC$i"])    {
-      $avg = report_avg($result["MC${i}a"],$result["MC${i}b"],$result["MC${i}c"],$result["MC${i}d"],$result["MC${i}e"]);      print("<tr><td>" . $result["MC$i"] . "</td><td>" . round($avg,2) . "</td><td nowrap>");      report_drawmeter(round($avg * 20));      print("</td></tr>\n");
+      $avg = report_avg($result["MC${i}a"],$result["MC${i}b"],$result["MC${i}c"],$result["MC${i}d"],$result["MC${i}e"]);      print("<tr><td>" . $result["MC$i"] . "</td><td>" . round($avg,2) . "</td><td nowrap>");      print(report_meter(round($avg * 20)));      print("</td></tr>\n");
     }
     print("</table>");
   };  

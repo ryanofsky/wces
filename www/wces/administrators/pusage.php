@@ -1,23 +1,13 @@
 <%
-require_once("server.inc");
-require_once("login.inc");
-require_once("page.inc");
+require_once("wces/server.inc");
+require_once("wces/login.inc");
+require_once("wces/page.inc");
 login_protect(login_administrator);
 page_top("Usage Data");
 
 $db = wces_connect();
+wces_FindClasses($db,"currentclasses");
 
-$y = mysql_query("CREATE TEMPORARY TABLE currentclasses (classid INTEGER NOT NULL, PRIMARY KEY(classid))",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.classid
-  WHERE g.linktype = 'classes' && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.courseid
-  WHERE g.linktype = 'courses' && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes AS cl ON g.linkid = cl.professorid
-  WHERE g.linktype = 'professors'  && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.subjectid INNER JOIN Classes as cl ON c.courseid = cl.courseid
-  WHERE g.linktype = 'subjects' && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.departmentid INNER JOIN Classes as cl ON c.courseid = cl.courseid 
-  WHERE g.linktype = 'departments' && cl.year = 2000 && cl.semester = 'fall'",$db);
 $y = mysql_query("CREATE TEMPORARY TABLE customprofessors (professorid INTEGER NOT NULL, dummy INTEGER, PRIMARY KEY (professorid))",$db);
 $y = mysql_query("REPLACE INTO customprofessors (professorid, dummy) SELECT p.professorid, (1) FROM Groupings as g INNER JOIN Professors as p ON g.linkid = p.professorid 
   INNER JOIN QuestionSets AS q ON g.questionsetid = q.questionsetid WHERE g.linktype = 'professors' AND q.type = 'private'",$db);
@@ -37,7 +27,6 @@ $hascustoms  = mysql_query("SELECT p.name, cp.professorid, cp.students FROM curr
 $notloggedincount = mysql_num_rows($notloggedin);
 $hascustomscount = mysql_num_rows($hascustoms);
 $nocustomscount = mysql_num_rows($nocustoms);
-
 
 $profcount = mysql_result(mysql_query("SELECT COUNT(*) FROM currentprofessors",$db),0);
 $profcustomized = mysql_num_rows($hascustoms);
@@ -63,7 +52,7 @@ print("</ul>");
 Number of professors: <b><%=$notloggedincount+$hascustomscount+$nocustomscount%></b><br>
 Number of professors who have logged In: <b><%=$hascustomscount+$nocustomscount%></b><br>
 Number of professors with custom surveys: <b><%=$hascustomscount%></b><br>
-<img src="pusagegraph.php?neverloggedin=<%=$notloggedincount%>&custom=<%=$hascustomscount%>&nocustom=<%=$nocustomscount%>" width=200 height=200><img src=pusagelegend.gif width=133 height=49><br>
+<img src="<%=$server_wcespath%>media/graphs/pusagegraph.php?neverloggedin=<%=$notloggedincount%>&custom=<%=$hascustomscount%>&nocustom=<%=$nocustomscount%>" width=200 height=200><img src="<%=$server_wcespath%>media/graphs/pusagelegend.gif" width=133 height=49><br>
 <p>&nbsp;</p>
 <h3>Individual Professor Usage</h3>
 

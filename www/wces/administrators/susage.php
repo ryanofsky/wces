@@ -1,23 +1,13 @@
 <%
-require_once("server.inc");
-require_once("login.inc");
-require_once("page.inc");
+require_once("wces/server.inc");
+require_once("wces/login.inc");
+require_once("wces/page.inc");
 login_protect(login_administrator);
 page_top("Usage Data");
 
 $db = wces_connect();
 
-$y = mysql_query("CREATE TEMPORARY TABLE currentclasses (classid INTEGER NOT NULL, PRIMARY KEY(classid))",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.classid
-  WHERE g.linktype = 'classes' && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.courseid
-  WHERE g.linktype = 'courses' && cl.year = 2000 && cl.semester = 'fall' && NOT (ASCII(cl.section) IN (82,114,86,118))",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes AS cl ON g.linkid = cl.professorid
-  WHERE g.linktype = 'professors'  && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.subjectid INNER JOIN Classes as cl ON c.courseid = cl.courseid
-  WHERE g.linktype = 'subjects' && cl.year = 2000 && cl.semester = 'fall'",$db);
-$y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.departmentid INNER JOIN Classes as cl ON c.courseid = cl.courseid 
-  WHERE g.linktype = 'departments' && cl.year = 2000 && cl.semester = 'fall'",$db);
+wces_FindClasses($db,"currentclasses");
 
 mysql_query("CREATE TEMPORARY TABLE surveyclasses (courseid INTEGER NOT NULL, classid INTEGER NOT NULL, section CHAR(3) NOT NULL, scode CHAR(4), code CHAR(5), name TINYTEXT, pname TINYTEXT, professorid INTEGER, students INTEGER, responses INTEGER, PRIMARY KEY(classid))",$db);
 mysql_query("REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
@@ -39,7 +29,7 @@ extract(mysql_fetch_array($y));
 Total number of surveys: <b><%=$students%></b><br>
 Number of surveys completed: <b><%=$responses%></b><br>
 
-<img src="susagegraph.php?blank=<%=$students-$responses%>&filled=<%=$responses%>" width=200 height=200><img src=susagelegend.gif width=147 height=31><br>
+<img src="<%=$server_wcespath%>media/graphs/susagegraph.php?blank=<%=$students-$responses%>&filled=<%=$responses%>" width=200 height=200><img src="<%=$server_wcespath%>media/graphs/susagelegend.gif" width=147 height=31><br>
 
 <h3>Individual Class Usage</h3>
 <p><font size=-1>Sorted by number of surveys that haven't been filled out</font></p>
@@ -56,6 +46,8 @@ while ($class = mysql_fetch_array($classes))
   print ("  <li>$numbers, <a href=\"${server_wcespath}students/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$pname</a></li>\n");
 }
 print("</ul>");
+
+/*
 
 $sql = "SELECT u.cunix, MIN(e.surveyed) AS didall, MAX(e.surveyed) AS didone FROM currentclasses AS cc INNER JOIN Enrollments AS e USING (classid) LEFT JOIN Users AS u USING (userid) GROUP BY e.userid HAVING didone = 'yes' ORDER BY didall DESC, RAND()";
 $students = mysql_query($sql,$db);
@@ -77,10 +69,8 @@ while ($student = mysql_fetch_array($students))
   $didalllast = $didall;
 }
 print("</blockquote>");
-%>
 
-
-<%
+*/
 
 mysql_query("DROP TABLE currentclasses",$db);
 mysql_query("DROP TABLE surveyclasses",$db);
