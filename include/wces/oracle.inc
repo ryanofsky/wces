@@ -1,9 +1,6 @@
 <?
 require_once("wbes/server.inc");
 
-$wces_path = "/wces/";
-$oracle_root = "/oracle/";
-
 function oracle_top($title,$headimage)
 {
   global $oracle_root;

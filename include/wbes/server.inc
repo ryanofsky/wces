@@ -1,14 +1,18 @@
 <?
+  $wbes_database = 'wces';
+  $wces_path = '/wces/';
+  $oracle_root = "/oracle/";
+
   require_once("wbes/general_url.inc");
 
-  define("server_mode", "russ"); // "oracle" "dartmouth" "russ"
+  define("server_mode", "oracle"); // "oracle" "dartmouth" "russ"
 
   $server_session_name = "session";
 
   if (server_mode == "oracle")
   {
     $server_type = "apache";
-    $server_isproduction = true;
+    $server_isproduction = false;
     $server_media = "/wces/media";
     $server_base = "http://oracle.seas.columbia.edu";
     $server_sbase = "https://oracle.seas.columbia.edu";
@@ -16,8 +20,8 @@
     $server_massreply = "wces@columbia.edu";
     $server_feedback = "wces@columbia.edu";
     $server_admin = "wces@columbia.edu";
-    $server_dev = "rey4@columbia.edu, tjw19@columbia.edu";
-    $server_upload = "/home/httpd/www/wces/upload/";
+    $server_dev = "rey4@columbia.edu";
+    $server_upload = "/home/httpd/wwwroot/wces/upload/";
     $server_www_upload = "/wces/upload/";
 
     function server_mysqlinit()

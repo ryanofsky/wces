@@ -3,20 +3,19 @@
 require_once("wbes/component.inc");
 require_once("wbes/component_choice.inc");
 
-$ABET_REVISION = 31;
-$ABET_TOPIC = 1;
-$ABET_SKIP = array(3);
-
 class AbetFactory extends ChoiceFactory
 {
+  var $noshow = true;
+
   function code() { return 10; }
   function name() { return "ABET Question Set"; }
   
   function create()
   {
-    $prototype = & AbetFactory::prototype();
+    $prototype = &$this->prototype();
     
-    $c = & new Abet;
+    $c =& new Abet;
+    $c->typeCode = $this->code();
     foreach(array_keys($prototype->questions) AS $k)
       $c->which[$k] = false;
     return $c;
@@ -24,44 +23,69 @@ class AbetFactory extends ChoiceFactory
 
   function load(&$components, $ids, $ordinals, $topic_id, $latest)
   {
-    global $wbes, $ABET_SKIP;
+    global $wbes;
 
     $cs = array();
     $prototype = & AbetFactory::prototype();
     
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_go("SELECT revision_id, which FROM abet_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, type, which FROM abet_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = & new Abet;
+      $c->typeCode = (int)$wr->row['type'];
       $c->revision_id = (int)$wr->row['revision_id'];
       $which = (int)$wr->row['which'];
       foreach(array_keys($prototype->questions) AS $k)
+      {
         $c->which[$k] = (bool)($which & (1 << $k));
+      }
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
   
-  function & prototype()
+  function & prototype($typeCode = NULL)
   {
-    global $ABET_TOPIC, $ABET_SKIP, $ABET_REVISION;
-    static $prototype = NULL;
-    if (!isset($prototype))
+    // putting prototypes for subclasses here is a big ugly hack
+    if (!isset($typeCode)) $typeCode = $this->code();
+    //$revisions = array(10 => 31, 100 => 1252, 101 => 1256);
+    $revisions = array(10 => 31, 100 => 1265, 101 => 1266);
+    $skips = array(10 => array(3));
+    
+    static $prototypes = array();
+    if (!isset($prototype[$typeCode]))
     {
+      
       wbes_connect();
       $cs = array();
-      ChoiceFactory::load($cs, array($ABET_REVISION), array(0), 1, "NULL");
+      
+      ChoiceFactory::load($cs, array($revisions[$typeCode]), array(0), 1, "NULL");
       $prototype = $cs[0];
-      foreach($ABET_SKIP as $s)
+      if (isset($skips[$typeCode]))
+      foreach($skips[$typeCode] as $s)
       {
         unset($prototype->questions[$s]);
         unset($prototype->question_ids[$s]);
       }
+      $prototypes[$typeCode] =& $prototype; 
     }
-    return $prototype;
+    return $prototypes[$typeCode];
   }
+}
+
+class NewAbetFactory extends AbetFactory
+{
+  var $noshow = false;
+  function code() { return 100; }
+}
+
+class BioAbetFactory extends AbetFactory
+{
+  var $noshow = false;
+  function code() { return 101; }
+  function name() { return "ABET Biology Question Set"; }
 }
 
 class Abet extends Component
@@ -81,7 +105,8 @@ class Abet extends Component
   
   function & getwidget($name, &$parent)
   {
-    $p = AbetFactory::prototype(); // p is a copy, not a reference
+    $p = AbetFactory::prototype($this->typeCode); // p is a copy, not a reference
+    $p->revision_id .= " [$this->revision_id]";
     foreach($this->which as $k => $v)
       if (!$v)
       {
@@ -101,7 +126,7 @@ class Abet extends Component
     foreach($this->which as $k => $w)
       if ($w) $which |= 1 << (int)$k;
 
-    $result = pg_go("SELECT abet_component_save($topic_id, $r, $save_id, $which)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT abet_component_save($topic_id, $r, $save_id, $which, $this->typeCode)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }  
 };
@@ -137,7 +162,7 @@ class AbetEditor extends ComponentEditor
   function printVisible()
   {
     global $server_media;
-    $prototype = AbetFactory::prototype();
+    $prototype = AbetFactory::prototype($this->component->typeCode);
 ?>  
 <h3>ABET Questions</h3>
 <p>The ABET questions accept a rating from 0-5. You should check off any questions that are applicable to your class so they can be included in the surveys students fill out.</p>

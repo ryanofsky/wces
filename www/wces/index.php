@@ -1,8 +1,9 @@
 <?
   require_once("wces/login.inc");
-  login_protect(0);
   
-  require_once("wces/page.inc");
+  login_protect(0);
+
+  require_once("wces/page.inc");  
   page_top("The WCES");
   
   print("<h3>Welcome " . login_getname() . ",</h3>\n");
@@ -102,7 +103,7 @@ and make the rest of the site accessible to you.
       print ("Choose a class to evaluate from the list below.</p>");
       print ("<UL>\n");
 
-      list($question_period_id, $survey_listing) = get_surveys();
+      $survey_listing = get_surveys();
       $n = pg_numrows($survey_listing);
 
       $found = false;
@@ -117,7 +118,7 @@ and make the rest of the site accessible to you.
         else
         {
           $complete = false;
-          print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id$ASID\">$name</a></LI>\n");
+          print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id&question_period_id=$question_period_id$ASID\">$name</a></LI>\n");
         }  
       }
       if ($n == 0) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</LI>");

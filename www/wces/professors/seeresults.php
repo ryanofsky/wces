@@ -33,6 +33,11 @@ function tshowresults($question_period_id,$class_id)
 
   print('<h3><a href="seeresults.php">Back</a></h3><hr>');
 
+  if (!$GLOBALS['printable'])
+    print(' | <a href="seeresults.php?question_period_id=' . $question_period_id 
+      . "&class_id=$class_id&printable=1\">Printable Page</a>");
+  print("</h3>\n<hr>\n");
+
   $sqloptions = array ("standard" => true, "custom" => true);
 
   $criteria = array
@@ -55,7 +60,9 @@ function tshowresults($question_period_id,$class_id)
   report_findgroups("rwtopics", $groups, $sort);
 
   $html = $text = false;
-  makeall(true, $html, $text, $groups);
+
+  $options = array('skipLines' => true);
+  makeall(true, $html, $text, $groups, $options);
 }
 
 function addwhere(&$where, $clause)
@@ -133,7 +140,7 @@ function old_report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, 
   $clusterid = 1;
   if (!$dataonly)
   {
-    $students = $response = $clusterid = $dname = $dcode = $semester = $year = $description = "";
+    $students = $response = $clusterid = $dname = $dcode = $semester = $year = $description = $departmentid = "";
     extract($header->row);
 
     if ($outhtml)
@@ -141,7 +148,7 @@ function old_report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, 
       $pagehtml .= "<h4>On this page</h4>\n";
       $pagehtml .= "<table border=0>\n";
       if ($groups["questionperiods"]) $pagehtml .= "<tr><td>Question Period:</td><td><b>" . ucfirst($qpname) . "</b></td></tr>\n";
-      if ($groups["departments"]) $pagehtml .= "<tr><td>Department:</td><td><b>$dname ($dcode)</b></td></tr>\n";
+      if ($groups["departments"] && $departmentid) $pagehtml .= "<tr><td>Department:</td><td><b>$dname ($dcode)</b></td></tr>\n";
     }
 
     if ($outtext)
@@ -803,14 +810,16 @@ function listclasses()
   print("<h3>$profname - Survey Responses</h3>\n");
 
   $result = pg_go("
-    SELECT t.topic_id, t.class_id, get_class(t.class_id) AS cl, q.question_period_id, COUNT(r.user_id) AS count, q.displayname
+    SELECT t.topic_id, t.class_id, get_class(t.class_id) AS cl, q.question_period_id,
+      COUNT(r.user_id) AS count, q.displayname, q.year, q.semester
     FROM enrollments AS e
     INNER JOIN wces_topics AS t USING (class_id)
+    INNER JOIN question_periods_topics AS qt USING (topic_id)
     INNER JOIN classes AS cl ON cl.class_id = e.class_id
-    INNER JOIN semester_question_periods AS q ON q.year = cl.year AND q.semester = cl.semester
+    INNER JOIN semester_question_periods AS q ON q.question_period_id = qt.question_period_id
     LEFT JOIN survey_responses AS r ON r.topic_id = t.topic_id AND r.question_period_id = q.question_period_id
-    WHERE e.user_id = $uid AND e.status = 3 AND q.question_period_id <= 2
-    GROUP BY t.class_id, q.question_period_id, q.displayname, t.topic_id
+    WHERE e.user_id = $uid AND e.status = 3 AND q.question_period_id IN (1,2,15,16,17,18)
+    GROUP BY t.class_id, q.question_period_id, q.displayname, t.topic_id, q.year, q.semester
     ORDER BY q.question_period_id DESC, cl
   ", $wces, __FILE__, __LINE__);
 
@@ -1374,16 +1383,18 @@ param('nquestionperiodid');
 param('questionperiodid');
 param('classid');
 param('topic_id');
+param('printable');
 
 $question_period_id = (int) $question_period_id;
 $nquestionperiodid = (int) $nquestionperiodid;
 $questionperiodid = (int) $questionperiodid;
 $classid = (int) $classid;
+$printable = (bool) $printable;
 
 $showcsv = $server_url->xpath ? true : false;
 
 if (!$showcsv)
-  page_top("Survey Results");
+  page_top("Survey Results", $printable);
 
 
 
@@ -1397,6 +1408,6 @@ else
   listclasses();
 
 if (!$showcsv)
-  page_bottom();
+  page_bottom($printable);
 
 ?>

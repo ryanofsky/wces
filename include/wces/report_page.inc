@@ -15,6 +15,8 @@ define("DEPARTMENTS",      0x08);
 define("PROFESSORS",       0x10);
 define("CATEGORIES",       0x20);
 
+$report_debug = false;
+
 function report_findtopics($tempname, $criteria, $needprof = true)
 {
   global $wces;
@@ -289,7 +291,7 @@ class Sections
 
 function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords, &$taresponses, $options)
 {
-  global $wces_path, $TAQUESTIONS, $TAVALUES;
+  global $wces_path, $TAQUESTIONS, $TAVALUES, $report_debug;
 
   $outhtml = is_string($pagehtml);
   $outtext = is_string($pagetext);
@@ -392,6 +394,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       $pagehtml .= "</table>\n";
       if (!isset($options['pies']) || $options['pies'])
         $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$responses) . "&filled=$responses\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
+      $pagehtml .= "<h4>Responses</h4>\n";
     }
   }
 
@@ -399,16 +402,20 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
   $sections = new Sections($branchorder);
 
-  if (isset($choices->row) && $choices->row['ordinal'] == $ordinal)
-    $is_single_question = $choices->peek(0) || $choices->peek(1);
-
   while(isset($choices->row) && $choices->row['ordinal'] == $ordinal)
   {
     extract($choices->row);
 
     if ($choices->split[1])
     {
+      $is_single = $choices->peek(0) || $choices->peek(1);      
+      $ag = isset($options['alwaysGraph']) && $options['alwaysGraph'];
+      $sp = $choices->row['qrevision_id'] == 221;
+      $show_dist = $ag || ($is_single && !$sp);
+      
       $sectionhtml = $sectiontext = "";
+      $s = '; page-break-before: always';
+      $sectionhtml .= "<div style=\"page-break-inside: avoid$s\">\n";
 
       // set variables which will be used to interpret data and print headers:
       // $headings, $component_choices, $values, $showstats, $textformat, $textrows
@@ -465,7 +472,13 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       // do html header
       if ($outhtml)
       {
-        if (!$is_single_question)
+        if ($report_debug) 
+        {
+          $sectionhtml .= "<h5><font color=red><i>Component revision_id = $crevision_id</i></font></h5>\n";        
+        }
+
+        if ($ctext) $sectionhtml .= "$ctext<br>";
+        if (!$show_dist)
         {
           if ($flags & FLAG_ISNUMERIC)
             $sectionhtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
@@ -546,6 +559,11 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       }
     } // if ($choices->split[1])
 
+    if ($report_debug)
+    {
+      $qtext = "<font color=red><i>revision_id = $qrevision_id</i></font> $qtext";
+    }
+
     // done with header, format individual questions within the set
 
     // get the numbers
@@ -569,7 +587,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
     if ($outhtml)
     {
-      if ($is_single_question)
+      if ($show_dist)
       {
         $sectionhtml .= "<h5>$qtext</h5>";
         $sectionhtml .= "<p>";
@@ -614,7 +632,8 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
     if ($choices->split[1])
     {
-      if ($outhtml && !$is_single_question) $sectionhtml .= "</table>\n";
+      if ($outhtml && !$show_dist) $sectionhtml .= "</table>\n";
+      if ($outhtml) $sectionhtml .= "</div>\n<br>\n";
       if ($outtext)
       {
         $sectiontext .= TextTable($textrows, $columnFormats, 76, $columnWidths);
@@ -633,6 +652,10 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
     if ($textresponses->split[1])
     {
+      if ($report_debug)
+      {
+        $ctext = "<font color=red><i>revision_id = $revision_id</i></font> $ctext";
+      }
       $sectionhtml = $sectiontext = "";
       if ($outhtml) $sectionhtml .= "<h5>$ctext</h5>\n<ul>\n";
       if ($outtext) $sectiontext .= "$ctext\n\n";

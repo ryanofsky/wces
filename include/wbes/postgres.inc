@@ -55,7 +55,7 @@ function pg_show($result,$name = "Result", $showtypes = false)
           if (!isset($row[$c]))
             $str = "<i><small><small>null</small></small></i>";
           else if (!$showtypes)
-            $str = htmlspecialchars($row[$c]);
+            $str = strlen($row[$c]) ? htmlspecialchars($row[$c]) : '&nbsp;';
           else
             $str = htmlspecialchars($row[$c]) . " <small><small><i>" . gettype($row[$c]) . "</i></small></small>";  
           print("  <td>$str</td>\n");

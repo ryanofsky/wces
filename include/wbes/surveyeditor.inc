@@ -144,7 +144,7 @@ class SurveyEditor extends StatefullWidget
 
   function printVisible()
   {
-    global $server_media, $wbes;
+    global $server_media, $wbes, $survey_debug;
 
     $this->event->displayField();
 
@@ -191,7 +191,7 @@ by clicking above and below existing components.</p>
               AND b.revision_id = '$component->revision_id'
           ", $wbes, __FILE__, __LINE__);
           $wr = & new pg_wrapper($r);
-          $readOnly = (bool)$wr->row['topic_id'] != $this->topic_id;
+          $readOnly = (bool)($wr->row['topic_id'] != $this->topic_id);
         }
         $name = $this->fullName($readOnly ? "lockedNode$i" : "node$i");
         $image = $readOnly ? "grey_node.gif" : "node.gif";
@@ -201,7 +201,12 @@ by clicking above and below existing components.</p>
 <tr>
   <td width=40><img src="<?=$server_media?>/editor/<?=$image?>" width=40 height=18 border=0 id=<?=$name?> name=<?=$name?> align=absmiddle alt=Orb></td>
   <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
-  <td><? $w->preview = true; $w->display(); ?></td>
+  <td>
+<? 
+  if ($survey_debug) debugout($w->component->revision_id, "revision_id = ");
+  $w->preview = true; $w->display(); 
+?>
+</td>
 </tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
@@ -349,6 +354,7 @@ class SurveyEditorInsert extends ParentWidget
     $first = true;
     foreach($this->factories as $key => $f)
     {
+      if (isset($f->noshow) && $f->noshow) continue;
       if ($first) $first = false; else print("<br>\n");
       $this->choices->display($key);
       $this->choices->displayLabel($key, $f->name());

@@ -9,7 +9,7 @@ wces_connect();
 $result = pg_go("
   SELECT question_period_id, displayname, year, semester
   FROM semester_question_periods
-  WHERE question_period_id = (SELECT get_question_period())
+  WHERE question_period_id = 23 -- (SELECT get_question_period())
 ", $wces, __FILE__, __LINE__);
 extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
@@ -29,7 +29,7 @@ $y = pg_go("
   CREATE TEMPORARY TABLE pu AS
   SELECT pc.class_id, pc.topic_id, s.code || c.divisioncode || c.code AS code, c.name AS cname, cl.section,
     cl.students, u.user_id, u.uni, u.firstname, u.lastname, u.lastlogin,
-    CASE WHEN u.lastlogin >= '2002-04-05' THEN 1 ELSE 0 END AS loggedin,
+    CASE WHEN u.lastlogin >= '2002-11-15' THEN 1 ELSE 0 END AS loggedin,
     pc.customized
   FROM profcounts AS pc
   INNER JOIN classes AS cl USING (class_id)

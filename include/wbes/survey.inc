@@ -2,6 +2,8 @@
 
 require_once("wbes/wbes.inc");
 
+$survey_debug = false;
+
 function get_base($topic_id)
 {
   global $wces;
@@ -16,6 +18,15 @@ function get_base($topic_id)
       return 611;
     else if ($topic_id == 1483)
       return 612;
+    else if ($topic_id == 3111) // summer chemistry survey
+      return 1;
+      //return 799;
+    else if ($topic_id == 3117)
+      return 873;
+    else if ($topic_id == 3566)
+      return 943;
+    else if ($topic_id == 3567)
+      return 944;
     else
     {
       $r = pg_go("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
@@ -88,7 +99,7 @@ class Survey
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
       SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
       FROM list_items AS li
-      INNER JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
+      LEFT JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
       WHERE li.revision_id = (SELECT revision_contents($this->orig_id));
 
       SELECT t.ordinal, t.revision_id, r.type
@@ -125,6 +136,7 @@ class Survey
             print("<tr><td>" . $v->code() . "</td><td>" . get_class($v) . "</td><td>" . $v->name() . "</td></tr>");
           }
           print("</table>\n");
+          print("<p>The revision_id of the component being loaded was $revision_id.</p>");
           die(); 
         }
         $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $latest);

@@ -96,7 +96,7 @@ function simplesplit($splitchar,$name,&$first,&$last)
 *
 * @param string  Destination URL
 */
-function redirect($url)
+function redirect($url, $exit = true)
 {
   global $server_cheapredirects, $server_isproduction, $server_url;
    
@@ -117,7 +117,7 @@ function redirect($url)
     header ("Location: $url");
     print("redirect to <a href=\"$url\">$url</a>");
   }
-  exit();
+  if ($exit) exit();
 }
 
 /**

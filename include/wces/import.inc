@@ -282,8 +282,9 @@ function importregpid($filename)
 *
 * @param string  Path to uploaded file
 * @param string  4 digit year
-* @param string  1 digit semester (1 = spring, 2 = summer, 3 = summer)
-* @param string  parent topic
+* @param string  1 digit semester (1 = spring, 2 = summer, 3 = fall)
+* @param integer parent topic
+* @param integer question period
 * @param array   array of strings indicating column order.
 *                  "coursecode" - column number of 9 digit course code (eg 'COMSW3203')
 *                  "section" - column number of 3 digit section number (eg '001', '002', 'R01')
@@ -295,10 +296,30 @@ function importregpid($filename)
 * @access public
 */
 
-function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
+class sinfo
+{
+  function sinfo($topic_id, $category_id)
+  {
+    $this->topic_id = $topic_id;
+    $this->category_id = $category_id;
+  }
+};
+
+function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id, $question_period_id, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
 {
   global $wces;
-  
+
+  $dsinfo = new sinfo(3736, 100);
+  $question_period_id = 23;
+  $subjects = array
+  (
+    33 => new sinfo(1481,103),   // biology
+    34 => new sinfo(3733,100),   // biomedical engineering
+    41 => new sinfo(3111,101),   // chemistry
+    62 => new sinfo(1,100),      // coms
+    126 => new sinfo(1,102)      // MATH
+  );
+
   if (strlen($year) != 4 || strlen($semester) != 1 || ($semester != 1 && $semester != 2 && $semester != 3))
     die("Invalid year or semester passed to importdeancsv in " . __FILE__ . ":" . __LINE__);
   
@@ -310,15 +331,22 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
   $fp = fopen($userfile,"r");   
   wces_connect();
   
+  $result = pg_go("SELECT 'now'::timestamp", $wces, __FILE__, __LINE__);
+  $current_timestamp = "'" . pg_result($result, 0, 0) . "'";
+
   $classcache = array();
 
   $row = 0;
+  $user_id = 0;
 
   while ($data = fgetcsv ($fp, 8192, ","))
   {
     ++$row;
     if (count($data) != count($fields))
-      bprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
+    {
+      bprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . " expected, " . count($data) . " found)<br>\n");
+      continue;
+    }
 
     $coursecode = $data[$fields["coursecode"]];
     $section = $data[$fields["section"]];
@@ -335,6 +363,23 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
       if (!$result) die("Failed to find class_id for $classcode on row $row");
       $classcache[$classcode] = $class_id = (int)pg_result($result,0,0);
       
+      $result = pg_go("
+        SELECT c.subject_id FROM classes AS cl
+        INNER JOIN courses AS c USING (course_id)
+        WHERE class_id = $class_id
+      ", $wces, __FILE__, __LINE__);
+      
+      $subject_id = pg_result($result, 0, 0);
+      if (!$subject_id) die ("bad sub id at ". __FILE__ . ":" . __LINE__);
+      
+      $category_id = $parent_topic = null;
+      
+      $inf = isset($subjects[$subject_id]) ? $subjects[$subject_id] : $dsinfo;
+      $category_id = $inf->category_id;
+      $parent_topic = $inf->topic_id;
+
+      if (!isset($category_id) || !isset($parent_topic)) die ("bad id at ". __FILE__ . ":" . __LINE__);
+      
       if (isset($fields["lastname"]) && isset($fields["firstname"]))
       {
         $firstname = $data[$fields["firstname"]];
@@ -350,7 +395,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
           
           $user_id = (int)pg_result(pg_go("SELECT professor_find($fullname, $firstname, NULL, $lastname, NULL, 4)", $wces, __FILE__, __LINE__),0,0) ;   
           if (!$user_id) die("user_id not found for professor $fullname on row $row");
-          pg_go("SELECT enrollment_update($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
+          pg_go("SELECT enrollment_update($user_id, $class_id, 3, $current_timestamp)", $wces, __FILE__, __LINE__); 
         }
         
       }
@@ -366,18 +411,32 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
 
       if ($parent_topic)
       {
-        $result = pg_go("SELECT topic_id FROM wces_topics WHERE parent = $parent_topic AND class_id = $class_id", $wces, __FILE__, __LINE__);
+        $result = pg_go("SELECT topic_id, parent_topic FROM wces_topics WHERE class_id = $class_id", $wces, __FILE__, __LINE__);
         if (pg_numrows($result) == 1)
         {
           $topic_id = (int)pg_result($result, 0, 0);
-          pg_go("UPDATE wces_topics SET category_id = $category_id WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
+          $old_parent_id = (int)pg_result($result, 0, 0);
+          if ($old_parent_id != $parent_topic)
+            print("<h1>Warning: changed topic $topic_id parent to $parent_topic from $old_parent_id</h1>");
+          pg_go("UPDATE wces_topics SET category_id = $category_id, parent = $parent_topic WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
         }
         else
         {        
-          pg_go("INSERT INTO wces_topics(parent, class_id, category_id) values ($parent_topic, $class_id, $category_id)", $wces, __FILE__, __LINE__);
+          $result = pg_go("
+            INSERT INTO wces_topics(parent, class_id, category_id) values ($parent_topic, $class_id, $category_id);
+            SELECT currval('topic_ids');
+          ", $wces, __FILE__, __LINE__);
+          $topic_id = (int)pg_result($result, 0, 0);
         }
       }
-      $GLOBALS['db_debug'] = false;
+
+      if ($question_period_id)
+      {
+        $result = pg_go("SELECT EXISTS (SELECT * FROM question_periods_topics WHERE question_period_id = $question_period_id AND topic_id = $topic_id)", $wces, __FILE__, __LINE__);
+        if (pg_result($result, 0, 0) == 'f')
+          pg_go("INSERT INTO question_periods_topics(topic_id, question_period_id) values ($topic_id, $question_period_id)", $wces, __FILE__, __LINE__);
+      }
+
       bprint("<p>$classcode added (class_id = $class_id, prof user_id = $user_id)</p>\n");
     }
     

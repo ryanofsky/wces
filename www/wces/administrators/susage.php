@@ -9,10 +9,12 @@ param('sort');
 
 wces_connect();
 
+$question_period_id = 23; // SELECT get_question_period()
+
 $result = pg_go("
   SELECT question_period_id, displayname, year, semester
   FROM semester_question_periods
-  WHERE question_period_id = (SELECT get_question_period())
+  WHERE question_period_id = $question_period_id
 ", $wces, __FILE__, __LINE__);
 extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
@@ -21,7 +23,16 @@ page_top("Student Usage Data for $displayname");
 ///////////////////////////////////////////////////////////////////////////////
 $ssid = $survey_category_id = (int) $survey_category_id;
 print("<p>Filtering: ");
-$survey_categories = pg_go("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
+$survey_categories = pg_go("
+  SELECT c.survey_category_id, c.name
+  FROM survey_categories AS c
+  WHERE c.survey_category_id IN
+  (
+    SELECT category_id FROM question_periods_topics AS qt
+    INNER JOIN wces_topics AS t USING (topic_id) 
+    WHERE qt.question_period_id = $question_period_id 
+  )
+", $wces, __FILE__, __LINE__);
 $first = true;
 $foundfilter = false;
 $n = pg_numrows($survey_categories);
@@ -81,10 +92,11 @@ $cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
 pg_go("
   CREATE TEMPORARY TABLE surveycounts AS
   SELECT t.class_id, COUNT(DISTINCT response_id) AS responses
-  FROM wces_topics AS t
+  FROM question_periods_topics AS qt
+  INNER JOIN wces_topics AS t USING (topic_id)
   INNER JOIN classes AS cl USING (class_id)
-  LEFT JOIN survey_responses AS s ON (s.topic_id = t.topic_id AND s.question_period_id = $question_period_id)
-  WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester $cat
+  LEFT JOIN survey_responses AS s ON (s.topic_id = t.topic_id AND s.question_period_id = qt.question_period_id)
+  WHERE qt.question_period_id = $question_period_id $cat
   GROUP BY t.class_id
 ",$wces,__FILE__, __LINE__);
 
@@ -161,6 +173,8 @@ flush();
 
 ///////////////////////////////////////////////////////////////////////////////
 
+/*
+
 $cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
 
 $students = pg_go("
@@ -205,6 +219,8 @@ for($i = 0; $i < $n; ++$i)
 print("</blockquote>");
 
 $times["print_individual_students"] = microtime();
+
+*/
 
 printtimes($times);
 

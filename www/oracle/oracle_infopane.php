@@ -119,8 +119,9 @@ function ShowClass($class_id)
   else
     print("<p><a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=0\">Show Averages</a> | Show Distributions</p>\n"); 
 
+  $students = $sr->students[$class_id] ? $sr->students[$class_id] : "??";
   print("<table border=0 cellpadding=0 cellspacing=5>\n");
-  print("<tr><td colspan=3><p><i>{$sr->responses[$class_id]} of {$sr->students[$class_id]} students responded</i></p></td></tr>\n");
+  print("<tr><td colspan=3><p><i>{$sr->responses[$class_id]} of $students students responded</i></p></td></tr>\n");
 
   if (false) 
     print("<p><strong><i>No Survey Responses Available</i></strong></p>\n");

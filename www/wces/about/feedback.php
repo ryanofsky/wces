@@ -3,7 +3,7 @@ require_once("wces/page.inc");
 require_once("wbes/general.inc");
 page_top("Feedback");
 
-param($comments);
+param('comments');
 
 if (!$comments)
 {

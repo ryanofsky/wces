@@ -77,9 +77,29 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //     this information appears in headers in the report
 //   pageNumbers: boolean, default true
 //     display page numbers
+//   surveyResponses: string, default 'survey_responses'
+//     table to select responses from
+//     $makeall_survey_responses
+//   textResponses: string, default 'textresponse_responses'
+//     table to select text responses from
+//     $makeall_text_responses
+//   skipLines: boolean, default false
+//      skip horizontal lines between report pages
+//      $report_skip_lines
+//   alwaysGraph: boolean, 
+//      always show graphical distributions even 
+//      for multiple questionsin a single choice components
+//      $report_always_graph
+
+
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
   global $wces_path, $wces, $line;
+
+  if (!isset($options['textResponses']))
+    $options['textResponses'] = 'textresponse_responses';
+  if (!isset($options['surveyResponses']))
+    $options['surveyResponses'] = 'survey_responses';
 
   if (!isset($options['responseStatistics']) || $options['responseStatistics'])
   {
@@ -104,9 +124,9 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       INNER JOIN
       (
         -- this subselect contains the number of responses for each ordinal
-        SELECT t2.ordinal, COUNT(*) AS responses
+        SELECT t2.ordinal, COUNT(DISTINCT r2.user_id) AS responses
         FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t2
-        LEFT JOIN survey_responses AS r2 ON
+        LEFT JOIN $options[surveyResponses] AS r2 ON
           r2.topic_id = t2.topic_id
           AND r2.question_period_id = t2.question_period_id
           AND r2.user_id IS NOT NULL
@@ -186,8 +206,8 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     $result = pg_go("
       SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
       FROM rwtopics AS t
-      INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
-      INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
+      INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
       INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
       ORDER BY t.ordinal, tr.revision_id
     ", $wces, __FILE__, __LINE__);
@@ -203,7 +223,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       SELECT DISTINCT t.ordinal, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
         tr.approachability, tr.availability, tr.communication, tr.comments
       FROM rwtopics AS t
-      INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
       INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
       ORDER BY t.ordinal, name, tr.response_id
     ", $wces, __FILE__, __LINE__);
@@ -220,7 +240,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
         c.flags, c.first_number, c.last_number, c.other_choice,
         q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
       FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
-      INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
       INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
       INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
       INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
@@ -275,7 +295,9 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
       if ($outhtml || $stdout)
       {
-        $pagehtml = '<hr style="page-break-before:always">' . "\n";
+        $pagehtml = '';
+        if (!isset($options['skipLines'] || !$options['skipLines'])
+          $pagehtml .= '<hr style="page-break-before:always">' . "\n";
         $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
       }
       else

@@ -179,7 +179,7 @@ function login_validate($uni,$password)
   if (!$dump)
   {
     sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
-    $login_fail = "Authentication Error. Login warning: Could not contact AcIS server.";
+    $login_fail = "Error: Timeout occurred while trying to contact the AcIS authentication server. Please try again.";
     return false;
   }
      
@@ -251,14 +251,14 @@ function acisget($uni,$pw)
     $fname = tempnam($server_tempdir, "booty");
 
     $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
-    $fp = fopen ($fname, "w");
-    curl_setopt ($ch, CURLOPT_FILE, $fp);
-    curl_setopt ($ch, CURLOPT_USERPWD, "$uni:$pw");
-    curl_setopt ($ch, CURLOPT_HEADER, 1);
-    curl_setopt ($ch, CURLOPT_TIMEOUT, 5);
-    curl_exec ($ch);
-    curl_close ($ch);
-    fclose ($fp);
+    $fp = fopen($fname, "w");
+    curl_setopt($ch, CURLOPT_FILE, $fp);
+    curl_setopt($ch, CURLOPT_USERPWD, "$uni:$pw");
+    curl_setopt($ch, CURLOPT_HEADER, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_exec($ch);
+    curl_close($ch);
+    fclose($fp);
 
     $fp = fopen($fname,"r");
     $result = fread($fp, filesize($fname));

@@ -258,7 +258,7 @@ class MassEmail extends ParentWidget
       {
         extract(pg_fetch_array($survey_categories,$i,PGSQL_ASSOC));
         $selected = $survey_category_id == $this->survey_category_id ? " selected" : "";
-        print("<option value=$survey_category_id$selected>$name Students</option>");
+        print("<option value=$survey_category_id$selected>$name Classes</option>");
       }
       print("</select>\n");
     ?></td>
@@ -305,7 +305,7 @@ class MassEmail extends ParentWidget
     $result = pg_go("
       SELECT question_period_id, displayname, year, semester
       FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_question_period())
+      WHERE question_period_id = 23 -- (SELECT get_question_period())
     ", $wces, __FILE__, __LINE__);
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
     
