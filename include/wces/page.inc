@@ -286,6 +286,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
         <p><a href="<%=$server_wcespath%>administrators/semester.php" class="treelink">New Semester Initialiation</a></p>
         <p><a href="<%=$server_wcespath%>administrators/pusage.php" class="treelink">Professor Usage</a></p>
         <p><a href="<%=$server_wcespath%>administrators/susage.php" class="treelink">Student Usage</a></p>
+        <p><a href="<%=$server_wcespath%>administrators/massmail.php" class="treelink">Mass Mailing</a></p>
         <p><a href="<%=$server_wcespath%>administrators/report.php" class="treelink">Reporting Wizard</a></p>                                
         <p><a href="<%=$server_wcespath%>administrators/import.php" class="treelink">Import Data</a></p>
         <p><a href="<%=$server_wcespath%>administrators/fakelogin.php" class="treelink">Fake Login</a></p>
@@ -317,5 +318,3 @@ function page_bottom($hidemenus = false)
 <%
 };
 %>
-
-
