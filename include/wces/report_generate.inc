@@ -132,13 +132,10 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       (
         -- this subselect contains the number of responses for each ordinal
         SELECT t2.ordinal, COUNT(DISTINCT r2.user_id) AS responses
-        FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t2
-        LEFT JOIN $options[surveyResponses] AS r2 ON
-          r2.topic_id = t2.topic_id
-          AND r2.question_period_id = t2.question_period_id
-          AND r2.user_id IS NOT NULL
+        FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t2
+        LEFT JOIN $options[surveyResponses] AS r2 ON r2.topic_id = t2.topic_id AND r2.user_id IS NOT NULL
         GROUP BY t2.ordinal
-      ) AS r ON s.ordinal = r.ordinal
+      ) AS r USING (ordinal)
       ORDER BY s.ordinal
     ", $wces, __FILE__, __LINE__);
     
@@ -213,11 +210,12 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   if (!isset($options['textResponses']) || $options['textResponses'])
   {
     $result = pg_go("
-      SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
+      SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, r.item_id
       FROM rwtopics AS t
-      INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
       INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
-      INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
+      INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
+      INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
       ORDER BY t.ordinal, tr.revision_id
     ", $wces, __FILE__, __LINE__);
 
@@ -229,15 +227,16 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   if (!isset($options['taResponses']) || $options['taResponses'])
   {
     $result = pg_go("
-      SELECT DISTINCT t.ordinal, tr.parent, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
-        tr.approachability, tr.availability, tr.communication, tr.comments
+      SELECT t.ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
+        tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
       FROM rwtopics AS t
-      INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
       INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
-      ORDER BY t.ordinal, name, tr.response_id
+      LEFT JOIN users AS u ON u.user_id = tr.user_id
+      ORDER BY t.ordinal, u.lastname, u.firstname, u.user_id, name, tr.response_id
     ", $wces, __FILE__, __LINE__);
 
-    $taresponses =& new pg_segmented_wrapper($result, array("ordinal"));  
+    $taresponses =& new pg_segmented_wrapper($result, array('ordinal', 'user_id'));  
   }
   else
     $taresponses = NULL;
@@ -245,18 +244,20 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   if (!isset($options['multipleChoice']) || $options['multipleChoice'])
   {
     $result = pg_go("
-      SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS component_choices,
-        c.flags, c.first_number, c.last_number, c.other_choice,
-        q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
-      FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
-      INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
+      SELECT t.ordinal, cr.revision_id AS crevision_id, qr.revision_id AS qrevision_id, cr.item_id,
+        first(c.choices) AS component_choices, c.flags, c.first_number, c.last_number, c.other_choice,
+        c.ctext, q.qtext, choice_dist(qr.answer) AS dist
+      FROM rwtopics AS t
+      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
       INNER JOIN $options[choiceResponses] AS cr ON cr.parent = r.response_id
       INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-      INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
-      INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
-      GROUP BY t.ordinal, c.revision_id, q.revision_id, c.flags, c.first_number,
-        c.last_number, c.other_choice, c.branch_id, q.qtext
-      ORDER BY t.ordinal, c.revision_id, q.revision_id
+      INNER JOIN revisions AS crv ON crv.revision_id = cr.revision_id
+      INNER JOIN revisions AS qrv ON qrv.revision_id = qr.revision_id
+      INNER JOIN choice_questions AS q ON q.component_id = qrv.component_id
+      INNER JOIN choice_components AS c ON c.component_id = crv.component_id
+      GROUP BY t.ordinal, cr.revision_id, qr.revision_id, c.flags, c.first_number,
+        c.last_number, c.other_choice, cr.item_id, c.ctext, q.qtext
+      ORDER BY t.ordinal, cr.revision_id, qr.revision_id
     ", $wces, __FILE__, __LINE__);
 
     $choices =& new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
@@ -272,19 +273,17 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   
   $pacer =& new pg_wrapper($result);
 
-  // XXX: what is the meaning of *magic* branch_id 1
   $result = pg_go("  
-    SELECT t.ordinal, ibtc.branch_id, l.ordinal AS iordinal
+    SELECT tp.ordinal, l.item_id, l.ordinal AS iordinal
     FROM
     ( 
-      SELECT DISTINCT ordinal, topic_id, topic_contents(topic_id) AS ctopic_id
-      FROM rwtopics
-    ) AS t
-    INNER JOIN branch_topics_cache AS btc ON (btc.base_branch_id = 1) AND (btc.topic_id = t.ctopic_id)
-    INNER JOIN branches AS b ON b.branch_id = btc.branch_id
-    INNER JOIN list_items AS l ON l.revision_id = b.content_id
-    INNER JOIN branch_topics_cache AS ibtc ON (ibtc.base_branch_id = l.item_id) AND (ibtc.topic_id = t.ctopic_id)
-    ORDER BY t.ordinal;
+      SELECT DISTINCT rw.ordinal, rw.topic_id, branch_latest(t.item_id, t.specialization_id, 1000000) AS revision_id
+      FROM rwtopics AS rw
+      INNER JOIN wces_topics AS t USING (topic_id)      
+    ) AS tp
+    INNER JOIN revisions AS r USING (revision_id)
+    INNER JOIN list_items AS l USING (component_id)
+    ORDER BY tp.ordinal;
   ", $wces, __FILE__, __LINE__);
   
   $ords =& new pg_segmented_wrapper($result, array("ordinal"));
@@ -305,7 +304,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       if ($outhtml || $stdout)
       {
         $pagehtml = '';
-        if (!isset($options['skipLines'] || !$options['skipLines'])
+        if (!isset($options['skipLines']) || !$options['skipLines'])
           $pagehtml .= '<hr style="page-break-before:always">' . "\n";
         $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
       }

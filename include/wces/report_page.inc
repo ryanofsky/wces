@@ -18,24 +18,33 @@ define("CATEGORIES",       0x20);
 $report_debug = false;
 $report_find_wces_topics = 'wces_topics';
 
+function report_topics_cache()
+{
+  global $wces;
+  wces_connect();
+  pg_go("
+    DROP TABLE report_topics;
+    CREATE TABLE report_topics AS
+    SELECT DISTINCT t.topic_id, t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
+    FROM survey_responses AS r
+    INNER JOIN wces_topics AS t USING (topic_id)
+    INNER JOIN classes AS cl USING (class_id)
+    LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3;
+  ", $wces, __FILE__, __LINE__);
+}
+
 function report_findtopics($tempname, $criteria, $needprof = true)
 {
   global $wces, $report_find_wces_topics;
 
-  $where = $twhere = "";
-
-  if ($criteria[PROFESSORS] || $needprof)
-  {
-    $pjoin = "LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3\n    ";
-    $pgroup = ", e.user_id";
-    $pselect = ", e.user_id";
-  }
-  else
-    $pjoin = $pgroup = $pselect = "";
+  $where = "";
 
   if ($criteria[QUESTION_PERIODS])
-    $twhere = "WHERE question_period_id IN (" . implode($criteria[QUESTION_PERIODS],",") . ") ";
-
+  {
+    $where .= $where ? "  AND " : "WHERE ";
+    $where .= "t.question_period_id IN (" . implode($criteria[QUESTION_PERIODS],",") . ")\n    ";
+  }
+  
   if ($criteria[CATEGORIES])
   {
     $where .= $where ? "  AND " : "WHERE ";
@@ -45,37 +54,34 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   if ($criteria[CLASSES])
   {
     $where .= $where ? "  AND " : "WHERE ";
-    $where .= "cl.class_id IN (" . implode($criteria[CLASSES],",") . ")\n    ";
+    $where .= "t.class_id IN (" . implode($criteria[CLASSES],",") . ")\n    ";
   }
 
   if ($criteria[COURSES])
   {
     $where .= $where ? "  AND " : "WHERE ";
-    $where .= "cl.course_id IN (" . implode($criteria[COURSES],",") . ")\n    ";
+    $where .= "t.course_id IN (" . implode($criteria[COURSES],",") . ")\n    ";
   }
 
   if ($criteria[DEPARTMENTS])
   {
     $where .= $where ? "  AND " : "WHERE ";
-    $where .= "cl.department_id IN (" . implode($criteria[DEPARTMENTS],",") . ")\n    ";
+    $where .= "t.department_id IN (" . implode($criteria[DEPARTMENTS],",") . ")\n    ";
   }
 
   if ($criteria[PROFESSORS])
   {
     $where .= $where ? "  AND " : "WHERE ";
-    $where .= "e.user_id IN (" . implode($criteria[PROFESSORS],",") . ")\n    ";
+    $where .= "t.user_id IN (" . implode($criteria[PROFESSORS],",") . ")\n    ";
   }
 
-  // the subselect in the FROM clause is only there as an optimization. ~ 4.5 times faster
   wces_connect();
 
   pg_go("
     CREATE TEMPORARY TABLE $tempname AS
-    SELECT NULL::INTEGER AS ordinal, r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pselect
-    FROM (SELECT question_period_id, topic_id FROM survey_responses {$twhere}GROUP BY question_period_id, topic_id) AS r
-    INNER JOIN $report_find_wces_topics AS t USING (topic_id)
-    INNER JOIN classes AS cl USING (class_id)
-    $pjoin{$where}GROUP BY r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pgroup;
+    SELECT NULL::INTEGER AS ordinal, t.*
+    FROM report_topics AS t
+    $where
   ", $wces, __FILE__, __LINE__);
 
   // todo:
@@ -83,12 +89,11 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   // a major optimization would be to have a materialized view like
   //
   // CREATE MATERIALIZED VIEW report_topics
-  // SELECT r.question_period_id, t.class_id, cl.course_id, cl.department_id, e.user_id
+  // SELECT DISTINCT t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
   // FROM survey_responses AS r
   // INNER JOIN wces_topics AS t USING (topic_id)
   // INNER JOIN classes AS cl USING (class_id)
-  // LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3
-  // GROUP BY t.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id, e.user_id;
+  // LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3;
   //
   // postgres doesn't currently support materialized views, but it might be
   // possible to set something up with triggers. since reporting isn't typically
@@ -203,10 +208,11 @@ function report_findgroups($topicstable, $groupings, $orderings)
       }
     }
 
-    $tempname = substr(md5(uniqid(rand(),1)),0,20);
+    $tabname = substr(uniqid('tab'),0,31);
+    $funname = substr(uniqid('fun'),0,31);
 
     pg_go("
-      CREATE TEMPORARY TABLE tab$tempname AS
+      CREATE TEMPORARY TABLE $tabname AS
       SELECT $tcols
       FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
       LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & COURSES ? "
@@ -217,14 +223,14 @@ function report_findgroups($topicstable, $groupings, $orderings)
       GROUP BY $group_s
       ORDER BY $order_s;
 
-      CREATE FUNCTION fun$tempname($fargs) RETURNS INTEGER AS '
-        SELECT oid::integer FROM tab$tempname WHERE $fcond
+      CREATE FUNCTION $funname($fargs) RETURNS INTEGER AS '
+        SELECT oid::integer FROM $tabname WHERE $fcond
       ' LANGUAGE 'sql';
 
-      UPDATE $topicstable SET ordinal = fun$tempname($fcols);
+      UPDATE $topicstable SET ordinal = $funname($fcols);
 
-      DROP FUNCTION fun$tempname($fargs);
-      DROP TABLE tab$tempname;
+      DROP FUNCTION $funname($fargs);
+      DROP TABLE $tabname;
     ", $wces, __FILE__, __LINE__);
 
     return !$badorder;
@@ -252,9 +258,9 @@ class Sections
     $this->branchorder = $branchorder;
   }
 
-  function addSection($branch_id, $text, $html)
+  function addSection($item_id, $text, $html)
   {
-    $ordinal = isset($this->branchorder[$branch_id]) ? $this->branchorder[$branch_id] : 99999999 ;
+    $ordinal = isset($this->branchorder[$item_id]) ? $this->branchorder[$item_id] : 99999999 ;
     $r = new ReportSection($text, $html);
     if (isset($this->sections[$ordinal]))
       $this->sections[$ordinal][] = $r;
@@ -367,7 +373,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
   while(isset($ords->row) && $ords->row['ordinal'] == $ordinal)
   {
     extract($ords->row);
-    $branchorder[$branch_id] = $iordinal;
+    $branchorder[$item_id] = $iordinal;
     $ords->advance();
   }
 
@@ -405,6 +411,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
   while(isset($choices->row) && $choices->row['ordinal'] == $ordinal)
   {
+    $ctext = '';
     extract($choices->row);
 
     if ($choices->split[1])
@@ -640,7 +647,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
         $sectiontext .= TextTable($textrows, $columnFormats, 76, $columnWidths);
         $sectiontext .= "\n\n";
       }
-      $sections->addSection($branch_id, $sectiontext, $sectionhtml);
+      $sections->addSection($item_id, $sectiontext, $sectionhtml);
     }
   } // while($choices->row ...)
 
@@ -671,7 +678,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
     {
       if ($outhtml) $sectionhtml .= "\n</ul>";
       if ($outtext) $sectiontext .= "\n\n";
-      $sections->addSection($branch_id, $sectiontext, $sectionhtml);
+      $sections->addSection($item_id, $sectiontext, $sectionhtml);
     }
   } // while($textresponses->row ...)
 
@@ -730,7 +737,10 @@ $TAVALUES = array
 
     if ($outhtml)
     {
-      if (!$name) $name = "<i>All TAs</i>";
+      if ($user_id)
+        $name = "$firstname $lastname";
+      else if (!$name)
+        $name = "<i>All TAs</i>";
       $pagehtml .= "<tr>\n  <td>$name</td>";
       foreach($TAQUESTIONS as $field => $question)
       {
