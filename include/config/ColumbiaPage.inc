@@ -121,7 +121,7 @@ function showhelp(topic)
     {
       $this->printLink("Log off $uni","login/logout.php$QSID",true);
       if ($fake = $login->get('fake_uni'))
-        $this->printLink("Log on as $fake", "administrators/info.php?nofake=1$ASID", true);
+        $this->printLink("Log on as $fake", "administrators/info.php?nofake=1&user_id=$user_id$ASID", true);
     }
     else
       $this->printLink("Log In","index.php$QSID", !$this->loggingIn);
@@ -129,7 +129,7 @@ function showhelp(topic)
     if ($user_id)
       $this->printLink("Home", "index.php$QSID", "{$WCES_CONFIG_PATH}index.php" == $wces_this || $WCES_CONFIG_PATH == $wces_this ? false : true);
   
-    if ($status & login_administrator)
+    if ($status & LOGIN_ADMIN)
     {
       $this->printSpacer();
       $this->printLink("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
@@ -143,15 +143,15 @@ function showhelp(topic)
       $this->printLink("Survey Remove",    "administrators/surveyslasher.php", $QSID);
     }
   
-    if ($status & login_deptadmin)
+    if ($status & LOGIN_DEPT_ADMIN)
     {
       $this->printSpacer();
       $this->printLink("Reporting Wizard", "administrators/report.php", $QSID);
     }
   
-    if ($status & login_professor)
+    if ($status & LOGIN_PROFESSOR)
     {
-      if ($status & login_knownprofessor)
+      if ($status & LOGIN_KNOWN_PROFESSOR)
       {
         $this->printSpacer();
         $this->printLink("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
@@ -164,7 +164,7 @@ function showhelp(topic)
       }
     }
   
-    if ($status & login_student)
+    if ($status & LOGIN_STUDENT)
     {
       $survey_listing = get_surveys();
       $wces_closed = !$survey_listing;
@@ -179,9 +179,10 @@ function showhelp(topic)
           if ($i == 0) $this->printSpacer();
           $cn = format_class($name,'%n');
           if (!$cn) $cn = format_class($name, '%c');
-          $this->printLink($cn, "students/survey.php?class_id=$class_id&question_period_id=$question_period_id", $ASID, "");
+          $this->printLink($cn, "students/survey.php?topic_id=$topic_id", $ASID, null, "");
         }
       }
+      $this->printLink("TA Registration", "students/taregister.php", $QSID);
     }
   
     $this->printSpacer();
