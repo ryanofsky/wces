@@ -16,10 +16,11 @@ define("PROFESSORS",       0x10);
 define("CATEGORIES",       0x20);
 
 $report_debug = false;
+$report_find_wces_topics = 'wces_topics';
 
 function report_findtopics($tempname, $criteria, $needprof = true)
 {
-  global $wces;
+  global $wces, $report_find_wces_topics;
 
   $where = $twhere = "";
 
@@ -72,7 +73,7 @@ function report_findtopics($tempname, $criteria, $needprof = true)
     CREATE TEMPORARY TABLE $tempname AS
     SELECT NULL::INTEGER AS ordinal, r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pselect
     FROM (SELECT question_period_id, topic_id FROM survey_responses {$twhere}GROUP BY question_period_id, topic_id) AS r
-    INNER JOIN wces_topics AS t USING (topic_id)
+    INNER JOIN $report_find_wces_topics AS t USING (topic_id)
     INNER JOIN classes AS cl USING (class_id)
     $pjoin{$where}GROUP BY r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pgroup;
   ", $wces, __FILE__, __LINE__);
@@ -740,7 +741,7 @@ $TAVALUES = array
         }
         $pagehtml .= "  <td>" . $$field . "</td>\n";
       }
-      $pagehtml .= "  <td>" . ($comments ? $comments : "&nbsp;") . "</td><td>" . $response_id . "</td></tr>\n";
+      $pagehtml .= "  <td>" . ($comments ? $comments : "&nbsp;") . "</td><td>" . $parent . "</td></tr>\n";
     }
 
     if ($outtext)

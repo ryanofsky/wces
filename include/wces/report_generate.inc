@@ -77,12 +77,17 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //     this information appears in headers in the report
 //   pageNumbers: boolean, default true
 //     display page numbers
+//   skipClassList: boolean, default false
+//     don't display list of classes
 //   surveyResponses: string, default 'survey_responses'
 //     table to select responses from
 //     $makeall_survey_responses
 //   textResponses: string, default 'textresponse_responses'
 //     table to select text responses from
 //     $makeall_text_responses
+//   choiceResponses: string, default 'choice_responses'
+//     table to select choice responses from
+//     $makeall_choice_responses
 //   skipLines: boolean, default false
 //      skip horizontal lines between report pages
 //      $report_skip_lines
@@ -98,6 +103,8 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   if (!isset($options['textResponses']))
     $options['textResponses'] = 'textresponse_responses';
+  if (!isset($options['choiceResponses']))
+    $options['choiceResponses'] = 'choice_responses';
   if (!isset($options['surveyResponses']))
     $options['surveyResponses'] = 'survey_responses';
 
@@ -159,7 +166,9 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     ", $wces, __FILE__, __LINE__);
   
     $questionperiods =& new pg_segmented_wrapper($result, "ordinal");
-  
+
+    $classes = $professors = null;
+    if (!isset($options['skipClassList']) || !$options['skipClassList'])
     if ($groups[CLASSES] || $groups[PROFESSORS])
     {
       $result = pg_go("
@@ -220,7 +229,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   if (!isset($options['taResponses']) || $options['taResponses'])
   {
     $result = pg_go("
-      SELECT DISTINCT t.ordinal, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
+      SELECT DISTINCT t.ordinal, tr.parent, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
         tr.approachability, tr.availability, tr.communication, tr.comments
       FROM rwtopics AS t
       INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
@@ -241,7 +250,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
         q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
       FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
       INNER JOIN $options[surveyResponses] AS r USING (topic_id, question_period_id)
-      INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+      INNER JOIN $options[choiceResponses] AS cr ON cr.parent = r.response_id
       INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
       INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
       INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
