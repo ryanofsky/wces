@@ -149,8 +149,11 @@ class SurveyEditor extends StatefullWidget
     
     $survey = empty($new) ? $this->readValue("survey") : null;
 
-    if ($new = !isset($survey)) // assigment is intentional
-      $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+    if ($new = !isset($survey)) // assignment is intentional
+    {
+      if (!isset($this->survey)) // survey could be pre-assigned
+        $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+    }
     else
       $this->survey = unserialize($survey);   
     
