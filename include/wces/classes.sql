@@ -52,6 +52,7 @@ DROP FUNCTION get_profs(INTEGER);
 DROP FUNCTION get_class(INTEGER);
 DROP FUNCTION get_question_period();
 DROP FUNCTION get_next_question_period();
+DROP FUNCTION get_anext_question_period ();
 
 CREATE TABLE sent_mails
 (
@@ -118,6 +119,7 @@ CREATE TABLE courses
 
   name VARCHAR(124),
   information TEXT,
+  guess_department_id INTEGER,
 
   -- Keys
 
@@ -253,7 +255,8 @@ CREATE TABLE acis_affiliations
 CREATE TABLE wces_topics
 (
   class_id INTEGER UNIQUE,
-  category_id INTEGER
+  category_id INTEGER,
+  make_public BOOLEAN NOT NULL DEFAULT 't'
 )
 INHERITS (topics);
 
@@ -268,7 +271,8 @@ CREATE SEQUENCE survey_category_ids INCREMENT 1 START 100;
 CREATE TABLE semester_question_periods
 (
   semester INTEGER,
-  year INTEGER
+  year INTEGER,
+  profdate TIMESTAMP
 ) INHERITS (question_periods);
 
 ALTER TABLE classes ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
@@ -980,6 +984,7 @@ CREATE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS TEXT AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION professor_merge(INTEGER, INTEGER);
 CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     primary_id ALIAS FOR $1;
@@ -994,7 +999,7 @@ CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
   BEGIN
     RAISE NOTICE ''professor_merge(%,%) called'', $1, $2;
 
-    IF primary_id = secondary_id THEN RETURN 1; END IF;
+    IF primary_id = secondary_id THEN RETURN primary_id; END IF;
 
     SELECT INTO primary_row uni, lastname, firstname, email, department_id, flags, lastlogin FROM users WHERE user_id = primary_id;
     IF NOT FOUND THEN
@@ -1089,7 +1094,7 @@ CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
       lastlogin = primary_row.lastlogin,
       flags = flags | primary_row.flags
     WHERE user_id = primary_id;
-    RETURN 1;
+    RETURN primary_id;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1217,7 +1222,7 @@ CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
     SELECT INTO i question_period_id
     FROM question_periods
     WHERE begindate < curtime
-    ORDER BY enddate;
+    ORDER BY begindate DESC;
     RETURN i;
   END;
 ' LANGUAGE 'plpgsql';
@@ -1232,6 +1237,26 @@ CREATE FUNCTION get_next_question_period() RETURNS INTEGER AS '
     FROM question_periods
     WHERE curtime < enddate
     ORDER BY enddate;
+    RETURN i;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION get_anext_question_period () RETURNS integer AS '
+  DECLARE
+    curtime DATETIME;
+    i INTEGER;
+  BEGIN
+    curtime := NOW();
+    SELECT INTO i question_period_id
+    FROM question_periods
+    WHERE curtime < enddate
+    ORDER BY enddate;
+   
+    IF NOT FOUND THEN
+      SELECT INTO i question_period_id
+      FROM question_periods
+      ORDER BY enddate DESC;
+    END IF;
     RETURN i;
   END;
 ' LANGUAGE 'plpgsql';
