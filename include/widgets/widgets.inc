@@ -64,6 +64,7 @@ class FormWidget // abstract, extends Widget
   
   function printattribute($attrname,$value)
   {
+    if (!isset($value)) return;
     if ($attrname) $attrname = "_$attrname";
     $attrname = htmlspecialchars($this->prefix . $attrname);
     $i = htmlspecialchars($value);
@@ -72,6 +73,7 @@ class FormWidget // abstract, extends Widget
   
   function printarrayattribute($attrname,&$value)
   {
+    if (!isset($value)) return;
     if ($attrname) $attrname = "_$attrname";
     $attrname = htmlspecialchars($this->prefix . $attrname . "[]");
     foreach($value as $item)
