@@ -347,6 +347,10 @@ CREATE FUNCTION references_topic(INTEGER) RETURNS INTEGER AS '
   CASE WHEN EXISTS (SELECT * FROM topics WHERE parent = $1)                THEN 8 ELSE 0 END;
 ' LANGUAGE 'sql';
 
+CREATE FUNCTION references_question_period(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE question_period_id = $1) THEN 1 ELSE 0 END;
+' LANGUAGE 'sql';
 
 -- how to wipe out all customizations (ruins results for customizations) for a particular topic
 --
