@@ -28,8 +28,7 @@
   <li><a href="<?=$wces_path?>administrators/info.php<?=$QSID?>">Enrollment Database</a> - See information about users and classes.</li>
   <li><a href="<?=$wces_path?>administrators/choose.php<?=$QSID?>">Reporting Wizard</a> - View and print past results.</li>
   <li><a href="<?=$wces_path?>administrators/massmail.php<?=$QSID?>">Mass Mail</a> - Send reminder and thank-you emails to students.</li>
-  <li><a href="<?=$wces_path?>administrators/import.php<?=$QSID?>">Data Import</a> - Upload data into the WCES course database.</li>
-  
+  <li><a href="<?=$wces_path?>administrators/import.php<?=$QSID?>">Data Import</a> - Upload data into the WCES course database.</li>  
 </ul>
 <?
   }
@@ -64,6 +63,7 @@ If you just need student access to the site (to evaluate a class you are
 taking) also <a href="<?=$wces_path?>about/feedback.php<?=$QSID?>">let us
 know</a>. In both cases, we can quickly add your information to the database
 and make the rest of the site accessible to you.
+<? } ?>
 <?
     }
     else
@@ -89,41 +89,47 @@ and make the rest of the site accessible to you.
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
 <?
-
     if ($wces_closed)
     {
-      print("<p>Final Evaluations for Spring 2002 have closed.</p>");	
+      print("<p>The evaluation period has closed.</p>");	
     }
     else
     {
       if (!isset($db)) $db = wces_connect();
       $userid = login_getuserid();
 
-      print ("Choose a class to evaluate from the list below.</p>");
-      print ("<UL>\n");
-
       $survey_listing = get_surveys();
       $n = pg_numrows($survey_listing);
 
-      $found = false;
-      for($i = 0; $i < $n; ++$i)
+      if ($n == 0)
       {
-        extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
-        $name = format_class($name);
-        $found = true;
-        $complete = true;
-        if ($surveyed)  
-          print ("  <LI>Survey Complete: $name</LI>\n");
-        else
-        {
-          $complete = false;
-          print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id&question_period_id=$question_period_id$ASID\">$name</a></LI>\n");
-        }  
+        print("<p>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</p>");
       }
-      if ($n == 0) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</LI>");
-      print ("</UL>");
-    
-      print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
+      else
+      {
+        print ("Choose a class to evaluate from the list below.</p>");
+        print ("<UL>\n");
+
+        $found = false;
+        for($i = 0; $i < $n; ++$i)
+        {
+          extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
+          $name = format_class($name);
+          $found = true;
+          $complete = true;
+          if ($surveyed)  
+            print ("  <LI>Survey Complete: $name</LI>\n");
+          else
+          {
+            $complete = false;
+            print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id&question_period_id=$question_period_id$ASID\">$name</a></LI>\n");
+          }  
+        }
+
+        print ("</UL>");
+
+        print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
+      }
     }
   }
   
