@@ -206,4 +206,9 @@ function quot($str)
   return "'" . addslashes($str) . "'";
 }
 
+function nullquot($str)
+{
+  return $str ? ("'" . addslashes($str) . "'") : "NULL";
+}
+
 ?>
