@@ -5,7 +5,7 @@ $WCES_CONFIG_MEDIA_PATH = "{$WCES_CONFIG_PATH}media/";
 $WCES_CONFIG_HELP_PATH = "{$WCES_CONFIG_PATH}help.php";
 
 $WCES_CONFIG_UPLOAD_PATH = "/wces/upload/";
-$WCES_CONFIG_UPLOAD_PHYSICAL_PATH = "/home/russ/wces.russ.hn.org/www/wces/upload/";
+$WCES_CONFIG_UPLOAD_PHYSICAL_PATH = "/home/httpd/apps/wces/www/wces/upload/";
 
 $WCES_CONFIG_PAGE_INCLUDE = 'config/ColumbiaPage.inc';
 $WCES_CONFIG_PAGE = 'ColumbiaPage';
@@ -30,7 +30,7 @@ $WBES_LOGIN_LOGOUT = '/wces/login/logout.php';
 // it will redirect either to the destination url or to the handler page.
 // This value is only used when the login prompt is viewed over an insecure
 // connection.
-$WBES_LOGIN_BOUNCER = 'https://wces.russ.hn.org:444/wces/login/bouncer.php';
+$WBES_LOGIN_BOUNCER = 'https://oracle.seas.columbia.edu/wces/login/bouncer.php';
 
 // optional. can be set to a full path of a page on a secure server which
 // does nothing but call LoginInstance()->handle(). This value is only used when
@@ -40,7 +40,7 @@ $WBES_LOGIN_BOUNCER = 'https://wces.russ.hn.org:444/wces/login/bouncer.php';
 // it just lets people a chance to see the lock icon. There isn't really any
 // situation where it makes sense to set this and not set the bouncer, but in
 // this case, this handler will be used by default to perform authentication.
-$WBES_LOGIN_SECURE_HANDLER = 'https://wces.russ.hn.org:444/wces/login/login.php';
+$WBES_LOGIN_SECURE_HANDLER = 'https://oracle.seas.columbia.edu/wces/login/login.php';
 
 $WBES_CONFIG_MEDIA_PATH = "{$WCES_CONFIG_PATH}media/";
 
