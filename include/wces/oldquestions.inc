@@ -11,8 +11,6 @@ define("TAWidget_save",1);
 define("TAWidget_saveand",2);
 define("TAWidget_cancel",3);
 
-$db_debug = true;
-
 $TAREVISION = 42;
 // insert into revisions(revision_id, type, branch_id, revision) values (42, -1, 40,-1);
 //
