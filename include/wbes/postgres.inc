@@ -241,4 +241,24 @@ function pg_date($time = false)
   return "NULL";
 }
 
+
+// escape literal a literal string for use in a postgres posix regular expression
+function pg_reg_escape($text)
+{
+  return preg_replace('([\\^\\.\\[\\$\\(\\)\\|\\*\\+\\?\\{\\\\])', '\\\\${0}', $text);
+}
+
+function pg_select_array($sql, $db, $file, $line)
+{
+  $r = pg_go($sql, $db, $file, $line);
+  $n = pg_numrows($r);
+  $a = array();
+  for ($i = 0; $i < $n; ++$i)
+  {
+    list($k, $v) = pg_fetch_array($r, $i, PGSQL_NUM);
+    $a[$k] = $v;
+  }
+  return $a;
+}
+
 ?>
