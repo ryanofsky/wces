@@ -103,7 +103,7 @@ CREATE TABLE users
   email VARCHAR(60),
   department_id INTEGER,
   flags INTEGER NOT NULL,
-  lastlogin TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  lastlogin TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE SEQUENCE user_ids INCREMENT 1 START 1;
@@ -123,7 +123,7 @@ CREATE TABLE enrollments
   user_id INTEGER NOT NULL,
   class_id INTEGER NOT NULL,
   status INTEGER NOT NULL,
-  lastseen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  lastseen TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY(user_id, class_id)
 );
 
@@ -206,7 +206,7 @@ CREATE TABLE acis_affiliations
 CREATE TABLE sent_mails
 (
   sent_mail_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('sent_mail_ids'),
-  sent TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  sent TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   user_id INTEGER NOT NULL,
   mail_from TEXT,
   reply_to TEXT,
@@ -251,7 +251,7 @@ CREATE TABLE semester_question_periods
 (
   semester INTEGER,
   year INTEGER,
-  profdate TIMESTAMP
+  profdate TIMESTAMP WITH TIME ZONE
 ) INHERITS (question_periods);
 
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
@@ -400,9 +400,6 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, IN
   END;
 ' LANGUAGE 'plpgsql';
 
-BEGIN;
-SELECT professor_find('Perwez Shahabuddin', 'Perwez', NULL, 'Shahabuddin', NULL, 'ps147', 4);
-ROLLBACK;
 CREATE OR REPLACE FUNCTION course_find(TEXT, BOOLEAN) RETURNS INTEGER AS '
   DECLARE
     ccode ALIAS FOR $1;
@@ -526,7 +523,7 @@ CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VA
     rec RECORD;
     relevant INTEGER;
     last INTEGER;
-    curtime timestamp;
+    curtime TIMESTAMP WITH TIME ZONE;
   BEGIN
     curtime := CURRENT_TIMESTAMP;
 
@@ -919,7 +916,7 @@ CREATE OR REPLACE FUNCTION enrollment_update_status(INTEGER, INTEGER, INTEGER, I
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP WITH TIME ZONE) RETURNS INTEGER AS '
   DECLARE
     userid ALIAS FOR $1;
     classid ALIAS FOR $2;
@@ -975,7 +972,7 @@ CREATE OR REPLACE FUNCTION enrollment_add_ta(INTEGER, INTEGER) RETURNS VOID AS '
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP,INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP WITH TIME ZONE,INTEGER) RETURNS INTEGER AS '
   DECLARE
     uni_s   ALIAS FOR $1;
     last    ALIAS FOR $2;
@@ -1100,6 +1097,14 @@ CREATE OR REPLACE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS TEXT AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+CREATE OR REPLACE FUNCTION professor_hooked_uni(INTEGER, TEXT) RETURNS BOOLEAN AS '
+  SELECT EXISTS (SELECT * FROM professor_hooks WHERE user_id = $1 AND uni = $2)
+' LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION professor_unused_uni(INTEGER) RETURNS BOOLEAN AS '
+  SELECT EXISTS (SELECT * FROM users WHERE user_id = $1 AND lastlogin IS NULL)
+' LANGUAGE 'sql';
+
 CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     primary_id ALIAS FOR $1;
@@ -1128,9 +1133,27 @@ CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS 
     END IF;
 
     IF primary_row.uni IS NOT NULL AND secondary_row.uni IS NOT NULL THEN
-      RAISE EXCEPTION ''professor_merge(%,%) fails. cannot merge two professors with different cunix ids'', $1, $2;
+      pfound := professor_hooked_uni(primary_id, primary_row.uni);
+      sfound := professor_hooked_uni(secondary_id, secondary_row.uni);
+      IF pfound AND NOT sfound AND professor_unused_uni(primary_id) THEN
+        primary_row.uni := NULL;
+      ELSIF sfound AND NOT pfound AND professor_unused_uni(secondary_id)THEN
+        secondary_row.uni := NULL;
+      ELSIF sfound AND pfound THEN
+        pfound := professor_unused_uni(primary_id);
+        sfound := professor_unused_uni(secondary_id);
+        IF pfound AND NOT sfound THEN
+          primary_row.uni := NULL;
+        ELSIF sfound AND NOT pfound THEN
+          secondary_row.uni := NULL;
+        END IF;
+      END IF;
     END IF;
 
+    IF primary_row.uni IS NOT NULL AND secondary_row.uni IS NOT NULL THEN
+      RAISE EXCEPTION ''professor_merge(%,%) fails. cannot merge two professors with different cunix ids'', $1, $2;
+    END IF;
+    
     IF primary_row.uni IS NULL THEN
       primary_row.uni := secondary_row.uni;
       primary_row.lastlogin := secondary_row.lastlogin;
@@ -1199,6 +1222,7 @@ CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS 
         PERFORM enrollment_update(secondary_id, ers.class_id, ers.primary_status, ers.primary_time);
         DELETE FROM enrollments WHERE user_id = primary_id AND class_id = ers.class_id;
       END IF;
+    END LOOP;
 
     UPDATE enrollments SET user_id = primary_id WHERE user_id = secondary_id;
 
