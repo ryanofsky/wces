@@ -198,7 +198,7 @@ class SurveyWidget extends ParentWidget
     if (count($this->questionWidgets) == 0)
       print("<p><i>This survey contains no questions.</i></p>");
 
-    print("<p>Instructions: Fill in the form below and press the \"Submit Evaluation\" button when you are done. Note that you will not be able to go back and edit any part of the evaluation once it is submitted. This includes the comments section and the TA section.</p>");
+    print("<p>Instructions: Fill in the form below and press the \"Submit Evaluation\" button when you are done. Note that you will not be able to go back and edit any part of the evaluation once it is submitted.</p>");
 
     if ($this->showErrors)
     {
