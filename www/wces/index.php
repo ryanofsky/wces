@@ -58,8 +58,10 @@ and make the rest of the site accessible to you.
 ?>
 <p><?=$pimg?>Here is a list of the options currently available for professors:</p>
 <ul>
+<? /*
   <li><a href="<?=$wces_path?>professors/surveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
-  <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys</li>
+*/ ?>
+  <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys. Access to the results of course evaluations will be available at the close of the evaluation period</li>
 <? /*
   <li><a href="<?=$wces_path?>professors/respond/multiclasses.php<?=$QSID?>">Survey Responses</a> - Post responses to your survey results</li>
   <li><a href="<?=$wces_path?>professors/respond/historygraph.php<?=$QSID?>">Past Averages</a> - View graphs of past survey averages.</li>
@@ -79,7 +81,7 @@ and make the rest of the site accessible to you.
 
     if ($wces_closed)
     {
-      print("<p>Midterm Evaluations for Spring 2002 are closed.</p>");	
+      print("<p>Evaluations are closed.</p>");	
     }
     else
     {
@@ -108,7 +110,8 @@ and make the rest of the site accessible to you.
       }
       if ($n == 0) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</LI>");
       print ("</UL>");
-    
+      print('<p>Course evaluations are completely anonymous as student responses are kept separately from student user names. Please click on "System Overview" for more information about confidentiality.</p>');
+
       print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
     }
   }
