@@ -55,17 +55,15 @@ function PrintUser(&$uni, &$user_id)
     $name = $head = $row['uni'];
   else
     $head = "<i>Unknown User</i>";  
-    
   
   print("<h3>$head</h3>\n");
-
-  if ((login_getstatus() & login_administrator) && ($user_id != login_getuserid()))
-    print("<p><a href=\"info.php?fake=$user_id$ASID\">Log on as this user...</a></p>\n");
-
   print("<table>\n");
-  
-  if (!$row['lastlogin']) $row['lastlogin'] = "<i>unknown</i>";
-  print("<tr><td><strong>Last Login:</strong></td><td>$row[lastlogin]</td></tr>\n");
+
+  if ((login_getstatus() & login_administrator) || $user_id == login_getuserid())
+  {  
+    if (!$row['lastlogin']) $row['lastlogin'] = "<i>unknown</i>";
+    print("<tr><td><strong>Last Login:</strong></td><td>$row[lastlogin]</td></tr>\n");
+  }
 
   $row['email'] = $row['email'] ? "<a href=\"mailto:$row[email]\">$row[email]</a>" : "<i>unknown</i>";
   print("<tr><td><strong>Email:</strong></td><td>$row[email]</td></tr>\n");
@@ -81,8 +79,17 @@ function PrintUser(&$uni, &$user_id)
   print("<tr><td><strong>Access:</strong></td><td>" . implode(", ", $access) . "</td></tr>\n");  
   print("</table>\n");
   
-  print("<p><a href=\"users.php?user_id=$user_id\">Edit this user's information...</a></p>");
-  
+  if (login_getstatus() & login_administrator)
+  {
+    print("<p>");
+    if ($user_id != login_getuserid())
+    {
+      print ("<a href=\"info.php?fake=$user_id$ASID\">Log on as this user...</a><br>\n");
+    }
+
+    print("<a href=\"users.php?user_id=$user_id$ASID\">Edit this user's information...</a></p>");
+  }
+
   print("<hr>\n");
   
   PrintAffils($user_id);
@@ -121,12 +128,14 @@ function PrintEnrollments($user_id)
 
   $classes = pg_go("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
-      t.topic_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND e.status = 1 AS survey,
-      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
+      qt.topic_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND e.status = 1 AS survey,
+      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = qt.question_period_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN classes AS cl USING (class_id)" . ($restricted ? "
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
-    LEFT JOIN wces_topics AS t ON t.class_id = e.class_id" : "") . "
+    LEFT JOIN wces_topics AS t ON t.class_id = e.class_id
+    LEFT JOIN question_periods_topics AS qt ON qt.topic_id = t.topic_id AND qt.question_period_id = $question_period_id
+    " : "") . "
     WHERE e.user_id = $user_id" . ($restricted ? "
     AND (e.status > 1 OR my.class_id IS NOT NULL)" : "") . "
     ORDER BY cl.year DESC, cl.semester DESC, class"
@@ -337,22 +346,27 @@ function PrintClassInfo($class_id)
   $surveys = false;
   if (login_getstatus() & login_administrator)
   {
+  /*
     $result = pg_go("
-      SELECT topic_id FROM wces_topics WHERE class_id = $class_id AND category_id IS NOT NULL
+      SELECT question_period_id FROM semester_question_periods
+      WHERE question_period_id = (SELECT get_question_period()) AND year = $year AND semester = $semester
     ", $wces, __FILE__, __LINE__);
-    
-    if (pg_numrows($result) == 1)
+  
+    $question_period_id = pg_numrows($result) == 1 ? (int)pg_result($result,0,0) : 0;
+  */
+    $question_period_id = 23;
+  
+    if ($question_period_id)
     {
-      $topic_id = (int)pg_result($result,0,0);
-      
       $result = pg_go("
-        SELECT question_period_id FROM semester_question_periods
-        WHERE question_period_id = (SELECT get_question_period()) AND year = $year AND semester = $semester
+        SELECT topic_id FROM question_periods_topics AS qt
+        INNER JOIN wces_topics AS t USING (topic_id)
+        WHERE qt.question_period_id = $question_period_id AND class_id = $class_id
       ", $wces, __FILE__, __LINE__);
     
       if (pg_numrows($result) == 1)
       {
-         $question_period_id = (int)pg_result($result,0,0);
+        $topic_id = pg_result($result, 0, 0);
         $surveys = true;
       }
     }
