@@ -1369,11 +1369,11 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-param($question_period_id);
-param($nquestionperiodid);
-param($questionperiodid);
-param($classid);
-param($topic_id);
+param('question_period_id');
+param('nquestionperiodid');
+param('questionperiodid');
+param('classid');
+param('topic_id');
 
 $question_period_id = (int) $question_period_id;
 $nquestionperiodid = (int) $nquestionperiodid;

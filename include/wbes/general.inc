@@ -38,25 +38,25 @@ function sendwarning($dump, $file, $line)
 
 function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
 {
-  global $HTTP_SERVER_VARS, $LOGIN_SESSION, $server_dev, $server_feedback;
+  global $server_dev, $server_feedback;
   if (!$from) $from = "Anonymous";
   if ($server_dev != $server_feedback)
     mail($server_feedback,$subject,"Feedback from $from\n\n$comments");
   $comments .= "\n\n----------------------------------------\n";
 
-  if (isset($HTTP_SERVER_VARS) && is_array($HTTP_SERVER_VARS))
+  if (isset($_SERVER) && is_array($_SERVER))
   {
     $comments .= "SERVER VARIABLES\n\n";
-    foreach($HTTP_SERVER_VARS as $key => $value)
+    foreach($_SERVER as $key => $value)
     {
       $comments .= "$key = $value\n";
     }
   }
 
-  if (isset($LOGIN_SESSION) && is_array($LOGIN_SESSION))
+  if (isset($_SESSION) && is_array($_SESSION))
   {
-    $comments .= "\nLOGIN SESSION VARIABLES\n\n";
-    foreach($LOGIN_SESSION as $key => $value)
+    $comments .= "\nSESSION VARIABLES\n\n";
+    foreach($_SESSION as $key => $value)
     {
       $comments .= "$key = $value\n";
     }
@@ -126,8 +126,9 @@ function redirect($url)
 */
 function sloppyredirect($url)
 {
-  //print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
-  //print("Click <a href=\"$url\">here</a> to proceed.");
+  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
+  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  print("Click <a href=\"$url\">here</a> to proceed.");
   exit();
 }
 
@@ -201,27 +202,31 @@ function ifassign($value,&$variable)
 }
 
 /**
-* Initialize a variable with a default value if it doesn't exist.
-*
-* @param mixed  Variable to initialize
+* Put a request variable in global scope and give it a default value
+* if it doesn't already have one
+
+* @param mixed  Name of request variable
 * @param mixed  Default value
 */
-function param(&$var, $default = false)
+function param($var, $default = null)
 {
-  if (!isset($var)) $var = $default;
+  if (isset($_REQUEST[$var]))
+    $GLOBALS[$var] = $_REQUEST[$var];
+  else
+    $GLOBALS[$var] = $default;
 }
 
 /**
 * Same as param(), except that the variable is returned instead
-* of modified by reference
+* of put into global scope
 *
-* @param mixed   Variable to initialize
+* @param mixed   Name of request variable
 * @param mixed   Default value
-* @return mixed  New value
+* @return mixed  request value
 */
-function rparam(&$var, $default = false)
+function rparam($var, $default = null)
 {
-  return isset($var) ? $var : $default;
+  return isset($_REQUEST[$var]) ? $_REQUEST[$var] : $default;
 }
 
 function emailvalid($email)

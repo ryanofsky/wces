@@ -14,7 +14,7 @@ global $wbes;
 wbes_connect();
 
 
-if(!isset($HTTP_POST_VARS['input']))
+if(!isset($_POST['input']))
     {
 ?>
 
@@ -93,7 +93,7 @@ else
     $otherData = null;
     
     
-    while(list($key, $value) = each($HTTP_POST_VARS))
+    while(list($key, $value) = each($_POST))
 	{
 	if(!strcmp($value, "remove_this"))
 	    {

@@ -4,8 +4,8 @@ require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
 
-param($survey_category_id);
-param($sort);
+param('survey_category_id');
+param('sort');
 
 wces_connect();
 

@@ -8,9 +8,9 @@ require_once("wces/SimpleResults.inc");
 
 wces_connect();
 
-param($mode);
-param($searchfor);
-param($searchin);
+param('mode');
+param('searchfor');
+param('searchin');
 
 ?>
 <head>

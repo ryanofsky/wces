@@ -116,11 +116,11 @@ class ProfessorInfo extends FormWidget
     $this->action->loadvalues();
     $this->printable = $this->action->action == ProfessorInfo_print;
     
-    global $HTTP_POST_VARS, $HTTP_GET_VARS;
+    global $_POST, $_GET;
     if ($this->formmethod == WIDGET_GET)
-      $thearray = &$HTTP_GET_VARS;
+      $thearray = &$_GET;
     else if ($this->formmethod == WIDGET_POST)
-      $thearray = &$HTTP_POST_VARS;
+      $thearray = &$_POST;
     else
       assert(0);
     

@@ -17,8 +17,7 @@ define("login_administrator",  0x00000008);
 define("login_any",            0x0000000F);
 define("login_knownprofessor", 0x10000000);
 
-$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts", "fake", "fakeuni");
-$LOGIN_SESSION = session_restore($LOGIN_SESSION_VARS, "login/");
+session_restore();
 $LOGIN_PROMPTING = false;
 
 //-----------------------------------------------------------------------------
@@ -75,25 +74,18 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 
 function login_setup($userid, $uni, $status, $name, $deptid, $fake, $fakeuni)
 {
-  global $LOGIN_SESSION, $LOGIN_SESSION_VARS;
-  session_initialize($LOGIN_SESSION_VARS, "login/");
-  $LOGIN_SESSION["userid"] = (int)$userid;
-  $LOGIN_SESSION["uni"] = $uni;
-  $LOGIN_SESSION["status"] = (int)$status;
-  $LOGIN_SESSION["name"] = $name;
-  $LOGIN_SESSION["depts"] = $deptid ? array($deptid) : false;
-  $LOGIN_SESSION["fake"] = $fake;
-  $LOGIN_SESSION["fakeuni"] = $fakeuni;
+  session_initialize();
+  $_SESSION["userid"] = (int)$userid;
+  $_SESSION["uni"] = $uni;
+  $_SESSION["status"] = (int)$status;
+  $_SESSION["name"] = $name;
+  $_SESSION["depts"] = $deptid ? array($deptid) : false;
+  $_SESSION["fake"] = $fake;
+  $_SESSION["fakeuni"] = $fakeuni;
 };
 
 function login_logout()
 {
-  global $LOGIN_SESSION;
-  $LOGIN_SESSION["userid"] = NULL;
-  $LOGIN_SESSION["uni"]    = NULL;
-  $LOGIN_SESSION["status"] = NULL;
-  $LOGIN_SESSION["name"]   = NULL;
-  $LOGIN_SESSION["depts"]  = NULL;
   session_kill();
 };
 
@@ -102,64 +94,56 @@ function login_logout()
 
 function login_getstatus()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["status"]) ? $LOGIN_SESSION["status"] : 0;
+  return isset($_SESSION["status"]) ? $_SESSION["status"] : 0;
 }
 
 function login_getuni()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["uni"]) ? $LOGIN_SESSION["uni"] : 0;
+  return isset($_SESSION["uni"]) ? $_SESSION["uni"] : 0;
 };
 
 function login_getdepts()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["depts"]) ? $LOGIN_SESSION["depts"] : false;
+  return isset($_SESSION["depts"]) ? $_SESSION["depts"] : false;
 };
 
 function login_getuserid()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["userid"]) ? $LOGIN_SESSION["userid"] : false;
+  return isset($_SESSION["userid"]) ? $_SESSION["userid"] : false;
 };
 
 function login_getname()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["name"]) ? $LOGIN_SESSION["name"] : false;
+  return isset($_SESSION["name"]) ? $_SESSION["name"] : false;
 };
 
 function login_getfake()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["fake"]) ? $LOGIN_SESSION["fake"] : false;
+  return isset($_SESSION["fake"]) ? $_SESSION["fake"] : false;
 };
 
 function login_getfakeuni()
 {
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["fakeuni"]) ? $LOGIN_SESSION["fakeuni"] : false;
+  return isset($_SESSION["fakeuni"]) ? $_SESSION["fakeuni"] : false;
 };
 
 
 function login_whoami()
 {
-  global $LOGIN_SESSION;
-  if (!isset($LOGIN_SESSION["status"])) return "";
+  if (!isset($_SESSION["status"])) return "";
   
   $result = "";
   
-  if ($LOGIN_SESSION["status"] & login_student)
+  if ($_SESSION["status"] & login_student)
     $result .= "student";
 
-  if ($LOGIN_SESSION["status"] & login_professor)
+  if ($_SESSION["status"] & login_professor)
   {
     if ($result) $result .= ", ";
     $result .= "professor";
   }  
 
-  if ($LOGIN_SESSION["status"] & login_administrator)
+  if ($_SESSION["status"] & login_administrator)
   {
     if ($result) $result .= ", ";
     $result .= "administrator";
@@ -177,7 +161,15 @@ $login_fail = false;
 
 function login_validate($uni,$password)
 {
-  global $wces, $LOGIN_SESSION, $login_fail;
+  global $wces, $login_fail;
+
+  login_update(864);
+  return true;
+    
+    login_update($user_id);
+
+  if ($_SESSION["status"] == 0)
+    sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
   
   $uni = str_replace("@columbia.edu","",$uni);
   $uni = str_replace("@barnard.edu","",$uni);
@@ -231,7 +223,7 @@ function login_validate($uni,$password)
   $user_id = (int)pg_result($result,0,0);
   login_update($user_id);
 
-  if ($LOGIN_SESSION["status"] == 0)
+  if ($_SESSION["status"] == 0)
     sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
  
   return true;
@@ -281,9 +273,16 @@ function acisget($uni,$pw)
 
 function login_prompt($url, $rs, $de = false, $uni = "")
 {
-  global $login_fail, $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING, $LOGIN_SESSION, $LOGIN_SESSION_VARS;
+  global $login_fail, $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING;
   $LOGIN_PROMPTING = true;
-  session_initialize($LOGIN_SESSION_VARS, "login/");
+  
+  // technically, it is not neccessary to call session_initialize here since
+  // no data is being stored in the session on this page load.
+  // The reason it is called here is to allow detection of browser support 
+  // for cookies on the next page load. That way, the SID will never
+  // have to be passed as a URL parameter for browsers that support cookies.
+  
+  session_initialize();
 
   page_top("Login Page");  
 

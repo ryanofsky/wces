@@ -38,20 +38,20 @@ class ImageUpload extends Widget
   var $maxsize = 1048576; // 1 megabyte
 
   var $errors = array();
-  var $picture_id = NULL;
+  var $picture_id = null;
 
   function ImageUpload($name, &$parent)
   {
     $this->Widget($name, $parent);
   }
 
-  function loadValues()
+  function loadState()
   {
-    global $wces, $HTTP_POST_FILES, $server_upload;
+    global $wces, $server_upload;
 
     $extensions = array(1 => ".gif", 2 => ".jpg", 3 => ".png");
 
-    $file = &$HTTP_POST_FILES[$this->name];
+    $file = &$_FILES[$this->name];
     
     if (is_array($file) && is_uploaded_file($tname = $file['tmp_name']))
     {
@@ -91,14 +91,19 @@ class ImageUpload extends Widget
       $this->picture_id = $picture_id;
     }
     else
-      $this->picture_id = $this->loadValue("id");
+      $this->picture_id = $this->readValue("id");
   }
 
+  function displayHidden()
+  {
+    $this->printValue("id", $this->picture_id);
+  }
+  
   function display()
   {
-    if ($this->picture_id) $this->printValue("id", $this->picture_id);
+    $this->printValue("id", $this->picture_id);
     print('<input name="' . $this->name . '" type=file>');
-  } 
+  }
 }
 
 define("UserEditor_save", 1);
@@ -119,9 +124,9 @@ class SqlBox extends Widget
     $this->selected = $multiple ? array() : null;
   }
 
-  function loadValues()
+  function loadState()
   {
-    $selected = $this->loadValue();
+    $selected = $this->readValue();
     if (isset($selected))
     {
       if (!$this->multiple)
@@ -149,7 +154,7 @@ class SqlBox extends Widget
   function display($params="")
   {
     global $wces;
-    $name = $this->name . $this->multiple ? '[]' : '';
+    $name = $this->name . ($this->multiple ? '[]' : '');
     if ($params) $params = " $params";
 
     wces_connect();
@@ -169,10 +174,9 @@ class SqlBox extends Widget
   }
 };
 
-class UserEditor extends Widget
+class UserEditor extends ParentWidget
 {
   var $user_id;
-
 
   var $show_prof = true;
   var $show_admin = true;
@@ -183,33 +187,33 @@ class UserEditor extends Widget
   
   function UserEditor($user_id, $name, &$parent)
   {
-    $this->Widget($name, $parent);
+    $this->ParentWidget($name, $parent);
     $this->user_id    = (int)$user_id;
-    $this->action     = & new ActionButton("action", $this);
-    $this->firstName  = & new TextBox(0, 30, "", "firstName", $this);
-    $this->lastName   = & new TextBox(0, 30, "", "lastName", $this);
-    $this->email      = & new TextBox(0, 30, "", "email", $this);
-    $this->department = & new SqlBox("
+    $this->event      =& new EventWidget("event", $this);
+    $this->firstName  =& new TextBox(0, 30, "", "firstName", $this);
+    $this->lastName   =& new TextBox(0, 30, "", "lastName", $this);
+    $this->email      =& new TextBox(0, 30, "", "email", $this);
+    $this->department =& new SqlBox("
       SELECT department_id AS id, (code::text || ' - ' || name::text) AS name
       FROM departments ORDER BY code
     ", false, "department", $this);
     
     if ($this->show_prof)
     {
-      $this->url       = & new TextBox(0, 60, "", "url", $this);
-      $this->statement = & new TextBox(6, 60, "", "statement", $this);
-      $this->profile   = & new TextBox(6, 60, "", "profile", $this);
-      $this->education = & new TextBox(6, 60, "", "education", $this);
-      $this->picture   = & new ImageUpload("picture", $this);
+      $this->url       =& new TextBox(0, 60, "", "url", $this);
+      $this->statement =& new TextBox(6, 60, "", "statement", $this);
+      $this->profile   =& new TextBox(6, 60, "", "profile", $this);
+      $this->education =& new TextBox(6, 60, "", "education", $this);
+      $this->picture   =& new ImageUpload("picture", $this);
     };
     
     if ($this->show_admin)
     {
-      $this->optout = & new CheckBox("optout", $this);
+      $this->optout =& new CheckBox("optout", $this);
     }
   }
 
-  function loadDefaults()
+  function loadInitialState()
   {
     global $wces;
     
@@ -311,11 +315,11 @@ class UserEditor extends Widget
     return (bool)$result;
   }
   
-  function loadValues()
+  function loadState()
   {
-    Widget::loadValues();
+    ParentWidget::loadState();
 
-    if ($this->action->action == UserEditor_save)
+    if ($this->event->event == UserEditor_save)
     {
       if ($this->save())
       {
@@ -323,19 +327,19 @@ class UserEditor extends Widget
         $this->message = "<p><font color=blue>User Editor: Changes saved successfully</font></p>";
       }
     }
-    else if ($this->action->action == UserEditor_cancel)
+    else if ($this->event->event == UserEditor_cancel)
     {
       $this->done = true;
       $this->message = "<p><font color=red>User Editor: No changes were saved.</font></p>";
     }
-    else if ($this->action->action == UserEditor_preview)
+    else if ($this->event->event == UserEditor_preview)
     {
       // nothing to do
     }
     array_splice($this->errors, count($this->errors), 0, $this->picture->errors);
   }
   
-  function display()
+  function printVisible()
   {
     if (count($this->errors) > 0)
     {
@@ -363,14 +367,14 @@ class UserEditor extends Widget
 <tr><td valign=top>Profile:</td><td><? $this->profile->display(); ?></td></tr>
 <tr><td valign=top>Education:</td><td><? $this->education->display(); ?></td></tr>
 <tr><td valign=top>Picture:</td><td><? $this->picture->display(); 
-$this->action->display("Preview", UserEditor_preview); ?><br>
+$this->event->displayButton("Preview", UserEditor_preview); ?><br>
 <?
   $src = picture_src($this->picture->picture_id);
   if ($src) print("<img src=\"$src\">"); else print("<p><i>No Photo Uploaded</i></p><br>");
 ?>
 </td></tr>
 <? } ?>
-<tr><td>&nbsp;</td><td><? $this->action->display("Save", UserEditor_save); $this->action->display("Cancel", UserEditor_cancel); ?></td></tr>
+<tr><td>&nbsp;</td><td><? $this->event->displayButton("Save", UserEditor_save); $this->event->displayButton("Cancel", UserEditor_cancel); ?></td></tr>
 </table>
 <?
   }

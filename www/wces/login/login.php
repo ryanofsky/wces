@@ -4,11 +4,11 @@
   require_once("wces/login.inc");
   require_once("wces/page.inc");
 
-  param($uni,"");                            // username
-  param($pw,"");                             // password
-  param($url,"");                            // requested url
-  $rs = (int) rparam($rs,0);                 // requested status (status needed to access requested page)
-  $de = (boolean) rparam($de,false);         // disable encryption
+  param('uni','');                            // username
+  param('pw','');                             // password
+  param('url','');                            // requested url
+  $rs = (int) rparam('rs',0);                 // requested status (status needed to access requested page)
+  $de = (boolean) rparam('de',false);         // disable encryption
 
   if (($uni || $pw) && login_validate($uni, $pw))
   {

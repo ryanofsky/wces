@@ -3,7 +3,7 @@
 require_once("wbes/postgres.inc");
 require_once("wbes/wbes.inc");
 
-param($bbid,0);
+param('bbid', 0);
 $bbid = (int)$bbid;
 
 class Revision

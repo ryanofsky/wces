@@ -3,7 +3,7 @@
   require_once("wbes/postgres.inc");
   require_once("wces/login.inc");
   login_protect(login_professor);
-  param($url);
+  param('url');
   if (!$url) $url = $wces_path . "index.php";
   if (isset($user_id))
   {

@@ -89,12 +89,12 @@
     $server_cheapredirects = false;
     $server_url = new URL
     (
-      isset($HTTP_SERVER_VARS["HTTPS"]) && $HTTP_SERVER_VARS["HTTPS"] == "on",
-      $HTTP_SERVER_VARS["SERVER_NAME"],
-      $HTTP_SERVER_VARS["SERVER_PORT"],
-      $HTTP_SERVER_VARS["SCRIPT_NAME"],
-      isset($HTTP_SERVER_VARS["PATH_INFO"]) ? $HTTP_SERVER_VARS["PATH_INFO"] : "",
-      $HTTP_SERVER_VARS["QUERY_STRING"]
+      isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on",
+      $_SERVER["SERVER_NAME"],
+      $_SERVER["SERVER_PORT"],
+      $_SERVER["SCRIPT_NAME"],
+      isset($_SERVER["PATH_INFO"]) ? $_SERVER["PATH_INFO"] : "",
+      $_SERVER["QUERY_STRING"]
     );
   }
   else if ($server_type == "iis-cgi")
@@ -103,12 +103,12 @@
     $server_cheapredirects = true;
     $server_url = new URL
     (
-      $HTTP_SERVER_VARS["HTTPS"] == "on",
-      $HTTP_SERVER_VARS["SERVER_NAME"],
-      $HTTP_SERVER_VARS["SERVER_PORT"],
-      $HTTP_SERVER_VARS["SCRIPT_NAME"],
-      substr($HTTP_SERVER_VARS["PATH_INFO"], strlen($HTTP_SERVER_VARS["SCRIPT_NAME"])),
-      isset($HTTP_SERVER_VARS["QUERY_STRING"]) ? $HTTP_SERVER_VARS["QUERY_STRING"] : ""
+      $_SERVER["HTTPS"] == "on",
+      $_SERVER["SERVER_NAME"],
+      $_SERVER["SERVER_PORT"],
+      $_SERVER["SCRIPT_NAME"],
+      substr($_SERVER["PATH_INFO"], strlen($_SERVER["SCRIPT_NAME"])),
+      isset($_SERVER["QUERY_STRING"]) ? $_SERVER["QUERY_STRING"] : ""
     );
   }
   else if ($server_type == "iis-isapi")
@@ -118,12 +118,12 @@
     $server_cheapredirects = false;
     $server_url = new URL
     (
-      $HTTP_SERVER_VARS["HTTPS"] == "on",
-      $HTTP_SERVER_VARS["SERVER_NAME"],
-      $HTTP_SERVER_VARS["SERVER_PORT"],
-      $HTTP_SERVER_VARS["SCRIPT_NAME"],
-      substr($HTTP_SERVER_VARS["PATH_INFO"], strlen($HTTP_SERVER_VARS["SCRIPT_NAME"])),
-      isset($HTTP_SERVER_VARS["QUERY_STRING"]) ? $HTTP_SERVER_VARS["QUERY_STRING"] : ""
+      $_SERVER["HTTPS"] == "on",
+      $_SERVER["SERVER_NAME"],
+      $_SERVER["SERVER_PORT"],
+      $_SERVER["SCRIPT_NAME"],
+      substr($_SERVER["PATH_INFO"], strlen($_SERVER["SCRIPT_NAME"])),
+      isset($_SERVER["QUERY_STRING"]) ? $_SERVER["QUERY_STRING"] : ""
     );
   }
   else

@@ -23,25 +23,25 @@ define("SRC_REGFILE",  4);
 
 page_top("Import Data", true);
 
-param($do_subject);
-param($do_department);
-param($do_division);
-param($do_course);
-param($do_classid);
-param($do_users);
-param($do_enrollments);
-param($do_penrollments);
-param($do_profhooks);
-param($do_oldchoice);
-param($do_question_periods);
-param($do_categories);
-param($do_createsurvey);
-param($do_categories);
-param($do_topics);
-param($do_getcustoms);
-param($do_results);
-param($do_oldresults);
-param($import);
+param('do_subject');
+param('do_department');
+param('do_division');
+param('do_course');
+param('do_classid');
+param('do_users');
+param('do_enrollments');
+param('do_penrollments');
+param('do_profhooks');
+param('do_oldchoice');
+param('do_question_periods');
+param('do_categories');
+param('do_createsurvey');
+param('do_categories');
+param('do_topics');
+param('do_getcustoms');
+param('do_results');
+param('do_oldresults');
+param('import');
 
 function print_item($str)
 {

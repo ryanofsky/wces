@@ -2,7 +2,7 @@
   require_once("wbes/general.inc");
   require_once("wces/page.inc");
   page_top("Email Settings");
-  param($panic); param($newemail);
+  param('panic'); param('newemail');
 ?>
 
 <h3>Limitations</h3>

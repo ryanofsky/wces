@@ -6,14 +6,17 @@ require_once("wces/wces.inc");
 require_once("wces/login.inc");
 require_once("wces/oldquestions.inc");
 
-param($class_id);
-param($course_id);
-param($user_id);
-param($uni);
-param($surveyid);
-param($fake);
-param($nofake);
-param($delete_enrollment);
+param('class_id');
+param('course_id');
+param('user_id');
+param('uni');
+param('surveyid');
+param('fake');
+param('nofake');
+param('delete_enrollment'); 
+param('user_find');
+param('user_uni');
+param('user_last');
 
 function PrintUser(&$uni, &$user_id)
 {

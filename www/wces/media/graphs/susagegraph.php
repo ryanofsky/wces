@@ -1,6 +1,9 @@
 <?
 error_reporting (0);
 
+$blank = $_REQUEST['blank'];
+$filled = $_REQUEST['filled'];
+
 Header("Content-type: image/png");
 
 if (function_exists('imagecreate'))

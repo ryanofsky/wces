@@ -8,14 +8,20 @@ require_once("wbes/postgres.inc");
 require_once("wbes/component_choice.inc");
 require_once("wces/report_page.inc");
 require_once("wces/SimpleResults.inc");
+
+param('user_id');
+param('course_id');
+param('class_id');
+param('show_distributions');
+
 if (isset($show_distributions))
 {
   $show_distributions = $show_distributions ? 1 : 0;
   setcookie('cookie_show_distributions', $show_distributions);
 }
-else if (isset($HTTP_COOKIE_VARS['cookie_show_distributions']))
+else if (isset($_COOKIE['cookie_show_distributions']))
 {
-  $show_distributions = $HTTP_COOKIE_VARS['cookie_show_distributions'] ? 1 : 0;
+  $show_distributions = $_COOKIE['cookie_show_distributions'] ? 1 : 0;
 }
 else
 {
@@ -49,13 +55,6 @@ h4 { font-family: Arial, Helvetica, sans-serif; }
 
 <body bgcolor="#6699CC" link="#000000" alink="#444444" vlink="#444444"><table width=100% height=100% bordercolor=black border=1 cellpadding=5 cellspacing=0><tr>
 <?
-
-param($user_id);
-param($course_id);
-param($class_id);
-
-
-$show_distributions = (int) $show_distributions;
 
 wces_connect();
 
