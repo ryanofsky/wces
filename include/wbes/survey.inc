@@ -16,6 +16,8 @@ function get_base($topic_id)
       return 611;
     else if ($topic_id == 1483)
       return 612;
+    else if ($topic_id == 3111)
+      return 799;
     else
     {
       $r = pg_query("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
