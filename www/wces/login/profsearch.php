@@ -5,6 +5,7 @@ require_once("wces/page.inc");
 login_protect(login_professor);
 
 param($lastname);
+param($url);
 
 page_top("Professor Search Page");
 
@@ -19,7 +20,7 @@ if (!$lastname)
 ?>
 <form name=profsearch action=profsearch.php method=get>
 Last Name: <input name="lastname" type="text" size="20" value="<?=htmlspecialchars($lastname)?>"> <input name="search" type="submit" value="Search">
-<input type="hidden" name="destination" value="<?=htmlspecialchars($destination)?>">
+<input type="hidden" name="url" value="<?=htmlspecialchars($url)?>">
 </form>
 <?
 
@@ -32,14 +33,14 @@ if ($lastname)
   <?
 
   $db = wces_connect();
-  $professors = mysql_query("SELECT professorid, name FROM professors WHERE name LIKE '%" . addslashes($lastname) . "%' LIMIT 500",$db);
+  $professors = mysql_query("SELECT professorid, name FROM professors WHERE name LIKE '%" . addslashes($lastname) . "%' LIMIT 30",$db);
   if (mysql_num_rows($professors) > 0)
   {
     print("<TABLE cellSpacing=0 cellPadding=2 border=1>\n");
     while ($professor = mysql_fetch_array($professors))
     {
       extract($professor);
-      print("<TR><TD>$name [<a href=\"profbounce.php?profid=$professorid&destination=$destination\">Use This Listing</a>]<UL>");
+      print("<TR><TD>$name [<a href=\"profbounce.php?profid=$professorid&url=$url\">Use This Listing</a>]<UL>");
       $classes = mysql_query("SELECT cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM classes as cl LEFT JOIN courses AS c USING (courseid) LEFT JOIN subjects AS s USING (subjectid) WHERE cl.professorid = '$professorid' ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
       while ($class = mysql_fetch_array($classes))
       {
@@ -48,7 +49,7 @@ if ($lastname)
       }
       print("</UL><P>&nbsp;</P></TD></TR>\n");
     }
-    print("</TABLE>\n");
+    print("</TABLE>\n<p>&nbsp;</p>\n");
   }
   else
   {
@@ -56,8 +57,6 @@ if ($lastname)
 <p><i>No matches found. Please contact an administrator if you need to have your name added to the database.</i></p>
     
 <?
-    
-    
   };  
 };
 
