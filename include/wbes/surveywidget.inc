@@ -12,6 +12,9 @@ class SurveyWidget extends ParentWidget
   // parameters
   var $specialization_id, $base_branch_id, $user_id, $question_period_id, $factories;
   var $backup = true;
+  var $anonymous = false;
+  var $replacements = false;
+  var $save_id = false;
 
   // output
   var $done = false;
@@ -107,13 +110,20 @@ class SurveyWidget extends ParentWidget
     }
 
     $this->pages = $page;
+
+    if (count($this->questionWidgets) == 0)
+    {
+      $this->message = "<p><font color=red>Survey is empty.</font></p>";
+      $this->done = true;
+      return;
+    }
   }
 
   function saveResponses()
   {
     global $wbes, $_POST, $server_feedback;
 
-    $anonymous = true; // todo: decide how to make this this configurable
+    $anonymous = $this->anonymous;
     global $wbes;
 
     $this->showErrors = true;
@@ -213,7 +223,15 @@ class SurveyWidget extends ParentWidget
       if ($q->page == $this->page)
       {
         print("<div>");
+        if ($this->replacements) ob_start();
         $q->display();
+        if ($this->replacements)
+        {
+          $contents = ob_get_contents();
+          ob_end_clean();
+          print(str_replace(array_keys($this->replacements), array_values($this->replacements), $contents));
+        }
+        
         print("</div>\n<br>\n");
       }
       else
@@ -242,7 +260,7 @@ class SurveyWidget extends ParentWidget
     <? if ($prev) $this->event->displayButton("Previous Page", SurveyWidget_previous, false, ""); ?>
     <? if ($next) $this->event->displayButton("Next Page", SurveyWidget_next, false, ""); ?>
     <? if ($save) $this->event->displayButton("Save responses", SurveyWidget_save, false, ""); ?>
-    <? if ($save) $this->event->displayButton("Return without saving", SurveyWidget_cancel, false, ""); ?>
+    <? if ($save) $this->event->displayButton("Cancel", SurveyWidget_cancel, false, " onclick=\"return confirm('You survey responses will be not be saved if you continue.\\n\\nPress OK to continue, or Cancel to keep filling out the survey.');\""); ?>
   </td>
 </tr>
 </table>
