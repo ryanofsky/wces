@@ -18,7 +18,7 @@ if (isset($userfile) && is_uploaded_file($userfile))
   }
   else
   {
-    importdeancsv($userfile,"2000","3",array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3, "cunix" => 4),$questionsetid);
+    importdeancsv($userfile,"2001","1",array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3, "cunix" => 4));
   }      
 }
 else
