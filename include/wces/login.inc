@@ -117,8 +117,15 @@ function login_whoami()
     $result .= "administrator";
   }
 
-  $p = strrpos($result, ",");
-  if ($p !== false) $result = substr_replace($result," and ",$p,2);
+  if ($result == "")
+  {
+    return "no";
+  }
+  else
+  {
+    $p = strrpos($result, ",");
+    if ($p !== false) $result = substr_replace($result," and ",$p,2);
+  }  
   return $result;
 }
 
@@ -149,6 +156,8 @@ function login_saveprofid($profid)
 function login_validate($uni,$password)
 {
   $uni = str_replace("@columbia.edu","",$uni);
+  $uni = str_replace("@barnard.edu","",$uni);
+  $uni = trim($uni);
   $dump = nl2br(acisget($uni,$password));
 
   if (!$dump)
@@ -166,7 +175,7 @@ function login_validate($uni,$password)
   {
     $cunix = $uni;
     sendwarning("Login parser warning: username '$uni' could not be verified.\n\n----------\n\n$dump", __FILE__, __LINE__);
-  }  
+  }
 
   if (ereg(".*USER_EMAIL=([^<>]+)<br",$dump,$result))
     $email = $result[1];
@@ -202,6 +211,11 @@ function login_validate($uni,$password)
   while($row = mysql_fetch_assoc($result))
     $badenrollments[$row["classid"]] = true;
 
+  if ($userid == 6097 && isset($badenrollments[11266]))
+  {
+    unset($badenrollments[11266]); 
+  }  
+
   $pos = strpos($dump,"CUcourse_");
   $insertfailed = false;
   while(!($pos === false))
@@ -226,12 +240,12 @@ function login_validate($uni,$password)
   // begin validation
   $status = 0;
 
-  if (contains($dump,Array("CUstudent","BCstudent","CPMCstudent","TCstudent","UTSstudent")))
+  if (contains($dump,Array("CUstudent","BCstudent","BC2student","CPMCstudent","TCstudent","UTSstudent")))
     $status |= login_student;
   
   if (db_getvalue($db,"users",Array("userid" => $userid),"isprofessor") == "true")
     $status |= login_professor;
-  else if (contains($dump,Array("CUinstructor", "BCinstructor", "CUNIX_instructor", "CUadministrator", "CUNIX_Instructor")))
+  else if (contains($dump,Array("CUinstructor", "BCinstructor")))
   {
      $status |= login_professor;
      db_updatevalues($db,"users",Array("userid" => $userid),Array("isprofessor" => "true"));
@@ -259,16 +273,25 @@ function login_validate($uni,$password)
   
   if ($status & login_professor)
   {
-    $result = db_getrow($db,"professors",Array("userid" => $userid),array("professorid",$name));
+    $result = db_getrow($db,"professors",Array("userid" => $userid),array("professorid","name"));
     if ($result)
     {
-      list($profid,$name) = $result;
+      $profid = $result["professorid"];
+      $name = $result["name"];
       $status |= login_knownprofessor;
     }  
   }
 
   if (db_getvalue($db,"users",Array("userid" => $userid),"isadmin") == "true")
     $status |= login_administrator;
+    
+  if (db_getvalue($db,"users",Array("userid" => $userid),"status") == "student")
+    $status |= login_student;
+  
+  if ($status == 0)
+  {
+    sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
+  }
   
   login_setup($db,$userid,$cunix,$status,$name,$profid);
  
@@ -332,14 +355,16 @@ function login_prompt($url, $rs, $de = false, $uni = "")
     else     
       print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
   }
+  else if ($uni)
+    print("<p><b><font color=red>Invalid username or password.</font></b></p>\n");
 
   $securesite = "$server_sbase${wces_path}login/login.php";
   $insecuresite = "$server_base${wces_path}login/login.php";
   $urlargs = "?url=" . urlencode($url) . "&rs=" . urlencode($rs) . $AASID;
 
 ?>  
-  <p><strong>Enter your CUNIX username and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
-  <form method=post action="<?= $securesite ?>">
+  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
+  <form method=post action="<?= $de ? $insecuresite : $securesite ?>">
   <input type=hidden name=url value="<?= htmlspecialchars($url) ?>">
   <input type=hidden name=rs value="<?= htmlspecialchars($rs) ?>">
   <input type=hidden name=de value="<?= htmlspecialchars($de) ?>">
@@ -357,10 +382,12 @@ function login_prompt($url, $rs, $de = false, $uni = "")
 ?><font size="-1"><b>Note:</b> The information entered in this form will
 be transmitted using your browser's SSL encryption. If you would like to
 connect with no encryption, click
-<a href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
+<a onclick="alert('Due to security concerns from AcIS, this function has been disabled. Sending your CUNIX username and password over a public network without encryption puts your information and Columbia\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
 If you would like to view a secure version of this page so you can examine
 our site's certificate before entering your password, click
-<a href="<?= $securesite . $urlargs ?>">here</a>.</font>
+<a href="<?= $securesite . $urlargs ?>">here</a>. If your browser does not recognize our
+certificate, you'll need to download the latest AcIS
+<a href="http://www.columbia.edu/acis/access/secure/ca.html" target="_blank">root certificate</a> into your browser.</font>
 <?
   }
   else if ($de)
@@ -371,6 +398,7 @@ of this form, click <a href="<?= $securesite . $urlargs?>">here</a>.
 </font>
 <?  
   }
+  print("<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>");
   page_bottom();  
   exit();
 }
