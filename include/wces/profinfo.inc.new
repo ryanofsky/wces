@@ -1,4 +1,4 @@
-<%
+<?
 
 //---------------------------------
 require_once("wces/server.inc");
@@ -173,9 +173,9 @@ class ProfessorInfo extends FormWidget
       
       $this->action->display(false,ProfessorInfo_print,0);
       $this->action->display(false,ProfessorInfo_back,0);
-%>
+?>
 <table><tr><td height=50>
-<span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%= $this->action->gethref($this->printable ? ProfessorInfo_back : ProfessorInfo_print , 0) %>"><img src="<%=$server_wcespath%>media/report/<%= $this->printable ? "back" : "print"%>.gif" border=0 width=20 height=20 alt="Icon"><%=$this->printable ? "Back" : "Printable version of this page"%></a></span> 
+<span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?= $this->action->gethref($this->printable ? ProfessorInfo_back : ProfessorInfo_print , 0) ?>"><img src="<?=$server_wcespath?>media/report/<?= $this->printable ? "back" : "print"?>.gif" border=0 width=20 height=20 alt="Icon"><?=$this->printable ? "Back" : "Printable version of this page"?></a></span> 
 </td></tr></table>
 
 <form id=form1 name=form1>
@@ -195,7 +195,7 @@ class ProfessorInfo extends FormWidget
 </tr>
 </thead>
 <tbody>
-<%
+<?
       $i = 0;
       while($row = mysql_fetch_assoc($result))
       {
@@ -334,15 +334,15 @@ class ProfessorEditor extends FormWidget
     else if ($this->action->action != ProfessorEditor_cancel)
     {
       $this->form->display();
-  %>
+  ?>
   <table>
-    <tr><td valign=top><strong>Display Name:</strong></td><td><% $this->name->display(); %></td></tr>
-  <% if ($this->isadmin) { %>  
-    <tr><td valign=top><strong>CUNIX ID:</strong></td><td><% $this->cunix->display(); %></td></tr>
-  <% }; %>  
-    <tr><td valign=top><strong>Email:</strong></td><td><% $this->email->display(); %></td></tr>
+    <tr><td valign=top><strong>Display Name:</strong></td><td><? $this->name->display(); ?></td></tr>
+  <? if ($this->isadmin) { ?>  
+    <tr><td valign=top><strong>CUNIX ID:</strong></td><td><? $this->cunix->display(); ?></td></tr>
+  <? }; ?>  
+    <tr><td valign=top><strong>Email:</strong></td><td><? $this->email->display(); ?></td></tr>
     <tr><td valign=top><strong>Department:</strong></td><td>
-<%
+<?
 $departments = db_exec("SELECT departmentid, code, name FROM Departments", $this->db, __FILE__, __LINE__);
 print('<SELECT name=' . $this->prefix . "_departmentid\">\n");
 while($department = mysql_fetch_assoc($departments))
@@ -353,25 +353,25 @@ while($department = mysql_fetch_assoc($departments))
   print("  <OPTION VALUE=\"$departmentid\"$selected>$code - $name</OPTION>\n");
 }
 print("</SELECT>");
-%>
+?>
     </td></tr>
-    <tr><td valign=top><strong>Homepage:</strong></td><td><% $this->url->display(); %></td></tr>
-    <tr><td valign=top><strong>Statement:</strong></td><td><% $this->statement->display(); %></td></tr>
-    <tr><td valign=top><strong>Profile:</strong></td><td><% $this->profile->display(); %></td></tr>
-    <tr><td valign=top><strong>Education:</strong></td><td><% $this->education->display(); %></td></tr>
+    <tr><td valign=top><strong>Homepage:</strong></td><td><? $this->url->display(); ?></td></tr>
+    <tr><td valign=top><strong>Statement:</strong></td><td><? $this->statement->display(); ?></td></tr>
+    <tr><td valign=top><strong>Profile:</strong></td><td><? $this->profile->display(); ?></td></tr>
+    <tr><td valign=top><strong>Education:</strong></td><td><? $this->education->display(); ?></td></tr>
     <tr><td valign=top><strong>Picture Upload:</strong></td><td>
-      <% $this->pictureupload->display(); %>
-      <% $this->action->display("Preview New Picture", ProfessorEditor_preview); %><br>
-      <div><img src="<%= $profimages_www . ($this->picture ? $this->picture : "default.gif") %>"></div>
+      <? $this->pictureupload->display(); ?>
+      <? $this->action->display("Preview New Picture", ProfessorEditor_preview); ?><br>
+      <div><img src="<?= $profimages_www . ($this->picture ? $this->picture : "default.gif") ?>"></div>
     </td></tr>
-    <tr><td>&nbsp;</td><td><% $this->action->display("Save",ProfessorEditor_save); %> <% if ($this->isadmin) $this->action->display("Cancel",ProfessorEditor_cancel); %></td></tr>
+    <tr><td>&nbsp;</td><td><? $this->action->display("Save",ProfessorEditor_save); ?> <? if ($this->isadmin) $this->action->display("Cancel",ProfessorEditor_cancel); ?></td></tr>
   </table>    
-  <% 
+  <? 
     } 
   }
 }
 
-%>
+?>
 
 
 
