@@ -279,35 +279,6 @@ class ResultPage extends ParentWidget
       $html = $text = false;
       $options = array('skipLines' => true);
 
-      $result = pg_go("SELECT DISTINCT ordinal, topic_id FROM rwtopics", $wces, __FILE__, __LINE__);
-      if (pg_numrows($result) == 1)
-      {
-        $row = pg_fetch_row($result, 0, PGSQL_ASSOC);
-        $options['uglyHackText'] = pg_go("
-          SELECT $row[ordinal] AS ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext
-          FROM survey_responses AS r
-          INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
-          INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
-          INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
-          WHERE r.topic_id = $row[topic_id]
-          ORDER BY tr.item_id, tr.revision_id
-        ", $wces, __FILE__, __LINE__);
-
-        $options['uglyHackTa'] = pg_go("
-          SELECT $row[ordinal] AS ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
-            tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
-          FROM survey_responses AS r
-          INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
-          LEFT JOIN users AS u ON u.user_id = tr.user_id
-          WHERE r.topic_id = $row[topic_id]
-          ORDER BY u.lastname, u.firstname, u.user_id, name
-        ", $wces, __FILE__, __LINE__);
-      }
-
-
-
-
-
       makeall(true, $html, $text, $groups, $options);
 
       /*
