@@ -44,6 +44,8 @@ DROP FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGE
 DROP FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEXT,TEXT);
 DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,TEXT,TEXT,TEXT,TEXT,TEXT);
 DROP FUNCTION cunix_associate(INTEGER,INTEGER);
+DROP FUNCTION MAX(INTEGER, INTEGER);
+DROP FUNCTION get_status(INTEGER, INTEGER);
 DROP FUNCTION get_profs(INTEGER);
 DROP FUNCTION text_join(TEXT, TEXT, TEXT);
 DROP FUNCTION professor_merge(INTEGER, INTEGER);
@@ -236,6 +238,7 @@ CREATE TABLE acis_groups
   acis_group_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('acis_group_ids'),
   class_id INTEGER,
   code VARCHAR(60) UNIQUE NOT NULL
+  status INTEGER
 );
 
 CREATE SEQUENCE acis_group_ids INCREMENT 1 START 1;
@@ -468,6 +471,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
     flags_s INTEGER;
     userid INTEGER;
     classid INTEGER;
+    class_status INTEGER;
     i INTEGER;
     acis_groupid INTEGER;
     rec RECORD;
@@ -519,20 +523,28 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
 
          -- Find the acis group id and class id
 
-        classid := 0;
-        SELECT INTO rec class_id, acis_group_id FROM acis_groups WHERE code = affil;
+        classid := 0; class_status := 0;
+        SELECT INTO rec class_id, acis_group_id, status FROM acis_groups WHERE code = affil;
         IF FOUND THEN
           acis_groupid := rec.acis_group_id;
           IF rec.class_id THEN classid := rec.class_id; END IF;
+          IF rec.status THEN class_status := rec.status; END IF;
         ELSE
           IF SUBSTRING(affil FROM 1 FOR 9) = ''CUcourse_'' THEN
             classid := class_find(SUBSTRING(affil FROM 10));
+            class_status := 1;
             -- RAISE NOTICE ''classid (%)'',classid;
+          ELSE
+            IF SUBSTRING(affil FROM 1 FOR 8) = ''CUinstr_'' THEN
+              classid := class_find(SUBSTRING(affil FROM 9));
+              class_status := 3;
+              -- RAISE NOTICE ''classid (%)'',classid;
+            END IF;
           END IF;
           IF classid = 0 THEN
             INSERT INTO acis_groups (code) VALUES (affil);
           ELSE
-            INSERT INTO acis_groups (code, class_id) VALUES (affil,classid);
+            INSERT INTO acis_groups (code,class_id,status) VALUES (affil,classid,class_status);
           END IF;
           acis_groupid := currval(''acis_group_ids'');
         END IF;
@@ -547,8 +559,8 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
             INSERT INTO enrollments(user_id,class_id,status,lastseen) VALUES (userid, classid, 1, curtime);
           ELSE
             UPDATE enrollments SET lastseen = curtime WHERE user_id = userid AND class_id = classid;
-            IF rec.status < 1 THEN
-              UPDATE enrollments SET status = 1 WHERE user_id = userid AND class_id = classid;
+            IF rec.status < class_status THEN
+              UPDATE enrollments SET status = class_status WHERE user_id = userid AND class_id = classid;
             END IF;
           END IF;
         END IF;
@@ -946,18 +958,18 @@ CREATE FUNCTION professor_hooks_update(INTEGER,SMALLINT,TEXT,TEXT,TEXT,TEXT,TEXT
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS INTEGER AS '
+CREATE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS TEXT AS '
   DECLARE
     first ALIAS FOR $1;
     second ALIAS FOR $2;
     separator ALIAS FOR $3;
   BEGIN
     IF first IS NULL OR char_length(first) = 0 THEN
-      RETURN NULLIF(first,'''');
+      RETURN NULLIF(second,'''');
     END IF;
 
     IF second IS NULL OR char_length(second) = 0 THEN
-      RETURN NULLIF(second,'''');
+      RETURN NULLIF(first,'''');
     END IF;
 
     IF separator IS NULL THEN
@@ -974,8 +986,11 @@ CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
     secondary_id ALIAS FOR $2;
     primary_row RECORD;
     secondary_row RECORD;
+    pfound BOOLEAN;
+    sfound BOOLEAN;
     pinfo RECORD;
     sinfo RECORD;
+    t TEXT;
   BEGIN
     RAISE NOTICE ''professor_merge(%,%) called'', $1, $2;
 
@@ -992,7 +1007,7 @@ CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
     END IF;
 
     IF primary_row.uni IS NOT NULL AND secondary_row.uni IS NOT NULL THEN
-      RAISE NOTICE ''professor_merge(%,%) fails. cannot merge two professors with different cunix ids'', $1, $2;
+      RAISE EXCEPTION ''professor_merge(%,%) fails. cannot merge two professors with different cunix ids'', $1, $2;
     END IF;
 
     IF primary_row.uni IS NULL THEN
@@ -1000,7 +1015,7 @@ CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
       primary_row.lastlogin := secondary_row.lastlogin;
     END IF;
 
-    IF primary_row.lastname IS NULL AND firstname IS NULL THEN
+    IF primary_row.lastname IS NULL AND primary_row.firstname IS NULL THEN
       primary_row.lastname  := secondary_row.lastname;
       primary_row.firstname := secondary_row.firstname;
     END IF;
@@ -1013,53 +1028,78 @@ CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
       primary_row.department_id := secondary_row.department_id;
     END IF;
 
-    UPDATE users SET uni = primary_row.uni, email = primary_row.email,
-      lastname = primary_row.lastname, firstname = primary_row.firstname,
-      department_id = primary_row.department_id,
-      flags = flags | primary_row.flags
-    WHERE user_id = primary_id;
-
     SELECT INTO pinfo url, picname, statement, profile, education FROM professor_data
     WHERE user_id = primary_id;
+    pfound := FOUND;
 
-    SELECT INTO sinfo url, picname, statment, profile, education FROM professor_data
+    SELECT INTO sinfo url, picname, statement, profile, education FROM professor_data
     WHERE user_id = secondary_id;
+    sfound := FOUND;
 
-    IF pinfo IS NULL OR sinfo IS NULL THEN
+    IF NOT (sfound AND pfound) THEN
       UPDATE professor_data SET user_id = primary_id WHERE user_id IN (primary_id, secondary_id);
     ELSE
       pinfo.url := text_join(pinfo.url, sinfo.url, ''	'');
 
-      IF picname IS NULL OR charlength(picname) = 0 THEN
+      IF pinfo.picname IS NULL OR 0 = char_length(pinfo.picname) THEN
         pinfo.picname = sinfo.picname;
       END IF;
 
-      pinfo.statement := text_join(pinfo.statement,sinfo.statement, ''<hr>'';
-      pinfo.profile := text_join(pinfo.profile,sinfo.profile, ''<hr>'';
-      pinfo.education := text_join(pinfo.education,sinfo.education, ''<hr>'';
-
+      pinfo.statement := text_join(pinfo.statement,sinfo.statement, ''<hr>'');
+      pinfo.profile := text_join(pinfo.profile,sinfo.profile, ''<hr>'');
+      pinfo.education := text_join(pinfo.education,sinfo.education, ''<hr>'');
+      
       UPDATE professor_data SET
         url = pinfo.url,
         picname = pinfo.picname,
         statement = pinfo.statement,
         education = pinfo.education
       WHERE user_id = primary_id;
+      
       DELETE FROM professor_data WHERE user_id = secondary_id;
-    END;
+    END IF;
 
-    -- Delete enrollments that already exist
+    -- Update primary enrollments to keep maximum status
 
+    UPDATE enrollments
+    SET status = MAX(status, get_status(secondary_id, class_id))
+    WHERE user_id = primary_id;
+
+    -- Delete secondary enrollments that already exist in primary
+    
     DELETE FROM enrollments WHERE
       user_id = secondary_id
       AND
       class_id IN (SELECT class_id FROM enrollments WHERE user_id = primary_id);
 
+    -- Transfer hooks and enrollments from secondary to primary
+
     UPDATE enrollments SET user_id = primary_id WHERE user_id = secondary_id;
     UPDATE professor_hooks SET user_id = primary_id WHERE user_id = secondary_id;
+    UPDATE temp_user SET newid = primary_id WHERE newid = secondary_id;
+    UPDATE temp_prof SET newid = primary_id WHERE newid = secondary_id;
+    UPDATE acis_affiliations SET user_id = primary_id WHERE user_id = secondary_id;
+    -- Delete secondary user
+    
+    DELETE FROM users WHERE user_id = secondary_id;
 
+    UPDATE users SET uni = primary_row.uni, email = primary_row.email,
+      lastname = primary_row.lastname, firstname = primary_row.firstname,
+      department_id = primary_row.department_id,
+      lastlogin = primary_row.lastlogin,
+      flags = flags | primary_row.flags
+    WHERE user_id = primary_id;
     RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION get_status(INTEGER, INTEGER) RETURNS INTEGER AS '
+  SELECT status FROM enrollments WHERE user_id = $1 AND class_id = $2;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION MAX(INTEGER, INTEGER) RETURNS INTEGER AS '
+  SELECT CASE WHEN $2 IS NULL OR $1 > $2 THEN $1 ELSE $2 END;
+' LANGUAGE 'sql';
 
 CREATE FUNCTION cunix_associate(INTEGER,INTEGER) RETURNS INTEGER AS '
   DECLARE
