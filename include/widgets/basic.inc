@@ -125,15 +125,22 @@ class DropBox extends FormWidget
     $n = '"' . $this->prefix . '"';
     if ($params) $params = " $params";
     
-    print("<select name=$n$params>\n");
-    foreach($this->items as $k => $v)
+    if ($hidden)
     {
-      if ($k == $this->selected)
-        print("  <option value=$k selected>$v\n");
-      else  
-        print("  <option value=$k>$v\n");
+      print("<input type=hidden name=$n value=\"" . htmlspecialchars($this->selected) . "\"$params>");
     }
-    print("</select>");
+    else
+    {
+      print("<select name=$n$params>\n");
+      foreach($this->items as $k => $v)
+      {
+        if ($k == $this->selected)
+          print("  <option value=$k selected>$v\n");
+        else  
+          print("  <option value=$k>$v\n");
+      }
+      print("</select>");
+    }
   }
 
   function loadvalues()
@@ -176,7 +183,7 @@ class ActionButton extends FormWidget
       {
         $p = strrpos($key,'-');
         $this->action = substr($key,$l,$p-$l);
-        $this->object = substr($key,$p);
+        $this->object = substr($key,$p+1);
         return;
       }
     }
@@ -196,6 +203,7 @@ class ActionButton extends FormWidget
   {
     //alert(actionobject.name + " set to '" + action + "'");
     actionobject.value = action + '-' + object;
+    if (actionobject.form.onsubmit) actionobject.form.onsubmit();
     actionobject.form.submit();
   }
 
