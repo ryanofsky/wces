@@ -6,10 +6,10 @@ require_once("wces/wces.inc");
 // SimpleResults exists to provides a uniform interface for
 // retrieving responses to base questions
 
-$select_classes = "SELECT class_id FROM wces_topics WHERE category_id IN (100, 102, 104) AND make_public = 't'";
-$set_question_periods = "(2)";
-$base_base_branch_id = 14; // comments
-$oracle_branch_id = 13; // multiple choice except for quality of text question
+$select_classes = "SELECT class_id FROM wces_topics WHERE make_public";
+$set_question_periods = "(2,23)";
+$base_item_id = 14; // comments
+$oracle_item_id = 13; // multiple choice except for quality of text question
 $oracle_quality_of_text = 305; // multiple choice for quality of text question
 
 function & array_get(&$array, $index)
@@ -33,7 +33,7 @@ class SimpleResults
 
   function SimpleResults($class_ids, $includeComments)
   {
-    global $wces, $set_question_periods, $oracle_branch_id, $oracle_quality_of_text, $base_base_branch_id;
+    global $wces, $set_question_periods, $oracle_item_id, $oracle_quality_of_text, $base_item_id;
     wces_connect();
 
     $class_ids = array_unique($class_ids);
@@ -47,7 +47,7 @@ class SimpleResults
       FROM classes AS cl
       INNER JOIN wces_topics AS t USING (class_id)
       INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id AND r.user_id IS NOT NULL
-      WHERE cl.class_id IN ($classes) AND r.question_period_id IN $set_question_periods
+      WHERE cl.class_id IN ($classes) AND t.question_period_id IN $set_question_periods
       GROUP BY cl.class_id, cl.students
     ", $wces, __FILE__, __LINE__);
 
@@ -66,13 +66,14 @@ class SimpleResults
       FROM wces_topics AS t
       INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
       INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
-      INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
-      INNER JOIN branches AS b ON c.branch_id = b.branch_id
+      INNER JOIN revisions AS crv ON crv.revision_id = cr.revision_id
+      INNER JOIN choice_components AS c ON c.component_id = crv.component_id
       INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-      INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
-      WHERE t.class_id IN ($classes) AND r.question_period_id IN $set_question_periods AND c.branch_id IN ($oracle_branch_id, $oracle_quality_of_text)
-      GROUP BY t.class_id, q.qtext, q.revision_id
-      ORDER BY q.revision_id
+      INNER JOIN revisions AS qrv ON qrv.revision_id = qr.revision_id
+      INNER JOIN choice_questions AS q ON q.component_id = qrv.component_id
+      WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND cr.item_id IN ($oracle_item_id, $oracle_quality_of_text)
+      GROUP BY t.class_id, q.qtext, qr.revision_id
+      ORDER BY qr.revision_id
     ", $wces, __FILE__, __LINE__);
 
     $base_choices_count = count($this->base_choices);
@@ -96,12 +97,12 @@ class SimpleResults
     if ($includeComments)
     {
       $r = pg_go("
-        SELECT DISTINCT t.class_id, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
+        SELECT DISTINCT t.class_id, tr.revision_id, c.ctext, c.flags, tr.rtext
         FROM wces_topics AS t
         INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
         INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
         INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
-        WHERE t.class_id IN ($classes) AND r.question_period_id IN $set_question_periods AND c.branch_id = $base_base_branch_id
+        WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND tr.item_id = $base_item_id
       ", $wces, __FILE__, __LINE__);
 
       $n = pg_numrows($r);
