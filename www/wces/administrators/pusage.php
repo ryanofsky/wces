@@ -5,9 +5,9 @@ require_once("wces/login.inc");
 require_once("wces/page.inc");
 require_once("wces/usage.inc");
 
-login_protect(login_administrator);
+LoginProtect(LOGIN_ADMIN);
 
-$f =& new Form(null, $PHP_SELF);
+$f =& new Form(null, $_SERVER['PHP_SELF']);
 $u =& new ProfessorUsage('usage', $f);
 $f->loadState();
 
