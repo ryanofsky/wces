@@ -138,6 +138,7 @@ function login_getfakeuni()
   return isset($LOGIN_SESSION["fakeuni"]) ? $LOGIN_SESSION["fakeuni"] : false;
 };
 
+
 function login_whoami()
 {
   global $LOGIN_SESSION;

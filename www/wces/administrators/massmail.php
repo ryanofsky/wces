@@ -1,5 +1,4 @@
 <?
-
 require_once("wces/page.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");

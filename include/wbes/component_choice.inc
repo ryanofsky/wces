@@ -63,7 +63,6 @@ class ChoiceFactory extends ComponentFactory
       // todo: optimize. these queries can be performed once outside of the for loop
 
       $result = pg_query("
-
         CREATE TEMPORARY TABLE tmp$c->revision_id AS
         SELECT branch_latest(li.item_id,$latest) AS revision_id, ordinal
         FROM list_items AS li, branch_topics_cache AS bt
@@ -925,6 +924,7 @@ class ChoiceWidget extends ComponentWidget
 
     if($hidden)
     {
+      if (isset($this->answers))
       foreach($this->answers as $i => $v)
       {
         $name = "q$i";
@@ -934,6 +934,7 @@ class ChoiceWidget extends ComponentWidget
           $this->printattribute($name, $v);
       }
 
+      if (isset($this->others))
       foreach($this->others as $i => $v)
         $this->printattribute("q{$i}_{$this->other}", $v);
       return;

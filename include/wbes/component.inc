@@ -233,6 +233,11 @@ class ComponentWidget extends FormWidget
     return true;
   }
   
+  function displaypreview()
+  {
+    $this->display();
+  }
+  
   function display()
   {
     print("<div>");

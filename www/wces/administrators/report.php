@@ -1,5 +1,4 @@
 <?
-
  require_once("wces/page.inc");
  require_once("wces/login.inc");
  require_once("wces/report_widget.inc");

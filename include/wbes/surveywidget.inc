@@ -4,6 +4,8 @@ require_once("widgets/basic.inc");
 
 define("SurveyWidget_save",1);
 define("SurveyWidget_cancel",2);
+define("SurveyWidget_next",3);
+define("SurveyWidget_previous",4);
 
 class SurveyWidget extends FormWidget
 {
@@ -23,9 +25,10 @@ class SurveyWidget extends FormWidget
   var $action; // ActionButton widget
   var $form; // Form widget
   var $showerrors; // boolean
-  var $survey;
+  var $survey = NULL;
   var $questionwidgets;
-
+  var $page = 0;
+  
   function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, $prefix, $form, $formmethod)
   {
     $this->FormWidget($prefix, $form, $formmethod);
@@ -42,13 +45,24 @@ class SurveyWidget extends FormWidget
 
   function loadvalues()
   {
-    $this->survey = unserialize((string)$this->loadattribute("survey"));
-    if (get_class($this->survey) != "survey")
-      $this->load();
+    $this->page = (int)$this->loadattribute("page");
+    if (!$this->survey)
+    {
+      $this->survey = unserialize((string)$this->loadattribute("survey"));
+      if (get_class($this->survey) != "survey")
+        $this->load();
+    }
 
     $this->questionwidgets = array();
+    $page = 0;
     foreach(array_keys($this->survey->components) as $k)
-      $this->questionwidgets[] = $this->survey->components[$k]->getwidget("{$this->prefix}_$k",$this->form, $this->formmethod);
+    {
+      if ("pagebreak" == get_class($this->survey->components[$k])) ++$page;
+      $c = $this->survey->components[$k]->getwidget("{$this->prefix}_$k",$this->form, $this->formmethod);
+      $c->page = $page;
+      $this->questionwidgets[] = $c;
+    }
+    $this->pages = $page;
 
     $this->form->loadvalues();
     if($this->form->isstale)
@@ -64,13 +78,13 @@ class SurveyWidget extends FormWidget
   function handleactions()
   {
     if ($this->action->action == SurveyWidget_save)
-    {
       $this->save();
-    }
     else if ($this->action->action == SurveyWidget_cancel)
-    {
       $this->finished = true;
-    }
+    else if ($this->action->action == SurveyWidget_next)
+      ++$this->page;
+    else if ($this->action->action == SurveyWidget_previous)
+      --$this->page;
 
     $this->action->action = "";
     $this->action->object = "";
@@ -132,6 +146,8 @@ class SurveyWidget extends FormWidget
   {
     global $wces_path;
 
+    $this->printattribute("page", $this->page);
+
     if ($this->failure) return;
 
     if (count($this->questionwidgets) == 0)
@@ -158,11 +174,16 @@ class SurveyWidget extends FormWidget
 
     foreach(array_keys($this->questionwidgets) as $i)
     {
-      print("<div>");
-      $this->questionwidgets[$i]->display(false, $this->showerrors);
-      print("</div>\n<br>\n");
+      $q = &$this->questionwidgets[$i];
+      if ($q->page == $this->page)
+      {
+        print("<div>");
+        $q->display(false, $this->showerrors);
+        print("</div>\n<br>\n");
+      }
+      else
+        $q->display(true);
     }
-
     print("<p>&nbsp;</p>\n");
     $this->optionbar();
   }
@@ -170,14 +191,21 @@ class SurveyWidget extends FormWidget
   function optionbar()
   {
     global $wces_path;
-    if ($this->user_id)
+    
+    $prev = $this->page > 0;
+    $next = $this->page < $this->pages && $this->pages > 0;
+    $save = (bool)$this->user_id;
+    
+    if ($save || $prev || $next)
     {
 ?>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
-  <td align=center bgcolor=black background="<?=$wces_path?>media/0x000000.gif">
-    <? $this->action->display("Save responses", SurveyWidget_save, false, ""); ?>
-    <? $this->action->display("Return without saving", SurveyWidget_cancel, false, ""); ?>
+  <td align=center bgcolor="#B5CFE7">
+    <? if ($prev) $this->action->display("Previous Page", SurveyWidget_previous, false, ""); ?>
+    <? if ($next) $this->action->display("Next Page", SurveyWidget_next, false, ""); ?>
+    <? if ($save) $this->action->display("Save responses", SurveyWidget_save, false, ""); ?>
+    <? if ($save) $this->action->display("Return without saving", SurveyWidget_cancel, false, ""); ?>
   </td>
 </tr>
 </table>

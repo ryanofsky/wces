@@ -1,6 +1,7 @@
 <?
 
 require_once("widgets/basic.inc");
+require_once("wbes/surveywidget.inc");
 require_once("wbes/server.inc");
 require_once("wbes/survey.inc");
 require_once("wbes/postgres.inc");
@@ -10,6 +11,7 @@ define("SurveyEditor_main",1);
 define("SurveyEditor_insert",2);
 define("SurveyEditor_modify",3);
 define("SurveyEditor_done",4);
+define("SurveyEditor_preview", 5);
 
 //main actions
 define("SurveyEditor_main_insert",1);
@@ -19,6 +21,7 @@ define("SurveyEditor_main_moveup",4);
 define("SurveyEditor_main_movedown",5);
 define("SurveyEditor_main_save",6);
 define("SurveyEditor_main_cancel",7);
+define("SurveyEditor_main_preview",8);
 
 //insert actions
 define("SurveyEditor_insert_create",1);
@@ -180,9 +183,15 @@ class SurveyEditor extends FormWidget
             $this->state = SurveyEditor_done;
             $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font>";
           break;
+          case SurveyEditor_main_preview:
+            $this->state = SurveyEditor_preview;
+            $this->handleaction();
           default:
           break;
         }
+      break;
+      case SurveyEditor_preview:
+        $this->barepage = true;
       break;
     }  
   }
@@ -223,7 +232,7 @@ class SurveyEditor extends FormWidget
             $this->printattribute("state",SurveyEditor_modify);
             $this->modify_editor->display();
             $this->modify_action->display("Save", SurveyEditor_modify_save, "", 'class="tinybutton"');
-            print("<input type=button class=tinybutton value=Preview onclick=\"return SurveyEditor_preview(this.form,'" . $this->modify_action->prefix . "')\">");
+            print("<input type=button class=tinybutton value=Preview onclick=\"return SurveyEditor_preview(this.form,'{$this->modify_action->prefix}'," . SurveyEditor_modify_preview . ")\">");
             $this->modify_action->display("Cancel",SurveyEditor_modify_cancel, "", 'class="tinybutton"');
           }
           else
@@ -231,6 +240,14 @@ class SurveyEditor extends FormWidget
             print('<center><input type=button onclick="window.close()" value="Close this window"></center>');
             $this->modify_editor->preview();
           }
+        break;
+        case SurveyEditor_preview:
+          $this->printattribute("state",SurveyEditor_preview);
+          print('<p align=center><input type=button onclick="window.close()" value="Close this window"></p>');
+          $w = new SurveyWidget(0,0,0,0,0,"{$this->prefix}_preview", $this->form, $this->formmethod);
+          $w->survey = $this->survey;
+          $w->loadvalues();
+          $w->display();
         break;
         case SurveyEditor_main:
         default:
@@ -240,7 +257,10 @@ class SurveyEditor extends FormWidget
           $ncomponents = count($this->survey->components);
           if ($ncomponents == 0)
           {
+            print("<p>This survey does not have any components. Click below to either insert a component or cancel without saving any changes.</p>");
             $this->main_action->display("Insert a component",SurveyEditor_main_insert,0,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
+            print(" ");
+            $this->main_action->display("Cancel",SurveyEditor_main_cancel,"", 'class="tinybutton" style="BACKGROUND: #CE3031; COLOR: white;"');
           }
           else // $ncomponents != 1
           {
@@ -267,7 +287,7 @@ by clicking above and below existing components.</p>
 <tr>
   <td width=40 valign=center><img src="<?=$server_media?>/editor/node.gif" width=40 height=18 border=0 align=absmiddle alt=node id=<?=$this->prefix?>_node<?=$i?> name=<?=$this->prefix?>_node<?=$i?>></td>
   <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
-  <td><? $w->display(); ?></td>
+  <td><? $w->displaypreview(); ?></td>
 </tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
@@ -279,6 +299,9 @@ by clicking above and below existing components.</p>
   <td colspan=3 align=center>
     <? $this->main_action->display("Save Survey",SurveyEditor_main_save,"", 'class="tinybutton"'); ?>
     <? $this->main_action->display("Cancel",SurveyEditor_main_cancel,"", 'class="tinybutton"'); ?>
+    <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->main_action->prefix?>',<?=SurveyEditor_main_preview?>)">
+    
+    
   </td>
 </tr>
 </table>
@@ -676,7 +699,7 @@ by clicking above and below existing components.</p>
   window.onload = SurveyEditor_onload;
 <? } // if SurveyEditor_ns4 ?>
 
-  function SurveyEditor_preview(form,actionelement)
+  function SurveyEditor_preview(form,actionelement,state)
   {
     var ns4bug = navigator.appName == "Netscape" && parseFloat(navigator.appVersion) < 5;
     
@@ -684,7 +707,7 @@ by clicking above and below existing components.</p>
     {
       var w = window.open("about:blank", "previewwin", "width=500,height=410,status=0,toolbar=0,menubar=0,scrollbars=1,screenX=5,screeny=5,left=0,top=0,resizable=1",true);
       form.target = "previewwin";
-      ActionButton_go(<?=SurveyEditor_modify_preview?>,0,form[actionelement]);
+      ActionButton_go(state,0,form[actionelement]);
       form.target = "_self";
       form[actionelement].value = "";
       w.focus();
@@ -700,7 +723,7 @@ by clicking above and below existing components.</p>
       d.open();
       d.write("<script>\n");
       d.write("window.opener.SurveyEditor_form.target = 'previewwin';\n");
-      d.write("window.opener.ActionButton_sgo(<?=SurveyEditor_modify_preview?>, 0, '" + form.name + "', '" + actionelement + "');\n");
+      d.write("window.opener.ActionButton_sgo(" + state + ", 0, '" + form.name + "', '" + actionelement + "');\n");
       d.write("window.opener.SurveyEditor_form.target = '_self';\n");
       d.write("window.opener.SurveyEditor_form['" + actionelement + "'].value = '';\n");
       d.write("</script>\n");

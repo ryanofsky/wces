@@ -59,19 +59,18 @@ function showhelp(topic)
   <td valign=top bgcolor="#DEDEDE" class=sidelinks>
 <?
   $user_id = login_getuserid();
-  $uni = login_getuni();
   $status = login_getstatus();
 
   if ($user_id)
   {
-    page_link("Log off $uni","login/logout.php$QSID",true);
+    page_link("Log off","login/logout.php$QSID",true);
     if ($fake = login_getfakeuni())
-      page_link("Log on as $fake", "administrators/info.php?nofake=1$ASID", true);
+      page_link("Log off fake", "administrators/info.php?nofake=1$ASID", true);
   }
   else
     page_link("Log In","index.php$QSID", !$LOGIN_PROMPTING);
 
-  if ($uni)
+  if ($user_id)
     page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
 
   $nospace = true;
