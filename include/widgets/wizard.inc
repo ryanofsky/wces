@@ -74,6 +74,7 @@ class Wizard extends FormWidget
     $this->showstep = $this->loadattribute("showstep");
     $this->finished = $this->loadattribute("finish") ? true : false;
     
+    /* Safer finish only works from the last page, otherwise jumps to the last page...
     if ($this->finished)
     { 
       end($this->steps);
@@ -84,6 +85,7 @@ class Wizard extends FormWidget
         $this->showstep = $last;
       };  
     }  
+    */
     
     $this->visited = unserialize($this->loadattribute("visited"));
     if (!is_array($this->visited)) $this->visited = array();
