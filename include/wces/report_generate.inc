@@ -6,9 +6,6 @@ function makereport(&$wizard,$stdout,&$html,&$text)
 {
   global $wces_path, $wces;
 
-  $outhtml = is_string($html);
-  $outtext = is_string($text);
-
   $sqloptions = array
   (
     "standard" => $wizard->includestandard->checked || ($wizard->includetext->checked && !$wizard->includecustom->checked),
@@ -62,7 +59,13 @@ function makereport(&$wizard,$stdout,&$html,&$text)
     $text .= " - Date: " . date("l, F j, Y") . "\n";
     $text .= " - Time: " . date("g:i:s A") . "\n";
   }
+  makeall($stdout, $html, $text, $groups);
+}
 
+function makeall($stdout,&$html,&$text,&$groups)
+{
+  global $wces_path, $wces;
+  
   $result = pg_query("
     SELECT s.ordinal, s.students, r.responses
     FROM 
@@ -181,6 +184,10 @@ function makereport(&$wizard,$stdout,&$html,&$text)
   ", $wces, __FILE__, __LINE__);
 
   $choices = new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
+  $pages = pg_result(pg_query("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
+
+  $outhtml = is_string($html);
+  $outtext = is_string($text);
 
   for($page = 1; $page <= $pages; ++$page)
   {
