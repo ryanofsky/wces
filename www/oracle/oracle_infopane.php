@@ -196,7 +196,7 @@ function ShowProfessor($user_id)
   if (!pg_numrows($result) != 1)
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   else
-    $url = $picname = $statement = $profile = $education = NULL;
+    $picture_id = $url = $picname = $statement = $profile = $education = NULL;
 
   if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>\n");
   
