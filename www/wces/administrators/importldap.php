@@ -1,8 +1,8 @@
 <?
 
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 
-require_once("wces/taskwindow.inc");
+require_once("wbes/taskwindow.inc");
 require_once("wces/page.inc");
 
 page_top("LDAP Import");
@@ -27,44 +27,24 @@ while($user = mysql_fetch_assoc($users))
   $info = ldap_get_entries($ds, $sr);
   if (isset($info[0]))
   {
-    $cn = $info[0]["cn"][0];
-    $title = $info[0]["title"][0];
-    $ou = $info[0]["ou"][0];
-    $email = $info[0]["mail"][0];
-    //db_addrow($db,"ldapcache", array("userid" => $userid, "cn" => $cn, "title" => $title, "ou" => $ou));
+    $cn    = addslashes($info[0]["cn"][0]);
+    $title = addslashes($info[0]["title"][0]);
+    $ou    = addslashes($info[0]["ou"][0]);
+    $email = addslashes($info[0]["mail"][0]);
+    db_exec("REPLACE INTO ldapcache (userid, cn, title, ou) values ('$userid', '$cn', '$title', '$ou')", $db, __FILE__, __LINE__);
     if ($email)
-    {
-      db_updatevalues($db,"users",array("userid"=>$userid),array("email" => $email));
-      taskwindow_cprint("<b>$cunix</b><br>\n - $email<br>\n");
-      // - $cn<br>\n - $title<br>\n - $ou<br>\n
-    }
+      db_exec("UPDATE users SET email = '$email' WHERE userid = '$userid'", $db, __FILE__, __LINE__);
+    else
+      $email = "<i>no email address found</i>"; 
+    taskwindow_cprint("<b>$cunix</b> - $email - $cn<br>\n");
   }
   else
   {
-    taskwindow_cprint("<b>$cunix</b><br>\n");
-    printarray($info,"info");
+    taskwindow_cprint("<b>$cunix</b> - no records found<br>\n");
+    //printarray($info,"info");
   }   
   if ((++$row) % 5 == 0) taskwindow_flush();
 }
 taskwindow_end();
 ldap_close($ds);
-
-if ($uni)
-{
-    print("<h4>Results</h4>\n");
-    print("<p><strong>" . $info["count"] . " results found</strong></p>");
-    foreach($info as $number => $result)
-    if (strcmp($number,"count") != 0)
-    {
-      print("<h5>" . $result["cn"][0] . "</h5>\n");
-      print("<ul>\n");
-      foreach($result as $itemname => $itemarray)
-      if(is_array($itemarray))
-        foreach($itemarray as $key => $value)
-        if (strcmp($key,"count") != 0)
-          print("  <li><code><b>$itemname</b> = $value</code></li>\n");
-      print("</ul>\n");
-    }
-  }
-}
 ?>
