@@ -18,20 +18,6 @@ define("CATEGORIES",       0x20);
 $report_debug = false;
 $report_find_wces_topics = 'wces_topics';
 
-function report_topics_cache()
-{
-  global $wces;
-  wces_connect();
-  pg_go("
-    INSERT INTO report_topics (topic_id, question_period_id, class_id, category_id, course_id, department_id, user_id)
-    SELECT DISTINCT t.topic_id, t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
-    FROM survey_responses AS r
-    INNER JOIN wces_topics AS t USING (topic_id)
-    INNER JOIN classes AS cl USING (class_id)
-    LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3;
-  ", $wces, __FILE__, __LINE__);
-}
-
 function report_findtopics($tempname, $criteria, $needprof = true)
 {
   global $wces, $report_find_wces_topics;
@@ -59,28 +45,38 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   if ($criteria[COURSES])
   {
     $where .= $where ? "  AND " : "WHERE ";
-    $where .= "t.course_id IN (" . implode($criteria[COURSES],",") . ")\n    ";
+    $where .= "cl.course_id IN (" . implode($criteria[COURSES],",") . ")\n    ";
   }
 
   if ($criteria[DEPARTMENTS])
   {
     $where .= $where ? "  AND " : "WHERE ";
-    $where .= "t.department_id IN (" . implode($criteria[DEPARTMENTS],",") . ")\n    ";
+    $where .= "cl.department_id IN (" . implode($criteria[DEPARTMENTS],",") . ")\n    ";
   }
 
   if ($criteria[PROFESSORS])
   {
-    $where .= $where ? "  AND " : "WHERE ";
-    $where .= "t.user_id IN (" . implode($criteria[PROFESSORS],",") . ")\n    ";
+    $pwhere = $where ? "  AND " : "WHERE ";
+    $pwhere .= "e.user_id IN (" . implode($criteria[PROFESSORS],",") . ")\n    ";
   }
-
+  else 
+    $pwhere = '';
+  
+  if ($needprof)
+  {
+    $pcol = ", e.user_id";
+    $pjoin = "LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3\n";
+  }
+  else
+    $pcol = $pjoin = "";
+  
   wces_connect();
-
   pg_go("
     CREATE TEMPORARY TABLE $tempname AS
-    SELECT NULL::INTEGER AS ordinal, t.*
-    FROM report_topics AS t
-    $where
+    SELECT 0 AS ordinal, t.topic_id, t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id$pcol
+    FROM wces_topics AS t
+    INNER JOIN classes AS cl USING (class_id)
+    $pjoin$where$pwhere
   ", $wces, __FILE__, __LINE__);
 };
 
@@ -284,6 +280,20 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
 
   //////////////////////////////////// TOPIC INFO //////////////////////////////////////
 
+  if ($report_debug)
+  {
+    global $wces;
+    $r = pg_go("
+      SELECT DISTINCT topic_id FROM rwtopics WHERE ordinal = $ordinal
+    ", $wces, __FILE__, __LINE__);
+    $n = pg_numrows($r);
+    for ($i = 0; $i < $n; ++$i)
+    {
+      $row = pg_fetch_array($r, $i, PGSQL_ASSOC);
+      $pagehtml .= "<h5><font color=red><i>topic_id = $row[topic_id]</i></font></h5>\n";        
+    }
+  }
+
   if (!isset($options['topicInfo']) || $options['topicInfo'])
   {
     if ($outhtml)
@@ -294,6 +304,15 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
   
     if ($outtext)
       $pagetext .= "Included on this page\n\n";
+  
+    if (isset($options['headings']))
+    {
+      foreach ($options['headings'] as $heading)
+      {
+        list($n, $v) = $heading; 
+        $pagehtml .= "<tr><td>$n</td><td><b>$v</b></td></tr>\n";
+      }
+    }
   
     while($questionperiods->row && $questionperiods->row['ordinal'] == $ordinal)
     {

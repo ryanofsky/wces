@@ -101,6 +101,8 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //      $report_always_graph
 //   topicsTable: string
 //     name of table that maps a topic_id to an item_id and specialization_id
+//   headings: array of array(string, string)
+//     extra topic headings to print
 
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
@@ -120,8 +122,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     $result = pg_go("
       SELECT s.ordinal, s.students, r.responses
       FROM
-      (
-        -- this subselect contains the count of students for each ordinal
+      ( -- this subselect contains the count of students for each ordinal
         SELECT cc.ordinal, sum(cc.students) AS students
         FROM
         ( -- this subselect is needed to eliminate
@@ -136,8 +137,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
         GROUP BY cc.ordinal
       ) AS s
       INNER JOIN
-      (
-        -- this subselect contains the number of responses for each ordinal
+      ( -- this subselect contains the number of responses for each ordinal
         SELECT t2.ordinal, COUNT(DISTINCT r2.user_id) AS responses
         FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t2
         LEFT JOIN $options[surveyResponses] AS r2 ON r2.topic_id = t2.topic_id AND r2.user_id IS NOT NULL
@@ -203,7 +203,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     {
       $result = pg_go("
         SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
-        FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
+        FROM (SELECT DISTINCT ordinal, topic_id, class_id, user_id FROM rwtopics) AS t
         INNER JOIN classes AS cl USING (class_id)
         INNER JOIN courses AS c ON c.course_id = cl.course_id
         INNER JOIN subjects AS s USING (subject_id)
@@ -254,15 +254,15 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   {
     // this is the most expensive query made during reporting. It could be
     // vastly sped up with a cache table (materialized view) that contained:
-    //  CREATE TABLE cached_choice_responses AS                                    
-    //  SELECT t.topic_id, cr.item_id AS citem_id,                                 
-    //    cr.revision_id AS crevision_id, qr.item_id AS qitem_id,                  
-    //    qr.revision_id AS qrevision_id, choice_dist(qr.answer) AS dist           
-    //  FROM report_topics AS t                                                    
-    //  INNER JOIN survey_responses AS r USING (topic_id)                          
-    //  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id             
-    //  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id   
-    //  GROUP BY t.topic_id, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id, 
+    //  CREATE TABLE cached_choice_responses AS                                                                         
+    //  SELECT t.topic_id, cr.item_id AS citem_id,                                                                      
+    //    cr.revision_id AS crevision_id, qr.item_id AS qitem_id,                                                       
+    //    qr.revision_id AS qrevision_id, choice_dist(qr.answer) AS dist                                                
+    //  FROM report_topics AS t                                                                                         
+    //  INNER JOIN survey_responses AS r USING (topic_id)                                                               
+    //  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id                                                  
+    //  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id                                        
+    //  GROUP BY t.topic_id, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id,                                    
     
     $tabname = substr(uniqid('tab'),0,31);
 
@@ -336,8 +336,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   $result = pg_go("  
     SELECT tp.ordinal, l.item_id, l.ordinal AS iordinal
     FROM
-    ( 
-      SELECT DISTINCT rw.ordinal, rw.topic_id, branch_latest(t.item_id, t.specialization_id, 1000000) AS revision_id
+    ( SELECT DISTINCT rw.ordinal, rw.topic_id, branch_latest(t.item_id, t.specialization_id, 1000000) AS revision_id
       FROM rwtopics AS rw
       INNER JOIN $options[topicsTable] AS t USING (topic_id)      
     ) AS tp
@@ -365,8 +364,10 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       {
         $pagehtml = '';
         if (!isset($options['skipLines']) || !$options['skipLines'])
+        {
           $pagehtml .= '<hr style="page-break-before:always">' . "\n";
-        $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
+          $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
+        }
       }
       else
         $pagehtml = false;
