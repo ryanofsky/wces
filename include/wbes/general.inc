@@ -34,6 +34,33 @@ function sendwarning($dump, $file, $line)
     print("<pre>" . wordwrap($message) . "</pre>");  
 }
 
+function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
+{
+  global $HTTP_SERVER_VARS, $LOGIN_SESSION;
+  if (!$from) $from = "Anonymous";
+  mail("wces@columbia.edu",$subject,"Feedback from $from\n\n$comments");
+  $comments .= "\n\n----------------------------------------\n";
+ 
+  if (isset($HTTP_SERVER_VARS) && is_array($HTTP_SERVER_VARS))
+  { 
+    $comments .= "SERVER VARIABLES\n\n";
+    foreach($HTTP_SERVER_VARS as $key => $value)
+    {
+      $comments .= "$key = $value\n";
+    }
+  }  
+  
+  if (isset($LOGIN_SESSION) && is_array($LOGIN_SESSION))
+  {
+    $comments .= "\nLOGIN SESSION VARIABLES\n\n";
+    foreach($LOGIN_SESSION as $key => $value)
+    {
+      $comments .= "$key = $value\n";
+    }
+  }
+  mail("rey4@columbia.edu","$subject+","Feedback from $from\n\n$comments");
+}
+
 /**
 * A wimpier explode() function. It splits a two parted string whose
 * parts are separated by a single character into two strings. It 
@@ -199,6 +226,21 @@ function emailvalid($email)
     eregi("^[_a-z0-9-]+(\.[_a-z0-9-]+)*@([0-9a-z][0-9a-z-]*[0-9a-z]\.)+[a-z]{2}[mtgvu]?$", $email)
     ||
     eregi("^[^;,]*<[_\.0-9a-z-]+@([0-9a-z][0-9a-z-]+\.)+[a-z]{2,3}>$", $email);
+}
+
+function quot($str)
+{
+  return "'" . addslashes($str) . "'";
+}
+
+function addurlparam($url, $param)
+{
+  if (strlen($param) == 0)
+    return $url;
+  else if (strpos($url,'?') === false)
+    return "$url?$param";
+  else
+    return "$url&$param";
 }
 
 ?>
