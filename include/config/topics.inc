@@ -21,6 +21,10 @@ function topics_list($question_period_id)
           SELECT 1, 3733, 'Base Bioengineering Questions', 4, 't', NULL
           UNION
           SELECT 1, 3111, 'Base Chemistry Questions', 5, 't', NULL                 
+          UNION
+          SELECT 1456, 24450, 'Base Biology Lecture Questions', 6, 't', NULL                 
+          UNION
+          SELECT 1483, 24450, 'Base Biology Lab Questions', 7, 't', NULL                 
         ) AS t ORDER BY ordinal
       ",
       TOPICS_LITERAL
@@ -30,7 +34,7 @@ function topics_list($question_period_id)
     ( "<h5>Course Surveys</h5>\n",
       "
         SELECT t.item_id, t.specialization_id, get_course(t.course_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
-        FROM wces_course_topics AS t
+        FROM wces_course_topics_new AS t
         ORDER BY name
       ", 
       TOPICS_COURSE
