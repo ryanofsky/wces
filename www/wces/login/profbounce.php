@@ -1,4 +1,4 @@
-<?
+<%
   require_once("wces/server.inc");
   require_once("wces/login.inc");
   login_protect(login_professor);
@@ -14,4 +14,4 @@
 
   if ($profid) { login_saveprofid($profid); }
   bounce($destination);
-?>
+%>
