@@ -61,15 +61,10 @@ class Node
   }
   
   // assign column number
-  function number(&$col)
-  {
-    $this->col = $col;
-  }
+  function number(&$col) { assert(0); }
   
   // sort children, if any
-  function sort()
-  {
-  }
+  function sort() { }
 }
 
 class ParentNode extends Node
@@ -106,13 +101,12 @@ class ParentNode extends Node
     return cmp($this->itemOrds[$i1->item_id], $this->itemOrds[$i2->item_id]);
   }
   
-  function number(&$col)
+  function header(&$row)
   {
-    $this->col = $col;
     foreach($this->childOrds as $k)
-      $this->children[$k]->number($col);
+      $this->children[$k]->header());  
   }
-  
+    
   function getChild($keys) { assert(0); }
   function setChild(&$node, $keys) { assert(0); }
 }
@@ -120,6 +114,7 @@ class ParentNode extends Node
 class SurveyTreeNode extends TreeNode
 {
   var $subsurvey_id;
+  var $topic_id;
 
   // ordinals indexed by $item_id indicating relative order of items
   var $itemOrds = array();
@@ -129,6 +124,23 @@ class SurveyTreeNode extends TreeNode
   {
     $this->subsurvey_id = $subsurvey_id;
   }
+  
+  function number(&$col)
+  {
+    $this->col = $col;
+    if (!empty($this->topic_id)) ++$col;
+    foreach($this->childOrds as $k)
+      $this->children[$k]->number($col);
+  }
+  
+  function header(&$row)
+  {
+    if (!empty($this->topic_id))
+      
+    
+    $row[$this->colno] = make_topic($this->topic_id);
+  }
+  
 }
 
 class TextNode
@@ -150,6 +162,11 @@ class TextNode
     if ($cmp) return $cmp;
     return cmp($this->itemOrds[$i1->revision_id], 
       $this->itemOrds[$i2->revision_id]);
+  }
+  
+  function number(&$col)
+  {
+    $this->col = $col++;
   }
 };
 
@@ -315,6 +332,29 @@ function make_page($rwtopic_ordinal)
     $survey->addChild($child);
     $survey_items[tuple_key($sub, $iid, $rev)] =& $child;
   }
+
+  $top_survey =& $survey_subs[0];
+  $top_survey->sort();
+  
+  $cols = 0;
+  $top_survey->number($col);
+  
+  $row = array_fill(array(), $cols, "") // xxx: arguments?
+  $top_survey->header();
+  
+  $top_survey
+  
+  for ($i = 0; $i < $cols; ++$i)
+  {
+    
+  }
+
+  
+  
+
+/*
+
+  XXX: for now, skip choice questions
   
   $choicer = pg_go("
     SELECT tt.subsurvey_id, tt.citem_id, tt.crevision_id, tt.qitem_id, 
@@ -345,18 +385,21 @@ function make_page($rwtopic_ordinal)
     INNER JOIN components_text_question AS c USING (component_id)
   ", $wces, __FILE__, __LINE__);
 
-  $textr = pg_go("
-    SELECT rt.revision_id, rt.item_id, rtext
-    FROM resps AS re
-    INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
-  ", $wces, __FILE__, __LINE__);
-
   $choiceo = pg_go("
     SELECT s.revision_id, i.ordinal, i.item_id
     FROM (SELECT DISTINCT revision_id FROM resps) AS s
     INNER JOIN revisions AS r USING (revision_id)
     INNER JOIN component_items AS i USING (component_id)
   ", $wces, __FILE__, __LINE__);
+
+
+*/
+  $textr = pg_go("
+    SELECT rt.revision_id, rt.item_id, rtext
+    FROM resps AS re
+    INNER JOIN responses_text_question AS rt ON rt.parent = re.response_id
+  ", $wces, __FILE__, __LINE__);
+
 }
 
 function go()
