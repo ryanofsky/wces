@@ -61,6 +61,7 @@ function showhelp(topic)
 <tr>
   <td valign=top bgcolor="#DEDEDE" class=sidelinks>
 <?
+  $uni = login_getuni();
   $user_id = login_getuserid();
   $status = login_getstatus();
 
@@ -90,6 +91,12 @@ function showhelp(topic)
     page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
   }
 
+  if ($status & login_deptadmin)
+  {
+    page_spacer();
+    page_link("Reporting Wizard", "administrators/report.php", $QSID);
+  }
+
   if ($status & login_professor)
   {
     if ($status & login_knownprofessor)
@@ -103,7 +110,7 @@ function showhelp(topic)
     }
   }
 
-  if (($status & login_student))
+  if ($status & login_student)
   {
     wces_connect();
     
