@@ -1,6 +1,6 @@
 <%
-  require_once("page.inc");
-  require_once("database.inc");
+  require_once("wces/page.inc");
+  require_once("wces/database.inc");
   login_protect(login_professor);
   $profid = login_getprofid();
 
@@ -21,7 +21,7 @@
     global $db, $profid,$profname;
     print("<p>Choose a class from the list below to edit its custom questions. Or, choose the 'All My Classes' link to create a custom question set that will be applied to all of your classes.</p>");
     print("<h3>List of Classes for $profname</h3>\n<UL>\n");
-    $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM Classes as cl LEFT JOIN Courses AS c USING (courseid) LEFT JOIN Subjects AS s USING (subjectid) WHERE cl.professorid = '$profid' AND cl.year = '2000' AND cl.semester='fall'",$db);
+    $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM Classes as cl LEFT JOIN Courses AS c USING (courseid) LEFT JOIN Subjects AS s USING (subjectid) WHERE cl.professorid = '$profid' AND cl.year = '2001' AND cl.semester='spring'",$db);
     while ($class = mysql_fetch_array($classes))
     {
       extract($class);
