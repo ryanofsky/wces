@@ -118,7 +118,7 @@ class WcesLogin
     
     if ($bounce)
     {
-      sloppyredirect(sid($w->bounceUrl()));
+      sloppyredirect($w->bounceUrl());
       exit();
     }
     
@@ -236,7 +236,7 @@ class LoginWidget extends ParentWidget
     if (isset($uni))
       $this->uni = $uni;
     
-    if ($this->uni || $pw)
+    if (isset($pw))
     {
       $login =& LoginInstance();
       if ($login->validate($this->uni, $pw, $this->error))
@@ -333,7 +333,7 @@ class LoginWidget extends ParentWidget
   function bounceUrl()
   {
     if ($this->done && $this->destUrl)
-      return $this->base . $this->destUrl;
+      return sid($this->base . $this->destUrl);
     else
       return $this->getUrl(array('destUrl' => $this->destUrl, 
         'requestedStatus' => $this->requestedStatus, 
