@@ -48,6 +48,12 @@ class Widget
     $parent->addChild($this);
   }
 
+  function urlShortName($name, $shortName = null)
+  {
+    if (!isset($shortName)) $shortName = $name;
+    $this->form->formShortName($this->fullName($name), $shortName);
+  }
+
   function joinName($str1, $str2)
   {
     if (strlen($str1) == 0)
@@ -56,6 +62,20 @@ class Widget
       return $str1;
     else
       return $str1 . WIDGET_SEPARATOR . $str2;
+  }
+
+  function getUrl($vars = null)
+  {
+    $fvars = array();
+    if (is_array($vars))
+    {
+      foreach ($vars as $k => $v)
+        $fvars[$this->fullName($k)] = $v;
+    }
+    else if (isset($vars))
+      $fvars[$this->name] = $vars;
+      
+    return $this->form->pageName . $this->form->getUrlVars($fvars);
   }
 
   function scriptName($str)
@@ -71,15 +91,24 @@ class Widget
     return $this->joinName($this->name, $str);
   }
 
-  function readValue($name = "")
+  function readValue($name = "", $type = WIDGET_FORM)
   {
     $full = $this->fullName($name);
-    if (isset($_POST[$full]))
-      return $_POST[$full];
-    else if (isset($_GET[$full]))
-      return $_GET[$full];
-    else
-      return NULL;
+    if ($type & WIDGET_FORM)
+    {
+      if (isset($_POST[$full]))
+        return $_POST[$full];
+      else if (isset($_GET[$full]))
+        return $_GET[$full];
+    }
+
+    if ($type & WIDGET_URL && isset($this->form->shortNames[$full]))
+    {
+      $sn = $this->form->shortNames[$full];
+      if (isset($_GET[$sn])) return $_GET[$sn];
+    }
+
+    return NULL;
   }
 
   function printValue($name, $value, $type = WIDGET_FORM)
@@ -92,7 +121,9 @@ class Widget
         . htmlspecialchars($value) . '">');
 
     if ($type & WIDGET_URL)
+    {
       $this->form->addUrlVar($full, $value);
+    }
 
     if ($type & WIDGET_BIGURL)
       die("Feature Not Implemented Yet at " . __FILE__ . ":" . __LINE__);
@@ -163,9 +194,7 @@ class ParentWidget extends Widget
   function display()
   {
     if (isset($this->modalChild))
-    {
       $this->printModalChildren();
-    }
     else
       $this->printVisible();
     $this->printState();
@@ -209,26 +238,55 @@ class Form extends ParentWidget
   var $formName; // name of form, used for javascripting
   var $pageName; // name of current page, used for linking
   var $isStale = false; // true if this page load is not the first
-  var $names = array(); // array of alternate names for isStale
-  var $urlVars = "";
+  var $shortNames = array();
+  var $urlVars = array();
 
-  function addUrlVar($name, &$value)
+  function addUrlVar($name, $value)
   {
-    if ($this->urlVars) $this->urlVars .= "&";
-    $this->urlVars .= "$name=" . urlencode($value);
+    $this->urlVars[$name] = $value;
   }
 
-  function getUrlVars($needStale = true)
+  function formShortName($long, $short)
   {
-    if ($needStale)
+    $this->shortNames[$long] = $short;
+  }
+
+  function getUrlVars($overrides = array())
+  {
+    $url = ''; $shorted = false;
+
+    foreach ($this->urlVars as $name => $value)
     {
-      if (strlen($this->urlVars) == 0)
-        return "isStale=1";
-      else
-        return "$this->urlVars&isStale=1";
+      if (isset($overrides[$name]) || $value === false) continue;
+      if ($url) $url .= '&'; else $url .= '?';
+      if (isset($this->shortNames[$name]))
+      {
+        $shorted = true;
+        $name = $this->shortNames[$name];
+      }
+      $url .= $name;
+      $url .= '=';
+      $url .= $value;
     }
-    else
-      return $this->urlVars;
+
+    foreach ($overrides as $name => $value)
+    {
+      if ($value === false) continue;
+      if ($url) $url .= '&'; else $url .= '?';
+      if (isset($this->shortNames[$name]))
+      {
+        $shorted = true;
+        $name = $this->shortNames[$name];
+      }
+      $url .= $name;
+      $url .= '=';
+      $url .= $value;
+    }
+
+    if (!$shorted && $url)
+      $url .= '&isStale=1';
+
+    return $url;
   }
 
   function Form($formName = null, $pageName = null)
@@ -243,7 +301,7 @@ class Form extends ParentWidget
   function loadState($isStale = null)
   {
     $this->isStale = $this->readValue('isStale')
-      || (count(array_intersect($this->names,array_keys($_GET)))!= 0);
+      || (count(array_intersect($this->shortNames,array_keys($_GET)))!= 0);
     if ($this->isStale)
       ParentWidget::loadState();
     else
