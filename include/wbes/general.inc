@@ -208,7 +208,15 @@ function quot($str)
 
 function nullquot($str)
 {
-  return $str ? ("'" . addslashes($str) . "'") : "NULL";
+  return strlen($str) > 0 ? ("'" . addslashes($str) . "'") : "NULL";
 }
+
+function aarray_map($func, &$aa) // associative safe, in place array_map
+{
+  reset($aa);
+  while(list($key) = each($aa))
+    $aa[$key] = $func($aa[$key]);
+}
+
 
 ?>
