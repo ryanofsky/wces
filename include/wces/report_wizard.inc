@@ -162,7 +162,7 @@ class ReportWizard extends Wizard
     if (!is_array($d) || !(count($d) > 0) || in_array("all",$d)) $d = false;
     if (!is_array($c) || !(count($c) > 0) || in_array("all",$c)) $c = false;
 
-    $this->criteria = array(QUESTION_PERIODS => $q, DEPARTMENTS => $d, PROFESSORS => $p, COURSES => $c, CATEGORIES => $t);
+    $this->criteria = array(QUESTION_PERIODS => $q, DEPARTMENTS => $d, PROFESSORS => $p, COURSES => $c, CATEGORIES => $t, CLASSES => false);
     unset($q,$d,$p,$c,$t);
 
     /////////////////////////////// ORDERING SETUP ///////////////////////////////////////
@@ -230,7 +230,7 @@ class ReportWizard extends Wizard
     for($i = 0; $i < $n; ++$i)
     {
       extract(pg_fetch_array ($result, $i, PGSQL_ASSOC));
-      $selected = $hash[$id] ? " selected" : "";
+      $selected = isset($hash[$id]) && $hash[$id] ? " selected" : "";
       print("<option value=\"$id\"$selected>$name</option>");
     }
     print("</select>\n");

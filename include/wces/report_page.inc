@@ -6,6 +6,7 @@ require_once("wces/report_help.inc");
 require_once("wces/report_textgrid.inc");
 
 require_once("wbes/component_choice.inc");
+require_once("jpgraph/jpgraph.php");
 
 define("QUESTION_PERIODS", 0x01);
 define("CLASSES",          0x02);
@@ -36,6 +37,12 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   {
     $where .= $where ? "  AND " : "WHERE ";
     $where .= "t.category_id IN (" . implode($criteria[CATEGORIES],",") . ")\n    ";
+  }
+
+  if ($criteria[CLASSES])
+  {
+    $where .= $where ? "  AND " : "WHERE ";
+    $where .= "cl.class_id IN (" . implode($criteria[CLASSES],",") . ")\n    ";
   }
 
   if ($criteria[COURSES])
@@ -127,8 +134,9 @@ function report_findgroups($topicstable, $groupings, $orderings)
     COURSES          => "MIN(s.code)",
     DEPARTMENTS      => "MIN(d.code)",
     PROFESSORS       => "MIN(u.lastname)",
-    CATEGORIES       => NULL 
+    CATEGORIES       => NULL
     //XXX: no category field in rwtopics CATEGORIES       => "MIN(t.survey_category_id)"
+    //CATEGORIES       => "MIN(t.survey_category_id)"
   );
 
   $badorder = false;
@@ -214,6 +222,57 @@ function report_findgroups($topicstable, $groupings, $orderings)
   }
 }
 
+class ReportSection
+{
+  var $text = "";
+  var $html = "";
+  function ReportSection($text, $html)
+  {
+    $this->text = $text;
+    $this->html = $html;
+  }
+};
+
+class Sections
+{
+  var $branchorder;
+  var $sections = array();
+
+  function Sections($branchorder)
+  {
+    $this->branchorder = $branchorder;
+  }
+
+  function addSection($branch_id, $text, $html)
+  {
+    $ordinal = isset($this->branchorder[$branch_id]) ? $this->branchorder[$branch_id] : 99999999 ;
+    $r = new ReportSection($text, $html);
+    if (isset($this->sections[$ordinal]))
+      $this->sections[$ordinal][] = $r;
+    else
+      $this->sections[$ordinal] = array($r);
+  }
+
+  function flatten(&$pagetext, &$pagehtml)
+  {
+    $outtext = is_string($pagetext);
+    $outhtml = is_string($pagehtml);
+
+    $s = array_keys($this->sections);
+    sort($s);
+
+    foreach($s as $k1)
+    {
+      foreach(array_keys($this->sections[$k1]) as $k2)
+      {
+        $rs = &$this->sections[$k1][$k2];
+        if ($outtext) $pagetext .= $rs->text;
+        if ($outhtml) $pagehtml .= $rs->html;
+      }
+    }
+  }
+};
+
 //---------------------------------------------------------------------------------------------
 // This function produces report "pages" from the results of selectmonster query
 //
@@ -225,7 +284,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 // possible options:
 // - "pies"
 
-function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$taresponses)
+function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords, &$taresponses)
 {
   global $wces_path, $TAQUESTIONS, $TAVALUES;
 
@@ -255,7 +314,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     $questionperiods->advance();
   }
 
-  while($departments->row && $departments->row['ordinal'] == $ordinal)
+  while(isset($departments->row) && $departments->row['ordinal'] == $ordinal)
   {
     extract($departments->row);
     if ($outhtml) $pagehtml .= "<tr><td>Department:</td><td><b>$name ($code)</b></td></tr>\n";
@@ -265,7 +324,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
   if ($professors)
   {
-    while($professors->row && $professors->row['ordinal'] == $ordinal)
+    while(isset($professors->row) && $professors->row['ordinal'] == $ordinal)
     {
       extract($professors->row);
       $profname = ($firstname || $lastname) ? "$firstname $lastname" : "Unknown";
@@ -274,7 +333,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       $professors->advance();
     }
 
-    while($classes->row && $classes->row['ordinal'] == $ordinal)
+    while(isset($classes->row) && $classes->row['ordinal'] == $ordinal)
     {
       extract($classes->row);
       if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${wces_path}administrators/info.php?class_id=$class_id\">$scode $ccode $name Section $section</a></b></td></tr>\n";
@@ -284,7 +343,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
   }
   else
   {
-    while($classes->row && $classes->row['ordinal'] == $ordinal)
+    while(isset($classes->row) && $classes->row['ordinal'] == $ordinal)
     {
       extract($classes->row);
       $pname = $firstname || $lastname ? " - Professor $firstname $lastname" : "";
@@ -295,6 +354,14 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
   }
 
   if ($outhtml) $pagehtml .= "</table>\n";
+
+  $branchorder = array();
+  while(isset($ords->row) && $ords->row['ordinal'] == $ordinal)
+  {
+    extract($ords->row);
+    $branchorder[$branch_id] = $iordinal;
+    $ords->advance();
+  }
 
   //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
 
@@ -317,16 +384,23 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
   ///////////////////////////////// COURSE RATINGS /////////////////////////////////////
 
-  while($choices->row && $choices->row['ordinal'] == $ordinal)
+  $sections = new Sections($branchorder);
+
+  if (isset($choices->row) && $choices->row['ordinal'] == $ordinal)
+    $is_single_question = $choices->peek(0) || $choices->peek(1);
+
+  while(isset($choices->row) && $choices->row['ordinal'] == $ordinal)
   {
     extract($choices->row);
 
     if ($choices->split[1])
     {
-      // set variables which will be used to interpret data and print headers:
-      // $headings, $choices, $values, $showstats, $textformat, $textrows
+      $sectionhtml = $sectiontext = "";
 
-      $cchoices = pg_explode($cchoices);
+      // set variables which will be used to interpret data and print headers:
+      // $headings, $component_choices, $values, $showstats, $textformat, $textrows
+
+      $cchoices = pg_explode($component_choices);
 
       $values = array(); // indexed by choice keys, holds numeric values of choices
 
@@ -341,7 +415,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       }
       else
       {
-        $showstats = is_numeric($first_number) && is_numeric($last_number);
+        $showstats = is_numeric($first_number) && is_numeric($last_number) && $first_number != $last_number;
         $headings = $cchoices;
 
         foreach($cchoices as $ci => $ct)
@@ -360,47 +434,57 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       if ($flags & FLAG_NACHOICE)
       {
         $headings[] = "N/A";
-        $values[] = false;
+        $values[] = NULL;
       }
+
+      $vheadings = array();
+      foreach ($headings as $hk => $hv)
+      {
+        $str = $hv;
+        if ($showstats && isset($values[$hk]))
+          $str .= sprintf(" (%.1f)",$values[$hk]);
+        $vheadings[$hk] = $str;
+      }
+
+      // information about the question set is now readily available, so
+      // begin doing html / text formatting
 
       // do html header
       if ($outhtml)
       {
-        if ($flags & FLAG_ISNUMERIC)
-          $pagehtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
-
-        $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2 summary=\"multiple choice response distributions\">\n";
-        $pagehtml .= "<thead style=\"page-break-inside: avoid\">\n";
-        $pagehtml .= "<tr>\n";
-        $pagehtml .= "<td>&nbsp;</td>\n";
-
-        if ($flags & FLAG_ISNUMERIC)
+        if (!$is_single_question)
         {
-          foreach ($headings as $hk => $hv)
-            $pagehtml .= "  <td><b>$hv</b></td>\n";
-        }
-        else
-        {
-          foreach ($headings as $hk => $hv)
+          if ($flags & FLAG_ISNUMERIC)
+            $sectionhtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
+
+          $sectionhtml .= "<table border=1 cellspacing=0 cellpadding=2 summary=\"multiple choice response distributions\">\n";
+          $sectionhtml .= "<thead style=\"page-break-inside: avoid\">\n";
+          $sectionhtml .= "<tr>\n";
+          $sectionhtml .= "<td>&nbsp;</td>\n";
+
+          if ($flags & FLAG_ISNUMERIC)
           {
-            $str = $hv;
-            if ($showstats)
-              $str .= sprintf(" (%.1f)",$values[$hk]);
-            $pagehtml .= "  <td><div style=\"writing-mode:tb-rl; white-space: nowrap\"><b>$str</b></div></td>\n";
+            foreach ($headings as $hk => $hv)
+              $sectionhtml .= "  <td><b>$hv</b></td>\n";
           }
+          else
+          {
+            foreach ($vheadings as $hk => $hv)
+              $sectionhtml .= "  <td><div style=\"writing-mode:tb-rl; white-space: nowrap\"><b>$hv</b></div></td>\n";
+          }
+
+          if ($showstats)
+            $sectionhtml .= "  <td><b>Avg</b></td>\n  <td><b>Mode</b></td>\n  <td><b>SD</b></td>\n";
+
+          $sectionhtml .= "</tr>\n";
         }
-
-        if ($showstats)
-          $pagehtml .= "  <td><b>Avg</b></td>\n  <td><b>Mode</b></td>\n  <td><b>SD</b></td>\n";
-
-        $pagehtml .= "</tr>\n";
       }
 
       // do text header
       if ($outtext)
       {
         if ($flags & FLAG_ISNUMERIC)
-          $pagetext .= "($first_number = $cchoices[0], $last_number = $cchoices[1])\n";
+          $sectiontext .= "($first_number = $cchoices[0], $last_number = $cchoices[1])\n";
         else
         {
           $key = "";
@@ -412,7 +496,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
             if ($key) $key .= ", ";
             $key .= ($showstats ? $values[$ci] : $ci) . " = $ct";
           }
-          $pagetext .= "($key)\n";
+          $sectiontext .= "($key)\n";
         }
         $key = "";
 
@@ -444,74 +528,116 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       }
     } // if ($choices->split[1])
 
-    // done with header, print a row
+    // done with header, format individual questions within the set
 
-    if ($outhtml) $pagehtml .= "<tr>\n  <td>$qtext</td>\n";
-    if ($outtext) $row = array($qtext);
-
-    $sums = array_pad(pg_explode($dist),count($choices),0);
+    // get the numbers
+    $sums = array_pad(pg_explode($dist), count($headings), 0);
+    
     $dist = false;
-    foreach($values as $vi => $vk)
-    {
-      if ($showstats) $dist[$vk] = $sums[$vi];
-      if ($outhtml) $pagehtml .= "  <td>$sums[$vi]</td>\n";
-      if ($outtext) $row[] = $sums[$vi];
-    }
-
     if ($showstats)
     {
+      foreach($values as $vi => $vk)
+        $dist[$vk] = $sums[$vi];
+
+      // don't include the N/A in the computation
+      if ($flags & FLAG_NACHOICE)
+        unset($dist[end(array_keys($dist))]);
+
       $avg = report_avg($dist);
       $mode = report_mode($dist);
       $sd = report_sd($dist, $avg);
-      if ($outhtml) $pagehtml .= sprintf("  <td>%.1f</td>\n  <td>%.1f</td>\n  <td>%.1f</td>\n",$avg, $mode, $sd);
-      if ($outtext) array_push($row, sprintf("%.1f",$avg), sprintf("%.1f",$mode), sprintf("%.1f",$sd));
+      $md = report_median($dist);
     }
 
-    if ($outhtml) $pagehtml .= "</tr>\n";
-    if ($outtext) $textrows[] = $row;
+    if ($outhtml)
+    {
+      if ($is_single_question)
+      {
+        $sectionhtml .= "<h5>$qtext</h5>";
+        $sectionhtml .= "<p>";
+        $sectionhtml .= MakeGraph($headings, $sums);
+        $sectionhtml .= "</p>\n<table>\n";
+
+        foreach($vheadings as $k => $v)
+          $sectionhtml .= "<tr><td><b>$v</b>:</td><td>$sums[$k]</td></tr>\n";
+
+        if ($showstats)
+        {
+          $sectionhtml .= sprintf("<tr><td><b><i>Average</i></b>:</td><td>%.1f</td></tr>\n"
+                            . "<tr><td><b><i>Median</i></b>:</td><td>%.1f</td></tr>\n"
+                            . "<tr><td><b><i>Mode</i></b>:</td><td>%.1f</td></tr>\n"
+                            . "<tr><td><b><i>Standard Deviation</i></b>:</td><td>%.1f</td></tr>\n"
+                            ,$avg, $md, $mode, $sd);
+        }
+        $sectionhtml .= "</table>\n";
+      }
+      else
+      {
+        $sectionhtml .= "<tr>\n  <td>$qtext</td>\n";
+        foreach($values as $vi => $vk)
+          $sectionhtml .= "  <td>$sums[$vi]</td>\n";
+        if ($showstats)
+          $sectionhtml .= sprintf("  <td>%.1f</td>\n  <td>%.1f</td>\n  <td>%.1f</td>\n", $avg, $mode, $sd);
+        $sectionhtml .= "</tr>\n";
+      }
+    }
+
+    if ($outtext)
+    {
+      $row = array($qtext);
+      foreach($values as $vi => $vk)
+        $row[] = $sums[$vi];
+      if ($showstats)
+        array_push($row, sprintf("%.1f",$avg), sprintf("%.1f",$mode), sprintf("%.1f",$sd));
+      $textrows[] = $row;
+    }
 
     $choices->advance();
 
-    $pagehtml .= "<!-- split[1] = " . ((int)$choices->split[1]) . " -->\n";
-
     if ($choices->split[1])
     {
-      if ($outhtml) $pagehtml .= "</table>\n";
+      if ($outhtml && !$is_single_question) $sectionhtml .= "</table>\n";
       if ($outtext)
       {
-        $pagetext .= texttable($textrows,$textformat);
-        $pagetext .= "\n\n";
+        $sectiontext .= texttable($textrows,$textformat);
+        $sectiontext .= "\n\n";
       }
+      $sections->addSection($branch_id, $sectiontext, $sectionhtml);
     }
   } // while($choices->row ...)
 
 
   ///////////////////////////////// TEXT RESPONSES /////////////////////////////////////
 
-  while($textresponses->row && $textresponses->row['ordinal'] == $ordinal)
+  while(isset($textresponses->row) && $textresponses->row['ordinal'] == $ordinal)
   {
     extract($textresponses->row);
 
     if ($textresponses->split[1])
     {
-      if ($outhtml) $pagehtml .= "<h5>$ctext</h5>\n<ul>\n";
-      if ($outtext) $pagetext .= "$ctext\n\n";
+      $sectionhtml = $sectiontext = "";
+      if ($outhtml) $sectionhtml .= "<h5>$ctext</h5>\n<ul>\n";
+      if ($outtext) $sectiontext .= "$ctext\n\n";
     }
 
-    if ($outhtml) $pagehtml .= "  <li>" . nl2br($rtext) . "</li>";
-    if ($outtext) $pagetext  .= " - " . str_replace("\n","\n   ",wordwrap("$rtext",73)) . "\n";
+    if ($outhtml) $sectionhtml .= "  <li>" . nl2br($rtext) . "</li>";
+    if ($outtext) $sectiontext  .= " - " . str_replace("\n","\n   ",wordwrap("$rtext",73)) . "\n";
 
     $textresponses->advance();
 
     if ($textresponses->split[1])
     {
-      if ($outhtml) $pagehtml .= "\n</ul>";
-      if ($outtext) $pagetext .= "\n\n";
+      if ($outhtml) $sectionhtml .= "\n</ul>";
+      if ($outtext) $sectiontext .= "\n\n";
+      $sections->addSection($branch_id, $sectiontext, $sectionhtml);
     }
   } // while($textresponses->row ...)
 
+  $sections->flatten($pagetext, $pagehtml);
+
   ///////////////////////////////// TA RATINGS /////////////////////////////////////
 
+/*MAGIC*/
 $TAQUESTIONS = array
 (
   "overall" => "Overall Quality",
@@ -520,7 +646,7 @@ $TAQUESTIONS = array
   "availability" => "Availability",
   "communication" => "Communication"
 );
-
+/*MAGIC*/
 $TAVALUES = array
 (
   "5" => "excellent",
@@ -531,11 +657,11 @@ $TAVALUES = array
   "0" => "n/a"
 );
 
-  while($taresponses->row && $taresponses->row['ordinal'] == $ordinal)
+  while(isset($taresponses->row) && $taresponses->row['ordinal'] == $ordinal)
   {
     extract($taresponses->row);
 
-    if ($taresponses->split[1])
+    if ($taresponses->split[0])
     {
       if ($outhtml)
       {
@@ -587,20 +713,22 @@ $TAVALUES = array
 
     $taresponses->advance();
 
-    if ($taresponses->split[1])
+    if ($taresponses->split[0])
     {
       if ($outhtml)
       {
         $pagehtml .= "<tr>\n  <td><b>AVERAGE</b></td>\n";
         foreach($TAQUESTIONS as $field => $question)
-          $pagehtml .= "  <td>" . round($avg[$field]/$num[$field], 2). "</td>\n";
+          if (isset($avg[$field]) && isset($num[$field]))
+            $pagehtml .= "  <td>" . round($avg[$field]/$num[$field], 2). "</td>\n";
+          else
+            $pagehtml .= "<td>0</td>";
+
         $pagehtml .= "  <td>&nbsp;</td>\n  <td>---</td>\n  </tr>\n</table>\n";
       }
       if ($outtext) $pagetext .= "\n\n";
     }
   } // while($taresponses->row ...)
-
-
 };
 
 ?>
