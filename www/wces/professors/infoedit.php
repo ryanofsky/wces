@@ -11,7 +11,7 @@ $db = wces_connect();
 $pe = new ProfessorEditor($db, $professorid, false, "pe", "f", WIDGET_POST);
 $pe->loadvalues();
 
-page_top("Professor Information Editor","0010");
+page_top("Professor Information Editor");
 
 ?>
 <form name="f" method="post" enctype="multipart/form-data">

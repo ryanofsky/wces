@@ -92,7 +92,7 @@ function showresults($db,$questionperiodid,$classid)
   print($outhtml);
 }
 
-page_top("Survey Results","0010");
+page_top("Survey Results");
 $db = wces_connect();
 $profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
 

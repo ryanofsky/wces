@@ -10,7 +10,7 @@
   param($cancel);
   param($save);
 
-  page_top("Professors Page","0010");
+  page_top("Professors Page");
 
 print("<p>This function is not available now.</p>");
 page_bottom();
@@ -106,7 +106,7 @@ exit();
  
   function editquestions()
   {
-    global $db,$editclass,$profid,$profname,$ABETQUESTIONS, $server_wcespath;      
+    global $db,$editclass,$profid,$profname,$ABETQUESTIONS, $wces_path;      
    
     $classname = getclassname($editclass);
 
@@ -130,7 +130,7 @@ exit();
 <?
   $a = isset($questionset["ABET"]) ? explode(",",$questionset["ABET"]) : array();
   foreach($ABETQUESTIONS as $k => $v)
-    print('  <tr><td bgcolor="#DDDDDD" background="' . $server_wcespath . 'media/0xDDDDDD.gif" width="100%"><p style="margin-left: 30px; text-indent: -30px"><input id="ABET' . $k . '" name="ABET' . $k . '" value=1 type=checkbox style="width: 30px"' . (is_array($a) && in_array($k,$a) ? " checked" : "") . '><label for="ABET' . $k . '"><b>' . $v . "</b></label></p></td></tr>\n");
+    print('  <tr><td bgcolor="#DDDDDD" background="' . $wces_path . 'media/0xDDDDDD.gif" width="100%"><p style="margin-left: 30px; text-indent: -30px"><input id="ABET' . $k . '" name="ABET' . $k . '" value=1 type=checkbox style="width: 30px"' . (is_array($a) && in_array($k,$a) ? " checked" : "") . '><label for="ABET' . $k . '"><b>' . $v . "</b></label></p></td></tr>\n");
 ?>
 </table>
 <hr>
