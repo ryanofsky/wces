@@ -1,5 +1,6 @@
 <?
 
+require_once("wbes/server.inc");
 require_once("wbes/general_url.inc");
 require_once("wces/database.inc");
 
@@ -15,6 +16,10 @@ require_once("wces/database.inc");
 function sendwarning($dump, $file, $line)
 {
   global $server_url, $server_isproduction, $server_dev;
+  static $recursive_call = 0;
+
+  if ($recursive_call) return;
+  $recursive_call = 1;
 
   $errorid = 0;
   $url = $server_url->toString(true,true,true);
@@ -34,6 +39,8 @@ function sendwarning($dump, $file, $line)
     mail($server_dev, "WCES Warning from $file in line $line", wordwrap($message));
   else
     print("<pre>" . wordwrap($message) . "</pre>");
+
+  $recursive_call = 0;
 }
 
 function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
