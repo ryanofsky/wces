@@ -176,9 +176,18 @@ class EventWidget extends Widget
     $this->Widget($name, $parent);
   }
 
+  function parseParam($param)
+  {
+      $r = explode(EVENT_WIDGET_SEPARATOR, $param);
+      if (count($r) < 2)
+        return $r[0];     
+      else
+        return $r;
+  }
+
   function setEvent($str)
   {
-    $p = strrpos($str, EVENT_WIDGET_SEPARATOR);
+    $p = strpos($str, EVENT_WIDGET_SEPARATOR);
     if ($p === false)
     {
       $this->event = $str;
@@ -187,26 +196,55 @@ class EventWidget extends Widget
     else
     {
       $this->event = substr($str, 0, $p);
-      $this->param = substr($str, $p + 1);
+      $this->param = $this->parseParam(substr($str, $p + 1));
     }
   }
 
   function makeEvent($event, $param)
   {
-    return isset($param) ? ($event . EVENT_WIDGET_SEPARATOR . $param) : $event;
+    if (isset($param))
+      return $event . EVENT_WIDGET_SEPARATOR . $this->makeParam($param);
+    else
+      return $event;
+  }
+  
+  function makeParam($param)
+  {
+    if (is_array($param))
+      return implode(EVENT_WIDGET_SEPARATOR, $param);
+    else
+      return $param;
   }
 
   function shortName($event, $name)
   {
     $this->names[$event] = $name;
-    $this->form->names[] = $name;
+    if (is_array($name))
+    {
+      foreach($name as $n)
+        $this->form->names[] = $n;    
+    }
+    else
+      $this->form->names[] = $name;
   }
 
   function getUrl($event, $param)
   {
     $hasName = isset($this->names[$event]);
-    $arg = $hasName ? "{$this->names[$event]}=$param"
-      : "$this->name=" . $this->makeEvent($event, $param);
+    if ($hasName)
+    {
+      $name = $this->names[$event];
+      if (!is_array($param)) $param = array($param);
+      if (!is_array($name)) $name = array($name);
+      $arg = "";
+      foreach($param as $k => $p)
+      {
+        if (strlen($arg)) $arg .= '&';
+        if (isset($name[$k])) $arg .= $name[$k] . '=' . $p; else $break;
+      }
+    }
+    else
+      $arg = "$this->name=" . $this->makeEvent($event, $param);   
     $full = $this->form->getUrlVars(!$hasName);
     return $this->form->pageName . "?$arg" . (strlen($full) ? '&' : '') . $full;
   }
@@ -220,8 +258,7 @@ class EventWidget extends Widget
       return;
     }
 
-    global $HTTP_POST_VARS, $HTTP_GET_VARS;
-    $search = array(&$HTTP_POST_VARS, &$HTTP_GET_VARS);
+    $search = array(&$_POST, &$_GET);
 
     $prefix = $this->name . WIDGET_SEPARATOR;
     $length = strlen($prefix);
@@ -236,10 +273,21 @@ class EventWidget extends Widget
 
     foreach($this->names as $event => $name)
     {
-      if (isset($HTTP_GET_VARS[$name]))
+      if (is_array($name))
+      {
+        $this->param = array();
+        foreach($name as $p) 
+        {
+          if (!isset($_GET[$p])) break 2;
+          $this->param[] = $_GET[$p];
+        }
+        $this->event = $event;
+        return;
+      }
+      else if (isset($_GET[$name]))
       {
         $this->event = $event;
-        $this->param = $HTTP_GET_VARS[$name];
+        $this->param = $_GET[$name];
         return;
       }
     }
@@ -255,12 +303,19 @@ class EventWidget extends Widget
     $this->printValue('', $this->makeEvent($event, $param));
   }
 
-  function displayButton($label = false, $event, $param = null, $attribs = "")
+  function displayButton($label, $event, $param = null, $attribs = "")
   {
     $n = $this->fullName($this->makeEvent($event, $param));
     $l = '"' . htmlspecialchars($label) . '"';
     if (strlen($attribs) > 0) $attribs = " $attribs";
     print("<input type=submit name=$n value=$l$attribs>");
+  }
+  
+  function displayNoJavascriptRefresh($label, $attribs = '')
+  {
+    print("<noscript>");
+    $this->displayButton($label, null, null, $attribs);
+    print("</noscript>");
   }
 
   function displayField()
@@ -268,9 +323,10 @@ class EventWidget extends Widget
     $this->printValue('', ''); 
   }
 
-  function gethref($event,$object)
+  function gethref($event,$param)
   {
-    return "javascript:EventWidget_sgo('$event','$object','{$this->form->formName}','$this->name');";
+    $p = $this->makeParam($param);
+    return "javascript:EventWidget_sgo('$event','$param','{$this->form->formName}','$this->name');";
   }
 
   function DumpScript()
@@ -364,7 +420,7 @@ class StatefullWidget extends ParentWidget
   function loadState()
   {
     ParentWidget::loadState();
-    $this->eventLoop($this->readValue("currentEvent"), $this->readValue("currentParam"), false);
+    $this->eventLoop($this->readValue("currentEvent"), $this->event->parseParam($this->readValue("currentParam")), false);
     $this->eventLoop($this->event->event, $this->event->param, true);
   }
   
@@ -417,7 +473,7 @@ class StatefullWidget extends ParentWidget
   function printState()
   {
     $this->printValue('currentEvent', $this->currentEvent);
-    $this->printValue('currentParam', $this->currentParam);
+    $this->printValue('currentParam', $this->event->makeParam($this->currentParam));
   }
 };
 
