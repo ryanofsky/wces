@@ -58,7 +58,7 @@ pg_query("
   FROM wces_topics AS t
   INNER JOIN classes AS cl USING (class_id)
   LEFT JOIN survey_responses AS s ON (s.topic_id = t.topic_id AND s.question_period_id = $question_period_id)
-  WHERE cl.year = $year AND cl.semester = $semester $cat
+  WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester $cat
   GROUP BY t.class_id
 ",$wces,__FILE__, __LINE__);
 

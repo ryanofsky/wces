@@ -21,7 +21,7 @@ pg_query("
   FROM wces_topics AS t
   INNER JOIN classes AS cl USING (class_id)
   LEFT JOIN branches AS b ON (b.topic_id = t.topic_id)
-  WHERE cl.year = $year AND cl.semester = $semester
+  WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
   GROUP BY t.class_id
 ",$wces,__FILE__, __LINE__);
 
@@ -29,7 +29,7 @@ $y = pg_query("
   CREATE TEMPORARY TABLE pu AS
   SELECT pc.class_id, s.code || c.code AS code, c.name AS cname, cl.section,
     cl.students, u.user_id, u.uni, u.firstname, u.lastname, u.lastlogin,
-    CASE WHEN u.lastlogin >= '2002-02-01' THEN 1 ELSE 0 END AS loggedin,
+    CASE WHEN u.lastlogin >= '2002-04-05' THEN 1 ELSE 0 END AS loggedin,
     pc.customized
   FROM profcounts AS pc
   INNER JOIN classes AS cl USING (class_id)
