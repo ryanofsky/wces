@@ -12,11 +12,8 @@ param($searchfor);
 param($searchin);
 
 ?>
-<!--
-
--->
-
 <head>
+<title>List</title>
 <style>
 <!--
 
@@ -30,17 +27,18 @@ body
   scrollbar-shadow-color: #3D5C7A;
   scrollbar-base-color:tomato;
   scrollbar-track-color: #B5CFE8; 
+  font-family: Arial, Helvetica, sans-serif;
 }
-
-a { text-decoration: none; }
+p  { font-family: Arial, Helvetica, sans-serif; }
+li { font-family: Arial, Helvetica, sans-serif; }
+ul { font-family: Arial, Helvetica, sans-serif; list-style-type: square; list-style-position: outside; }
+a  { text-decoration: none; }
 a:hover { text-decoration: underline; ) 
-
-
 
 -->
 </style>
 </head>
-<body bgcolor="#6699CC" link="#000000" alink="#444444" vlink="#444444"">
+<body bgcolor="#6699CC" link="#000000" alink="#444444" vlink="#444444" topmargin=0 leftmargin=0 rightmargin=0 marginwidth=0 marginheight=0>
 <base target=info>
 <script language="JavaScript">
 <!--
@@ -74,15 +72,6 @@ function AttachImage(img, filename)
 
 // -->
 </script>
-
-<style>
-<!--
-body                    { font-family: Arial, Helvetica, sans-serif; }
-p                       { font-family: Arial, Helvetica, sans-serif; }
-li                      { font-family: Arial, Helvetica, sans-serif; }
-ul                      { font-family: Arial, Helvetica, sans-serif; list-style-type: square; list-style-position: outside; }
--->
-</style>
 
 <?
 
@@ -242,11 +231,11 @@ else // $mode == "courses"
     if ($classes->split)
     {
       $dept = $department_id ? "$name ($code)" : "<i>Unknown</i>"; 
-      print("<h5>$dept</h5>\n<ul>\n");
+      print("<h5>$dept</h5>\n<font size=-1>\n<ul>\n");
     }
     print("  <li><a href=\"oracle_infopane.php?course_id=$course_id\">" . format_ccourse($course_info, "<i>%c</i><br>%n") . "</a></li>\n");
     $classes->advance();
-    if ($classes->split) print("</ul>\n");
+    if ($classes->split) print("</ul>\n</font>\n");
   }
 }
 

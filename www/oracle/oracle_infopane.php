@@ -23,17 +23,31 @@ else
 };
 
 ?>
-
+<head>
+<title>Results</title>
 <style type="text/css">
 <!--
-body                    { font-family: Arial, Helvetica, sans-serif; }
-p                       { font-family: Arial, Helvetica, sans-serif; }
-h3                      { font-family: Arial, Helvetica, sans-serif; }
-h4                      { font-family: Arial, Helvetica, sans-serif; }
+body
+{
+  font-family: Arial, Helvetica, sans-serif;
+  scrollbar-3dlight-color: #6699CC; 
+  scrollbar-darkshadow-color:black;
+  scrollbar-face-color: #6699CC;
+  scrollbar-arrow-color:black;
+  scrollbar-highlight-color:#AFD2F5;
+  scrollbar-shadow-color: #3D5C7A;
+  scrollbar-base-color:tomato;
+  scrollbar-track-color: #B5CFE8; 
+}
+p  { font-family: Arial, Helvetica, sans-serif; }
+h3 { font-family: Arial, Helvetica, sans-serif; }
+h4 { font-family: Arial, Helvetica, sans-serif; }
+
 -->
 </style>
+</head>
 
-<body bgcolor="#6699CC"><table vspace=20 hspace=20 width=100% height=100% bordercolor=black border=1 cellpadding=5 cellspacing=0><tr>
+<body bgcolor="#6699CC" link="#000000" alink="#444444" vlink="#444444"><table width=100% height=100% bordercolor=black border=1 cellpadding=5 cellspacing=0><tr>
 <?
 
 param($user_id);
@@ -83,11 +97,11 @@ function ShowClass($class_id)
   {
     extract(pg_fetch_array($sections, $i, PGSQL_ASSOC));
     $selected = $section_id == $class_id ? " selected" : "";
-    print("      <option value=$section_id$selected>" . format_class($section_info, "%t - Section %s") . "</option>\n");
+    print("      <option value=$section_id$selected>" . format_class(
+      $section_info, "%t - Section %s") . "</option>\n");
   }
-  DebugBreak();
 ?>    </select></p>
-    <p><input type=image name=go src="<?=$oracle_root?>media/go.gif"></p>
+    <noscript><p><input type=image name=go src="<?=$oracle_root?>media/go.gif"></p></noscript>
     </form>
   </td>
   <td width=50% valign=top>
@@ -173,9 +187,9 @@ function ShowClass($class_id)
     print("<h4>Survey Results</h4>");
     
     if (!$show_distributions)
-      print("<p>Show Averages | <a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=1\">Show Distributions</a></p>"); 
+      print("<p>Show Averages | <a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=1\">Show Distributions</a></p>\n"); 
     else
-      print("<p><a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=0\">Show Averages</a> | Show Distributions</p>"); 
+      print("<p><a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=0\">Show Averages</a> | Show Distributions</p>\n"); 
 
     if (!$db)
     {
@@ -183,7 +197,7 @@ function ShowClass($class_id)
       extract(pg_fetch_array($rs, 0, PGSQL_ASSOC));
     }
 
-    print('<table border=0 cellpadding=0 cellspacing=5');
+    print("<table border=0 cellpadding=0 cellspacing=5>\n");
     print("<tr><td colspan=3><p><i>$responses of $students students responded</i></p></td></tr>\n");
 
     for($i = 0; $i < $n; ++$i)
@@ -221,7 +235,6 @@ function ShowClass($class_id)
         unset($dist[end(array_keys($dist))]);
       $avg = report_avg($dist);
 
-
       if ($show_distributions)
       {
         print("<tr><td>$qtext<br>");
@@ -235,10 +248,10 @@ function ShowClass($class_id)
         print("</td></tr>\n");
       }
     }
-    print("</table>");
+    print("</table>\n");
   }
   else
-    print("<p><strong><i>No Survey Responses Available</i></strong></p>");
+    print("<p><strong><i>No Survey Responses Available</i></strong></p>\n");
 
   $result = pg_query("
     SELECT cl.name AS clname, cl.section, cl.year, cl.semester, cl.students, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname, c.course_id, d.department_id, s.subject_id, sc.school_id, dv.code AS dvcode, dv.division_id, cl.time, cl.location, cl.callnumber
@@ -257,11 +270,11 @@ function ShowClass($class_id)
     
   print ("<h4>Course Information</h4>\n");
   if ($information) print("<p>$information</p>\n");
-  if ($dcode) print ("<p><i>Department:</i> $dname($dcode)</p>");
-  if ($scode) print ("<p><i>Subject:</i> $sname($scode)</p>");
-  if ($scname) print ("<p><i>School:</i> $scname</p>");
-  if ($dvname) print ("<p><i>Division:</i> $dvname</p>");
-  if ($code) print ("<p><i>Course ID:</i> $code</p>");
+  if ($dcode) print ("<p><i>Department:</i> $dname($dcode)</p>\n");
+  if ($scode) print ("<p><i>Subject:</i> $sname($scode)</p>\n");
+  if ($scname) print ("<p><i>School:</i> $scname</p>\n");
+  if ($dvname) print ("<p><i>Division:</i> $dvname</p>\n");
+  if ($code) print ("<p><i>Course ID:</i> $code</p>\n");
 }
 
 function ShowProfessor($user_id)
@@ -273,13 +286,13 @@ function ShowProfessor($user_id)
   $result = pg_query("SELECT uni, firstname, lastname, email FROM users WHERE user_id = $user_id AND flags & 4 = 4", $wces, __FILE__, __LINE__);
   if (pg_numrows($result) != 1)
   {
-    print("<h1>User not found</h1>");
+    print("<h1>User not found</h1>\n");
     return false;
   }
   
   extract(pg_fetch_array($result, 0, PGSQL_ASSOC));
   
-  print("<h3>$firstname $lastname</h3>");
+  print("<h3>$firstname $lastname</h3>\n");
   
   $result = pg_query("SELECT url, picname, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   if (!pg_numrows($result) != 1)
@@ -287,31 +300,40 @@ function ShowProfessor($user_id)
   else
     $url = $picname = $statement = $profile = $education = NULL;
 
-  if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>");
+  if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>\n");
   
   $classes = pg_query("
-    SELECT class_id, get_class(e.class_id) AS class_info
+    SELECT e.class_id, get_class(e.class_id) AS class_info
     FROM enrollments AS e
     INNER JOIN ($select_classes) AS l USING (class_id)
+    INNER JOIN classes AS cl ON cl.class_id = l.class_id
     WHERE e.user_id = $user_id AND e.status = 3
-    GROUP BY e.class_id
-    ORDER BY class_info
+    GROUP BY e.class_id, cl.semester, cl.year
+    ORDER BY cl.year DESC, cl.semester DESC, class_info
   ", $wces, __FILE__, __LINE__);
 
   $n = pg_numrows($classes);
 ?>
 <h4>Courses Taught</h4>
 <form method=get name=classes>
+<input type=hidden name=user_id value=<?=$user_id?>>
 <p><select name=class_id onchange="this.form.submit()" size=1>
+<script>
+<!--
+document.write('<option value=0 selected>Choose One...</option>');
+// -->
+</script>
 <?
   for($i = 0; $i < $n; ++$i)
   {
     extract(pg_fetch_array($classes, $i, PGSQL_ASSOC));
-    print ("  <option value=$class_id>" . htmlspecialchars(format_class($class_info)) . "</option>\n");
+    print ("  <option value=$class_id>" . htmlspecialchars(
+      format_class($class_info, "%t %c %n Section %s"))
+       . "</option>\n");
   }
 ?>  
 </select></p>
-<p><input type=image name=go src="<?=$oracle_root?>media/go.gif"></p>
+<noscript><p><input type=image name=go src="<?=$oracle_root?>media/go.gif"></p></noscript>
 </form>
 <?
   if ($statement) print("<h4>Statement</h4>\n<p>$statement</p>\n");
@@ -324,12 +346,7 @@ function ShowProfessor($user_id)
   print("</td>");
 }
 
-if ($user_id)
-{
-  print("<td bgcolor=\"#B5CFE8\" valign=top>");
-  ShowProfessor($user_id);
-}
-else if ($class_id || $course_id)
+if ($class_id || $course_id)
 {
   print('<td bgcolor="#B5CFE8" valign=top>');
   
@@ -340,7 +357,7 @@ else if ($class_id || $course_id)
       FROM classes AS cl
       INNER JOIN ($select_classes) AS l USING (class_id)
       WHERE cl.course_id = $course_id
-      ORDER BY cl.section
+      ORDER BY cl.year DESC, cl.semester DESC, cl.section
       LIMIT 1
     ", $wces, __FILE__, __LINE__);
     if (pg_numrows($r) == 1)
@@ -351,6 +368,11 @@ else if ($class_id || $course_id)
   {
     ShowClass($class_id); 
   }
+}
+else if ($user_id)
+{
+  print("<td bgcolor=\"#B5CFE8\" valign=top>");
+  ShowProfessor($user_id);
 }
 else
 {
@@ -366,14 +388,3 @@ else
 }
 ?>
 </tr></table></body>
-
-
-
-
-
-
-
-
-
-
-
