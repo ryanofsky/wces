@@ -499,6 +499,7 @@ class ChoiceEditor extends ComponentEditor
     {
       $c->questions = array($this->question->text);
       $c->question_ids = array($this->question_id);
+      $this->numbering_scheme->selected = FLAG_NONUMBERS;
     }
     else if ($this->qtype->selected == "multiple")
     {
@@ -562,6 +563,7 @@ class ChoiceEditor extends ComponentEditor
 
     $show_sing = $this->qtype->selected == "single";
     $show_mult = $this->qtype->selected == "multiple";
+    $show_coun = $this->qtype->selected == "multiple";
     $show_clst = $this->ctype->selected == "text" || $this->ctype->selected == "ntext";
     $show_txto = $this->ctype->selected == "text";
     $show_othr = $this->other->checked;
@@ -673,7 +675,14 @@ class ChoiceEditor extends ComponentEditor
 </tr>
 <tr>
   <td valign=top><strong>Appearance:</strong></td>
-  <td>Question Numbering: <? $this->numbering_scheme->display(); ?><br>
+  <td>
+
+    <? if (!$SurveyEditor_ns4 || $show_coun) { ?>
+    <div id=<?=$p?>_numberingsection style="display: <?= $show_coun ? "block" : "none" ?>">
+    Question Numbering: <? $this->numbering_scheme->display(); ?>
+    </div>
+    <? } else { $this->numbering_scheme->display(true); } ?>
+
     <table>
     <tr>
       <td>Layout:</td>
@@ -733,6 +742,7 @@ function <?=$p?>_refresh(form)
     elem("<?=$p?>_selrows").style.display = cntrl == "select" ? "inline" : "none";
     elem("<?=$p?>_borient").style.display = cntrl == "buttons" ? "inline" : "none";
     elem("<?=$p?>_olabel").style.display = other ? "block" : "none";
+    elem("<?=$p?>_numberingsection").style.display = qtype == "multiple" ? "block" : "none";
   }
   else
   {
@@ -877,7 +887,7 @@ class ChoiceWidget extends ComponentWidget
     else
     {
       if ($c->vertical)
-        $sep = "<br>\n";
+        $sep = "\n";
       else if ($c->stacked)
         $sep = "</td>\n<td $tdparams>";
       else
@@ -887,6 +897,9 @@ class ChoiceWidget extends ComponentWidget
       foreach($this->choices as $i => $choice)
       {
         if ($first) $first = false; else print($sep);
+
+        if ($c->vertical)
+          print('<div style="white-space: nowrap;">');
 
         $id = "{$name}_{$i}";
 
@@ -902,12 +915,17 @@ class ChoiceWidget extends ComponentWidget
         }
 
         if (!$c->stacked || $c->vertical)
+        {
           print(" <label for=$id>$choice</label>");
+        }
 
         if ($i == $this->other)
         {
           print(" <input type=textbox size=20 name=$id value=\"" . htmlspecialchars($this->others[$questionno]) . "\">");
         }
+
+        if ($c->vertical)
+          print('</div>');
       }
     }
     if ($c->stacked && !$c->vertical) print("</td>\n");
