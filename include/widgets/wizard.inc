@@ -26,6 +26,8 @@ class Wizard extends FormWidget
   var $finished;  // boolean, user clicked finish button
   var $sated;     // enough data has been entered, finished button is clickable
   
+  var $hidesteps = array();
+
   function Wizard($steps,$cancelurl,$prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
@@ -140,6 +142,7 @@ $last = key($this->steps);
 
 foreach($this->steps as $key => $value)
 {
+  if (isset($this->hidesteps[$key]) && $this->hidesteps[$key]) continue;
   $href = "javascript:document.forms['" . $this->form . "']['" . $this->prefix . "_showstep'].value = $key; void(document.forms['" . $this->form . "'].submit())";
   $suffix = ($key == $showstep ? "a" : ($visited[$key] ? "v" : ""));
   if ($key == $first)
