@@ -1,8 +1,0 @@
-Dim i As Integer
-Dim s, l As String
-For i = 2 To 7455
-  s = Cells(i, 2).Value
-  Cells(i, 2).Value = Mid(s, 2, 4)
-  Cells(i, 8).Value = Mid(s, 1, 1)
-  Cells(i, 9).Value = Mid(s, 1, 1)
-Next i
