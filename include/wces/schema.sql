@@ -264,6 +264,42 @@ CREATE TABLE ldapcache (
   PRIMARY KEY (userid)
 );
 
+CREATE TABLE links (
+  linkid int(11) NOT NULL auto_increment,
+  questionsetid int(11) NOT NULL default '0',
+  MC1 tinytext,
+  MC2 tinytext,
+  MC3 tinytext,
+  MC4 tinytext,
+  MC5 tinytext,
+  MC6 tinytext,
+  MC7 tinytext,
+  MC8 tinytext,
+  MC9 tinytext,
+  MC10 tinytext,
+  ABET1 tinytext,
+  ABET2 tinytext,
+  ABET3 tinytext,
+  ABET4 tinytext,
+  ABET5 tinytext,
+  ABET6 tinytext,
+  ABET7 tinytext,
+  ABET8 tinytext,
+  ABET9 tinytext,
+  ABET10 tinytext,
+  ABET11 tinytext,
+  ABET12 tinytext,
+  ABET13 tinytext,
+  ABET14 tinytext,
+  ABET15 tinytext,
+  ABET16 tinytext,
+  ABET17 tinytext,
+  ABET18 tinytext,
+  ABET19 tinytext,
+  ABET20 tinytext,
+  KEY linkid (linkid)
+);
+
 CREATE TABLE professordupedata (
   professorid int(11) default NULL,
   first tinytext,
@@ -325,6 +361,43 @@ CREATE TABLE questionsets (
   FR2 tinytext,
   type enum('private','public') NOT NULL default 'private',
   PRIMARY KEY (questionsetid)
+);
+
+CREATE TABLE responses (
+  responseid int(11) NOT NULL auto_increment,
+  answersetid int(11) NOT NULL default '0',
+  MC1 mediumtext,
+  MC2 mediumtext,
+  MC3 mediumtext,
+  MC4 mediumtext,
+  MC5 mediumtext,
+  MC6 mediumtext,
+  MC7 mediumtext,
+  MC8 mediumtext,
+  MC9 mediumtext,
+  MC10 mediumtext,
+  ABET1 mediumtext,
+  ABET2 mediumtext,
+  ABET3 mediumtext,
+  ABET4 mediumtext,
+  ABET5 mediumtext,
+  ABET6 mediumtext,
+  ABET7 mediumtext,
+  ABET8 mediumtext,
+  ABET9 mediumtext,
+  ABET10 mediumtext,
+  ABET11 mediumtext,
+  ABET12 mediumtext,
+  ABET13 mediumtext,
+  ABET14 mediumtext,
+  ABET15 mediumtext,
+  ABET16 mediumtext,
+  ABET17 mediumtext,
+  ABET18 mediumtext,
+  ABET19 mediumtext,
+  ABET20 mediumtext,
+  comments mediumtext,
+  KEY responseid (responseid)
 );
 
 CREATE TABLE schools (
