@@ -55,7 +55,7 @@ function PrintUser(&$uni, &$user_id)
   
   print("<h3>$head</h3>\n");
 
-  if ((login_getstatus() & login_administrator) && ($user_id != login_getuserid()) && $row['uni'])
+  if ((login_getstatus() & login_administrator) && ($user_id != login_getuserid()))
     print("<p><a href=\"info.php?fake=$user_id$ASID\">Log on as this user...</a></p>\n");
 
   print("<table>\n");
