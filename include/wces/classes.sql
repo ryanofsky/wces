@@ -851,21 +851,25 @@ CREATE FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP) RETURNS INT
     classid ALIAS FOR $2;
     status_s ALIAS FOR $3;
     tyme ALIAS FOR $4;
-    i INTEGER;
+    rec RECORD;
   BEGIN
-    SELECT INTO i status FROM enrollments WHERE user_id = userid AND class_id = classid;
+    SELECT INTO rec status, lastseen FROM enrollments WHERE user_id = userid AND class_id = classid;
     IF NOT FOUND THEN
       INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES (userid, classid, status_s, tyme);
       RETURN status_s;
     ELSE
+      IF tyme < rec.lastseen OR (tyme IS NULL AND rec.lastseen IS NOT NULL) THEN
+        RETURN rec.status;  
+      END IF;
+
       IF tyme IS NOT NULL THEN
         UPDATE enrollments SET lastseen = tyme WHERE user_id = userid AND class_id = classid;
       END IF;
-      IF status_s > i THEN
+      IF status_s > rec.status THEN
         UPDATE enrollments SET status = status_s WHERE user_id = userid AND class_id = classid;
         RETURN status_s;
       ELSE
-        RETURN i;
+        RETURN rec.status;
       END IF;
     END IF;
   END;
