@@ -5,9 +5,13 @@ error_reporting(0);
 require_once("jpgraph/jpgraph.php");
 require_once("jpgraph/jpgraph_bar.php");
 require_once("wces/report_help.inc");
+require_once("wbes/png.inc");
 
-$datax = @unserialize($datax);
-$datay = @unserialize($datay);
+$filename = png_start(__FILE__, 60*60*24);
+$width = $_GET['width'];
+$height = $_GET['height'];
+$datax = @unserialize($_GET['datax']);
+$datay = @unserialize($_GET['datay']);
 
 $params = compact("width", "height");
 GraphSize($params, $datax);
@@ -50,5 +54,7 @@ $bplot->SetColor("navy");
 $graph->Add($bplot);
 
 // Finally send the graph to the browser
-$graph->Stroke();
+$graph->Stroke($filename);
+
+png_end($filename);
 ?>
