@@ -5,6 +5,8 @@ require_once("wbes/postgres.inc");
 
 require_once("wces/page.inc");
 
+login_protect(login_administrator);
+
 page_top("Remove classes");
 
 //first get a database connection.
@@ -67,18 +69,9 @@ if(!isset($HTTP_POST_VARS['input']))
 		<input type=text name="<?= $wr->row['topic_id'] ?>_name" 
 		value="<?= $wr->row['name'] ?>" size=50>
 	    </td>
-	    <td bgcolor="<?= $color_even ?>">
-		<input type=text name="<?= $wr->row['topic_id'] ?>_section"
-		value="<?= $wr->row['section'] ?>" size=10>
-	    </td>
-	    <td bgcolor="<?= $color_odd ?>">
-		<input type=text name="<?= $wr->row['topic_id'] ?>_year"
-		value="<?= $wr->row['year'] ?>" size=10>
-	    </td>
-	    <td bgcolor="<?= $color_even ?>">
-		<input type=text name="<?= $wr->row['topic_id'] ?>_code"
-		value="<?= $wr->row['code'] ?>" size=12>
-	    </td>
+	    <td bgcolor="<?= $color_even ?>"><?= $wr->row['section'] ?></td>
+	    <td bgcolor="<?= $color_odd ?>"><?= $wr->row['year'] ?></td>
+	    <td bgcolor="<?= $color_even ?>"><?= $wr->row['topic_id'] ?></td>
 	</tr>
 	
 	<?
@@ -169,11 +162,14 @@ else
 	    print("Got an ID: $Id\n<br>");
 	    
 	    $name = $otherData[$Id . "_name"];
+	    /*
 	    $section = $otherData[$Id . "_section"];
 	    $year = $otherData[$Id . "_year"];
 	    $code = $otherData[$Id . "_code"];
+	    */
 	    
 	    print("Got Name: $name\n<br>");
+	    /*
 	    print("Got Section: $section\n<br>");
 	    print("Got Year: $year\n<br>");
 	    print("Got Code: $code\n<br>");
@@ -183,7 +179,7 @@ else
 	    
 	    print("Broke down code, CODE1: $code1\n<br>");
 	    print("CODE2: $code2\n<br>");
-	    
+	    */
 	    $sql = "SELECT c.course_id, c.class_id, d.subject_id FROM wces_topics t, classes c, courses d WHERE t.topic_id = '$Id' and c.class_id = t.class_id and c.course_id = d.course_id";
 	    
 	    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
@@ -198,6 +194,7 @@ else
 	    $subject_id = $wr->row['subject_id'];
 	    
 	    print("Now doing updates.\n<br>");
+	    /*
 
 	    $sql = "UPDATE classes SET section = $section, year = $year WHERE class_id = '$class_id'";
 	    
@@ -206,6 +203,8 @@ else
 	    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
 	    
 	    $sql = "UPDATE courses SET name = '$name', code = $code2 WHERE course_id = '$course_id'";
+	    */
+	    $sql = "UPDATE courses SET name = '$name' WHERE course_id = '$course_id'";
 
 	    print("SQL 2: $sql \n<br><br>");
 	    
