@@ -31,7 +31,3 @@
   
   mysql_query("DROP TABLE currentclasses",$db);
 ?>
-
-
-
-
