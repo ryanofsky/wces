@@ -2,13 +2,21 @@
 
 require_once("wbes/component.inc");
 
-$Text_code = 4;                
-$Text_name = "Text Component";
-
-function Text_Factory(&$components, $ids, $ordinals, $revision)
+class TextFactory extends ComponentFactory
 {
-  Component_Factory($components, $ids, $ordinals, $revision);
-}
+  function code() { return 5; }
+  function name() { return "Text Component"; }
+  
+  function create()
+  {
+    return new Text();
+  }
+  
+  function load(&$components, $ids, $ordinals)
+  {
+    return $this->textload($components, $ids, $ordinals, "Text");
+  }
+};
 
 class Text extends Component
 {
@@ -25,6 +33,12 @@ class Text extends Component
   {
     return new TextWidget($this,$prefix,$form,$formmethod);
   }
+  
+  function save($save_id)
+  {
+    return $this->textsave($save_id, TextFactory::code());
+  }
+  
 }
 
 class TextEditor extends ComponentEditor

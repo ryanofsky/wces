@@ -1,8 +1,9 @@
 <?
 
 require_once("widgets/basic.inc");
+require_once("wbes/server.inc");
 require_once("wbes/survey.inc");
-require_once("wces/database.inc");
+require_once("wbes/postgres.inc");
 
 //states
 define("SurveyEditor_main",1);
@@ -30,13 +31,6 @@ define("SurveyEditor_modify_preview",3);
 
 $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
 
-$wbes = false;
-function wbes_connect()
-{
-  global $wbes;
-  if (!$wbes) $wbes = server_pginit("wbes");
-}
-
 class SurveyEditor extends FormWidget
 {
   var $survey = false; // persistent
@@ -45,21 +39,20 @@ class SurveyEditor extends FormWidget
   var $currentcomponent;
   var $barepage = false;
   var $message = "";
-  var $component_types = array();
+  var $factories;
   var $branch_id;
   
-  function SurveyEditor($branch_id, $component_types, $prefix,$form,$formmethod)
+  function SurveyEditor($branch_id, $factories, $prefix,$form,$formmethod)
   {
     global $server_url;
     $this->FormWidget($prefix,$form,$formmethod);
     $this->branch_id = (int)$branch_id;
-    foreach($component_types as $c)
-      $this->component_types[$GLOBALS["{$c}_code"]] = $c;
+    $this->factories = $factories;
   }
  
   function loadvalues()
   {
-    $this->survey = unserialize($this->loadattribute("survey"));
+    $this->survey = unserialize((string)$this->loadattribute("survey"));
     if (get_class($this->survey) != "survey")
       $this->load();
 
@@ -70,24 +63,17 @@ class SurveyEditor extends FormWidget
 
   function load()
   {
-    wbes_connect();
     $this->survey = new Survey();
-    $this->survey->load($this->branch_id,$this->component_types);
+    $this->survey->load($this->branch_id,$this->factories);
   }
   
   function save()
   {
-    wbes_connect();    
-    
-    if ($this->survey->save($this->branch_id))
-    {
-      $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font><hr>";
-      $this->state = SurveyEditor_done;
-    }
+    if ($this->survey->save($this->branch_id,0))
+      $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
     else
-    {
       $this->message = "<h1>Save Error</h1>";
-    }
+    $this->state = SurveyEditor_done;
   }
 
   function handleaction()
@@ -99,8 +85,8 @@ class SurveyEditor extends FormWidget
         $this->insert_action->loadvalues();
         
         $choices = array();
-        foreach($this->component_types as $k => $v)
-          $choices[$k] = $GLOBALS["{$v}_name"];
+        foreach($this->factories as $k => $f)
+          $choices[$k] = $f->name();
        
         $this->insert_type = new RadioButton($choices, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
         $this->insert_type->loadvalues();
@@ -108,8 +94,8 @@ class SurveyEditor extends FormWidget
         switch($this->insert_action->action)
         {
           case SurveyEditor_insert_create:
-            $name = @$this->component_types[$this->insert_type->checked];
-            $q = $name ? new $name() : false;
+            $factory = @$this->factories[$this->insert_type->checked];
+            $q = is_object($factory) ? $factory->create() : false;
 
             if (!$q)
               $this->insert_badinput = true;
@@ -190,7 +176,7 @@ class SurveyEditor extends FormWidget
           break;
           case SurveyEditor_main_cancel:
             $this->state = SurveyEditor_done;
-            $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font><hr>";          
+            $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font>";
           break;
           default:
           break;
@@ -300,7 +286,6 @@ by clicking above and below existing components.</p>
           } // if $ncomponents == 0      
         break;
         case SurveyEditor_done:
-          print("Bye Bye");
         break;
       } // switch
     } // if hidden

@@ -2,71 +2,72 @@
 
 require_once("wbes/component.inc");
 
-$Choice_code = 1;
-$Choice_name = "Multiple Choice Question Set";
-
-function Choice_Factory(&$components, $ids, $ordinals, $revision)
+class ChoiceFactory extends ComponentFactory
 {
-  Component_Factory($components, $ids, $ordinals, $revision);
+  function code() { return 2; }
+  function name() { return "Multiple Choice Question Set"; }
   
-  //global $wbes;
-  //
-  //$sqlt = "SELECT first_number, last_number, list_branch1, ... FROM choices WHERE compoinent_id = %i;\n";
-  //
-  //$first = false;
-  //foreach($ids as $id)
-  //{
-  //  if ($first) $first = false; else $sql .= "UNION ALL ";
-  //  $sql .= wsprintf($sqlt, $id);
-  //}  
-  //  
-  //$result = pg_query($sql, $wbes, __FILE__, __LINE__);
-  //
-  //$n = pg_numrows($result);
-  //for($i=0; $i<$n; ++$i)
-  //{
-  //  extract(pg_fetch_array($result, $i, PG_ASSOC));
-  //  
-  //  $c = new Choice();
-  //  $c->first_number = (int)$first_number;
-  //  $c->last_number  = (int)$last_number;
-  //  
-  //  .
-  //  .
-  //  .
-  //  
-  //  $choices = pg_query("
-  //    SELECT c.choice_id, c.text, ...
-  //    FROM list_items AS li
-  //    INNER JOIN choice_items AS c ON choice_item_id = list_item_id
-  //    WHERE list_id = (SELECT (list_sublist($list_branch1, $revision)))
-  //  ", $wbes, __FILE__, __LINE__);
-  //  
-  //  .
-  //  .
-  //  .
-  //  
-  //  load the choices into an array
-  //  $c->choices = [ . . . ] 
-  //  
-  //  .
-  //  .
-  //  .
-  //  $components[$ordinal] = $c;
-  //}
-  //
-  //
-  //
+  function create()
+  {
+    return new Choice();
+  }
+  
+  function load(&$components, $ids, $ordinals)
+  {
+    global $wbes;
+    $sids = implode($ids, ", ");
+    $rids = array_flip($ids);
+    $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+
+    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    {
+      $id = (int) $wr->row['revision_id'];
+      $ord = $ordinals[$rids[$id]];
+      $components[$ord] = new Choice(); $c = &$components[$ord];
+      $c->revision_id   = (int)$wr->row['revision_id'];
+      $c->is_html       = $wr->row['is_html'] == 't';
+      $c->text          = $wr->row['ctext'];
+      $c->choices       = pg_explode($wr->row['choices']);
+      $c->other_choice  = $wr->row['other_choice'];
+      $c->first_number  = $wr->row['first_number'];
+      $c->last_number   = $wr->row['last_number'];
+      $c->is_numeric    = $wr->row['is_numeric'] == 't';
+      $c->select_many   = $wr->row['select_many'] == 't';
+      $c->stacked       = $wr->row['stacked'] == 't';
+      $c->vertical      = $wr->row['vertical'] == 't';
+      $c->rows          = $wr->row['rows'];
+      
+      $result = pg_query("
+        CREATE TEMPORARY TABLE temp$id AS
+        SELECT branch_update(item_id) AS revision_id, ordinal
+        FROM list_items WHERE revision_id = $id;
+        
+        SELECT t.ordinal, q.revision_id, q.qtext
+        FROM temp$id AS t INNER JOIN choice_questions AS q USING (revision_id)
+        ORDER BY ordinal
+      ", $wbes, __FILE__, __LINE__);
+      pg_query("DROP TABLE temp$id", $wbes, __FILE__, __LINE__);
+      $n = pg_numrows($result);
+      
+      $c->questions = $c->question_ids = array();
+      for($i = 0; $i < $n; ++$i)
+      {
+        $a = pg_fetch_array($result,$i,PGSQL_ASSOC);
+        $c->questions[] = $a['qtext'];
+        $c->question_ids[] = $a['revision_id'];
+      }
+    }
+  }
 }
 
 class Choice extends Component
 {
   // array of stringed items to rate
   var $questions = array();
+  var $question_ids = array();
   
   // array of stringed choices
   var $choices = array();
-  
   var $first_number = 0;
   var $last_number = 0;
   
@@ -91,6 +92,34 @@ class Choice extends Component
   {
     return new ChoiceWidget($this,$prefix,$form,$formmethod);
   }
+  
+  function save($save_id)
+  {
+    global $wbes;
+    $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
+    $ctext        = addslashes('');
+    $is_html      = $this->is_html ? "'t'" : "'f'";
+    $questions    = pg_implode($this->questions);
+    $question_ids = pg_implode($this->question_ids);
+    $choices      = pg_implode($this->choices);
+    $other_choice = addslashes($this->other_choice);
+    $first_number = $this->first_number;
+    $last_number  = $this->last_number;
+    $is_numeric   = $this->is_numeric ? "'t'" : "'f'";
+    $select_many  = $this->select_many ? "'t'" : "'f'";
+    $stacked      = $this->stacked ? "'t'" : "'f'";
+    $vertical     = $this->vertical ? "'t'" : "'f'";
+    $rows         = $this->rows;
+    $result = pg_query("
+      SELECT choice_component_save($save_id::integer, $revision_id::integer,
+        '$ctext'::text, $is_html::boolean, $questions::text[], 
+        $question_ids::integer[], $choices::text[], '$other_choice'::text,
+        $first_number::integer, $last_number::integer, $is_numeric::boolean,
+        $select_many::boolean, $stacked::boolean, $vertical::boolean,
+        $rows::integer)
+    ", $wbes, __FILE__, __LINE__);
+    return pg_result($result, 0, 0);
+  }
 };
 
 class ChoiceEditor extends ComponentEditor
@@ -99,6 +128,7 @@ class ChoiceEditor extends ComponentEditor
   
   var $qtype;
   var $question;
+  var $question_id;
   var $questions;
   var $ctype;
   var $choices;
@@ -126,7 +156,8 @@ class ChoiceEditor extends ComponentEditor
     
     $this->question = new TextBox(4,40,"wrap=virtual", $this->prefix."_question", $this->form, $this->formmethod);
     $this->questions = new DynamicList(30,7,false,$this->prefix."_questions",$this->form,$this->formmethod);
-    
+    $this->question_id = "";
+        
     $this->ctype = new DropBox(array(
       ""         => "-- Select One --",
       "text"     => "Text Choices",
@@ -169,7 +200,7 @@ class ChoiceEditor extends ComponentEditor
     $this->orientation = new DropBox(array(
       "vertical"  => "vertically",
       "horiz"  => "horizontally"
-    ), $this->prefix."_orientation", $this->form, $this->formmethod);
+    ), $this->prefix . "_orientation", $this->form, $this->formmethod);
   }
   
   function loadvalues() // public abstract
@@ -193,25 +224,22 @@ class ChoiceEditor extends ComponentEditor
       $this->controls->loadvalues();    
       $this->rows->loadvalues();
       $this->orientation->loadvalues();
+      $this->question_id = (int)$this->loadattribute("question_id");
     }  
     else
     {
       $c = count($this->component->questions);
       
-      if ($c > 1)
+      if ($c >= 1)
       {
-        $this->qtype->selected = "multiple";
-        $this->question->text = "";
-        $this->questions->items = $this->component->questions;
-      }
-      else if ($c == 1)
-      {
-        $this->qtype->selected = "single";
         $this->question->text = $this->component->questions[0];
-        $this->questions->items = array();
+        $this->question_id = $this->component->question_ids[0];
+        $this->questions->items = $this->component->questions;
+        $this->questions->keys = $this->component->question_ids;
+        $this->qtype->selected = $c == 1 ? "single" : "multiple";
       }
       else
-        $this->qtype->selected = "";      
+        $this->qtype->selected = "";
 
       if ($this->component->other_choice)
       {
@@ -353,16 +381,13 @@ class ChoiceEditor extends ComponentEditor
           $this->first_number->broken = true;
           $this->last_number->broken = true;
         }
-             
       }
     }
     
     if ($this->ctype->selected == "text" && $this->other->checked)
     {
       if (!$this->other_label->text)
-      {
         $this->errors[] = 'You did not specify a label for the "other" choice.';
-      }
     }
     
     return count($this->errors) == 0;
@@ -371,29 +396,27 @@ class ChoiceEditor extends ComponentEditor
   function savevalues()
   {
     $c = &$this->component;
-    
+
     if ($this->qtype->selected == "single")
+    {
       $c->questions = array($this->question->text);
+      $c->question_ids = array($this->question_id);
+    }
     else if ($this->qtype->selected == "multiple")
+    {
       $c->questions = $this->questions->items;
-    
-    if ($this->ctype->selected == "text")
-    {
-      $c->choices = $this->choices->items;
+      $c->question_ids = $this->questions->keys;
     }
-    else if ($this->ctype->selected == "ntext")
-    {
+
+    if ($this->ctype->selected == "text" || $this->ctype->selected == "ntext")
       $c->choices = $this->choices->items;
-    }
     else if ($this->ctype->selected == "num")
-    {
       $c->choices = array($this->first_label->text,$this->last_label->text);
-    }
 
     if ($this->ctype->selected == "text")
     {
       $c->select_many = $this->select_many->checked;
-      $c->other_choice = $this->other->checked ? $this->other_label->text: "";
+      $c->other_choice = $this->other->checked ? $this->other_label->text : "";
       $c->first_number = 0;
       $c->last_number = 0;
     }
@@ -449,7 +472,7 @@ class ChoiceEditor extends ComponentEditor
     
     <? if (!$SurveyEditor_ns4 || $show_sing) { ?>
     <div id=<?=$p?>_single style="display: <?= $show_sing ? "block" : "none" ?>">
-    <?$this->question->display(false);?><br>
+    <?$this->question->display(false); $this->printattribute("question_id", $this->question_id); ?><br>
     </div>
     <? } else $this->question->display(true); ?>
     
@@ -466,7 +489,6 @@ class ChoiceEditor extends ComponentEditor
   <td>
     <?= $this->ctype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
     <a href="javascript:showhelp('choice_type')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
- 
     <? if (!$SurveyEditor_ns4 || $show_clst) { ?>
     <div id=<?=$p?>_choicelist style="display: <?= $show_clst ? "block" : "none" ?>">
     <? $this->choices->display(false); ?>

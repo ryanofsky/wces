@@ -2,13 +2,36 @@
 
 require_once("wbes/component.inc");
 
-$TextResponse_code = 2;                
-$TextResponse_name = "Text Response Question";
-
-function TextResponse_Factory(&$components, $ids, $ordinals, $revision)
+class TextResponseFactory extends ComponentFactory
 {
-  Component_Factory($components, $ids, $ordinals, $revision);
-}
+  function code() { return 3; }
+  function name() { return "Text Response Question"; }
+  
+  function create()
+  {
+    return new TextResponse();
+  }
+  
+  function load(&$components, $ids, $ordinals)
+  {
+    global $wbes;
+    $sids = implode($ids, ", ");
+    $rids = array_flip($ids);
+    $r = pg_query("SELECT revision_id, ctext, is_html, rows, cols FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+
+    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    {
+      $id = (int) $wr->row['revision_id'];
+      $ord = $ordinals[$rids[$id]];
+      $components[$ord] = new TextResponse(); $c = &$components[$ord];
+      $c->revision_id   = (int)$wr->row['revision_id'];
+      $c->is_html       = $wr->row['is_html'] == 't';
+      $c->text          = $wr->row['ctext'];
+      $c->rows          = (int) $wr->row['rows'];
+      $c->cols          = (int) $wr->row['cols'];
+    }
+  }  
+};
 
 class TextResponse extends Component
 {
@@ -30,6 +53,18 @@ class TextResponse extends Component
   {
      return new TextResponseWidget($this,$prefix,$form,$formmethod);
   }
+  
+  function save($save_id)
+  {
+    global $wbes;
+    $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
+    $ctext        = addslashes($this->text);
+    $is_html      = $this->is_html ? "'t'" : "'f'";
+    $rows         = (int) $this->rows;
+    $cols         = (int) $this->cols;
+    $result = pg_query("SELECT textresponse_component_save($save_id, $revision_id::integer, '$ctext'::text, $is_html::boolean, $rows, $cols)", $wbes, __FILE__, __LINE__);
+    return pg_result($result, 0, 0);
+  }  
 };
 
 class TextResponseEditor extends ComponentEditor

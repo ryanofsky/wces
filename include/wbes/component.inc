@@ -4,27 +4,55 @@ require_once("wbes/survey.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/dynamiclist.inc");
 
-function Component_Factory(&$components, $ids, $ordinals, $revision)
+class ComponentFactory
 {
-  global $wbes;
-  $sids = implode($ids, ", ");
-  $rids = array_flip($ids);
-  $r = pg_query("SELECT component_id, data FROM generic_components WHERE component_id IN ($sids)", $wbes, __FILE__, __LINE__);  
-  for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+  // in a normal language, code and name would be static constants, but
+  // since php currently only supports static functions and not static
+  // variables or constants, they are declared as functions instead
+  function code() { return 0; }
+  function name() { return 0; }
+  
+  function create()
   {
-    $ord = $ordinals[$rids[$wr->row['component_id']]];
-    $components[$ord] = unserialize($wr->row['data']);
-    $components[$ord]->component_id = (int)$wr->row['component_id'];
   }
-}
+  
+  // generic load function for component types that do not define their own 
+  function load(&$components, $ids, $ordinals)
+  {
+    global $wbes;
+    $sids = implode($ids, ", ");
+    $rids = array_flip($ids);
+    $r = pg_query("SELECT revision_id, data FROM generic_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    {
+      $ord = $ordinals[$rids[$wr->row['revision_id']]];
+      $components[$ord] = unserialize($wr->row['data']);
+      $components[$ord]->revision_id = (int)$wr->row['revision_id'];
+    }
+  }
+  
+  function textload(&$components, $ids, $ordinals, $cn)
+  {
+    global $wbes;
+    $sids = implode($ids, ", ");
+    $rids = array_flip($ids);
+    $r = pg_query("SELECT revision_id, ctext, is_html FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    {
+      $ord = $ordinals[$rids[$wr->row['revision_id']]];
+      $components[$ord] = new $cn(); $c = &$components[$ord];
+      $c->revision_id = (int)$wr->row['revision_id'];
+      $c->is_html     = $wr->row['is_html'] == 't';
+      $c->text       = $wr->row['ctext'];
+    }
+  }
+};
 
 class Component
 {
   var $text = "";      // string, component text
   var $is_html = false;   // boolean html allowed
-  var $component_id = 0;
-  var $type = 0;
-  var $visibility = 0;
+  var $revision_id = 0;
 
   function Component()
   {
@@ -39,38 +67,70 @@ class Component
   {
     return new ComponentWidget($this,$prefix,$form,$formmethod);
   }
-    
-  function save()
+  
+  // save the base fields, $text and $is_html
+  function textsave($save_id, $cn)
   {
     global $wbes;
-    $cn = get_class($this);
-    $cn = $cn == "textresponse" ? "TextResponse" : ucwords($cn);
-    $cn = $GLOBALS["{$cn}_code"];
+
+    $t = addslashes($this->text);
+    $h = $this->is_html ? 't' : 'f';
+    $r = $this->revision_id ? $this->revision_id : 'NULL';
+
+    $result = pg_query("SELECT text_component_save($save_id, $cn, $r, '$t', '$h')", $wbes, __FILE__, __LINE__);
+    return (int) pg_result($result, 0, 0);
+  }
+  
+  // generic save function for component types that do not define their own 
+  function save($save_id)
+  {
+    global $wbes;
+
+    $cn = get_class($this) . "factory"; 
+    // $cn = $cn::code();                doesn't work
+    // $cn .= "::code"; $cn = $cn();     doesn't work either
+    $cn = eval("return $cn::code();");
+   
+    $branch_id = 0;
+    $revision_id = $this->revision_id;
+    unset($this->revision_id);
     $s = addslashes(serialize($this));
+    $this->revision_id = $revision_id;
     
     $changed = true;
-    if ($this->component_id)
+    if ($revision_id)
     {
-      $r = pg_query("SELECT data FROM generic_components WHERE component_id = $this->component_id", $wbes, __FILE__, __LINE__);
+      $r = pg_query("SELECT data, branch_id FROM generic_components WHERE revision_id = $revision_id", $wbes, __FILE__, __LINE__);
       if (pg_numrows($r) == 1)
       {
-        $d = unserialize(pg_result($r, 0, 0));
-        $d->component_id = $this->component_id;
-        $sd = addslashes(serialize($d));
-        $changed = $s != $sd;
+        $changed = $s == pg_result($r,0,0);
+        $branch_id = (int)pg_result($r,0,1);
       }
     }
     
-    if (!$changed)
+    if (!$changed) return array($branch_id, $revision_id);
+    
+    if (!$branch_id)
     {
-      return $this->component_id;
+      $result = pg_query("
+        INSERT INTO branches(branch, parent) VALUES(branch_nextval(NULL), NULL);
+        SELECT currval('branch_ids');
+      ", $wbes, __FILE__, __LINE__);
+      
+      $branch_id = pg_result($result,0,0);
     }
-    else
-    {
-      pg_query("INSERT INTO generic_components(type, data) VALUES ($cn, '$s')", $wbes, __FILE__, __LINE__);
-      $r = pg_query("SELECT currval('component_ids')", $wbes, __FILE__, __LINE__);
-      return pg_result($r, 0, 0);
-    }
+      
+    $r = $revision_id ? $revision_id : "NULL";
+    
+    $result = pg_query("SELECT revision_save_start($branch_id, $r, $cn, $save_id)", $wbes, __FILE__, __LINE__);
+    $revision_id = pg_result($result, 0, 0);
+    
+    pg_query("UPDATE generic_components SET data = '$s' WHERE revision_id = $revision_id", $wbes, __FILE__, __LINE__);
+    
+    $result = pg_query("SELECT revision_save_end($branch_id, $revision_id)", $wbes, __FILE__, __LINE__);
+    $revision_id = pg_result($result,0,0);
+    
+    return $branch_id;
   }
 };
 

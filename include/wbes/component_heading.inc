@@ -2,13 +2,21 @@
 
 require_once("wbes/component.inc");
 
-$Heading_code = 3;                
-$Heading_name = "Heading Component";
-
-function Heading_Factory(&$components, $ids, $ordinals, $revision)
+class HeadingFactory extends ComponentFactory
 {
-  Component_Factory($components, $ids, $ordinals, $revision);
-}
+  function code() { return 4; }
+  function name() { return "Heading Component"; }
+  
+  function create()
+  {
+    return new Heading();
+  }
+  
+  function load(&$components, $ids, $ordinals)
+  {
+    return $this->textload($components, $ids, $ordinals, "Heading");
+  }  
+};
 
 class Heading extends Component
 {
@@ -25,6 +33,11 @@ class Heading extends Component
   {
     return new HeadingWidget($this,$prefix,$form,$formmethod);
   }
+  
+  function save($save_id)
+  {
+    return $this->textsave($save_id, HeadingFactory::code());
+  }  
 }
 
 class HeadingEditor extends ComponentEditor
