@@ -1,4 +1,4 @@
-<%
+<?
   require_once("wces/login.inc");
   session_start(); 
   
@@ -16,4 +16,4 @@
   {
     login_prompt($destination,$requestedstatus,$uni);
   }
-%>
+?>
