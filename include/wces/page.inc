@@ -8,7 +8,8 @@ $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
-$wces_closed = true;
+$wces_closed = false;
+$absolutePrintStr = $headPrintStr = "";
 
 function page_top($title, $minimal = false)
 {
@@ -144,7 +145,7 @@ function showhelp(topic)
       extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
       if ($surveyed) break;
       if ($i == 0) page_spacer();
-      page_link(format_class($name,0,0,1,0,0,0), "students/survey.php?class_id=$class_id", $QSID, "");
+      page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id", $QSID, "");
     }
   }
 
