@@ -161,7 +161,7 @@ function makeall($stdout,&$html,&$text,&$groups)
   }
 
   $result = pg_query("
-    SELECT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext
+    SELECT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
     FROM rwtopics AS t
     INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
     INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
@@ -174,7 +174,7 @@ function makeall($stdout,&$html,&$text,&$groups)
   $result = pg_query("
     SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS cchoices,
       c.flags, c.first_number, c.last_number, c.other_choice,
-      q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist
+      q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
     FROM rwtopics AS t
     INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
     INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
@@ -182,11 +182,26 @@ function makeall($stdout,&$html,&$text,&$groups)
     INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
     INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
     GROUP BY t.ordinal, c.revision_id, q.revision_id, c.flags, c.first_number,
-      c.last_number, c.other_choice, q.qtext
+      c.last_number, c.other_choice, c.branch_id, q.qtext
     ORDER BY t.ordinal, c.revision_id, q.revision_id
   ", $wces, __FILE__, __LINE__);
 
   $choices = new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
+  
+  // XXX: what is the meaning of *magic* branch_id 1
+  // XXX: it might be faster to factor out calls to topic_contents
+  $result = pg_query("  
+    SELECT t.ordinal, ibtc.branch_id, l.ordinal AS iordinal
+    FROM rwtopics AS t
+    INNER JOIN branch_topics_cache AS btc ON (btc.base_branch_id = 1) AND (btc.topic_id = topic_contents(t.topic_id))
+    INNER JOIN branches AS b ON b.branch_id = btc.branch_id
+    INNER JOIN list_items AS l ON l.revision_id = b.content_id
+    INNER JOIN branch_topics_cache AS ibtc ON (ibtc.base_branch_id = l.item_id) AND (ibtc.topic_id = topic_contents(t.topic_id))
+    ORDER BY t.ordinal
+  ", $wces, __FILE__, __LINE__);
+  
+  $ords = new pg_segmented_wrapper($result, array("ordinal"));
+  
   $pages = pg_result(pg_query("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
 
   $outhtml = is_string($html);
@@ -204,7 +219,7 @@ function makeall($stdout,&$html,&$text,&$groups)
     else
       $pagehtml = false;
 
-    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices);
+    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords);
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;

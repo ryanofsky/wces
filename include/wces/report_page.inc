@@ -209,6 +209,57 @@ function report_findgroups($topicstable, $groupings, $orderings)
   }
 }
 
+class ReportSection
+{
+  var $text = "";
+  var $html = "";
+  function ReportSection($text, $html)
+  {
+    $this->text = $text;
+    $this->html = $html;
+  }
+};
+
+class Sections
+{
+  var $branchorder;
+  var $sections = array();
+  
+  function Sections($branchorder)
+  {
+    $this->branchorder = $branchorder; 
+  }
+  
+  function addSection($branch_id, $text, $html)
+  {
+    $ordinal = isset($this->branchorder[$branch_id]) ? $this->branchorder[$branch_id] : 99999999 ;
+    $r = new ReportSection($text, $html);
+    if (isset($this->sections[$ordinal]))
+      $this->sections[$ordinal][] = $r;
+    else
+      $this->sections[$ordinal] = array($r);
+  } 
+  
+  function flatten(&$pagetext, &$pagehtml)
+  {
+    $outtext = is_string($pagetext);
+    $outhtml = is_string($pagehtml);
+
+    $s = array_keys($this->sections);
+    sort($s);
+
+    foreach($s as $k1)
+    {
+      foreach(array_keys($this->sections[$k1]) as $k2)
+      {
+        $rs = &$this->sections[$k1][$k2];
+        if ($outtext) $pagetext .= $rs->text;
+        if ($outhtml) $pagehtml .= $rs->html;
+      }
+    } 
+  }
+};
+
 //---------------------------------------------------------------------------------------------
 // This function produces report "pages" from the results of selectmonster query
 //
@@ -220,7 +271,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 // possible options:
 // - "pies"
 
-function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices)
+function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords)
 {
   global $wces_path, $TAQUESTIONS, $TAVALUES;
 
@@ -291,6 +342,14 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
   if ($outhtml) $pagehtml .= "</table>\n";
 
+  $branchorder = array();
+  while($ords->row && $ords->row['ordinal'] == $ordinal)
+  {
+    extract($ords->row);
+    $branchorder[$branch_id] = $iordinal;
+    $ords->advance();
+  }
+  
   //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
 
   if ($outtext)
@@ -310,6 +369,10 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$responses) . "&filled=$responses\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
   }
 
+  //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
+
+  $sections = new Sections($branchorder);
+
   ///////////////////////////////// COURSE RATINGS /////////////////////////////////////
 
   while($choices->row && $choices->row['ordinal'] == $ordinal)
@@ -318,6 +381,8 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
     if ($choices->split[1])
     {
+      $sectionhtml = $sectiontext = "";
+      
       // set variables which will be used to interpret data and print headers:
       // $headings, $choices, $values, $showstats, $textformat, $textrows
 
@@ -363,17 +428,17 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       if ($outhtml)
       {
         if ($flags & FLAG_ISNUMERIC)
-          $pagehtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
+          $sectionhtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
 
-        $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2 summary=\"multiple choice response distributions\">\n";
-        $pagehtml .= "<thead style=\"page-break-inside: avoid\">\n";
-        $pagehtml .= "<tr>\n";
-        $pagehtml .= "<td>&nbsp;</td>\n";
+        $sectionhtml .= "<table border=1 cellspacing=0 cellpadding=2 summary=\"multiple choice response distributions\">\n";
+        $sectionhtml .= "<thead style=\"page-break-inside: avoid\">\n";
+        $sectionhtml .= "<tr>\n";
+        $sectionhtml .= "<td>&nbsp;</td>\n";
 
         if ($flags & FLAG_ISNUMERIC)
         {
           foreach ($headings as $hk => $hv)
-            $pagehtml .= "  <td><b>$hv</b></td>\n";
+            $sectionhtml .= "  <td><b>$hv</b></td>\n";
         }
         else
         {
@@ -382,21 +447,21 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
             $str = $hv;
             if ($showstats)
               $str .= sprintf(" (%.1f)",$values[$hk]);
-            $pagehtml .= "  <td><div style=\"writing-mode:tb-rl; white-space: nowrap\"><b>$str</b></div></td>\n";
+            $sectionhtml .= "  <td><div style=\"writing-mode:tb-rl; white-space: nowrap\"><b>$str</b></div></td>\n";
           }
         }
 
         if ($showstats)
-          $pagehtml .= "  <td><b>Avg</b></td>\n  <td><b>Mode</b></td>\n  <td><b>SD</b></td>\n";
+          $sectionhtml .= "  <td><b>Avg</b></td>\n  <td><b>Mode</b></td>\n  <td><b>SD</b></td>\n";
 
-        $pagehtml .= "</tr>\n";
+        $sectionhtml .= "</tr>\n";
       }
 
       // do text header
       if ($outtext)
       {
         if ($flags & FLAG_ISNUMERIC)
-          $pagetext .= "($first_number = $cchoices[0], $last_number = $cchoices[1])\n";
+          $sectiontext .= "($first_number = $cchoices[0], $last_number = $cchoices[1])\n";
         else
         {
           $key = "";
@@ -408,7 +473,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
             if ($key) $key .= ", ";
             $key .= ($showstats ? $values[$ci] : $ci) . " = $ct";
           }
-          $pagetext .= "($key)\n";
+          $sectiontext .= "($key)\n";
         }
         $key = "";
 
@@ -442,7 +507,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
     // done with header, print a row
 
-    if ($outhtml) $pagehtml .= "<tr>\n  <td>$qtext</td>\n";
+    if ($outhtml) $sectionhtml .= "<tr>\n  <td>$qtext</td>\n";
     if ($outtext) $row = array($qtext);
 
     $sums = array_pad(pg_explode($dist),count($choices),0);
@@ -450,7 +515,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     foreach($values as $vi => $vk)
     {
       if ($showstats) $dist[$vk] = $sums[$vi];
-      if ($outhtml) $pagehtml .= "  <td>$sums[$vi]</td>\n";
+      if ($outhtml) $sectionhtml .= "  <td>$sums[$vi]</td>\n";
       if ($outtext) $row[] = $sums[$vi];
     }
 
@@ -459,25 +524,26 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       $avg = report_avg($dist);
       $mode = report_mode($dist);
       $sd = report_sd($dist, $avg);
-      if ($outhtml) $pagehtml .= sprintf("  <td>%.1f</td>\n  <td>%.1f</td>\n  <td>%.1f</td>\n",$avg, $mode, $sd);
+      if ($outhtml) $sectionhtml .= sprintf("  <td>%.1f</td>\n  <td>%.1f</td>\n  <td>%.1f</td>\n",$avg, $mode, $sd);
       if ($outtext) array_push($row, sprintf("%.1f",$avg), sprintf("%.1f",$mode), sprintf("%.1f",$sd));
     }
 
-    if ($outhtml) $pagehtml .= "</tr>\n";
+    if ($outhtml) $sectionhtml .= "</tr>\n";
     if ($outtext) $textrows[] = $row;
 
     $choices->advance();
 
-    $pagehtml .= "<!-- split[1] = " . ((int)$choices->split[1]) . " -->\n";
+    $sectionhtml .= "<!-- split[1] = " . ((int)$choices->split[1]) . " -->\n";
 
     if ($choices->split[1])
     {
-      if ($outhtml) $pagehtml .= "</table>\n";
+      if ($outhtml) $sectionhtml .= "</table>\n";
       if ($outtext)
       {
-        $pagetext .= texttable($textrows,$textformat);
-        $pagetext .= "\n\n";
+        $sectiontext .= texttable($textrows,$textformat);
+        $sectiontext .= "\n\n";
       }
+      $sections->addSection($branch_id, $sectiontext, $sectionhtml);
     }
   } // while($choices->row ...)
 
@@ -490,21 +556,26 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
     if ($textresponses->split[1])
     {
-      if ($outhtml) $pagehtml .= "<h5>$ctext</h5>\n<ul>\n";
-      if ($outtext) $pagetext .= "$ctext\n\n";
+      $sectionhtml = $sectiontext = "";
+      if ($outhtml) $sectionhtml .= "<h5>$ctext</h5>\n<ul>\n";
+      if ($outtext) $sectiontext .= "$ctext\n\n";
     }
 
-    if ($outhtml) $pagehtml .= "  <li>" . nl2br($rtext) . "</li>";
-    if ($outtext) $pagetext  .= " - " . str_replace("\n","\n   ",wordwrap("$rtext",73)) . "\n";
+    if ($outhtml) $sectionhtml .= "  <li>" . nl2br($rtext) . "</li>";
+    if ($outtext) $sectiontext  .= " - " . str_replace("\n","\n   ",wordwrap("$rtext",73)) . "\n";
 
     $textresponses->advance();
 
     if ($textresponses->split[1])
     {
-      if ($outhtml) $pagehtml .= "\n</ul>";
-      if ($outtext) $pagetext .= "\n\n";
+      if ($outhtml) $sectionhtml .= "\n</ul>";
+      if ($outtext) $sectiontext .= "\n\n";
+      $sections->addSection($branch_id, $sectiontext, $sectionhtml);
     }
   } // while($textresponses->row ...)
+  
+  $sections->flatten($pagetext, $pagehtml);
+  
 };
 
 ?>
