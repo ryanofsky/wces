@@ -13,6 +13,7 @@ param($uni);
 param($surveyid);
 param($fake);
 param($nofake);
+param($delete_enrollment);
 
 function PrintUser(&$uni, &$user_id)
 {
@@ -84,9 +85,20 @@ function PrintUser(&$uni, &$user_id)
   PrintLDAP($uni);     
 }
 
+function DeleteEnrollment($user_id, $class_id)
+{
+  global $wces;
+  wces_connect();
+  if (login_getstatus() & login_administrator)
+  {
+    $user_id = (int)$user_id; $class_id = (int)$class_id; 
+    pg_query("UPDATE enrollments SET status = 0 WHERE status = 1 AND user_id = $user_id and class_id = $class_id", $wces, __FILE__, __LINE__); 
+  }
+}
+
 function PrintEnrollments($user_id)
 {
-  global $wces, $wces_path, $server_url, $ASID;
+  global $wces, $wces_path, $server_url, $ASID, $PHP_SELF;
   
   print("<h3>Known Enrollments</h3>");
   
@@ -103,21 +115,22 @@ function PrintEnrollments($user_id)
 
   $classes = pg_query("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
-      t.topic_id, (cl.year = $year AND cl.semester = $semester) AND EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
+      t.topic_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND e.status = 1 AS survey,
+      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN classes AS cl USING (class_id)" . ($restricted ? "
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
     LEFT JOIN wces_topics AS t ON t.class_id = e.class_id" : "") . "
     WHERE e.user_id = $user_id" . ($restricted ? "
     AND (e.status > 1 OR my.class_id IS NOT NULL)" : "") . "
-    ORDER BY cl.year DESC, cl.semester DESC"
+    ORDER BY cl.year DESC, cl.semester DESC, class"
   ,$wces,__FILE__,__LINE__);
 
   $stats = array(0 => "dropped", 1 => "student", 2 => "ta", 3 => "professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
   print("  <tr><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Section</b></td><td><b>Name</b></td><td><b>Professor</b></td><td><b>Status</b></td>");
-  if ($surveys) print("<td><b>Surveyed?</b></td>");
+  if ($surveys) print("<td><b>Surveyed?</b></td><td>&nbsp;</td>");
   print("</tr>\n");
   $n = pg_numrows($classes);
   for($i = 0; $i < $n; ++$i)
@@ -135,9 +148,13 @@ function PrintEnrollments($user_id)
       . "<td>$c[className]</td><td>$p</td><td>$status</td>");
     if ($surveys)
     {
-      print("<td>");
-      //debugout((!$row['topic_id'] ? 1 : 0),"topic_id  ");
-      print(($row['response'] == 't' ? "yes" : ($row['topic_id'] && $row['status'] == 1 ? "no" : "&nbsp;")) . "</td>");
+      $delete = "<a href=\"$PHP_SELF?user_id=$user_id&delete_enrollment=$c[class_id]\" " 
+        . "onclick=\"return confirm('Click OK to drop this enrollment:\\n\\n   " 
+        . addslashes(format_class($c, "%c Section %s $c[className]")) 
+        . "\\n\\nClick Cancel to return without saving changes.')\">Drop</a>";
+
+      print("<td>" . ($row['survey'] != 't' ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
+      print("<td>" . ($row['status'] != 1 ? "&nbsp;" : $delete) . "</td>");
     }
     print("</tr>\n");
   }
@@ -191,7 +208,7 @@ function PrintAffils($user_id)
 function PrintLDAP($uni)
 {
   if (!$uni) return false;
-  print("<h3>LDAP Information</h3>\n");
+  print("<a name=ldap><h3>LDAP Information</h3></a>\n");
   $ds=ldap_connect("ldap.columbia.edu");
   $r=ldap_bind($ds);
   $sr=ldap_search($ds,"o=Columbia University,c=US", "uni=$uni");  
@@ -269,7 +286,7 @@ function PrintClassInfo($class_id)
   $class_id = (int)$class_id;
   
   $result = pg_query("
-    SELECT cl.name AS clname, cl.section, cl.year, cl.semester, cl.students, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname, c.course_id, d.department_id, s.subject_id, sc.school_id, dv.code AS dvcode, dv.division_id, cl.time, cl.location, cl.callnumber
+    SELECT cl.name AS clname, cl.section, cl.year, cl.semester, cl.students, c.code, c.divisioncode, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname, c.course_id, d.department_id, s.subject_id, sc.school_id, dv.code AS dvcode, dv.division_id, cl.time, cl.location, cl.callnumber
     FROM classes as cl
     INNER JOIN courses as c USING (course_id)
     INNER JOIN subjects as s USING (subject_id)
@@ -296,6 +313,9 @@ function PrintClassInfo($class_id)
   if ($location) print ("<p><i>Location:</i> $location</p>");
   if ($callnumber) print ("<p><i>Call Number:</i> $callnumber</p>");
   if ($code) print ("<p><i>Course Code:</i> <a href=\"info.php?course_id=$course_id$ASID\">$code</a></p>");
+
+  $url = "http://www.columbia.edu/cu/bulletin/uwb/subj/$scode/$divisioncode$code-$year" . ($semester + 1) . "-$section/";
+  print("<p>Directory of Classes: <a href=\"$url\">View</a><p>\n");
 
   print("<hr>\n<h3>Known Enrollments</h3>");
 
@@ -633,6 +653,8 @@ if ($uni || $user_id || $class_id || $course_id)
 
 if ($uni || $user_id) 
 {
+  if ($user_id && $delete_enrollment)
+    DeleteEnrollment($user_id, $delete_enrollment);
   PrintUser($uni, $user_id);
 }
 else if ($class_id)
