@@ -19,7 +19,7 @@ extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 page_top("Student Usage Data for $displayname]");
 
 ///////////////////////////////////////////////////////////////////////////////
-$survey_category_id = (int) $survey_category_id;
+$ssid = $survey_category_id = (int) $survey_category_id;
 print("<p>Filtering: ");
 $survey_categories = pg_query("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
 $first = true;
@@ -65,7 +65,7 @@ foreach($order as $k => $v)
     print($v);
   else
     print('<a href="susage.php?survey_category_id=' 
-      . $survey_category["survey_category_id"] . "&sort=" . $k  . '">'
+      . $ssid . "&sort=" . $k  . '">'
       . $v . "</a>");
 }
 print("</p>");
