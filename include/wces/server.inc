@@ -1,7 +1,7 @@
 <%
-  define("server_mode","oracle"); // "oracle" "yahweh" "yahwehisapi" "james" or "athlon"
+  define("server_mode","yahweh"); // "oracle" "yahweh" "yahwehisapi" "james" or "athlon"
   
-  if (server_mode == "oracle")
+  if (server_mode == "yahweh")
   {
     $server_docroot = $HTTP_ENV_VARS["DOCUMENT_ROOT"] . "/";
     $server_cgiroot = dirname($HTTP_ENV_VARS["DOCUMENT_ROOT"]) . "/cgi-bin/";
@@ -22,8 +22,8 @@
     
     function server_sqlinit()
     {
-      //return mysql_connect("localhost","root","------");
-      return mysql_connect("160.39.128.25","russ","insecure");
+      return mysql_connect("localhost","root","------");
+      //return mysql_connect("160.39.128.25","russ","insecure");
     };    
   }
   else if (server_mode == "yahweh")
@@ -132,5 +132,5 @@
     };    
   }
   else
-    die("invalid server type");
+    die("Error in <b>" . __FILE__ . "</b> line <b>" . __LINE__ . "</b>. Invalid Server Type");
 %>
