@@ -119,22 +119,22 @@ function PrintEnrollments($user_id)
   $restricted = !(login_getstatus() & login_administrator) && $user_id != $userid;
   $surveys = (bool)(login_getstatus() & login_administrator);
 
-  $result = pg_go("
-    SELECT question_period_id, displayname, year, semester
-    FROM semester_question_periods
-    WHERE question_period_id = (SELECT get_question_period())
-  ", $wces, __FILE__, __LINE__);
-  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+  $question_period_id = get_question_period();
+
+  $question_period_name = pg_result(pg_go("
+    SELECT displayname
+     FROM semester_question_periods
+    WHERE question_period_id = $question_period_id
+  ", $wces, __FILE__, __LINE__), 0, 0);
 
   $classes = pg_go("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
-      qt.topic_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND e.status = 1 AS survey,
-      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = qt.question_period_id) AS response" : "") . "
+      t.topic_id IS NOT NULL AND e.status = 1 AS survey,
+      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN classes AS cl USING (class_id)" . ($restricted ? "
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
-    LEFT JOIN wces_topics AS t ON t.class_id = e.class_id
-    LEFT JOIN question_periods_topics AS qt ON qt.topic_id = t.topic_id AND qt.question_period_id = $question_period_id
+    LEFT JOIN wces_topics AS t ON t.class_id = e.class_id AND t.question_period_id = $question_period_id
     " : "") . "
     WHERE e.user_id = $user_id" . ($restricted ? "
     AND (e.status > 1 OR my.class_id IS NOT NULL)" : "") . "
@@ -346,22 +346,13 @@ function PrintClassInfo($class_id)
   $surveys = false;
   if (login_getstatus() & login_administrator)
   {
-  /*
-    $result = pg_go("
-      SELECT question_period_id FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_question_period()) AND year = $year AND semester = $semester
-    ", $wces, __FILE__, __LINE__);
-  
-    $question_period_id = pg_numrows($result) == 1 ? (int)pg_result($result,0,0) : 0;
-  */
-    $question_period_id = 23;
+    $question_period_id = get_question_period();
   
     if ($question_period_id)
     {
       $result = pg_go("
-        SELECT topic_id FROM question_periods_topics AS qt
-        INNER JOIN wces_topics AS t USING (topic_id)
-        WHERE qt.question_period_id = $question_period_id AND class_id = $class_id
+        SELECT topic_id FROM wces_topics AS t
+        WHERE t.question_period_id = $question_period_id AND class_id = $class_id
       ", $wces, __FILE__, __LINE__);
     
       if (pg_numrows($result) == 1)
