@@ -248,19 +248,15 @@ function db_printrow($row)
 
 function db_printresult($result)
 {
-  if ($result)
+  if ($result) mysql_num_fields($result);
+  taskwindow_cprint ("<table border=1>\n");  
   {
-    taskwindow_cprint("<table border=1>\n<tr>\n");
-    $n = mysql_num_fields($result);
-    for($i=0; $i<$n; ++$i)
-      taskwindow_cprint("  <td>" . mysql_field_name($result,$i) . "</td>\n");
-    print("</tr>\n");   
- 
-    while ($row = mysql_fetch_row($result))
+    $f = 
+    while ($row = mysql_fetch_assoc($result))
     {
       taskwindow_cprint("<tr>");
-      for($i=0; $i<$n; ++$i)
-        taskwindow_cprint("<td>" . $row[$i] . "</td>");
+      foreach($row as $key => $value)
+        taskwindow_cprint("<td>$key = $value</td>");
       taskwindow_cprint("</tr>\n"); 
     };
   }

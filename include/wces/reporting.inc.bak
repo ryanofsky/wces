@@ -1,0 +1,94 @@
+<%
+
+require_once("wces/server.inc");
+require_once("widgets/wizard.inc");
+require_once("widgets/basic.inc");
+require_once("wces/database.inc");
+require_once("wces/wces.inc");
+require_once("widgets/dynamiclist.inc");
+
+require_once("wces/reporting_new.inc");
+require_once("wces/report_text.inc");
+require_once("wces/report_wizard.inc");
+require_once("wces/report_widget.inc");
+
+$db_debug = true;
+
+function makereport($db,&$wizard,$stdout,&$html,&$text)
+{
+  global $server_wcespath;    
+      
+  $sqloptions = array
+  (
+    "standard" => true,
+    "custom" => $wizard->includecustom->checked
+  );
+
+  $groups = Array
+  (
+    "classes" => $wizard->groupclasses->checked,
+    "courses" => $wizard->groupcourses->checked,
+    "professors" => $wizard->groupprofessors->checked,
+    "departments" => $wizard->groupdepartments->checked,
+    "questionperiods" => $wizard->groupquestionperiods->checked
+  );
+
+  $header = $ratings = true;
+  $listclasses = $listprofessors = true; //$wizard->listclasses->checked ? true : false;
+  
+  $abet = $wizard->includeabet->checked ? true : false;
+  $responses = $wizard->includetext->checked ? true : false;
+  $tas = $wizard->includeta->checked ? true : false;
+  $sort = array();
+  foreach ($wizard->order->items as $order)
+    array_push($sort, $wizard->ordernames[$order]);
+    
+  $pages = report_makequeries($db, $sqloptions, $wizard->criteria, $groups,
+    $sort, $header, $listclasses, $listprofessors, $ratings, $abet, 
+    $responses, $tas);
+  
+  $displayoptions = array("pies" => $wizard->includepies->checked);
+
+  $page = 0;
+  if ($stdout || $html)
+  {
+    $outhtml = "<p><font size=1>[ $page / $pages ]</font></p>\n";
+    $outhtml .= "<h4>Report Information</h4>\n";
+    $outhtml .= "<table border=0><tr><td>Administrator ID: </td><td><b>" . login_getuni() . "</b></td></tr><tr><td>Date:</td><td><b>" . date("l, F j, Y") . "</b></td></tr><tr><td>Time:</td><td><b>" . date("g:i:s A") . "</b></td></tr></table>";
+    $outhtml .= "<h4>Report Specification</h4><pre>" . htmlspecialchars($wizard->summarize()) . "</pre>";
+      
+    if ($html) $html = $outhtml;
+    if ($stdout) print ($outhtml);
+  }
+    
+  $line = "---------------------------------------------------------------------------\n";
+  if ($text)
+  {
+    $text = "$line\n[ $page / $pages ]\n\n";
+    $text .= "Report Information\n";
+    $text .= " - Administrator ID: " . login_getuni() . "\n";
+    $text .= " - Date: " . date("l, F j, Y") . "\n";
+    $text .= " - Time: " . date("g:i:s A") . "\n";
+  }
+    
+  $outhtml = false;
+  for($page = 1; $page <= $pages; ++$page)
+  {
+    if ($html || $stdout)
+    {
+      $outhtml = '<hr style="page-break-before:always">' . "\n";
+      $outhtml .= "<p><font size=1>[ $page / $pages ]</font></p>\n";
+    }
+     
+    if ($text)
+      $text .= "\n$line\n[ $page / $pages ]\n\n";
+    
+    report_makepage($text, $outhtml, $displayoptions, $groups, $header, $listclasses,
+      $listprofessors, $ratings, $abet, $responses, $tas);
+    
+    if ($stdout) print($outhtml);
+    if ($html) $html .= $outhtml;
+  }
+}
+
+%>

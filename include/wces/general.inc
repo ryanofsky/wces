@@ -17,7 +17,7 @@ function sendwarning($dump, $file, $line)
   $db = wces_connect();
   $uni = login_getuni();
   $errorid = db_addrow($db, "warninglog", array("file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
-  mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\nThe SEAS Oracle would like you to know about an error it recently encountered in $file, line $line.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n"));
+  mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\nThe SEAS Oracle would like you to know about an error it recently encountered in $file, line $line.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n'$uni' was logged in at the time\n"));
 }
 
 /**
@@ -102,8 +102,8 @@ function redirect($url)
 
 function sloppyredirect($url)
 {
-  //print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
-  //print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
+  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
   print("Click <a href=\"$url\">here</a> to proceed.");
 }
 
@@ -151,10 +151,10 @@ function printtimes($times)
 {
   foreach($times as $key => $time)
     $times[$key] = gettime($time);
-  $lasttime = array_shift($time);
+  $lasttime = array_shift($times);
   foreach($times as $key => $time)
   {
-    print("  - Instruction $key: " . ($time - $lasttime) . "\n");
+    print("  - Instruction $key: " . ($time - $lasttime) . " seconds<br>\n");
     $lasttime = $time;
   }
 }
@@ -166,6 +166,7 @@ function printtimes($times)
   $times["interestingcommand"] = microtime();
   anotherone();
   $times["anotherone"] = microtime();
+  printtimes($times);
 */
 
 function printarray(&$arr,$name)

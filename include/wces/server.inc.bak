@@ -1,5 +1,5 @@
 <%
-  define("server_mode","oracle"); // "oracle" "yahweh"
+  define("server_mode","yahweh"); // "oracle" "yahweh"
   
   if (server_mode == "oracle")
   {
@@ -33,16 +33,16 @@
   }
   else if (server_mode == "yahweh")
   {
-    $server_docroot = "I:/server/shares/oracle";
+    $server_docroot = "L:/server/shares/oracle";
     $server_cgiroot = $server_docroot . "cgi-bin" . "/";
     $server_wcespath = "/wces/";
     $server_win32 = true;
 
     $server_isproduction = false;
 
-    $server_base = "http://oracle.yanofsky.fam";
-    $server_sbase = "http://oracle.yanofsky.fam";
-    $server_tempdir = "I:/server/shares/temp";
+    $server_base = "http://oracle.yahweh.dyndns.org";
+    $server_sbase = "https://oracle.yahweh.dyndns.org:999";
+    $server_tempdir = "M:/server/shares/temp";
     $oracleroot = "/oracle/";
        
     function server_getrequest($absolute = false)
