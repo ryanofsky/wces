@@ -53,7 +53,7 @@ function importRegCsv($filename, $onlyYear = false, $onlySemester = false)
     }
     else
     {
-      $semester = $data[SEMESTER] == 'spring' ? 0 : $data[SEMESTER] == 'summer' ? 1 : 2;
+      $semester = $data[SEMESTER] == 'spring' ? 0 : ($data[SEMESTER] == 'summer' ? 1 : 2);
       
       if ($onlyYear !== false && $onlyYear != $data[YEAR])
         continue;
