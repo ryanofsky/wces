@@ -36,8 +36,8 @@ function page_links()
     page_link("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
-    page_link("Enrollment Database",  "administrators/info.php", $QSID);
-    page_link("Reporting Wizard", "administrators/choose.php", $QSID);
+    page_link("Enrollment Database", "administrators/info.php", $QSID);
+    page_link("Reporting Wizard", "administrators/report_choose.php", $QSID);
     page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
     page_link("Data Import",      "administrators/import.php", $QSID);
     page_link("Question Periods", "administrators/questionperiods.php", $QSID);

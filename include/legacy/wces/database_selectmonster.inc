@@ -37,7 +37,7 @@
   * </ul>
   */
 
-class db_SelectMonster
+class legacy_db_SelectMonster
 {
   /**
   * Comma separated list of fields to retrieve. Part of the SQL select statement.
@@ -83,11 +83,18 @@ class db_SelectMonster
   var $jointypes;
   
   /**
-  * Zero based array containing the join conditions.
+  * Zero based array containing the name of the first column to join by, used to construct JOIN statements.
   * @var array
   * @access private
   */
-  var $joinconds;
+  var $leftcols;
+  
+  /**
+  * Zero based array containing the name of the second column to join by, used to construct JOIN statements.
+  * @var array
+  * @access private
+  */
+  var $rightcols; 
   
   /**
   * Zero based array containing the names of columns to group by, used to construct the GROUP BY clause.
@@ -147,10 +154,10 @@ class db_SelectMonster
 
   /**
   * Constructor.
-  * Instantiates an empty db_SelectMonster object.
+  * Instantiates an empty legacy_db_SelectMonster object.
   * @access public  
   */	
-  function db_SelectMonster()
+  function legacy_db_SelectMonster()
   {
     $this->columns = "";
     $this->where = "";
@@ -159,7 +166,8 @@ class db_SelectMonster
     $this->roottable = "";
     $this->tables = array();
     $this->jointypes = array();
-    $this->joinconds = array();
+    $this->leftcols = array();
+    $this->rightcols = array();
     $this->groupby = array();
     $this->orderby = array();
     $this->orderbydesc = array();
@@ -174,29 +182,28 @@ class db_SelectMonster
 
   /**
   * Add a table join to the query. The resulting SQL fragment looks like:
-  * <pre>... {LEFT | INNER} JOIN $table ON $joincond ...</pre>
+  * <pre>... {LEFT | INNER} JOIN $table ON $leftcol = $rightcol ...</pre>
   * @param string  Name of table to join with.  
   * @param integer Join type, possible values are db_SelectMonster_left and db_SelectMonster_inner
   * @param string  Column name from the table being joined
   * @param string  Column name from an existing table
   * @access public
   */	
-  function addjoin($table,$jointype, $joincond, $abc = 5)
+  function addjoin($table,$jointype, $leftcol,$rightcol)
   {
-    // todo: get rid of this after all old calls are replaced
-    if (!$abc) debugout("old addjoin called.");
+    $found = array_keys($this->tables,$table);
+    if (count($found) > 0)
+      foreach($found as $key)
+        if ($this->leftcols[$key] == $leftcol && $this->rightcols[$key] == $rightcol) 
+        {
+          $this->jointypes[$key] = max($this->jointypes[$key],$jointype);
+          return;
+        }  
     
-    $found = array_search($table, $this->tables);
-    if (isset($found) && $found !== false)
-    {
-      $this->jointypes[$found] = max($this->jointypes[$found],$jointype);
-    }
-    else
-    {
-      $this->tables[] = $table;
-      $this->jointypes[] = $jointype;
-      $this->joinconds[] = $joincond;
-    }
+    $this->tables[] = $table;
+    $this->jointypes[] = $jointype;
+    $this->leftcols[] = $leftcol;
+    $this->rightcols[] = $rightcol;
   }
 
   /**
@@ -374,11 +381,11 @@ class db_SelectMonster
     
     $parent->columns .= ") AS " . db_SelectMonster_prefix . $child->childid;
       
-    db_SelectMonster::fixchild($child,$parent);
+    legacy_db_SelectMonster::fixchild($child,$parent);
     
     foreach($child->children as $key => $value)
       if ($value)
-        db_SelectMonster::fixchild($child->children[$key],$parent);
+        legacy_db_SelectMonster::fixchild($child->children[$key],$parent);
   }
 
   /**
@@ -396,9 +403,10 @@ class db_SelectMonster
     $parent->roottable = $this->roottable;
     $parent->tables = $this->tables;
     $parent->jointypes = $this->jointypes;
-    $parent->joinconds = $this->joinconds;
+    $parent->leftcols = $this->leftcols;
+    $parent->rightcols = $this->rightcols;
 
-    db_SelectMonster::bond($this,$parent);
+    legacy_db_SelectMonster::bond($this,$parent);
   }
 
   /**
@@ -416,9 +424,10 @@ class db_SelectMonster
     $child->roottable = $this->roottable;
     $child->tables = $this->tables;
     $child->jointypes = $this->jointypes;
-    $child->joinconds = $this->joinconds;
+    $child->leftcols = $this->leftcols;
+    $child->rightcols = $this->rightcols;
 
-    db_SelectMonster::bond($child,$this);
+    legacy_db_SelectMonster::bond($child,$this);
   }
 
   /**
@@ -445,9 +454,16 @@ class db_SelectMonster
       return false;
   }
 
-
-  function sql()
+  /**
+  * Executes the SQL query using the conditions specified since construction.
+  *
+  * @param identifier Handle to mysql connection.
+  * @access public
+  */  
+  function execute($db)
   {
+    global $db_debug;    
+
     $sql_columns = $this->columns ? $this->columns : "*";
     $sql_from = $this->roottable;
 
@@ -457,11 +473,11 @@ class db_SelectMonster
     foreach($this->tables as $tableno => $table)
     {
       if ($this->jointypes[$tableno] == db_SelectMonster_inner)
-        $sql_joins .= "INNER JOIN $table ON {$this->joinconds[$tableno]}\n";
+        $sql_joins .= " INNER JOIN $table ON " . ($this->leftcols[$tableno]) . " = " . ($this->rightcols[$tableno]);
       else if ($this->jointypes[$tableno] == db_SelectMonster_left)
-        $sql_joins .= "LEFT JOIN $table ON {$this->joinconds[$tableno]}\n";
+        $sql_joins .= " LEFT JOIN $table ON " . ($this->leftcols[$tableno]) . " = " . ($this->rightcols[$tableno]);
       else if ($db_debug)
-        taskwindow_cprint("<b>Error from: db_SelectMonster->execute, invalid join type</b><br>");
+        taskwindow_cprint("<b>Error from: legacy_db_SelectMonster->execute, invalid join type</b><br>");
     };
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -472,7 +488,6 @@ class db_SelectMonster
       if ($sql_groupby) $sql_groupby .= ", "; else $sql_groupby = "GROUP BY ";
       $sql_groupby .= $group;
     }
-    if ($sql_groupby) $sql_groupby .= "\n";
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
@@ -482,27 +497,13 @@ class db_SelectMonster
       if ($sql_orderby) $sql_orderby .= ", "; else $sql_orderby = "ORDER BY ";
       $sql_orderby .= $order . ($this->orderbydesc[$key] ? " DESC" : "");
     }
-    if ($sql_orderby) $sql_orderby .= "\n";
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    $sql_where = $this->where ? "WHERE $this->where\n" : "";
-    $sql_having = $this->having ? "HAVING $this->having\n" : "";
+    $sql_where = $this->where ? "WHERE " . $this->where : "";
+    $sql_having = $this->having ? "HAVING " . $this->having : "";
 
-    return "SELECT $sql_columns\nFROM $sql_from\n$sql_joins$sql_where$sql_groupby$sql_orderby$sql_having";
-  }
-  
-
-  /**
-  * Executes the SQL query using the conditions specified since construction.
-  *
-  * @param identifier Handle to mysql connection.
-  * @access public
-  */  
-  function execute($db)
-  {
-    global $db_debug;    
-    $this->result = db_exec($this->sql(), $db, __FILE__, __LINE__);
+    $this->result = db_exec("SELECT $sql_columns FROM $sql_from $sql_joins $sql_where $sql_groupby $sql_orderby $sql_having",$db,__FILE__,__LINE__);
     $this->size = mysql_num_rows($this->result);
   }
 };
