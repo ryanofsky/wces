@@ -291,6 +291,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
         <p><a href="<%=$server_wcespath%>administrators/import.php" class="treelink">Import Data</a></p>
         <p><a href="<%=$server_wcespath%>administrators/fakelogin.php" class="treelink">Fake Login</a></p>
         <p><a href="<%=$server_wcespath%>administrators/enrollment.php" class="treelink">Enrollment Viewer</a></p>
+        <p><a href="<%=$server_wcespath%>administrators/pstats.php" class="treelink">Professor Listing</a></p>
       </td>
     </tr>
     <tr><td><script>treehead_init("section4h","section4")</script>&nbsp;</td></tr>    
