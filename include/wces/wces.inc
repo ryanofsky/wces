@@ -37,6 +37,12 @@ define("FORMAT_PROF_USER_ID",        0);
 define("FORMAT_PROF_LASTNAME",       1);
 define("FORMAT_PROF_FIRSTNAME",      2);
 
+define("FORMAT_COURSE_SUBJECT_CODE",  0);
+define("FORMAT_COURSE_DIVISION_CODE", 1);
+define("FORMAT_COURSE_NUMBER",        2);
+define("FORMAT_COURSE_NAME",          3);
+define("FORMAT_COURSE_COURSE_ID",     4);
+
 function format_class($class, $link = false, $code = true, $name = true, $semester = false, $sectionname = false, $section = true)
 {
   global $wces_path;
@@ -46,7 +52,7 @@ function format_class($class, $link = false, $code = true, $name = true, $semest
   if ($code)
   {
     if ($str) $str .= " ";
-    $str .= "{$c[FORMAT_CLASS_SUBJECT_CODE]} {$c[FORMAT_CLASS_NUMBER]}";
+    $str .= "{$c[FORMAT_CLASS_SUBJECT_CODE]} " . (int)$c[FORMAT_CLASS_NUMBER];
   }
   if ($name)
   {
@@ -85,6 +91,29 @@ function format_class($class, $link = false, $code = true, $name = true, $semest
   if ($link)
   {
     $str = "<a href=\"{$wces_path}administrators/info.php?class_id={$c[FORMAT_CLASS_CLASS_ID]}\">$str</a>";
+  }
+  return $str;
+}
+
+function format_course($course, $link = false, $code = true, $name = true)
+{
+  global $wces_path;
+  $c = explode("\n", $course);
+  $str = "";
+
+  if ($code)
+  {
+    if ($str) $str .= " ";
+    $str .= "{$c[FORMAT_COURSE_SUBJECT_CODE]} " . (int) $c[FORMAT_COURSE_NUMBER];
+  }
+  if ($name)
+  {
+    if ($str) $str .= " ";
+    $str .= "{$c[FORMAT_COURSE_NAME]}";
+  }
+  if ($link)
+  {
+    $str = "<a href=\"{$wces_path}administrators/info.php?course_id={$c[FORMAT_COURSE_COURSE_ID]}\">$str</a>";
   }
   return $str;
 }
