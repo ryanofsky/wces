@@ -73,4 +73,3 @@ function _listprops(obj,name)
   return hasprops;  
   --window._depth;
 };
-

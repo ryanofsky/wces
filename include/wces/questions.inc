@@ -43,6 +43,8 @@ class QuestionEditor extends FormWidget
     $this->question = &$question;
     
     $this->errors = array();
+    
+    $this->text->broken = false;
   }
   
   function loadvalues()
@@ -121,6 +123,7 @@ class FreeResponse extends Question
   
   function FreeResponse()
   {
+    $this->Question();
     $this->rows = 5;
     $this->cols = 60;
   }
@@ -145,6 +148,8 @@ class FreeResponseEditor extends QuestionEditor
     $this->QuestionEditor($question,$prefix,$form,$formmethod);
     $this->rows = new TextBox(0,10,"",$prefix."_rows",$form,$formmethod);
     $this->cols = new TextBox(0,10,"",$prefix."_cols",$form,$formmethod);
+    $this->rows->broken = false;
+    $this->cols->broken = false;
   }
   
   function loadvalues()
@@ -269,6 +274,10 @@ class RatingsBlockEditor extends QuestionEditor
     $this->lowvalue = new TextBox(0,5,"",$this->prefix."_lowvalue",$this->form,$this->formmethod);
     $this->highvalue = new TextBox(0,5,"",$this->prefix."_highvalue",$this->form,$this->formmethod);
     $this->items = new DynamicList(30,7,false,$this->prefix."_listitems",$this->form,$this->formmethod);
+    
+    $this->lowvalue->broken = false;
+    $this->highvalue->broken = false;
+    $this->items->broken = false;
   }
   
   function loadvalues() // public abstract
@@ -350,11 +359,11 @@ class RatingsBlockWidget extends QuestionWidget
   function RatingsBlockWidget(&$question,$prefix,$form,$formmethod)
   {
     $this->QuestionWidget($question,$prefix,$form,$formmethod);
+    $this->choices = array();
   }
   
   function loadvalues() // public abstract
   {
-    $choices = array();    
     foreach($this->question->items as $key => $value)
       $this->choices[$key] = $this->loadattribute($key);
   }

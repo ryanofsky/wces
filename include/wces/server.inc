@@ -13,6 +13,12 @@
     $server_isproduction = true;
     $oracleroot = "/oracle/";
         
+    function server_getpage()
+    {
+      global $HTTP_ENV_VARS;
+      return $HTTP_ENV_VARS["PATH_INFO"];
+    }
+    
     function server_getrequest($absolute = false)
     {
       global $HTTP_ENV_VARS;
@@ -32,36 +38,42 @@
     };    
   }
   else if (server_mode == "yahweh")
-  {
+  {                        
     $server_docroot = "I:/server/shares/oracle";
     $server_cgiroot = $server_docroot . "cgi-bin" . "/";
     $server_wcespath = "/wces/";
-    $server_win32 = true;
-
+    $server_win32 = true;  
+                           
     $server_isproduction = false;
-
-    $server_base = "http://oracle.yanofsky.fam";
-    $server_sbase = "http://oracle.yanofsky.fam";
+                           
+    $server_base = "http://oracle.yahweh.dyndns.org";
+    $server_sbase = "https://oracle.yahweh.dyndns.org:999";
     $server_tempdir = "I:/server/shares/temp";
     $oracleroot = "/oracle/";
-       
-    function server_getrequest($absolute = false)
+                           
+    function server_getpage()
     {
+      global $PHP_SELF;
+      return $PHP_SELF;
+    }
+
+    function server_getrequest($absolute = false)
+    {                      
       global $HTTP_ENV_VARS, $PHP_SELF;
       $req = isset($HTTP_ENV_VARS["QUERY_STRING"]) ? "$PHP_SELF?" . $HTTP_ENV_VARS["QUERY_STRING"] : $PHP_SELF;
       return $absolute ? ($HTTP_ENV_VARS["HTTPS"] == "on" ? "https://" : "http://") . $HTTP_ENV_VARS["SERVER_NAME"] . ":" . $HTTP_ENV_VARS["SERVER_PORT"] . $req : $req;
-    };
-    
+    };                     
+                           
     function server_secure()
-    {
+    {                      
       global $HTTP_ENV_VARS;
       return $HTTP_ENV_VARS["HTTPS"] == 'on';
-    }
-    
+    }                      
+                           
     function server_sqlinit()
     {
-      return mysql_connect("localhost","root","------");
-      //return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
+      //return mysql_connect("localhost","root","------");
+      return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
     };    
 
   }

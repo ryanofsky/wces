@@ -1,4 +1,4 @@
-<?
+<%
 require_once("wces/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
@@ -6,7 +6,7 @@ require_once("wces/page.inc");
 login_protect(login_administrator);
 page_top("Enrollment Viewer"); 
 
-?>
+%>
 <script>
 <!--
 function textchange(list,boxtext)
@@ -82,7 +82,7 @@ function textonkeydown(e)
 <td valign=top>Username:</td>
 <td>
 <div><input type=text size=10 name=box value="" style="width:90px"></div>
-<div><?
+<div><%
   print('<select name=cunix size=7 style="width:90px">');
   $db = wces_connect();
   $cunixes = db_exec("SELECT cunix FROM users ORDER BY cunix", $db, __FILE__, __LINE__);
@@ -90,7 +90,7 @@ function textonkeydown(e)
     print('<option value="' . htmlspecialchars($cunix[0]) . '">' . htmlspecialchars($cunix[0]). '</option>');
   print('<option value="">--------------</option>');
   print('</select>');  
-?></div>
+%></div>
 </td>
 </tr>
 <tr><td>&nbsp;</td><td><input type=submit value=Submit></td></tr>
@@ -109,7 +109,7 @@ function textonkeydown(e)
 // -->
 </script>
 
-<? page_bottom(); ?>
+<% page_bottom(); %>
 
 
 

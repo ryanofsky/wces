@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("widgets/widget.inc");
 
@@ -21,7 +21,7 @@ class FoldingMenu extends Widget
     if (!$FoldingMenu_dumped)
     {
       $FoldingMenu_dumped = true;
-?>
+%>
 <!-- begin FoldingMenu widget script -->  
 <script>
 <!--
@@ -135,13 +135,13 @@ class FoldingMenu extends Widget
   {
     //var re = /.*(?:^|;)[ ]*FoldingMenustatus=([^;]*)(?:$|;).*/;      < - - doesn't work on IE5 for mac
     var re = new RegExp(".*(^|;)[ ]*FoldingMenustatus=([^;]*)($|;).*");
-    window.FoldingMenustatus = (re.test(document.cookie)) ? document.cookie.replace(re,"$2") : "<?=$FoldingMenustatus?>";
+    window.FoldingMenustatus = (re.test(document.cookie)) ? document.cookie.replace(re,"$2") : "<%=$FoldingMenustatus%>";
     window.FoldingMenubranches = new Array();
   };    
 // -->
 </script>
 <!-- end FoldingMenu widget script -->  
-<?  
+<%  
     }
   }
 
@@ -183,25 +183,25 @@ class FoldingMenu extends Widget
     print("</table>\n");
 
 
-<? if (login_isloggedin()) { ?>
+<% if (login_isloggedin()) { %>
     <tr id="logout" class="foldingmenuheading">
-      <td><img name="headimage" src="<?=$server_wcespath?>media/solid.gif" width="15" height="15" align="middle"></td>
-      <td class="foldingmenuheading" nowrap><a href="<?=$server_wcespath?>login/logout.php" class="foldingmenuheading">Log Off <?=login_getuni()?></a></td>
+      <td><img name="headimage" src="<%=$server_wcespath%>media/solid.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap><a href="<%=$server_wcespath%>login/logout.php" class="foldingmenuheading">Log Off <%=login_getuni()%></a></td>
     </tr>
     <tr><td><script>foldingmenuhead_init("logout")</script>&nbsp;</td></tr>     
-<? } ?> 
+<% } %> 
 
     <tr id="section1h" class="foldingmenuheading">
-      <td><img name="headimage" src="<?=$server_wcespath?>media/minus.gif" width="15" height="15" align="middle"></td>
+      <td><img name="headimage" src="<%=$server_wcespath%>media/minus.gif" width="15" height="15" align="middle"></td>
       <td class="foldingmenuheading" nowrap>General</td>
     </tr>
     <tr id="section1">
       <td>&nbsp;</td>
        <td class="foldingmenubody" bgcolor="#000000">
-        <p><a href="<?=$server_wcespath?>index.php" class="foldingmenulink">Home</a></p>
-        <p><a href="<?=$server_wcespath?>about/confidentiality.php" class="foldingmenulink">Confidentiality</a></p>
-        <p><a href="<?=$server_wcespath?>about/feedback.php" class="foldingmenulink">Feedback</a></p>
-        <p><a href="<?=$server_wcespath?>about/credits.php" class="foldingmenulink">Credits</a></p>
+        <p><a href="<%=$server_wcespath%>index.php" class="foldingmenulink">Home</a></p>
+        <p><a href="<%=$server_wcespath%>about/confidentiality.php" class="foldingmenulink">Confidentiality</a></p>
+        <p><a href="<%=$server_wcespath%>about/feedback.php" class="foldingmenulink">Feedback</a></p>
+        <p><a href="<%=$server_wcespath%>about/credits.php" class="foldingmenulink">Credits</a></p>
       </td>
     </tr>
     <tr><td><script>foldingmenuhead_init("section1h","section1")</script>&nbsp;</td></tr>
@@ -229,4 +229,4 @@ class FoldingMenuLink
 }
 
 
-?>
+%>

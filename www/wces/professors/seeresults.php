@@ -2,7 +2,7 @@
 
   require_once("wces/page.inc");
   require_once("wces/database.inc");
-  require_once("wces/reporting.inc");
+  require_once("wces/report_page.inc");
   
   login_protect(login_professor);
   $profid = login_getprofid();

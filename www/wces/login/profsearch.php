@@ -4,6 +4,8 @@ require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_professor);
 
+param($lastname);
+
 page_top("Professor Search Page");
 
 if (!$lastname)

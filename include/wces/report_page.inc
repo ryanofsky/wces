@@ -1,5 +1,9 @@
 <%
+
+require_once("wces/database.inc");
 require_once("wces/oldquestions.inc");
+require_once("wces/report_help.inc");
+require_once("wces/report_textgrid.inc");
 
 //options is an array of booleans with these keys:
 // - "standard"
@@ -58,8 +62,9 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
   if ($criteria["questionperiods"])
     addwhere($where,"questionperiodid IN (" . implode(", ", $criteria["questionperiods"]) . ")");
   
-  debugout($tas ? "trie" : "foulse");
-  
+  if (isset($criteria["classes"]) && $criteria["classes"])
+    addwhere($where,"classid IN (" . implode(", ", $criteria["classes"]) . ")");
+
   if ($tas)
     db_exec("INSERT INTO filledclasses(classid, questionperiodid) SELECT classid, questionperiodid FROM taratings $where GROUP BY classid, questionperiodid", $db, __FILE__, __LINE__);
 
@@ -108,16 +113,16 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
   if ($groups["classes"])
     $groups["courses"] = $groups["professors"] = $groups["departments"] = true;
 
-  $s = $sort;
+  $len = count($sort);
+  for($i=0;  $i<$len; ++$i)
   foreach($groups as $group => $checked)
+  if(!$checked && isset($sort[$i]) && $sort[$i] == $group)
   {
-    if (!$checked)
-    foreach($s as $k => $v)
-      if ($group == $v) unset($s[$k]);
+    array_push($sort,$group);
+    unset($sort[$i]);
   }
-    
-  $sort = array_values(array_unique(array_merge($s,$sort)));
-  
+  $sort = array_values($sort);
+ 
   $order = "";
   foreach($sort as $item)
   switch($item)
@@ -126,16 +131,16 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       addorder($order, "cl.year, cl.semester, fc.questionperiodid");
     break;
     case "departments":
-      addorder($order, "d.code");
+      addorder($order, "d.code, d.departmentid");
     break;
     case "professors":
-      addorder($order, "plname, pfname");
+      addorder($order, "plname, pfname, p.professorid");
     break;
     case "courses":
-      addorder($order, "c.name");
+      addorder($order, "c.name, cl.courseid");
     break;
     case "classes":
-      addorder($order, "ccode, cl.section");
+      addorder($order, "ccode, cl.year, cl.semester, cl.section, cl.classid");
     break;
   }
 
@@ -166,6 +171,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
   if ($groups["questionperiods"]) addgroup($group, "questionperiodid");
   
   $counts = db_exec("SELECT COUNT(*) AS number FROM mastertable $group ORDER BY masterid", $db, __FILE__, __LINE__);
+  
   $masterid = 0;
   $clusterid = 0;
   while($row = mysql_fetch_assoc($counts))
@@ -178,13 +184,13 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
 
   if ($header)
   {
-    $columns = "";
+    $columns = " ";
     if ($groups["departments"])
       addcolumn($columns, "d.departmentid, d.name AS dname, d.code AS dcode");
     if ($groups["questionperiods"])
       addcolumn($columns, "CONCAT(qp.semester, ' ' , qp.year, ' ' , qp.description) AS qpname");
     $header = new SegmentedQuery(db_exec("
-      SELECT ml.clusterid, SUM(ml.students) AS students, SUM(ml.response) AS response,
+      SELECT ml.clusterid, SUM(ml.students) AS students, SUM(ml.response) AS response
         $columns
       FROM mastertable AS ml
       LEFT JOIN departments AS d ON d.departmentid = ml.departmentid
@@ -210,7 +216,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
     $listprofessors = new SegmentedQuery(db_exec("
       SELECT clusterid, plname, pfname, professorid
       FROM mastertable
-      GROUP BY clusterid, classid
+      GROUP BY clusterid, professorid
       ORDER BY clusterid, plname, pfname
     ", $db, __FILE__, __LINE__), "clusterid");
     $listprofessors->advance();
@@ -233,7 +239,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       SELECT ml.clusterid, qs.displayname $columns
       FROM mastertable AS ml
       INNER JOIN filledclasses AS fc ON ml.classid = fc.classid AND ml.questionperiodid = fc.questionperiodid
-      INNER JOIN answersets AS a ON a.questionsetid = fc.questionsetid AND a.classid = fc.classid AND a.questionsetid = fc.questionsetid
+      INNER JOIN answersets AS a ON a.questionperiodid = fc.questionperiodid AND a.classid = fc.classid AND a.questionsetid = fc.questionsetid
       INNER JOIN questionsets AS qs ON qs.questionsetid = a.questionsetid
       WHERE $RATINGSCONDITION $cnd      
       GROUP BY clusterid, qs.questionsetid
@@ -268,7 +274,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       SELECT ml.clusterid, qs.FR1 AS qsFR1, qs.FR2 AS qsFR2, a.FR1, a.FR2, ml.ccode, ml.section, ml.year, ml.semester, ml.cname, ml.classid, ml.plname, ml.pfname, ml.professorid
       FROM mastertable AS ml
       INNER JOIN filledclasses AS fc ON ml.classid = fc.classid AND ml.questionperiodid = fc.questionperiodid
-      INNER JOIN answersets AS a ON a.questionsetid = fc.questionsetid AND a.classid = fc.classid AND a.questionsetid = fc.questionsetid
+      INNER JOIN answersets AS a ON a.questionperiodid = fc.questionperiodid AND a.classid = fc.classid AND a.questionsetid = fc.questionsetid
       INNER JOIN questionsets AS qs ON qs.questionsetid = a.questionsetid
       WHERE $TEXTCONDITION $cnd AND (LENGTH(a.FR1) > 0 OR LENGTH(a.FR2) > 0)
       GROUP BY ml.clusterid, a.answersetid ORDER BY ml.clusterid, ml.ccode, ml.year, ml.semester, ml.section
@@ -331,6 +337,19 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
     if ($groups["departments"]) $pagetext .= " - Department: $dname ($dcode)\n";
   }
 
+  if ($listprofessors && $clusterid == $listprofessors->row["clusterid"])
+  {
+    do
+    {
+      $plname = $pfname = $professorid = "";
+      extract($listprofessors->row);
+      $profname = ($pfname || $plname) ? "$pfname $plname" : "Unknown";
+      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
+      if ($outtext) $pagetext .= " - Professor: $profname\n"; 
+    }
+    while($listprofessors->advance());
+  }
+
   if ($listclasses && $clusterid == $listclasses->row["clusterid"])
   {
     do
@@ -347,22 +366,6 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
     }
     while($listclasses->advance());
   }  
-
-  if ($listprofessors && $clusterid == $listprofessors->row["clusterid"])
-  {
-    do
-    {
-      $plname = $pfname = $professorid = "";
-      extract($listprofessors->row);
-      if($pfname || $plname) 
-      {  
-        $profname = "$pfname $plname";
-        if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b><a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$profname</a></b></td></tr>\n";
-        if ($outtext) $pagetext .= " - Professor: $profname\n"; 
-      }  
-    }
-    while($listprofessors->advance());
-  }
 
   if ($outhtml) $pagehtml .= "</table>\n";
 
@@ -434,8 +437,8 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
           {
             $first = false;
             $pagehtml .= "<h4>" . $ratings->row["displayname"] . "</h4>\n";
-            $pagehtml .= "<table border=1 RULES=ALL FRAME=VOID>\n";
-            $pagehtml .= "<tr>\n";
+            $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2 RULES=ALL FRAME=VOID>\n";
+            $pagehtml .= "<thead style=\"page-break-inside: avoid\">\n<tr>\n";
             $pagehtml .= "  <td>&nbsp;</td>\n";
             $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/50.gif\"></center></td>\n";
             $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/40.gif\"></center></td>\n";
@@ -446,7 +449,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
             $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/mode.gif\"></center></td>\n";
             $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/sd.gif\"></center></td>\n";
             $pagehtml .= "  <td width=120><p><b>Average (Graphical)</p></b></td>\n";
-            $pagehtml .= "</tr>";
+            $pagehtml .= "</tr>\n</thead>";
           };
           $pagehtml .= "<tr>\n";
           $pagehtml .= "  <td>" . $ratings->row["MC$i"] . "</td>\n";
@@ -482,12 +485,12 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
   {
     if ($outtext)
     {
-      $pagetext .= $abet->row["displayname"] . "\n\n";
+      $pagetext .= "ABET Questions\n\n";
 
       $pagetext .= "To what degree did this course enhance your ability to ...\n";
       $pagetext .= "0 = not at all, 5 = a great deal\n\n";
         
-      $format =Array(30,"center","center","center","center","center","center","center","center","center");
+      $format =Array(25,"center","center","center","center","center","center","center","center","center");
       $table = Array(Array("Question Text","0","1","2","3","4","5","Avg","Mode","SD"));
   
       for ($i = 1; $i <= 10; ++$i)
@@ -526,8 +529,8 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
             $pagehtml .= "<p><strong>To what degree did this course enhance your ability to ...</strong><br>\n";
             $pagehtml .= "<i>0 = not at all, 5 = a great deal</i></p>\n\n";
 
-            $pagehtml .= "<table border=1 RULES=ALL FRAME=VOID>\n";
-            $pagehtml .= "<tr>\n";
+            $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2 RULES=ALL FRAME=VOID>\n";
+            $pagehtml .= "<thead style=\"page-break-inside: avoid\">\n<tr>\n";
             $pagehtml .= "  <td>&nbsp;</td>\n";
             $pagehtml .= "  <td width=20><center><strong>0</strong></center></td>\n";
             $pagehtml .= "  <td width=20><center><strong>1</strong></center></td>\n";
@@ -539,7 +542,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
             $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/mode.gif\"></center></td>\n";
             $pagehtml .= "  <td width=20><center><img src=\"${server_wcespath}/media/report/sd.gif\"></center></td>\n";
             $pagehtml .= "  <td width=120><p><b>Average (Graphical)</p></b></td>\n";
-            $pagehtml .= "</tr>";
+            $pagehtml .= "</tr>\n</thead>\n";
           };
           $pagehtml .= "<tr>\n";
           $pagehtml .= "  <td>" . $ABETQUESTIONS[$i] . "</td>\n";
@@ -604,7 +607,7 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
         {
            $pagetext .= wordwrap($responses->row["qsFR$j"],76) . "\n\n";
            $pagetext .= " - ";
-           $pagetext .= wordwrap("    " . stripslashes(stripcslashes(str_replace("\t","\n - ",trim($responses->row["FR$j"])))),76);
+           $pagetext .= stripcslashes(str_replace("\n   \t","\n - ",str_replace("\n","\n   ",wordwrap(str_replace("\t","\n\t",$responses->row["FR$j"]),73))));           
            $pagetext .= "\n\n";
         }
       };
@@ -615,10 +618,16 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
 
   if ($tas && $clusterid == $tas->row["clusterid"])
   {
-    $pagehtml .= "<h4>TA Ratings</h4>\n<table border=1>\n<tr>\n  <td>Name</td>\n";
-    foreach($TAQUESTIONS as $question)
-      $pagehtml .= "  <td><div style=\"writing-mode:tb-rl\"><b>$question</b></div></td>\n";
-    $pagehtml .= "<td><b>Comments</b></td><td><b>Student #</b></td></tr>\n";  
+    if ($outhtml)
+    {
+      $pagehtml .= "<h4>TA Ratings</h4>\n<table border=1 cellspacing=0 cellpadding=2>\n<thead style=\"page-break-inside: avoid\">\n<tr>\n  <td>Name</td>\n";
+      foreach($TAQUESTIONS as $question)
+        $pagehtml .= "  <td><div style=\"writing-mode:tb-rl\"><b>" . str_replace(" ","&nbsp;",$question) . "</b></div></td>\n";
+      $pagehtml .= "<td><b>Comments</b></td><td><b>Student #</b></td></thead></tr>\n";  
+      $avg = array();
+      $num = 0;
+    }
+    if ($outtext) $pagetext .= "TA Ratings\n\n";
     $lclassid = 0;
     do
     {
@@ -629,126 +638,47 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
         $classname = "$ccode $name Section $section";
         if ($groups["questionperiods"])
           $classname .= " " . ucfirst($semester) . " $year";
-        $pagehtml .= "<tr><td colspan=8 align=center><b><a href=\"info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        if ($outhtml) $pagehtml .= "<tr><td colspan=8 align=center><b><a href=\"${server_wcespath}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        if ($outtext) $pagetext .= "$classname\n\n";
         $lclassid = $classid;
       }
 
-      $name = $tas->row["name"];
-      if (!$name) $name = "<i>All TAs</i>";
-      $pagehtml .= "<tr>\n  <td>$name</td>";
-      foreach($TAQUESTIONS as $field => $question)
-        $pagehtml .= "  <td>" . $tas->row[$field] . "</td>\n";
-      $pagehtml .= "<td>" . ($tas->row["comments"] ? $tas->row["comments"] : "&nbsp;") . "</td><td>" . $tas->row["tauserid"] . "</td></tr>\n";
+      if ($outhtml) 
+      {
+        $name = $tas->row["name"];
+        if (!$name) $name = "<i>All TAs</i>";
+        $pagehtml .= "<tr>\n  <td>$name</td>";
+        ++$num;
+        foreach($TAQUESTIONS as $field => $question)
+        {
+          $avg[$field] = (isset($avg[$field]) ? $avg[$field] : 0) + $tas->row[$field];
+          $pagehtml .= "  <td>" . $tas->row[$field] . "</td>\n";
+        }  
+        $pagehtml .= "  <td>" . ($tas->row["comments"] ? $tas->row["comments"] : "&nbsp;") . "</td><td>" . $tas->row["tauserid"] . "</td></tr>\n";
+      }
+      if ($outtext)
+      {
+        $name = $tas->row["name"];
+        if ($name) $name = "\"$name\""; else $name = "All TAs";
+        $pagetext .= " - TA Name: $name\n";
+        foreach($TAQUESTIONS as $field => $question)
+          $pagetext .= " - $question: " . $TAVALUES[$tas->row[$field]] . "\n";
+        $pagetext .= " - " . str_replace("\n","\n   ",wordwrap("Comments: \"" . $tas->row["comments"],73)) . "\"\n";
+        $pagetext .= " - Reviewed by: " . $tas->row["tauserid"] . "\n\n";
+      }
     }
     while($tas->advance());
     
-    $pagehtml .= "</table>\n";
+    if ($outhtml)
+    {
+      $pagehtml .= "<tr>\n  <td><b>AVERAGE</b></td>\n";
+      foreach($TAQUESTIONS as $field => $question)
+        $pagehtml .= "  <td>" . round($avg[$field]/$num, 2). "</td>\n";
+      $pagehtml .= "  <td>&nbsp;</td>\n  <td>---</td>\n  </tr>\n</table>\n";
+    }  
   }
   $outhtml .= $pagehtml;
   $outtext .= $pagetext;
 };
-
-function addwhere(&$where, $clause)
-{
-  $where .= $where ? " AND " : "WHERE ";
-  $where .= $clause;
-}
-
-function addorder(&$order, $clause)
-{
-  $order .= $order ? ", " : "ORDER BY ";
-  $order .= $clause;
-}
-
-function addgroup(&$group, $clause)
-{
-  $group .= $group ? ", " : "GROUP BY ";
-  $group .= $clause;
-}
-
-function addcolumn(&$columns, $clause)
-{
-  $columns .= $columns ? ", " : "";
-  $columns .= $clause;
-}
-
-class SegmentedQuery
-{
-  var $result;
-  var $column;
-  var $last;
-  
-  function SegmentedQuery($result, $column)
-  {
-    $this->result = $result;
-    $this->column = $column;
-    $this->last = false;
-  }
-  
-  function advance()
-  {
-    $this->row = mysql_fetch_assoc($this->result);
-    if ($this->last == $this->row[$this->column])
-    {
-      $this->last = $this->row[$this->column];
-      return true;
-    }
-    else
-    {
-      $this->last = $this->row[$this->column];
-      return false;    
-    }
-  }
-}
-
-function report_meter($percent)
-{
-  global $server_wcespath;
-  $out = "<img src=\"${server_wcespath}/media/meter/left.gif\" width=6 height=13>";
-  for($i = 0; $i < 5; ++$i)
-  {
-    $num = $percent - 20 * $i;
-    if ($num < 0) $num = 0;
-    if ($num < 10) $num = "0" . $num;
-    if ($num > 20) $num = 20;
-    $out .= "<img src=\"${server_wcespath}media/meter/mid${num}.gif\" width=21 height=13>";
-  };
-  $out .= "<img src=\"${server_wcespath}media/meter/right.gif\" width=5 height=13>";
-  return $out;
-};
-
-function report_mode($distribution)
-{
-  $max = $maxv = false;
-  foreach($distribution as $score => $people)
-  if ($max === false || $people >= $maxv) 
-  {
-    $max = $score;
-    $maxv = $people;
-  }
-  return $max;
-}
-
-function report_avg($distribution)
-{
-  $sum = $wsum = 0;
-  foreach($distribution as $score => $people)
-  {
-    $sum += $people;
-    $wsum += $score * $people;
-  }
-  return $sum == 0 ? 0 : $wsum / $sum;
-}
-
-function report_sd($distribution, $avg)
-{
-  $sum = $wsum = 0;
-  foreach($distribution as $score => $people)
-  {
-    $sum += $score;
-    $wsum += $people * pow(($score - $avg),2);
-  }
-  return $sum == 0 ? 0 : sqrt($wsum/$sum);
-}
 
 %>

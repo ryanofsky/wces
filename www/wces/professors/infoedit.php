@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("wces/login.inc");
 require_once("wces/page.inc");
@@ -13,13 +13,13 @@ $pe->loadvalues();
 
 page_top("Professor Information Editor","0010");
 
-?>
+%>
 <form name="f" method="post" enctype="multipart/form-data">
 <input type="hidden" name="MAX_FILE_SIZE" value="1000">
-<? $pe->display(); ?>
+<% $pe->display(); %>
 </form>
-<?
+<%
 
 page_bottom();
 
-?>
+%>

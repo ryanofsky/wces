@@ -1,4 +1,4 @@
-<?
+<%
 require_once("wces/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
@@ -84,18 +84,18 @@ function printproflist($title,$result,$count)
   }
 print("</ul>");
 }
-?>
+%>
 
 <h3>Aggregate Professor Usage</h3>
 
-Number of professors: <b><?=$notloggedincount+$hascustomscount+$nocustomscount?></b><br>
-Number of professors who have logged in: <b><?=$hascustomscount+$nocustomscount?></b><br>
-Number of professors with custom surveys: <b><?=$hascustomscount?></b><br>
-<img src="<?=$server_wcespath?>media/graphs/pusagegraph.php?neverloggedin=<?=$notloggedincount?>&custom=<?=$hascustomscount?>&nocustom=<?=$nocustomscount?>" width=200 height=200><img src="<?=$server_wcespath?>media/graphs/pusagelegend.gif" width=133 height=49><br>
+Number of professors: <b><%=$notloggedincount+$hascustomscount+$nocustomscount%></b><br>
+Number of professors who have logged in: <b><%=$hascustomscount+$nocustomscount%></b><br>
+Number of professors with custom surveys: <b><%=$hascustomscount%></b><br>
+<img src="<%=$server_wcespath%>media/graphs/pusagegraph.php?neverloggedin=<%=$notloggedincount%>&custom=<%=$hascustomscount%>&nocustom=<%=$nocustomscount%>" width=200 height=200><img src="<%=$server_wcespath%>media/graphs/pusagelegend.gif" width=133 height=49><br>
 <p>&nbsp;</p>
 <h3>Individual Professor Usage</h3>
 
-<?
+<%
 
 printproflist("Professors who have not logged in during the past semester",$notloggedin,$notloggedincount);
 printproflist("Professors who have logged in without creating custom questions",$nocustoms,$nocustomscount);
@@ -105,7 +105,7 @@ mysql_query("DROP TABLE currentprofessors");
 mysql_query("DROP TABLE currentclasses");
 
 page_bottom();
-?>
+%>
 
 
 

@@ -11,6 +11,9 @@ wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year,
 $semester = ucfirst($semester);
 page_top("Student Usage Data for $semester $year $questionperiod");
 
+flush();
+
+
 ///////////////////////////////////////////////////////////////////////////////
 
 print("<p>Filtering: ");

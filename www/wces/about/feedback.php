@@ -2,6 +2,7 @@
 require_once("wces/page.inc");
 page_top("Feedback");
 
+param($comments);
 
 if (!$comments)
 {

@@ -1,18 +1,6 @@
 <%
 
-require_once("wces/server.inc");
-require_once("widgets/wizard.inc");
-require_once("widgets/basic.inc");
-require_once("wces/database.inc");
-require_once("wces/wces.inc");
-require_once("widgets/dynamiclist.inc");
-
-require_once("wces/reporting_new.inc");
-require_once("wces/report_text.inc");
-require_once("wces/report_wizard.inc");
-require_once("wces/report_widget.inc");
-
-//$db_debug = true;
+require_once("wces/report_page.inc");
 
 function makereport($db,&$wizard,$stdout,&$html,&$text)
 {
@@ -127,7 +115,7 @@ function report_profemail($db,$wizard,$subject,$message,$debug)
   $line = "---------------------------------------------------------------------------\n";  
   $html = false;
   if (!$debug) print("<h3>Sending Email...</h3>");
-  
+  print("<p>");
   while($professor = mysql_fetch_assoc($professors))
   {
     $name = $professor["name"];
@@ -138,9 +126,11 @@ function report_profemail($db,$wizard,$subject,$message,$debug)
     $email .= "http://oracle.seas.columbia.edu/wces/professors/\n";
 
     $pages = $professor["number"];
+    $professorid = $professor["professorid"];
+    
     for($page=1; $page <= $pages; ++$page)
     {
-      if ($professor["professorid"] != $listprofessors->row["professorid"])
+      if ($professorid != $listprofessors->row["professorid"])
       {
         printarray($listprofessors->row,"listprofessors");
         debugout("<b>SYNCHRONIZATION ERROR (" . $professor["professorid"] . " != ". $listprofessors->row["professorid"] . ")</b>");
@@ -151,10 +141,9 @@ function report_profemail($db,$wizard,$subject,$message,$debug)
         $listprofessors, $ratings, $abet, $responses, $tas);      
     }
     
-    //$address = "rey4@columbia.edu"; 
     $from = "wces@columbia.edu";
     
-    if (!$address) print("<p><b><font color=red>No email address found for Professor $name</font></b></p>");
+    if (!$address) print("<b><font color=red>No email address found for Professor $name</font></b><br>\n");
 
     if ($debug)
     {
@@ -164,10 +153,19 @@ function report_profemail($db,$wizard,$subject,$message,$debug)
     }  
     else
     {
-      mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion());
-      print("<h3>Done.</h3>");
+      $address = "rey4@columbia.edu"; //FOR DEBUGGING
+      if (mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion()))
+      {
+        print("<font size=\"-1\">Successfully sent report to Professor $name ($address, $professorid)</font><br>\n");
+      }
+      else
+      {
+      	print("<font size=\"-1\" color=red><b>Problem sending report to Professor $name ($address, $professorid)</b></font><br>\n");
+      }
     }  
   }
+  print("</p>\n<h3>Done.</h3>\n");
+  
 }
 
 %>

@@ -7,7 +7,7 @@ require_once("wces/questioneditor.inc");
 page_top("hello joe");
 print("<form name=f method=post>");
 
-$q = new QuestionSetEditor("prefix","f",WIDGET_POST);
+$q = new QuestionSetEditor(0,0,"prefix","f",WIDGET_POST);
 $q->loadvalues();
 $q->display();
 

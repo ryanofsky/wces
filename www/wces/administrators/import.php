@@ -2,6 +2,9 @@
 require_once("wces/page.inc");
 require_once("wces/import.inc");
 
+param($upload);
+param($import);
+
 function printform()
 { %>
 

@@ -22,20 +22,29 @@ class QuestionSetEditor extends FormWidget
 {
 
   var $action;      // constructed
+  var $questionsetid;
+  var $db;
+  
   var $questionset; // persistent
-  var $questionsetid; // persistent
+  var $insert_badinput;
+  
 
-  function QuestionSetEditor($prefix,$form,$formmethod)
+  function QuestionSetEditor($db, $questionsetid, $prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
+    $this->db = $db;
+    $this->questionsetid = $questionsetid;
     $this->action = new ActionButton($prefix . "_action",$form,$formmethod);
+    $this->questionset = false;
+    $this->insert_badinput = false;
   }
  
-  function loadvalues($db = 0, $questionsetid = 0)
+  function loadvalues()
   {
-    $this->questionsetid = $questionsetid;
-    if ($questionsetid)
-      $this->questionset = unserialize(db_getvalue($db,"Newquestionsets", Array("questionsetid" => $questionsetid), "data"));
+    debugout("storaged = " . $this->loadattribute("questionset"));
+    if ($this->questionsetid)
+      $this->questionset = unserialize(db_getvalue($this->db,"Newquestionsets", Array("questionsetid" => $this->questionsetid), "data"));
+    
     if (get_class($this->questionset) != "questionset")
     {
       $this->questionset = unserialize($this->loadattribute("questionset"));
@@ -50,6 +59,8 @@ class QuestionSetEditor extends FormWidget
   
   function handleaction()
   {
+    debugout("ACTION = " . $this->action->action);
+    debugout("OBJECT = " . $this->action->object);
     switch ($this->action->action)
     {
       case QuestionSetEditor_insert:
@@ -95,6 +106,11 @@ class QuestionSetEditor extends FormWidget
       case QuestionSetEditor_modify:
       $this->modify_action = new ActionButton($this->prefix . "_modify_action", $this->form, $this->formmethod);
       $this->modify_action->loadvalues();
+      
+      debugout("which question? " . $this->action->object);
+      debugout("which type? " . gettype($this->questionset->questions));
+      debugout("which type? " . gettype($this->questionset->questions[$this->action->object]));
+      
       $this->modify_editor = $this->questionset->questions[$this->action->object]->geteditor($this->prefix . "_modify_editor", $this->form, $this->formmethod);
       $this->modify_editor->loadvalues();
       switch($this->modify_action->action)
@@ -187,6 +203,7 @@ class QuestionSetEditor extends FormWidget
 <% foreach($this->questionset->questions as $key => $question)
    {
      $w = $question->getwidget($this->prefix . "_main_qwidget_" . $key, $this->form, $this->formmethod);
+     $w->loadvalues();
 %>
   <tr>
     <td bgcolor="#DDDDDD">&nbsp;</td>

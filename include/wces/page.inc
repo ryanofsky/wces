@@ -209,10 +209,10 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
 
 <body background="<%=$server_wcespath%><%=$hidemenus ? "media/paper2.jpg" : "media/0x0030E7.gif"%>" bgcolor="#e9e9fd" text="#000000" link="#000090" vlink="#000090" alink="#000000" leftmargin="0" topmargin="0" rightmargin="0" marginwidth="0" marginheight="0">
 <% if (!$hidemenus) { %>
-<table width="100%" height="100%" border=0 cellpadding=0 cellspacing=0>
+<table width="100%" border=0 cellpadding=0 cellspacing=0 style="table-layout: fixed">
 <tr>
-  <td height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" href="/index.html"><img name="i1" border="0" src="<%=$server_wcespath%>media/wces1.gif" width="115" height="65"></a></td>
-  <td height=65><a href="<%=$server_wcespath%>" target="_top" onmouseover="image_swap('i2')" onmouseout="image_swap('i2')"><img name="i2" border="0" src="<%=$server_wcespath%>media/wcestitle.gif" width="600" height="57"></a>
+  <td width="130" height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" href="/index.html"><img name="i1" border="0" src="<%=$server_wcespath%>media/wces1.gif" width="115" height="65"></a></td>
+  <td width="100%" height=65><a href="<%=$server_wcespath%>" target="_top" onmouseover="image_swap('i2')" onmouseout="image_swap('i2')"><img name="i2" border="0" src="<%=$server_wcespath%>media/wcestitle.gif" width="600" height="57"></a>
     <script language="JavaScript">
     <!--
       AttachImage("i1","wces2.gif");
@@ -223,7 +223,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
 </tr>  
 <tr>
   <td valign="top" width="130">  
-    <table id="thetree" border=0 cellpadding=1 cellspacing=0>
+    <table width="130" id="thetree" border=0 cellpadding=1 cellspacing=0>
 
 <% if (login_isloggedin()) { %>
     <tr id="logout" class="treeheading">
@@ -297,7 +297,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
     <tr><td><script>treehead_init("section4h","section4")</script>&nbsp;</td></tr>    
     </table>
   </td>
-  <td bgcolor="#e5e6fa" background="<%=$server_wcespath%>media/paper2.jpg" valign="top">
+  <td width="100%" bgcolor="#e5e6fa" background="<%=$server_wcespath%>media/paper2.jpg" valign="top">
 <% } %>  
   <div class="pagebody">
 <%  

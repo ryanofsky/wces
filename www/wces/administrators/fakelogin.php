@@ -1,4 +1,4 @@
-<?
+<%
 require_once("wces/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
@@ -37,7 +37,7 @@ if ($uni)
   {
     page_top("Fake Login Page");
     print("The user '$uni' does not exist.");
-    ?>    
+    %>    
     <form name=adduser>
     <p>The user '$uni' does not exist.</p>
     <p>Permissions:</p>
@@ -46,17 +46,17 @@ if ($uni)
       <input type=checkbox name=isprofessor id=isprofessor value=1 checked><label for=isprofessor>Professor</label><br>
       <input type=checkbox name=isadministrator id=isadministrator value=1 checked><label for=isadministrator>Administrator</label>
     </blockquote>  
-    <input type=hidden name=uni value="<?=$uni?>">
-    <p><input type=submit name=adduser value="Add '<?=$uni?>' to the database"></p>
+    <input type=hidden name=uni value="<%=$uni%>">
+    <p><input type=submit name=adduser value="Add '<%=$uni%>' to the database"></p>
     </form>
     <p><a href="fakelogin.php">Back</a></p>
-    <?    
+    <%    
   };
 }
 else
 {
 page_top("Fake Login Page"); 
-?>
+%>
 <script>
 <!--
 function textchange(list,boxtext)
@@ -132,7 +132,7 @@ This form allows you bypass ACIS authentication and log on as any user. If you t
 <td valign=top>Username:</td>
 <td>
 <div><input type=text size=10 name=uni value="" style="width:90px"></div>
-<div><?
+<div><%
   print('<select name=unilist size=7 style="width:90px">');
   $cunixes = db_getcolumn($db,"users",0,"cunix");
   sort($cunixes);
@@ -140,7 +140,7 @@ This form allows you bypass ACIS authentication and log on as any user. If you t
   foreach($cunixes as $cunix)
     print('<option value="' . htmlspecialchars($cunix) . '">' . htmlspecialchars($cunix). '</option>');
   print('</select>');  
-?></div>
+%></div>
 </td>
 </tr>
 <tr><td>&nbsp;</td><td><input type=submit value=Submit></td></tr>
@@ -159,9 +159,9 @@ This form allows you bypass ACIS authentication and log on as any user. If you t
 // -->
 </script>
 
-<?
+<%
 };
 page_bottom();
-?>
+%>
 
 
