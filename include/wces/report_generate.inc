@@ -68,7 +68,7 @@ function makereport(&$wizard,$stdout,&$html,&$text)
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
   global $wces_path, $wces;
-  
+  flush(); 
   $result = pg_query("
     SELECT s.ordinal, s.students, r.responses
     FROM 
@@ -275,7 +275,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;
-    ob_flush(); flush();
+    flush();
   }
 }
 
