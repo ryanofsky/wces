@@ -343,7 +343,7 @@ class ProfessorUsage extends ParentWidget
       ++$rows;
 
       extract($r->row);
-      $pr .= "<td><a href=\"{$wces_path}administrators?user_id=$user_id\">$firstname $lastname</a></td>";
+      $pr .= "<td><a href=\"{$wces_path}administrators/info.php?user_id=$user_id\">$firstname $lastname</a></td>";
       $pr .= $lastlogin ? "<td>$lastlogin</td>" : "<td><i>never</i></td>";
       $pr .= "</tr>\n";
 
