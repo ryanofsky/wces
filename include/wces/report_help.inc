@@ -1,4 +1,4 @@
-<%
+<?
 
 function report_meter($percent)
 {
@@ -103,4 +103,4 @@ function addcolumn(&$columns, $clause)
   $columns .= $clause;
 }
 
-%>
+?>
