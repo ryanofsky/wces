@@ -258,6 +258,14 @@ CREATE TABLE ta_ratings
 )
 INHERITS (responses);
 
+CREATE TABLE wces_prof_topics
+(
+  topic_id INTEGER PRIMARY KEY not null default nextval('topic_ids'),
+  class_topic_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  UNIQUE (class_topic_id, user_id)
+);
+
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 ALTER TABLE classes ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
 ALTER TABLE classes ADD CONSTRAINT department_fk FOREIGN KEY (department_id) REFERENCES departments;
@@ -280,6 +288,8 @@ ALTER TABLE users ADD CONSTRAINT departmentfk FOREIGN KEY (department_id) REFERE
 ALTER TABLE wces_topics ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations(specialization_id);
 ALTER TABLE ta_ratings ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 ALTER TABLE sent_mails ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
+ALTER TABLE wces_prof_topics ADD CONSTRAINT topic_fk FOREIGN KEY (class_topic_id) REFERENCES wces_topics (topic_id);
+
 
 -- can't currently create these due to errors in data
 ALTER TABLE wces_topics ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
@@ -1341,5 +1351,24 @@ CREATE OR REPLACE FUNCTION get_anext_question_period () RETURNS integer AS '
       ORDER BY enddate DESC;
     END IF;
     RETURN i;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION prof_topic_make(INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    class_topic_id_ ALIAS FOR $1;
+    user_id_ ALIAS FOR $2;
+    topic_id_ INTEGER;
+  BEGIN
+    SELECT INTO topic_id_ topic_id
+    FROM wces_prof_topics
+    WHERE class_topic_id = class_topic_id_ AND user_id = user_id_;
+
+    IF FOUND THEN RETURN topic_id_; END IF;
+
+    INSERT INTO wces_prof_topics (class_topic_id, user_id)
+    VALUES (class_topic_id_, user_id_);
+
+    RETURN currval(''topic_ids'');
   END;
 ' LANGUAGE 'plpgsql';
