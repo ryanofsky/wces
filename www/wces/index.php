@@ -12,7 +12,7 @@
 
   if ($status == 0)
   {
-    print("<p>You are not a known student, professor, or administrator. To get access to this site, please <a href=\"{$wces_path}about/feedback.php\">contact us</a>.</p>");
+    print("<p>You are not a known student, professor, or administrator. To get access to this site, please <a href=\"{$wces_path}about/feedback.php\">contact us</a>. Please include your user number (#" . login_getuserid() . ")</p>");
   }
 
   if ($status & login_administrator)
