@@ -20,7 +20,7 @@ The widget separator should have the following properties
    shouldn't need to be encoded in html or URLs. This eliminates
    the bizarre ascii characters, spaces, and <">#%&?+=
 
-4) At this point what is left is: !$'()*+,-/:;\^`{|}~
+4) At this point what is left is: !$'()*,-/:;\^`{|}~
    But of these, the only ones that internet explorer and netscape
    won't escape when url encoding form field names are: *-
 */
