@@ -18,7 +18,6 @@
 <ul>
   <li><a href="<?=$wces_path?>administrators/susage.php<?=$QSID?>">Student Usage</a> - See a report on student usage of WCES during the current question period.</li>
   <li><a href="<?=$wces_path?>administrators/pusage.php<?=$QSID?>">Professor Usage</a> - See a detailed report of professor usage of WCES during the current question period.</li>
-  <li><a href="<?=$wces_path?>administrators/pstats.php<?=$QSID?>">Professor Listing</a> - View and edit information about professors.</li>
   <li><a href="<?=$wces_path?>administrators/info.php<?=$QSID?>">Course Database</a> - See courses and enrollments.</li>
   <li><a href="<?=$wces_path?>administrators/report.php<?=$QSID?>">Reporting Wizard</a> - View and print past results.</li>
   <li><a href="<?=$wces_path?>administrators/massmail.php<?=$QSID?>">Mass Mail</a> - Send reminder and thank-you emails to students.</li>
@@ -48,7 +47,7 @@ your listing and save the association.</p><p>&nbsp;</p>
 ?>
 <p><?=$pimg?>Here is a list of the options currently available for professors:</p>
 <ul>
-  <li><a href="<?=$wces_path?>professors/editsurveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
+  <li><a href="<?=$wces_path?>professors/surveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
   <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys</li>
 <? /*
   <li><a href="<?=$wces_path?>professors/respond/multiclasses.php<?=$QSID?>">Survey Responses</a> - Post responses to your survey results</li>
@@ -68,40 +67,45 @@ your listing and save the association.</p><p>&nbsp;</p>
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
-The midterm evalution period ended on 10/18/01.</p>
+<p>Spring 2002 Midterm Evaluations have not yet begun.</p>
 <?
-//    $classes = db_exec("
-//      SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code AS scode, if(cr.userid IS NULL, 0, 1) AS surveyed
-//      FROM enrollments AS e
-//      INNER JOIN groupings AS g ON e.classid = g.linkid AND g.linktype = 'classes'
-//      INNER JOIN classes AS cl ON g.linkid = cl.classid AND year = '$year' AND semester = '$semester'
-//      INNER JOIN courses AS c USING (courseid)
-//      INNER JOIN subjects AS s USING (subjectid)
-//      LEFT JOIN cheesyresponses AS cr ON cr.userid = e.userid AND cr.classid = e.classid AND cr.questionperiodid = '$questionperiodid'
-//      WHERE e.userid = '$userid'
-//      ORDER BY surveyed, s.code, c.code
-//      ", $db, __FILE__, __LINE__);
-//    
-//    print ("<p>Choose a class link from this list below.</p>");
-//    print ("<UL>\n");
-//    $found = false;
-//    while ($class = mysql_fetch_assoc($classes))
-//    {
-//      $found = true;
-//      $complete = true;
-//      extract($class);
-//      if ($surveyed)  
-//        print ("  <LI>Survey Complete: " . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>\n");
-//      else
-//      {
-//        $complete = false;
-//        print ("  <LI><A HREF=\"students/survey.php?classid=$classid\">" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</a></LI>\n");
-//      }  
-//    }
-//    if (!$found) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, check our <a href=\"evaluations.php\">class evaluation listing</a> and email <a href=\"mailto:wces@columbia.edu\">wces@columbia.edu</a> so we can update our database with your information.</LI>");
-//    print ("</UL>");
-//    
-//    print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
+    // wces_connect();
+    // $result = pg_query("
+    //   SELECT cl.class_id, (s.code || to_char(c.code::int4,'000') || ' ' || c.name) AS name, CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
+    //   FROM wces_topics AS t
+    //   INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
+    //   LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = (SELECT get_question_period()) AND sr.user_id = $user_id
+    //   INNER JOIN classes AS cl ON cl.class_id = e.class_id
+    //   INNER JOIN courses AS c USING (course_id)
+    //   INNER JOIN subjects AS s USING (subject_id)
+    //   GROUP BY cl.class_id, c.code, s.code, c.name, sr.user_id
+    //   ORDER BY surveyed, s.code, c.code
+    // ", $wces, __FILE__, __LINE__);
+    // 
+    // print ("Choose a class to evaluate from the list below.</p>");
+    // print ("<UL>\n");
+    // 
+    // $n = pg_numrows($result);
+    // 
+    // 
+    // $found = false;
+    // for($i = 0; $i < $n; ++$i)
+    // {
+    //   extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
+    //   $found = true;
+    //   $complete = true;
+    //   if ($surveyed)  
+    //     print ("  <LI>Survey Complete: $name</LI>\n");
+    //   else
+    //   {
+    //     $complete = false;
+    //     print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id\">$name</a></LI>\n");
+    //   }  
+    // }
+    // if ($n == 0) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</LI>");
+    // print ("</UL>");
+    // 
+    // print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
   }  
   
   page_bottom();
