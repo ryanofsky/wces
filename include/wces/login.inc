@@ -246,7 +246,7 @@ class LoginWidget extends ParentWidget
     if($luni)
     {
       if (!$login->meetsStatus($this->requestedStatus))
-        print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as $luni with " . (($x = $login->whatami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$this->destUrl\">$this->destUrl</a>. If this is a mistake, please <a href=\"{$WCES_CONFIG_PATH}about/feedback.php\">let us know</a>.</small></p>");
+        print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as $luni with " . (($x = $login->whatami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$this->destUrl\">$this->destUrl</a>. If this is a mistake, please <a href=\"$GLOBALS[WCES_CONFIG_PATH]about/feedback.php\">let us know</a>.</small></p>");
       else
         print("<p>You are currently logged in as $luni. Click <a href=\"${WBES_LOGIN_LOGOUT}\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
     }
