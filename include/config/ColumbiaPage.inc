@@ -166,6 +166,7 @@ function showhelp(topic)
   
     if ($status & LOGIN_STUDENT)
     {
+      $this->printSpacer();
       $survey_listing = get_surveys();
       $wces_closed = !$survey_listing;
   
@@ -176,7 +177,6 @@ function showhelp(topic)
         {
           extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
           if ($surveyed) break;
-          if ($i == 0) $this->printSpacer();
           $cn = format_class($name,'%n');
           if (!$cn) $cn = format_class($name, '%c');
           $this->printLink($cn, "students/survey.php?topic_id=$topic_id", $ASID, null, "");

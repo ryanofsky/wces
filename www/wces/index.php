@@ -100,7 +100,7 @@ with WCES to have your name appear on your class's survey.</p>
     $survey_listing = get_surveys();
     if (!$survey_listing)
     {
-      print("<p>The evaluation period has closed.</p>");	
+      print("<p>No surveys are currently available. The evaluation period has closed.</p>");	
     }
     else
     {
