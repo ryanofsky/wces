@@ -139,7 +139,7 @@ class SurveyWidget extends ParentWidget
 
     $response_id = (int)pg_result($result, 0, 0);
 
-    $failure = false;
+    $failure = !$result; 
 
     foreach(array_keys($this->questionWidgets) as $key)
       $failure = $failure || !$this->questionWidgets[$key]->save($response_id, $this->topic_id);
