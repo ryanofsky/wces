@@ -6,7 +6,6 @@
   require_once("wbes/component_choice.inc");
   require_once("wbes/component_textresponse.inc");
   require_once("wbes/component_heading.inc");
-  require_once("wbes/component_text.inc");
   require_once("wbes/survey.inc");
   require_once("wces/database.inc");
   require_once("widgets/basic.inc");
@@ -64,7 +63,7 @@ function tshowresults($question_period_id,$class_id)
 
   $user_id = login_getuserid();
 
-  print('<h3><a href="seeresults.php">Back</a></h3><hr>');
+  print('<h3><a href="seeresults.php">Back</a></h3>');
 
   $sqloptions = array ("standard" => true, "custom" => true);
 
