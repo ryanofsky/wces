@@ -166,7 +166,9 @@ class ActionButton extends FormWidget
 
   function ActionButton_sgo(action,object,form,actionelement)
   {
-    ActionButton_dyngo(action,object,document.forms[form][actionelement]);
+    
+    //alert(document.forms[form][actionelement]);
+    ActionButton_go(action,object,document.forms[form][actionelement]);
   }
 // -->
 </script>
