@@ -6,6 +6,7 @@ require_once("wces/login.inc");
 page_top("Feedback");
 
 param('comments');
+param('email');
 
 if (!$comments)
 {
