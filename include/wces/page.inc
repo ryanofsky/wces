@@ -1,16 +1,16 @@
-<%
+<?
 require_once("wces/login.inc");
 require_once("wces/server.inc");
 
 function page_top($title,$treestatus = "1000",$hidemenus = false)
 {
   global $server_wcespath;
-%>
+?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"> 
 <!-- This page was created by the WCES development team for Columbia University, 2000 -->
 <html>
 <head>
-<title><%=$title%></title>
+<title><?=$title?></title>
 
 <style type="text/css">
 <!--
@@ -199,7 +199,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
   {
     //this doesn't fly on IE5 Mac -->  var re = /.*(?:^|;)[ ]*treestatus=([^;]*)(?:$|;).*/;
     var re = new RegExp(".*(^|;)[ ]*treestatus=([^;]*)($|;).*");
-    window.treestatus = (re.test(document.cookie)) ? document.cookie.replace(re,"$2") : "<%=$treestatus%>";
+    window.treestatus = (re.test(document.cookie)) ? document.cookie.replace(re,"$2") : "<?=$treestatus?>";
     window.treebranches = new Array();
   };    
 
@@ -207,12 +207,12 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
 </script>
 </head>
 
-<body background="<%=$server_wcespath%><%=$hidemenus ? "media/paper2.jpg" : "media/0x0030E7.gif"%>" bgcolor="#e9e9fd" text="#000000" link="#000090" vlink="#000090" alink="#000000" leftmargin="0" topmargin="0" rightmargin="0" marginwidth="0" marginheight="0">
-<% if (!$hidemenus) { %>
+<body background="<?=$server_wcespath?><?=$hidemenus ? "media/paper2.jpg" : "media/0x0030E7.gif"?>" bgcolor="#e9e9fd" text="#000000" link="#000090" vlink="#000090" alink="#000000" leftmargin="0" topmargin="0" rightmargin="0" marginwidth="0" marginheight="0">
+<? if (!$hidemenus) { ?>
 <table width="100%" border=0 cellpadding=0 cellspacing=0 style="table-layout: fixed">
 <tr>
-  <td width="130" height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" href="/index.html"><img name="i1" border="0" src="<%=$server_wcespath%>media/wces1.gif" width="115" height="65"></a></td>
-  <td width="100%" height=65><a href="<%=$server_wcespath%>" target="_top" onmouseover="image_swap('i2')" onmouseout="image_swap('i2')"><img name="i2" border="0" src="<%=$server_wcespath%>media/wcestitle.gif" width="600" height="57"></a>
+  <td width="130" height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" href="/index.html"><img name="i1" border="0" src="<?=$server_wcespath?>media/wces1.gif" width="115" height="65"></a></td>
+  <td width="100%" height=65><a href="<?=$server_wcespath?>" target="_top" onmouseover="image_swap('i2')" onmouseout="image_swap('i2')"><img name="i2" border="0" src="<?=$server_wcespath?>media/wcestitle.gif" width="600" height="57"></a>
     <script language="JavaScript">
     <!--
       AttachImage("i1","wces2.gif");
@@ -225,96 +225,96 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
   <td valign="top" width="130">  
     <table width="130" id="thetree" border=0 cellpadding=1 cellspacing=0>
 
-<% if (login_isloggedin()) { %>
+<? if (login_isloggedin()) { ?>
     <tr id="logout" class="treeheading">
-      <td><img name="headimage" src="<%=$server_wcespath%>media/menu/solid.gif" width="15" height="15" align="middle"></td>
-      <td class="treeheading" nowrap><a href="<%=$server_wcespath%>login/logout.php" class="treeheading">Log Off <%=login_getuni()%></a></td>
+      <td><img name="headimage" src="<?=$server_wcespath?>media/menu/solid.gif" width="15" height="15" align="middle"></td>
+      <td class="treeheading" nowrap><a href="<?=$server_wcespath?>login/logout.php" class="treeheading">Log Off <?=login_getuni()?></a></td>
     </tr>
     <tr><td><script>treehead_init("logout")</script>&nbsp;</td></tr>     
-<% } %> 
+<? } ?> 
 
     <tr id="section1h" class="treeheading">
-      <td><img name="headimage" src="<%=$server_wcespath%>media/menu/minus.gif" width="15" height="15" align="middle"></td>
+      <td><img name="headimage" src="<?=$server_wcespath?>media/menu/minus.gif" width="15" height="15" align="middle"></td>
       <td class="treeheading" nowrap>General</td>
     </tr>
     <tr id="section1">
       <td>&nbsp;</td>
        <td class="treebody" bgcolor="#000000">
-        <p><a href="<%=$server_wcespath%>index.php" class="treelink">Home</a></p>
-        <p><a href="<%=$server_wcespath%>about/confidentiality.php" class="treelink">Confidentiality</a></p>
-        <p><a href="<%=$server_wcespath%>about/feedback.php" class="treelink">Feedback</a></p>
-        <p><a href="<%=$server_wcespath%>about/credits.php" class="treelink">Credits</a></p>
+        <p><a href="<?=$server_wcespath?>index.php" class="treelink">Home</a></p>
+        <p><a href="<?=$server_wcespath?>about/confidentiality.php" class="treelink">Confidentiality</a></p>
+        <p><a href="<?=$server_wcespath?>about/feedback.php" class="treelink">Feedback</a></p>
+        <p><a href="<?=$server_wcespath?>about/credits.php" class="treelink">Credits</a></p>
       </td>
     </tr>
     <tr><td><script>treehead_init("section1h","section1")</script>&nbsp;</td></tr>
 
     <tr id="section2h" class="treeheading">
-      <td><img name="headimage" src="<%=$server_wcespath%>media/menu/minus.gif" width="15" height="15" align="middle"></td>
+      <td><img name="headimage" src="<?=$server_wcespath?>media/menu/minus.gif" width="15" height="15" align="middle"></td>
       <td class="treeheading" nowrap>Students</td>
     </tr>
     <tr class="treeheading" id="section2">
       <td>&nbsp;</td>
       <td class="treebody">
-        <p><a href="<%=$server_wcespath%>students/survey.php" class="treelink">Complete a Survey</a></p>
+        <p><a href="<?=$server_wcespath?>students/survey.php" class="treelink">Complete a Survey</a></p>
         <p><a href="/oracle/" class="treelink">View Survey Results</a></p>
       </td>
     </tr>    
     <tr><td><script>treehead_init("section2h","section2")</script>&nbsp;</td></tr>
 
     <tr id="section3h" class="treeheading">
-      <td><img name="headimage" src="<%=$server_wcespath%>media/menu/minus.gif" width="15" height="15" align="middle"></td>
+      <td><img name="headimage" src="<?=$server_wcespath?>media/menu/minus.gif" width="15" height="15" align="middle"></td>
       <td class="treeheading" nowrap>Professors</td>
     </tr>
     <tr id="section3">
       <td>&nbsp;</td>
       <td class="treebody">
-        <p><a href="<%=$server_wcespath%>professors/index.php" class="treelink">Home</a></p>
-        <p><a href="<%=$server_wcespath%>professors/editsurveys.php" class="treelink">Upcoming Surveys</a></p>
-        <p><a href="<%=$server_wcespath%>professors/seeresults.php" class="treelink">See Survey Results</a></p>
-        <p><a href="<%=$server_wcespath%>login/profsearch.php" class="treelink">Update CUNIX Association</a></p>
+        <p><a href="<?=$server_wcespath?>professors/index.php" class="treelink">Home</a></p>
+        <p><a href="<?=$server_wcespath?>professors/editsurveys.php" class="treelink">Upcoming Surveys</a></p>
+        <p><a href="<?=$server_wcespath?>professors/seeresults.php" class="treelink">See Survey Results</a></p>
+        <p><a href="<?=$server_wcespath?>login/profsearch.php" class="treelink">Update CUNIX Association</a></p>
       </td>
     </tr>
     <tr><td><script>treehead_init("section3h","section3")</script>&nbsp;</td></tr>
 
     <tr id="section4h" class="treeheading">
-      <td><img name="headimage" src="<%=$server_wcespath%>media/menu/minus.gif" width="15" height="15" align="middle"></td>
+      <td><img name="headimage" src="<?=$server_wcespath?>media/menu/minus.gif" width="15" height="15" align="middle"></td>
       <td class="treeheading" nowrap>Administrators</td>
     </tr>
     <tr id="section4">
       <td>&nbsp;</td>
       <td class="treebody">
-        <p><a href="<%=$server_wcespath%>administrators/semester.php" class="treelink">New Semester Initialiation</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/pusage.php" class="treelink">Professor Usage</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/susage.php" class="treelink">Student Usage</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/massmail.php" class="treelink">Mass Mailing</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/report.php" class="treelink">Reporting Wizard</a></p>                                
-        <p><a href="<%=$server_wcespath%>administrators/import.php" class="treelink">Import Data</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/fakelogin.php" class="treelink">Fake Login</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/enrollment.php" class="treelink">Enrollment Viewer</a></p>
-        <p><a href="<%=$server_wcespath%>administrators/pstats.php" class="treelink">Professor Listing</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/semester.php" class="treelink">New Semester Initialiation</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/pusage.php" class="treelink">Professor Usage</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/susage.php" class="treelink">Student Usage</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/massmail.php" class="treelink">Mass Mailing</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/report.php" class="treelink">Reporting Wizard</a></p>                                
+        <p><a href="<?=$server_wcespath?>administrators/import.php" class="treelink">Import Data</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/fakelogin.php" class="treelink">Fake Login</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/enrollment.php" class="treelink">Enrollment Viewer</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/pstats.php" class="treelink">Professor Listing</a></p>
       </td>
     </tr>
     <tr><td><script>treehead_init("section4h","section4")</script>&nbsp;</td></tr>    
     </table>
   </td>
-  <td width="100%" bgcolor="#e5e6fa" background="<%=$server_wcespath%>media/paper2.jpg" valign="top">
-<% } %>  
+  <td width="100%" bgcolor="#e5e6fa" background="<?=$server_wcespath?>media/paper2.jpg" valign="top">
+<? } ?>  
   <div class="pagebody">
-<%  
+<?  
 };
 
 function page_bottom($hidemenus = false)
 {
-%>
+?>
   </div>
-<% if (!$hidemenus) { %>
+<? if (!$hidemenus) { ?>
   </td>
 </tr>
 <tr><td colspan=2 height=10>&nbsp;</td></tr>
 </table>
-<% } %>
+<? } ?>
 </body>
 </html>
-<%
+<?
 };
-%>
+?>
