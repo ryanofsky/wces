@@ -15,6 +15,7 @@
 * @return string An absolute URL constructed from the parameters
 * @access public
 */	
+
 function absurl($protocol = false, $server = false, $port = false, $request = false)
 {
   global $HTTP_ENV_VARS;
@@ -39,9 +40,17 @@ function absurl($protocol = false, $server = false, $port = false, $request = fa
 
 function simplesplit($splitchar,$name,$first,$last)
 {
-  $p = strrpos($splitchar,$name);
-  $first = substr($name,0,$p);
-  $last = substr($name,$p+1);
+  $p = strrpos($name,$splitchar);
+  if ($p === false)
+  {
+    $first = "";
+    $last = $name;
+  }
+  else
+  {
+    $first = substr($name,0,$p);
+    $last = substr($name,$p+1);
+  }  
 }
 
 function redirect($url)
@@ -141,4 +150,22 @@ function debugout($text,$label = "")
 {
   taskwindow_print("\n\n\n<p><b><font color=red>$label</font></b>$text</p>\n\n\n");
 }
+
+function recursearray(&$arr,$name)
+{
+  taskwindow_cprint("<table border=2><tr><td colspan=2>Array: $name</td></tr>");
+  foreach($arr as $key => $value)
+  {
+    taskwindow_cprint("<tr><td valign=top>$key</td><td>");
+    if (is_array($value)) recursearray($value,$key); else taskwindow_cprint(htmlspecialchars($value));
+    taskwindow_cprint("</td></tr>");
+  }
+  taskwindow_print("</table>\n");  
+}
+
+function ifassign($value,&$variable)
+{
+  if ($value) $variable = $value;
+}
+
 %>
