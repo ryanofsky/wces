@@ -157,46 +157,55 @@ function login_getstatus()
 
 function login_validate($uni,$password,$requiredstatus)
 {
+  $null = false;
+  
   $uni = str_replace("@columbia.edu","",$uni);
   $dump = nl2br(acisget($uni,$password));
 
-  if (!(strpos($dump,"no soup for you") === false))
+  if (!$dump)
+  {
+    sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
+    return false;
+  }     
+     
+  if (strpos($dump,"no soup for you") !== false)
     return false; // BAD PASSWORD
 
-  if (ereg(".*REMOTE_USER=([^<>]+)<br>",$dump,$result))
+  if (ereg(".*REMOTE_USER=([^<]+)<br",$dump,$result))
     $cunix = $result[1];
   else
   {
     $cunix = $uni;
-    sendwarning("Login parser warning: username not found.\n\n----------\n\n$dump");
+    sendwarning("Login parser warning: username '$uni' could not be verified.\n\n----------\n\n$dump", __FILE__, __LINE__);
   }  
 
-  if (ereg(".*USER_EMAIL=([^<>]+)<br>",$dump,$result))
+  if (ereg(".*USER_EMAIL=([^<>]+)<br",$dump,$result))
     $email = $result[1];
   else
   {
     $email = "";
-    sendwarning("Login parser warning: email address not found.\n\n----------\n\n$dump");
+    sendwarning("Login parser warning: email address not found.\n\n----------\n\n$dump",__FILE__,__LINE__);
   }  
-
+  
   $db = wces_connect();
 
   $result = db_exec("SELECT userid FROM users WHERE cunix = '" . addslashes($cunix) . "'",$db);
   if (mysql_num_rows($result) == 1)
   {
     $userid = mysql_result($result,0);
-    db_exec("UPDATE users SET lastlogin = NOW() WHERE userid = '$userid'",$db);
+    $email = $email ? ", email = '" . addslashes($email) . "'" : "";
+    db_exec("UPDATE users SET lastlogin = NOW() $email WHERE userid = '$userid'",$db);
   }
   else
   {
     db_exec("REPLACE INTO users(cunix,lastlogin) VALUES ('" . addslashes($cunix) . "',NOW())",$db);
     $userid = mysql_insert_id($db);
-  }  
+  }
 
-  wces_GetCurrentQuestionPeriod($db, false, false, &$year, &$semester);
+  wces_GetCurrentQuestionPeriod($db, $null, $null, $year, $semester);
   $result = db_exec ("
   SELECT e.classid
-  FROM enrollments AS e  
+  FROM enrollments AS e
   INNER JOIN classes AS cl USING (classid)
   WHERE cl.year >= '$year' AND cl.semester >= '$semester' AND e.userid = '$userid'", $db, __FILE__, __LINE__);
 
@@ -208,7 +217,7 @@ function login_validate($uni,$password,$requiredstatus)
   $insertfailed = false;
   while(!($pos === false))
   {
-    $classid = class_update($db, substr($dump,$pos+9,20));
+    $classid = class_update($db, substr($dump,$pos+9,20), $null);
     if ($classid)
     {
       if (isset($badenrollments[$classid])) unset($badenrollments[$classid]);
@@ -216,7 +225,7 @@ function login_validate($uni,$password,$requiredstatus)
     }
     else
       $insertfailed = true;
-    $pos = strpos($dump,"CUcourse_",$pos+1);  
+    $pos = strpos($dump,"CUcourse_",$pos+1);
   };
   
   if ($insertfailed)
@@ -228,7 +237,7 @@ function login_validate($uni,$password,$requiredstatus)
   // begin validation
 
   if (contains($dump,Array("CUstudent","BCstudent","CPMCstudent","TCstudent","UTSstudent")))
-    $isstudent = 1;  
+    $isstudent = 1;
   
   if (db_getvalue($db,"users",Array("userid" => $userid),"isprofessor") == "true")
     $isprofessor = 1;
@@ -238,7 +247,7 @@ function login_validate($uni,$password,$requiredstatus)
      db_updatevalues($db,"users",Array("userid" => $userid),Array("isprofessor" => "true"));
   }
   else
-    $isprofessor = 0;   
+    $isprofessor = 0;
 
   if (db_getvalue($db,"users",Array("userid" => $userid),"isadmin") == "true")
     $isadministrator = 1;
@@ -271,6 +280,7 @@ function acisget($uni,$pw)
     $fp = fopen ($fname, "w");
     curl_setopt ($ch, CURLOPT_FILE, $fp);
     curl_setopt ($ch, CURLOPT_USERPWD, "$uni:$pw");
+    curl_setopt ($ch, CURLOPT_HEADER, 1);
     curl_exec ($ch);
     curl_close ($ch);
     fclose ($fp);
