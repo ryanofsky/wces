@@ -204,15 +204,20 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   $choices = new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
   
-  // XXX: what is the meaning of *magic* branch_id 1
-  // XXX: it might be faster to factor out calls to topic_contents
-  $result = pg_query("  
-    SELECT t.ordinal, ibtc.branch_id, l.ordinal AS iordinal
+  $tab = substr(uniqid('tab'), 0, 31);
+  pg_query("  
+    CREATE TEMPORARY TABLE $tab AS
+    SELECT btc.topic_id AS cache_topic_id, btc.branch_id, t.*
     FROM rwtopics AS t
     INNER JOIN branch_topics_cache AS btc ON (btc.base_branch_id = 1) AND (btc.topic_id = topic_contents(t.topic_id))
-    INNER JOIN branches AS b ON b.branch_id = btc.branch_id
+  ", $wces, __FILE__, __LINE__);
+  
+  $result = pg_query("  
+    SELECT t.ordinal, ibtc.branch_id, l.ordinal AS iordinal
+    FROM $tab AS t
+    INNER JOIN branches AS b USING (branch_id)
     INNER JOIN list_items AS l ON l.revision_id = b.content_id
-    INNER JOIN branch_topics_cache AS ibtc ON (ibtc.base_branch_id = l.item_id) AND (ibtc.topic_id = topic_contents(t.topic_id))
+    INNER JOIN branch_topics_cache AS ibtc ON (ibtc.base_branch_id = l.item_id) AND (ibtc.topic_id = t.cache_topic_id)
     ORDER BY t.ordinal
   ", $wces, __FILE__, __LINE__);
   
@@ -239,6 +244,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;
+    ob_flush(); flush();
   }
 }
 
