@@ -292,26 +292,109 @@ function importregpid($filename)
 *
 * @param string  Path to uploaded file
 * @param string  4 digit year
-* @param string  1 digit semester (1 = spring, 2 = summer, 3 = fall)
-* @param integer parent topic
+* @param int     semester
+* @param id = 
 * @param integer question period
-* @param array   array of strings indicating column order.
-*                  "coursecode" - column number of 9 digit course code (eg 'COMSW3203')
-*                  "section" - column number of 3 digit section number (eg '001', '002', 'R01')
-*                  "lastname" - column number of professor last name
-                   "firstname" - column number of professor first name
-*                  "students" - column number containing number of students per class
-*                  "cunix" - optional column number containing a student's cunix id
-*                  "cruft" - column whose contents should be ignored
 * @access public
 */
 
-function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id, $question_period_id, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"), $time = NULL)
+// make an entry for the class in the wces_topics table
+// returns array(topic_id, match) where
+// match is 3 for a match based on class_id, 2 for a 
+// match based on subject code, 1 for for a guess based
+// on subject code and and 0 for no match
+/*
+function placeClass($class_id, $question_period_id)
 {
   global $wces;
+  
+  $r = pg_go("
+    SELECT topic_id, 3 FROM wces_topics
+    WHERE class_id = $class_id 
+      AND question_period_id = $question_period_id
+  ", $wces, __FILE__, __LINE__);
+  
+  $n = pg_numrows($r);
+  
+  if ($n == 1)
+    return pg_fetch_row($r, 0);
+  
+  if ($n != 0)
+    die('Error at ' . __FILE__ . ':' . __LINE__ . ", class $class_id "
+     . "in question period $question_period_id has $n surveys");
+  
+  $r = pg_go("  
+    SELECT t.item_id, t.category_id, s.parent, count(distinct topic_id) AS n
+    FROM classes AS cli
+    INNER JOIN courses AS ci ON USING (class_id)
+    CROSS JOIN wces_topics AS t
+    INNER JOIN classes AS cl ON cl.class_id = t.class_id
+    INNER JOIN courses AS c ON c.course_id = cl.course_id AND c.subject_id = ci.subject_id
+    INNER JOIN specializations AS s ON s.specialization_id = t.specialization_id
+    WHERE cli.class_id = $class_id
+    GROUP BY t.item_id, t.category_id, s.parent
+    ORDER BY n DESC
+  ", $wces, __FILE__, __LINE__);
+  
+  $n = pg_numrows($r);
+  if ($n > 0)
+  {
+    $match = $n == 1 ? 2 : 1;
+    
+    $row = pg_fetch_array($r, 0, PGSQL_ASSOC);
+    
+    $r = pg_go("
+      INSERT INTO specializations (parent) VALUES ($row[parent]);
+      SELECT currval('specialization_ids');
+    ", $wces, __FILE__, __LINE__);
+    
+    $specialization_id = (int)pg_result($r, 0, 0);
+      
+    $r = pg_go("
+      INSERT INTO wces_topics (class_id, question_period_id, item_id, specialization_id, category_id, make_public, cancelled)
+      VALUES ($class_id, $question_period_id, $row[item_id], $specialization_id, $row[category_id], 't', 'f');
+      SELECT currval('topic_ids');
+    ", $wces, __FILE__, __LINE__);  
 
-  if (strlen($year) != 4 || strlen($semester) != 1 || ($semester != 1 && $semester != 2 && $semester != 3))
+    list($topic_id, $category_id) = pg_fetch_row($r, 0);
+  }
+  else
+  {
+    
+    $match = 0;
+    $category_id = 104;
+    $topic_id = ; 
+  }
+  
+  return array($topic_id, $category_id, $match);
+}
+
+define("DEAN_SUNI",       "student_uni");
+define("DEAN_COURSE",     "course_id");
+define("DEAN_SECTION",    "section");
+define("DEAN_CLASSNAME",  "class_name");
+define("DEAN_STUDENTS",   "enrollment");
+define("DEAN_SUBJECT",    "subject_code");
+define("DEAN_DEPARTMENT", "department_code");
+define("DEAN_PLAST",      "instructor_last_name");
+define("DEAN_PFIRST",     "instructor_first_name");
+define("DEAN_PEMAIL",     "instructor_email");
+define("DEAN_PUNI",       "instructor_uni");
+
+function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id, $question_period_id, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"), $time = NULL)
+{
+  global $wces, $wces_semesters;
+
+  $year = trim($year);
+  $year = trim($year);
+
+  if (strlen($year) != 4 || !is_numeric($year) || !is_numeric($semester) || !isset($wces_semesters[$semester]))
+  {
     die("Invalid year or semester passed to importdeancsv in " . __FILE__ . ":" . __LINE__);
+  }
+
+  $fp = fopen($userfile,"r"); 
+
 
   $date = pg_date($time);
   
@@ -320,7 +403,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
   if (!isset($fields['coursecode']) || !isset($fields['section']))
     die("Invalid field order passed to importdeancsv in" . __FILE__ . ":" . __LINE__);
  
-  $fp = fopen($userfile,"r");   
+  
   
   $classcache = array();
 
