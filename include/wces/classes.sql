@@ -130,6 +130,11 @@ COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - professor, 0 -
 
 CREATE INDEX class_idx ON enrollments (class_id);
 CREATE INDEX user_idx ON enrollments (user_id);
+CREATE INDEX report_user_idx ON report_topics (user_id);
+CREATE INDEX report_category_idx ON report_topics (category_id);
+CREATE INDEX report_course_idx ON report_topics (course_id);
+CREATE INDEX report_period_idx ON report_topics (question_period_id);
+CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 
 CREATE TABLE professor_data
 (
@@ -219,21 +224,37 @@ CREATE TABLE semester_question_periods
   profdate TIMESTAMP
 ) INHERITS (question_periods);
 
-ALTER TABLE classes ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
-ALTER TABLE classes ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
-ALTER TABLE classes ADD FOREIGN KEY (division_id) REFERENCES divisions(division_id);
-ALTER TABLE classes ADD FOREIGN KEY (school_id) REFERENCES schools(school_id);
-ALTER TABLE courses ADD FOREIGN KEY (subject_id) REFERENCES subjects(subject_id);
-ALTER TABLE users ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
-ALTER TABLE professor_data ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE professor_hooks ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE enrollments ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE enrollments ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
-ALTER TABLE acis_groups ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
-ALTER TABLE acis_affiliations ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE acis_affiliations ADD FOREIGN KEY (acis_group_id) REFERENCES acis_groups(acis_group_id);
-ALTER TABLE wces_topics ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
-ALTER TABLE wces_topics ADD FOREIGN KEY (category_id) REFERENCES survey_categories(survey_category_id);
+CREATE TABLE report_topics (
+  topic_id INTEGER,
+  question_period_id INTEGER,
+  class_id INTEGER,
+  category_id INTEGER,
+  course_id INTEGER,
+  department_id INTEGER,
+  user_id INTEGER
+);
+
+CREATE INDEX report_user_idx ON report_topics (user_id);
+CREATE INDEX report_category_idx ON report_topics (category_id);
+CREATE INDEX report_course_idx ON report_topics (course_id);
+CREATE INDEX report_period_idx ON report_topics (question_period_id);
+CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
+
+ALTER TABLE classes ADD FOREIGN KEY fk_class_course(course_id) REFERENCES courses(course_id);
+ALTER TABLE classes ADD FOREIGN KEY fk_class_dept(department_id) REFERENCES departments(department_id);
+ALTER TABLE classes ADD FOREIGN KEY fk_class_div(division_id) REFERENCES divisions(division_id);
+ALTER TABLE classes ADD FOREIGN KEY fk_class_school(school_id) REFERENCES schools(school_id);
+ALTER TABLE courses ADD FOREIGN KEY fk_course_subject(subject_id) REFERENCES subjects(subject_id);
+ALTER TABLE users ADD FOREIGN KEY fk_user_dept(department_id) REFERENCES departments(department_id);
+ALTER TABLE professor_data ADD FOREIGN KEY fk_pdata_user(user_id) REFERENCES users(user_id);
+ALTER TABLE professor_hooks ADD FOREIGN KEY fk_phook_user(user_id) REFERENCES users(user_id);
+ALTER TABLE enrollments ADD FOREIGN KEY fk_enroll_user(user_id) REFERENCES users(user_id);
+ALTER TABLE enrollments ADD FOREIGN KEY fk_enroll_class(class_id) REFERENCES classes(class_id);
+ALTER TABLE acis_groups ADD FOREIGN KEY fk_group_class(class_id) REFERENCES classes(class_id);
+ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_user(user_id) REFERENCES users(user_id);
+ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_group(acis_group_id) REFERENCES acis_groups(acis_group_id);
+ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_class(class_id) REFERENCES classes(class_id);
+ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_category(category_id) REFERENCES survey_categories(survey_category_id);
 
 CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
   DECLARE
@@ -271,8 +292,7 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER)
         (source = 1 AND name = name_)
         GROUP BY user_id
       LOOP
-        IF i IS NULL i := rec.user_id; ELSE professor_merge(i,rec.user_id); END IF;
-        i := rec.user_id;
+        IF i IS NULL THEN i := rec.user_id; ELSE PERFORM professor_merge(i,rec.user_id); END IF;
       END LOOP;
 
       IF i IS NULL THEN
