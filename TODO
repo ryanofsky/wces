@@ -1,13 +1,16 @@
+oracle
+  - hide topics with no responses
+  - come up with department information for the unknown classes and professors
+
 printing
   put class names on each page of report using ie printing features
   Tutorial at http://www.webreference.com/js/column89/
 
-
 administravia
-  - why is "Overall Quality" base question listed twice?
-  - add a link on the login page to CUNIX account activation
-  - Andrew Campbell wants to add abet questions to ALL classes within the EE 
-    Dept. Which questions?
+  - why is "Overall Quality" abet question listed twice?
+  - need to eliminate ". FACULTY" entries during import code, currently
+    only checks for ". Faculty" (capitalization difference, source in
+    professor_hooks is 4)
 
 mass mailing 
   - prevent from sending mail for deleted classes
