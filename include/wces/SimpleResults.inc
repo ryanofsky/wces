@@ -101,7 +101,8 @@ class SimpleResults
         FROM wces_topics AS t
         INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
         INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
-        INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
+        INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
+        INNER JOIN textresponse_components AS c USING (component_id)
         WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND tr.item_id = $base_item_id
       ", $wces, __FILE__, __LINE__);
 

@@ -316,7 +316,7 @@ class ProfResponse extends ParentWidget
     
     print("<h4>Past Results and Professor Comments</h4>");
     print("<table><tr><td>");
-    print("<p><i>FIXME: Add instructions for this section here.</i></p>");
+    print("<p><i>Instructions:</i> Use the text fields below to comment on the results.</p>");
     
     if (count($this->otherClasses) > 0)
     {
@@ -337,7 +337,7 @@ class ProfResponse extends ParentWidget
       $this->userOnly->display('onclick="this.form.submit();"');
       print("&nbsp;");
       if ($this->readOnly)
-        $this->userOnly->displayLabel("Hide class sections not taught by $firstname $lastname");
+        $this->userOnly->displayLabel("Hide results from class sections not taught by $firstname $lastname");
       else
         $this->userOnly->displayLabel("Hide class sections not taught by me.");
         

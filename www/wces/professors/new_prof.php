@@ -15,7 +15,7 @@ class ProfResponseMenu extends StatefullWidget
   function ProfResponseMenu($name, &$parent)
   {
     $this->StatefullWidget($name, $parent);
-    $this->event->shortName(ProfResponseMenu_choose, "course_id");
+    $this->urlShortName("course_id");
   }
 
   function & handleEvent($event, $param, $isNew)
@@ -30,6 +30,17 @@ class ProfResponseMenu extends StatefullWidget
       return $this->response;
     }
   }
+
+  function & loadState()
+  {
+    StatefullWidget::loadState();
+    
+    $mode = WIDGET_FORM | WIDGET_URL;
+    $course_id = $this->readValue('course_id', $mode);
+
+    if ($course_id)
+      $this->eventLoop(ProfResponseMenu_choose, $course_id, true);
+  }  
   
   function printVisible()
   {
@@ -63,7 +74,7 @@ class ProfResponseMenu extends StatefullWidget
       {
         extract($classes->row);
         print('  <li><a href="'
-          . $this->event->getUrl(ProfResponseMenu_choose, $course_id)
+          . $this->getUrl(array('course_id' => $course_id))
           ."$ASID\">" . format_ccourse($course_info, "<i>%c</i> %n")
           . "</a></li>\n");
         $classes->advance();
