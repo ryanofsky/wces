@@ -101,7 +101,8 @@ function redirect($url)
   if (headers_sent())
   {
     sendwarning("Redirect was attempted after headers had already been sent.", __FILE__, __LINE__);
-    if ($server_isproduction) sloppyredirect($url);
+    //if ($server_isproduction) 
+      sloppyredirect($url);
   }
   else
   {
@@ -111,8 +112,8 @@ function redirect($url)
       $url2->path = $url;
       $url = $url2->toString(true);
     }
-    header ("Location: $url");
-    //print("redirect to <a href=\"$url\">$url</a>");
+    //header ("Location: $url");
+    print("redirect to <a href=\"$url\">$url</a>");
   }
   exit();
 }
@@ -123,8 +124,8 @@ function redirect($url)
 */
 function sloppyredirect($url)
 {
-  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
-  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  //print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
+  //print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
   print("Click <a href=\"$url\">here</a> to proceed.");
   exit();
 }
@@ -169,6 +170,8 @@ function printarray(&$arr,$name)
   taskwindow_cprint("<table border=2><tr><td colspan=2>Array: $name</td></tr>");
   foreach($arr as $key => $value)
   {
+    $key   .= " (<i>" . gettype($key)   . "</i>)";
+    $value .= " (<i>" . gettype($value) . "</i>)";
     taskwindow_cprint("<tr><td>$key</td><td>$value</td></tr>");
   }
   taskwindow_print("</table>\n");
@@ -275,6 +278,17 @@ function array_bflip($a)
   $r = array();
   foreach($a as $v) $r[$v] = true;
   return $r;
+}
+
+function bprint($str, $mod = 10)
+{
+  static $i = 0;
+  print($str);
+  if (++$i % $mod == 0)
+  {
+    $i = 0;
+    flush(); 
+  }
 }
 
 ?>
