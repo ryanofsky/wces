@@ -225,13 +225,6 @@ class MassEmail extends FormWidget
       
     }
     
-    $result = pg_go("
-      SELECT question_period_id, displayname, year, semester
-      FROM semester_question_periods
-      WHERE question_period_id = 23 -- (SELECT get_question_period())
-    ", $wces, __FILE__, __LINE__);
-    extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-    
     $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
 
     $status = $this->to == "prof" ? 3 : 1;
@@ -239,11 +232,13 @@ class MassEmail extends FormWidget
     $result = pg_go("
       CREATE TEMPORARY TABLE studclasses AS
       SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
-      FROM wces_topics AS t
+      FROM question_periods_topics AS qt
+      INNER JOIN wces_topics AS t USING (topic_id)
       INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = $status " . ($status == 1 ? "
-      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id)" : "") . "
-      WHERE cl.year = $year AND cl.semester = $semester $cat
+      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = $status 
+      INNER JOIN users AS u ON u.user_id = e.user_id AND u.flags & 128 = 0" . ($status == 1 ? "
+      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = qt.question_period_id)" : "") . "
+      WHERE qt.question_period_id = 23 $cat
       GROUP BY e.class_id, e.user_id
     ", $wces, __FILE__, __LINE__);      
 
@@ -352,8 +347,8 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          //$email = "rey4@columbia.edu"; // debug
-          mail($email, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nTo: $address\nX-Mailer: PHP/" . phpversion());
+          //$address = "rey4@columbia.edu"; // debug
+          mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
         }
         else
         {
