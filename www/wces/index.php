@@ -58,8 +58,6 @@ Here is a list of the options currently available for professors:</p>
 */ ?>  
 </ul>
 
-<p><i>Note:</i> The results of the Fall 2001 Final Evaluations will be available on Tuesday, January 15, 2002.
-
 <?
     }
   }

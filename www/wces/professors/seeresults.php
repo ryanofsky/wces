@@ -60,7 +60,7 @@ function listclasses()
     INNER JOIN courses AS c ON c.courseid = cl.courseid
     INNER JOIN subjects AS s USING (subjectid)
     LEFT JOIN cheesyresponses AS cr ON (cr.classid = cl.classid AND cr.questionperiodid = qp.questionperiodid)
-    WHERE qp.questionperiodid > 7 AND qp.questionperiodid < 9 AND cl.professorid = '$profid'
+    WHERE 8 <= qp.questionperiodid AND qp.questionperiodid <= 9 AND cl.professorid = '$profid'
     GROUP BY qp.questionperiodid, cl.classid
     ORDER BY qp.year DESC, qp.semester DESC, qp.questionperiodid DESC, hasanswers DESC, s.code, c.code, cl.section
   ", $db, __FILE__, __LINE__);
@@ -250,13 +250,15 @@ function printcsv($survey,$ck,$results)
       $first = true;
       foreach($ck as $k)
       {
-        $prefix = "student_${k}_";
+        $prefix = "survey_${k}_";
+        $prefix2 = "student_${k}_";
         
         $c = &$survey->components[$k];
         if (get_class($c) == "textresponse")
         {
           if ($first) $first = false; else print(",");
-          $str = getv($result["${prefix}response"]);
+          $abc = isset($result["${prefix}response"]) ? $result["${prefix}response"] : $result["${prefix2}response"];
+          $str = getv($abc);
           happycsv($str);
           print($str);
         }
@@ -267,7 +269,8 @@ function printcsv($survey,$ck,$results)
             if ($first) $first = false; else print(",");
             
             //print("${prefix}q${q}\n\n");
-            $v = getv($result["${prefix}q${q}"]);
+            $abc = isset($result["${prefix}q${q}"]) ? $result["${prefix}q${q}"] : $result["${prefix2}q${q}"];
+            $v = getv($abc);
             if (is_array($v))
             {
               $str = "";
@@ -284,7 +287,8 @@ function printcsv($survey,$ck,$results)
             else
               $str = getrating($c, $v);
             
-            $other = getv($result["${prefix}q${q}_" . count($c->choices)]);
+            $abc = isset($result["${prefix}q${q}_" . count($c->choices)]) ? $result["${prefix}q${q}_" . count($c->choices)] : $result["${prefix2}q${q}_" . count($c->choices)];
+            $other = getv($abc);
             if ($other)
             {
                 if ($str) $str .= "|";
@@ -352,7 +356,6 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
   if (mysql_num_rows($surveyrow) != 1) die("Survey '$surveyid' not found");
   
   $surveyarr = mysql_fetch_assoc($surveyrow);
-  $date = $surveyarr["date"];
   $survey = unserialize($surveyarr["dump"]);
   
   if (get_class($survey) != "survey") die("Invalid Survey Data");
@@ -412,7 +415,8 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
   foreach($ck as $k)
   {
     $c = &$survey->components[$k];
-    $prefix = "student_${k}_";
+    $prefix = "survey_${k}_";
+    $prefix2 = "student_${k}_";
     
     if (get_class($c) == "textresponse")
     {
@@ -422,7 +426,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
       $first = true;
       while(list($rk) = each($resp))
       {
-        $v = $resp[$rk]["{$prefix}response"];
+        $v = isset($resp[$rk]["{$prefix}response"]) ? $resp[$rk]["{$prefix}response"] : $resp[$rk]["{$prefix2}response"];
         if ($v)
         {
           if ($first) {$first = false; print("  <li>"); } else print("</li>\n  <li>");
@@ -496,7 +500,8 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
         while(list($rk) = each($resp))
         {
           $result = &$resp[$rk];
-          $v = getv($result["${prefix}q${q}"]);
+          $abc = isset($result["${prefix}q${q}"]) ? $result["${prefix}q${q}"] : $result["${prefix2}q${q}"];
+          $v = getv($abc);
           
           if (is_array($v))
           {
@@ -529,11 +534,13 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
   print("\n");
 
   $url = "seeresults.php/results.csv?nquestionperiodid=$questionperiodid&classid=$classid";
- 
+
 ?>
+ <!--
  <h4>Results Download</h4>
  <p>Download the raw survey responses as a spreadsheet.</p>
  <blockquote><a href="<?=$url?>"><img src="<?=$wces_path?>media/report/download.gif" width=16 height=16 border=0 alt="results.csv" align=absmiddle></a> <a href="<?=$url?>">results.csv</a></blockquote>
+ -->
 <?
 
 
