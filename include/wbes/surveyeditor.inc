@@ -1,14 +1,21 @@
 <?
 
 require_once("widgets/basic.inc");
+require_once("wbes/component.inc");
+require_once("wbes/component_choice.inc");
+require_once("wbes/component_textresponse.inc");
+require_once("wbes/component_heading.inc");
+require_once("wbes/component_text.inc");
+require_once("wbes/survey.inc");
+require_once("wces/database.inc");
 
 //states
 define("SurveyEditor_main",1);
 define("SurveyEditor_insert",2);
 define("SurveyEditor_modify",3);
+define("SurveyEditor_done",4);
 
 //main actions
-
 define("SurveyEditor_main_insert",1);
 define("SurveyEditor_main_modify",2);
 define("SurveyEditor_main_delete",3);
@@ -24,42 +31,57 @@ define("SurveyEditor_insert_cancel",2);
 //modify actions
 define("SurveyEditor_modify_save",1);
 define("SurveyEditor_modify_cancel",2);
+define("SurveyEditor_modify_preview",3);
 
 class SurveyEditor extends FormWidget
 {
-  var $surveyid; // constructed
-  var $db;
-  
-  var $survey; // persistent
-  var $insert_badinput;
+  var $survey = false; // persistent
+  var $insert_badinput = false;
   var $state;
-  var $currentquestion;
-
-  function SurveyEditor($db, $surveyid, $prefix,$form,$formmethod)
+  var $currentcomponent;
+  var $barepage = false;
+  
+  function SurveyEditor($prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
-    $this->db = $db;
-    $this->surveyid = $surveyid;
-    $this->survey = false;
-    $this->insert_badinput = false;
   }
  
   function loadvalues()
   {
-    if ($this->surveyid)
-      $this->survey = unserialize(db_getvalue($this->db,"Newsurveys", Array("surveyid" => $this->surveyid), "data"));
-    
     if (get_class($this->survey) != "survey")
     {
       $this->survey = unserialize($this->loadattribute("survey"));
       if (get_class($this->survey) != "survey")
       {
-        $this->survey = new Survey();
+        $this->load();
       }  
     }  
     $this->state = $this->loadattribute("state");
-    $this->currentquestion = $this->loadattribute("currentquestion");
+    $this->currentcomponent = $this->loadattribute("currentcomponent");
     $this->handleaction();
+  }
+
+  function load()
+  {
+    $db = server_mysqlinit();
+    mysql_select_db("wces",$db);
+    
+    $result = db_exec("SELECT dump FROM cheesy AS ch, currentsurvey AS c WHERE c.id = ch.cheesyid", $db, __FILE__, __LINE__);
+    
+    if (mysql_num_rows($result) > 0)    
+      $this->survey = unserialize(mysql_result($result,0));
+    else
+      $this->survey = new Survey();
+  }
+  
+  function save()
+  {
+    $db = server_mysqlinit();
+    mysql_select_db("wces",$db);
+    $d = addslashes(serialize($this->survey));
+    db_exec("INSERT INTO cheesy(dump) VALUES('$d')", $db, __FILE__, __LINE__);
+    $res = mysql_insert_id($db);
+    db_exec("UPDATE currentsurvey SET id = $res", $db, __FILE__, __LINE__);
   }
 
   function handleaction()
@@ -69,7 +91,7 @@ class SurveyEditor extends FormWidget
       case SurveyEditor_insert:
         $this->insert_action = new ActionButton($this->prefix . "_list_action", $this->form, $this->formmethod);
         $this->insert_action->loadvalues();
-        $this->insert_type = new RadioButton(array("Ratings Block","Text Response"), $this->prefix . "_insert_type",$this->form, $this->formmethod);
+        $this->insert_type = new RadioButton(array("Multiple Choice Question Set","Text Response Question","Heading Component","Text Component"), $this->prefix . "_insert_type",$this->form, $this->formmethod);
         $this->insert_type->loadvalues();
 
         switch($this->insert_action->action)
@@ -78,11 +100,17 @@ class SurveyEditor extends FormWidget
             switch ($this->insert_type->checked)
             {
               case 0:
-                $q = new RatingsBlock();
+                $q = new Choice();
               break;
               case 1:
-                $q = new FreeResponse();
+                $q = new TextResponse();
               break;
+              case 2:
+                $q = new Heading();
+                break;
+              case 3:
+                $q = new Text();
+                break;
               default:
                 $q = false;
               break;
@@ -94,7 +122,7 @@ class SurveyEditor extends FormWidget
             {  
               $q->neversaved = true;
               $this->state = SurveyEditor_modify;
-              $this->currentquestion = $this->survey->insert($q, $this->currentquestion);
+              $this->currentcomponent = $this->survey->insert($q, $this->currentcomponent);
               $this->handleaction();
             }  
           break;
@@ -109,26 +137,31 @@ class SurveyEditor extends FormWidget
       case SurveyEditor_modify:
         $this->modify_action = new ActionButton($this->prefix . "_modify_action", $this->form, $this->formmethod);
         $this->modify_action->loadvalues();
-        $this->modify_editor = $this->survey->questions[$this->currentquestion]->geteditor($this->prefix . "_modify_editor", $this->form, $this->formmethod);
+        $this->modify_editor = $this->survey->components[$this->currentcomponent]->geteditor($this->prefix . "_modify_editor", $this->form, $this->formmethod);
         $this->modify_editor->loadvalues();
         switch($this->modify_action->action)
         {
           case SurveyEditor_modify_save:
             if ($this->modify_editor->checkvalues())
             {
-              unset($this->modify_editor->question->neversaved);
+              unset($this->modify_editor->component->neversaved);
               $this->modify_editor->savevalues();
               $this->state = SurveyEditor_main;
               $this->handleaction();
             }
           break;
           case SurveyEditor_modify_cancel:
-            $i = $this->currentquestion;
-            if (isset($this->survey->questions[$i]->neversaved))
+            $i = $this->currentcomponent;
+            if (isset($this->survey->components[$i]->neversaved))
               $this->survey->delete($i);
             $this->state = SurveyEditor_main;
             $this->handleaction();
           break;
+          case SurveyEditor_modify_preview:
+            if($this->modify_editor->checkvalues())
+              $this->modify_editor->savevalues();
+            $this->barepage = true;  
+            break;  
         }
         break;
       case SurveyEditor_main:
@@ -140,12 +173,12 @@ class SurveyEditor extends FormWidget
         {
           case SurveyEditor_main_insert:
             $this->state = SurveyEditor_insert;
-            $this->currentquestion = $this->main_action->object;
+            $this->currentcomponent = $this->main_action->object;
             $this->handleaction();
           break;
           case SurveyEditor_main_modify:
             $this->state = SurveyEditor_modify;
-            $this->currentquestion = $this->main_action->object;
+            $this->currentcomponent = $this->main_action->object;
             $this->handleaction();
           break;
           case SurveyEditor_main_delete:
@@ -158,6 +191,8 @@ class SurveyEditor extends FormWidget
             $this->survey->movedown($this->main_action->object);
           break;
           case SurveyEditor_main_save:
+            $this->save();
+            $this->state = SurveyEditor_done;
           break;
           case SurveyEditor_main_cancel:
           break;
@@ -170,12 +205,11 @@ class SurveyEditor extends FormWidget
 
   function display($hidden = false)
   {
-    global $testroot;
-
+    global $server_media;
+    
     $this->printattribute("survey", serialize($this->survey));
     $q = unserialize(serialize($this->survey));
-    $this->printattribute("surveyid", $this->surveyid);
-    $this->printattribute("currentquestion",$this->currentquestion);
+    $this->printattribute("currentcomponent",$this->currentcomponent);
     if (!$hidden)
     {
       switch ($this->state)
@@ -197,48 +231,73 @@ class SurveyEditor extends FormWidget
           print("</p>");
         break;
         case SurveyEditor_modify:
-          $this->printattribute("state",SurveyEditor_modify);
-          $this->modify_editor->display();
-          $this->modify_action->display("Save", SurveyEditor_modify_save, "", 'class="tinybutton"');
-          $this->modify_action->display("Cancel",SurveyEditor_modify_cancel, "", 'class="tinybutton"');
+          if ($this->modify_action->action != SurveyEditor_modify_preview)
+          {
+            $this->modify_action->display(false,"","");
+            $this->printattribute("state",SurveyEditor_modify);
+            $this->modify_editor->display();
+            $this->modify_action->display("Save", SurveyEditor_modify_save, "", 'class="tinybutton"');
+            print("<input type=button class=tinybutton value=Preview onclick=\"return SurveyEditor_preview(this.form,'" . $this->modify_action->prefix . "')\">");
+            $this->modify_action->display("Cancel",SurveyEditor_modify_cancel, "", 'class="tinybutton"');
+          }
+          else
+          {
+            print('<center><input type=button onclick="window.close()" value="Close this window"></center>');
+            $this->modify_editor->preview();
+          }
         break;
         case SurveyEditor_main:
         default:
           $this->printattribute("state",SurveyEditor_main);
           $this->main_action->display(false,"","");
-          $nquestions = count($this->survey->questions);
-          if ($nquestions == 0)
+          print("<h5>Survey Builder</h5>");
+          $ncomponents = count($this->survey->components);
+          if ($ncomponents == 0)
           {
             $this->main_action->display("Insert a component",SurveyEditor_main_insert,0,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
           }
-          else // $nquestions != 1
+          else // $ncomponents != 1
           {
+?>
+<p>This page shows a WYSIWYG view of your survey. You can modify, delete, and
+rearrange survey components by moving your mouse over the blue orbs at the left
+and making a selection from the popup menu. You can insert new survey components
+by clicking above and below existing components.</p>
+<?            
             print("<table border=0 cellpadding=0 cellspacing=0>\n");
             for($i=0;;++$i)
             {
 ?>
-<tr><td colspan=1><img src="<?=$testroot?>/media/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->prefix?>_insert<?=$i?>" class=insertmenu><img src="<?=$testroot?>/media/nada.gif" width=1 height=10 alt="[ spacer ]"></td></tr>
+<tr><td colspan=1><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->prefix?>_insert<?=$i?>" class=insertmenu><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td></tr>
 <?
-              if ($i >= $nquestions)
+              if ($i >= $ncomponents)
                 break;
               else
-                $question = &$this->survey->questions[$i];
-              $w = $question->getwidget($this->prefix . "_main_qwidget_" . $i, $this->form, $this->formmethod);
+                $component = &$this->survey->components[$i];
+              $w = $component->getwidget($this->prefix . "_main_qwidget_" . $i, $this->form, $this->formmethod);
               $w->loadvalues();
 ?>
-<tr><td><img src="<?=$testroot?>/media/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$testroot?>/media/0x000000.gif"><img src="<?=$testroot?>/media/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
-<tr><td><img src="<?=$testroot?>/media/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td rowspan=3 bgcolor="#000000" background="<?=$testroot?>/media/0x000000.gif"><img src="<?=$testroot?>/media/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=2><img src="<?=$testroot?>/media/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
+<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
+<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td rowspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr>
-  <td width=40 valign=center><img src="<?=$testroot?>/media/editor/node.gif" width=40 height=18 border=0 align=absmiddle alt=node id=<?=$this->prefix?>_node<?=$i?>></td>
-  <td width=1><img src="<?=$testroot?>/media/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
+  <td width=40 valign=center><img src="<?=$server_media?>/editor/node.gif" width=40 height=18 border=0 align=absmiddle alt=node id=<?=$this->prefix?>_node<?=$i?>></td>
+  <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
   <td><? $w->display(); ?></td>
 </tr>
-<tr><td><img src="<?=$testroot?>/media/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$testroot?>/media/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
-<tr><td><img src="<?=$testroot?>/media/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$testroot?>/media/0x000000.gif"><img src="<?=$testroot?>/media/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
+<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
+<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
 <?
-        } // for i
+            } // for i
 ?>
+<tr>
+  <td>&nbsp;</td>
+  <td colspan=3 align=center>
+    <? $this->main_action->display("Save Survey",SurveyEditor_main_save,"", 'class="tinybutton"'); ?>
+  </td>
+</tr>
 </table>
+
+
 <script>
 <!--
   if (document.all)
@@ -247,7 +306,7 @@ class SurveyEditor extends FormWidget
     for(var i=0;;++i)
     {
       inserts[i] = document.all("<?=$this->prefix?>_insert" + i);
-      if (i >= <?=count($this->survey->questions)?>) break;
+      if (i >= <?=count($this->survey->components)?>) break;
       nodes[i] = document.all("<?=$this->prefix?>_node" + i);
     }  
     var menu = new SurveyEditor(nodes, inserts, "<?=$this->form?>", "<?=$this->main_action->prefix?>");
@@ -255,7 +314,10 @@ class SurveyEditor extends FormWidget
 // -->
 </script>
 <?
-  } // if $nquestions == 0      
+          } // if $ncomponents == 0      
+        break;
+        case SurveyEditor_done:
+          print("The survey has been saved.");
         break;
       }
     }
@@ -263,7 +325,7 @@ class SurveyEditor extends FormWidget
   
   function dumpscript()
   {
-    global $SurveyEditor_dumped,$testroot;
+    global $SurveyEditor_dumped,$server_media;
     if (!isset($SurveyEditor_dumped))
     {
       ActionButton::dumpscript();
@@ -272,12 +334,12 @@ class SurveyEditor extends FormWidget
 <!-- Begin SurveyEditor Script -->
 
 <table id=SurveyEditor_cmdmenu border=1 bordercolor=black cellspacing=0 cellpadding=3 style="position:absolute; visibility: hidden">
-<tr><td id=SurveyEditor_editcmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$testroot?>/media/editor/edit.gif" width=20 height=20 alt="Edit" align=absmiddle> Edit Question</td></tr>
-<tr><td id=SurveyEditor_deletecmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$testroot?>/media/editor/delete.gif" width=20 height=20 alt="Delete" align=absmiddle> Delete Question</td></tr>
-<tr><td id=SurveyEditor_moveupcmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$testroot?>/media/editor/moveup.gif" width=20 height=20 alt="Move Up" align=absmiddle> Move Up</td></tr>
-<tr><td id=SurveyEditor_movedowncmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$testroot?>/media/editor/movedown.gif" width=20 height=20 alt="Move Down" align=absmiddle> Move Down</td></tr>
+<tr><td id=SurveyEditor_editcmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/edit.gif" width=20 height=20 alt="Edit" align=absmiddle> Edit Component</td></tr>
+<tr><td id=SurveyEditor_deletecmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/delete.gif" width=20 height=20 alt="Delete" align=absmiddle> Delete Component</td></tr>
+<tr><td id=SurveyEditor_moveupcmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/moveup.gif" width=20 height=20 alt="Move Up" align=absmiddle> Move Up</td></tr>
+<tr><td id=SurveyEditor_movedowncmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/movedown.gif" width=20 height=20 alt="Move Down" align=absmiddle> Move Down</td></tr>
 </table>
-<img id=SurveyEditor_insert style="position:absolute; visibility:hidden" src="<?=$testroot?>/media/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component">
+<img id=SurveyEditor_insert style="position:absolute; visibility:hidden" src="<?=$server_media?>/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component">
 <script>
 <!--
   function SurveyEditor_Table() // extender
@@ -385,6 +447,18 @@ class SurveyEditor extends FormWidget
     }
   }
 
+  function SurveyEditor_preview(form,actionelement)
+  {
+    var w = window.open("about:blank", "previewwin", "width=500,height=410,status=0,toolbar=0,menubar=0,scrollbars=1,screenX=0,screeny=0,left=0,top=0,resizable=1",true);
+    form.target = "previewwin";
+    ActionButton_go(<?=SurveyEditor_modify_preview?>,0,form[actionelement]);
+    form.submit();
+    w.focus();
+    form.target = "_self";
+    form[actionelement].value = "";
+    return false;
+  }
+
   function SurveyEditor_node_onmouseover()
   {
     this.hover = true;
@@ -429,7 +503,7 @@ class SurveyEditor extends FormWidget
       if (!element.offsetParent) return offset;
     }
   }
-  
+
 // -->
 </script>
 

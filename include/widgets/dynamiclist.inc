@@ -21,15 +21,14 @@ class DynamicList extends FormWidget
   
   function loadvalues($strongchecking = true) // public inherited
   {
-    $items = explode(is_array($this->orderonlyitems) ? "." : "\x0D\x0A", $this->loadattribute("data"));
-
-    if (!is_array($items))
+    $d = $this->loadattribute("data");
+    if ($d)
     {
-      if($items)
-        $items = array($items);
-      else
-        $items = array();
+      $items = explode(is_array($this->orderonlyitems) ? "." : "\t", $d);
+      if (!is_array($items)) $items = array($items);
     }
+    else
+      $items = array();    
 
     if (is_array($this->orderonlyitems) && $strongchecking)
     {
@@ -47,7 +46,7 @@ class DynamicList extends FormWidget
  
   function dumpscript() //public static inherited
   {
-    global $DynamicList_dumped;
+    global $DynamicList_dumped, $server_media;
     if (!$DynamicList_dumped)
     {
       $DynamicList_dumped = true;
@@ -113,7 +112,7 @@ class DynamicList extends FormWidget
     var first = true;
     for(var i = 0; i < o.length; ++i)
     {
-      if (first) first = false; else d.value += this.orderonly ? "." : String.fromCharCode(13) + String.fromCharCode(10);
+      if (first) first = false; else d.value += this.orderonly ? "." : String.fromCharCode(9);
       d.value += this.orderonly ? this.options[i].value : this.options[i].text;
     }  
   };
@@ -150,7 +149,7 @@ class DynamicList extends FormWidget
   
   function display($hidden = false) // public inherited
   {
-    global $wces_path;
+    global $wces_path, $server_media;
 
 	if ($hidden)
 	{
@@ -199,8 +198,8 @@ class DynamicList extends FormWidget
 <? } ?>          
   </tr>
   <tr><td align=center>
-    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.move(-1)"   onmouseup="button_unpush('<?=$this->prefix?>_moveup')"   onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_moveup"   src="<?=$wces_path?>media/dynamiclist/moveup.gif" border=0></a>
-    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.move( 1)" onmouseup="button_unpush('<?=$this->prefix?>_movedown')" onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_movedown" src="<?=$wces_path?>media/dynamiclist/movedown.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.move(-1)"   onmouseup="button_unpush('<?=$this->prefix?>_moveup')"   onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_moveup"   src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.move( 1)" onmouseup="button_unpush('<?=$this->prefix?>_movedown')" onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_movedown" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
     <script>
     <!--
       AttachPushed('<?=$this->prefix?>_moveup',"moveup_pushed.gif");

@@ -47,7 +47,7 @@ function showhelp(topic)
 </table>
 <? } else { ?>
 <tr>
-  <td bgcolor="#C0C0C0" background="media/0xC0C0C0.gif" valign=top>
+  <td bgcolor="#C0C0C0" background="<?=$wces_path?>media/0xC0C0C0.gif" valign=top>
   <div class=spaced>
 <?
   $uni = login_getuni();

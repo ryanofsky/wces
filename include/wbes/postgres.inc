@@ -20,7 +20,7 @@ function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
     taskwindow_cprint($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
     if ($result)
     {
-      $rows = pg_numrows($result);
+      $rows = max(pg_cmdtuples($result), pg_numrows($result));
       taskwindow_cprint("<br>Time: $time seconds<br>Affected Rows: $rows");
     }
     else
@@ -31,5 +31,43 @@ function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
   }
   return $result;
 }
+
+function pg_show($result,$name = "Result", $showtypes = false)
+{
+  
+  if ($result)
+  {
+    $rows = pg_numrows($result);
+    $cols = pg_numfields($result);
+    if ($cols)
+    {
+      print ("<table border=1>\n");
+      print("<tr><td colspan=$cols>$name</td></tr>\n");
+      print("<tr>\n");
+      for($c=0; $c < $cols; ++$c)
+        print("  <td><b>" . htmlspecialchars(pg_fieldname($result,$c)) . "</b></td>\n");
+      print("</tr>\n");
+      for($r = 0; $r < $rows; ++$r)
+      {
+        $row = pg_fetch_row($result, $r);
+        for($c=-; $c < $cols; ++$c)
+        {
+          if (!isset($row[$c]))
+            $str = "<i>Not Set</i>";
+          else if (!$showtypes)
+            $str = htmlspecialchars($row[$c]);
+          else
+            $str = htmlspecialchars($row[$c]) . " <i>" . gettype($row[$c]) . "</i>";  
+        }
+        print("  <td>$str</td>\n");
+      }  
+      print("</tr>\n");
+      print ("</table>\n");
+      return;
+    }
+  }  
+  print("<p><b>No Result</b></p>\n");
+}
+
 
 ?>

@@ -1,9 +1,7 @@
 <?
 
 require_once("wbes/general_url.inc");
-
-// TODO: eliminate this dependency
-require_once("wces/login.inc");
+require_once("wces/database.inc");
 
 /**
 * Puts a warning into the database and sends an obnoxious email to rey4@columbia.edu
@@ -17,15 +15,19 @@ require_once("wces/login.inc");
 function sendwarning($dump, $file, $line)
 {
   global $server_url, $server_isproduction;
-  $uni = login_getuni();
+  
+  $uni = function_exists("login_getuni") ? login_getuni() : "";
   $url = $server_url->toString(true,true,true);
   $errorid = 0;
   if ($uni) $uni = "'$uni' was logged in at the time\n";
   $message = "The SEAS Oracle would like you to know about an error it recently encountered in $file, line $line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
   if ($server_isproduction)
   {
-    $db = wces_connect();
-    $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
+    if (function_exists("wces_connect"))
+    {
+      $db = wces_connect();
+      $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
+    }  
     mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\n$message"));
   }
   else 

@@ -5,12 +5,27 @@ require_once("widgets/dynamiclist.inc");
 
 class Component
 {
-  var $text,$usehtml;  // STRING, question text, html allowed
-  
+  var $text = "";      // string, component text
+  var $is_html = false;   // boolean html allowed
+  var $id;
+  var $type;
+  var $is_shared;
+  var $was_answered;
+
+  var $componentid;
+  var $replace;
+  var $replace_before;
+  var $replace_after;
+ 
   function Component()
   {
     $this->text = "";
-    $this->usehtml = false;
+    $this->is_html = false;
+    $this->id = 0;
+    $this->type = 0;
+    $this->is_personal = false;
+    $this->is_shared = false;
+    $this->was_answered = false;
   }
   
   function geteditor($prefix,$form,$formmethod)
@@ -26,16 +41,16 @@ class Component
 
 class ComponentEditor extends FormWidget
 {
-  var $text,$usehtml,$loadprevious; // Widgets
+  var $text,$is_html,$loadprevious; // Widgets
   var $errors; // Mistakes in the form
-  var $question; // source question
+  var $component; // source component
   
-  function ComponentEditor(&$question,$prefix,$form,$formmethod)
+  function ComponentEditor(&$component,$prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
-    $this->text = new TextBox(7,40,"wrap=virtual",$this->prefix."_text",$this->form,$this->formmethod);
-    $this->usehtml = new CheckBox($this->prefix."_userhtml",$this->form,$this->formmethod);
-    $this->question = &$question;
+    $this->text = new TextBox(4,40,"wrap=virtual",$this->prefix."_text",$this->form,$this->formmethod);
+    $this->is_html = new CheckBox($this->prefix."_usehtml",$this->form,$this->formmethod);
+    $this->component = &$component;
     
     $this->errors = array();
     
@@ -48,12 +63,12 @@ class ComponentEditor extends FormWidget
     if ($this->loadprevious)
     {
       $this->text->loadvalues();
-      $this->usehtml->loadvalues();
+      $this->is_html->loadvalues();
     }
     else
     {
-      $this->text->text = $this->question->text;
-      $this->usehtml->checked = $this->question->usehtml ? true : false;
+      $this->text->text = $this->component->text;
+      $this->is_html->checked = $this->component->is_html ? true : false;
     }
   }
   
@@ -64,8 +79,8 @@ class ComponentEditor extends FormWidget
   
   function savevalues()
   {
-    $this->question->text = $this->text->text;
-    $this->question->usehtml = $this->usehtml->checked;
+    $this->component->text = $this->text->text;
+    $this->component->is_html = $this->is_html->checked;
     return true;
   }
 
@@ -88,65 +103,41 @@ class ComponentEditor extends FormWidget
     else
       print($name);
   }
+  
+  function preview()
+  {
+    if (count($this->errors) > 0)
+    {
+      print("<p><strong>Errors:</strong></p>");
+      ComponentEditor::display();
+    }
+    else
+    {
+      $w = $this->component->getwidget($this->prefix."_preview", $this->form, $this->formmethod);
+      $w->display();
+    }
+  }
 };
 
 class ComponentWidget extends FormWidget
 {
-  var $question;
+  var $component;
   
-  function ComponentWidget(&$question,$prefix,$form,$formmethod)
+  function ComponentWidget(&$component,$prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
-    $this->question = &$question;
+    $this->component = &$component;
   }
   
   function display()
   {
     print("<div>");
-    if ($this->question->usehtml)
-      print($this->question->text);
+    if ($this->component->is_html)
+      print($this->component->text);
     else
-      print(nl2br(htmlspecialchars($this->question->text)));
+      print(nl2br(htmlspecialchars($this->component->text)));
     print("</div>\n");
   }
 };
-
-class Survey
-{
-  var $questions;
-  
-  function Survey()
-  {
-    $this->questions = array();
-  }
-  
-  function insert($question,$position = 0)
-  {
-    $position = ((int)$position < 0) ? count($this->questions) + (int)$position + 1 : (int)$position;
-    array_splice($this->questions,(int)$position,0,array($question));
-    return $position;    
-  }
-  
-  function delete($questionno)
-  {
-    array_splice($this->questions,$questionno,1);
-  }
-  
-  function movedown($questionno)
-  {
-    if ($questionno >= count($this->questions) - 1) return;
-    $q = $this->questions[$questionno];
-    $this->delete($questionno);
-    $this->insert($q,$questionno + 1);
-  }
-  
-  function moveup($questionno)
-  {
-    if ($questionno < 1) return;
-    $q = $this->questions[$questionno];
-    $this->delete($questionno);
-    $this->insert($q,$questionno - 1);
-  }
-}
 
 ?>

@@ -46,13 +46,14 @@ class CheckBox extends FormWidget
     $this->checked = false;
   }
   
-  function display($hidden = false)
+  function display($hidden = false, $params = "")
   {
     $n = '"' . $this->prefix . '"';
+    if ($params) $params = " $params";
     if($hidden)
       print("<input type=hidden name=$n value=" . ($this->checked ? 1 : 0) . ">");
     else
-      print("<input type=checkbox name=$n id=$n value=1" . ($this->checked ? " checked" : "") . ">");
+      print("<input type=checkbox name=$n id=$n value=1" . ($this->checked ? " checked" : "") . "$params>");
   }
   
   function displaylabel($label, $params = "")
@@ -104,6 +105,40 @@ class RadioButton extends FormWidget
   function loadvalues()
   {
     $this->checked = $this->loadattribute();
+  }
+};
+
+class DropBox extends FormWidget
+{ 
+  var $items;
+  var $selected;
+  
+  function DropBox($items,$prefix,$form,$formmethod)
+  {
+    $this->FormWidget($prefix,$form,$formmethod);
+    $this->items = $items;
+    $this->selected = "";
+  }
+  
+  function display($hidden = false, $params="")
+  {
+    $n = '"' . $this->prefix . '"';
+    if ($params) $params = " $params";
+    
+    print("<select name=$n$params>\n");
+    foreach($this->items as $k => $v)
+    {
+      if ($k == $this->selected)
+        print("  <option value=$k selected>$v\n");
+      else  
+        print("  <option value=$k>$v\n");
+    }
+    print("</select>");
+  }
+
+  function loadvalues()
+  {
+    $this->selected = $this->loadattribute();
   }
 };
 

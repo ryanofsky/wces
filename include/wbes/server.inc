@@ -3,6 +3,8 @@
   
   define("server_mode","yahweh"); // "oracle" "yahweh"  "yahwehisapi"
 
+  $server_media = "/wces/media";
+
   if (server_mode == "oracle")
   {
     $server_isproduction = true;
