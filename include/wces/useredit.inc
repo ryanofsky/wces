@@ -249,7 +249,7 @@ class UserEditor extends ParentWidget
 
     if ($this->show_admin)
     {
-      $this->optout->checked = (bool)($flags & 16);
+      $this->optout->checked = (bool)($flags & 128);
     }
   }
   
@@ -307,7 +307,7 @@ class UserEditor extends ParentWidget
 
     if ($this->show_admin)
     {
-      $oo = $this->optout->checked ? "flags | 16" : "flags & ~16";
+      $oo = $this->optout->checked ? "flags | 128" : "flags & ~128";
       $result = $result && pg_go("UPDATE users SET flags = $oo WHERE user_id = $this->user_id
       ", $wces, __FILE__, __LINE__);
     }
