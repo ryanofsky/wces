@@ -244,7 +244,7 @@ class QuestionPeriodList extends FormWidget
     }
 
     wces_connect();
-    $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods ORDER BY begindate", $wces, __FILE__, __LINE__);
     $n = pg_numrows($r);
 
     print("<table border=1>\n");
