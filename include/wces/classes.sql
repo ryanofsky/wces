@@ -51,6 +51,7 @@ DROP FUNCTION professor_merge(INTEGER, INTEGER);
 DROP FUNCTION get_profs(INTEGER);
 DROP FUNCTION get_class(INTEGER);
 DROP FUNCTION get_question_period();
+DROP FUNCTION get_next_question_period();
 
 CREATE TABLE sent_mails
 (
@@ -270,6 +271,12 @@ CREATE TABLE semester_question_periods
   semester INTEGER,
   year INTEGER
 ) INHERITS (question_periods);
+
+CREATE TABLE dartmouth_question_periods
+(
+  prize TEXT,
+  prizedate DATE
+) INHERITS (semester_question_periods);
 
 ALTER TABLE classes ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
 ALTER TABLE classes ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
@@ -1218,7 +1225,22 @@ CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
     SELECT INTO i question_period_id
     FROM question_periods
     WHERE begindate < curtime
-    ORDER BY enddate DESC;
+    ORDER BY enddate;
     RETURN i;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION get_next_question_period() RETURNS INTEGER AS '
+  DECLARE
+    curtime DATETIME;
+    i INTEGER;
+  BEGIN
+    curtime := NOW();
+    SELECT INTO i question_period_id
+    FROM question_periods
+    WHERE curtime < enddate
+    ORDER BY enddate;
+    RETURN i;
+  END;
+' LANGUAGE 'plpgsql';
+
