@@ -83,8 +83,8 @@ if ($list)
 }
 else // !$list
 {
-  print("<form name=f method=post action=\"$thispage?editclass=$editclass\">");
   $q->dumpscript();
+  print("<form name=f method=post action=\"$thispage?editclass=$editclass\">");
   $q->display();
   print("</form>\n<p>&nbsp;</p><p>&nbsp;</p>");
 }
