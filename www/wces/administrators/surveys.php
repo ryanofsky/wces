@@ -30,7 +30,7 @@ $factories = array
 
 if($topic_id)
 {
-  $q = new SurveyEditor($topic_id, 1, $factories, "prefix","f",WIDGET_POST);
+  $q = new SurveyEditor($topic_id, 1, login_getuserid(), $factories, "prefix","f",WIDGET_POST);
   $q->loadvalues();
 }
 else 
@@ -48,8 +48,8 @@ if ($q && $q->barepage)
 }
 else
 {
-  page_top("Survey Builder");
   if ($q) $q->dumpscript();
+  page_top("Survey Builder");
 }  
 
 if ($q)
@@ -60,7 +60,7 @@ if ($q)
 
 }
 
-function topics_link($result)
+function topics_link($result, $class = false)
 {
   global $pagename;
   $n = pg_numrows($result);
@@ -68,6 +68,7 @@ function topics_link($result)
   for($i = 0; $i < $n; ++$i)
   {
     extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
+    if ($class) $name = format_class($name);
     print("  <li><a href=\"$pagename?topic_id=$topic_id\">$name</a></li>\n");
   }
   print("</ul>\n");
@@ -94,15 +95,13 @@ if (!$q || $q->state == SurveyEditor_done)
   extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   
   $result = pg_query("
-    SELECT t.topic_id, (s.code || ' ' || c.divisioncode || c.code || ' ' || cl.section || ' ' || c.name) AS name
+    SELECT t.topic_id, get_class(t.class_id) AS name
     FROM wces_topics AS t
     INNER JOIN classes AS cl USING (class_id)
-    INNER JOIN courses AS c USING (course_id)
-    INNER JOIN subjects AS s USING (subject_id)
-    WHERE t.class_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
-    ORDER BY s.code, c.code
+    WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
+    ORDER BY name
   ", $wces, __FILE__, __LINE__);
-  topics_link($result);
+  topics_link($result, true);
 
 }
 

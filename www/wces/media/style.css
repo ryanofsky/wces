@@ -89,13 +89,15 @@ td.editmenu
   background-color:#EEEEEE;
   border-color: black;
   border-style: solid;
-  cursor:hand;
+  cursor: pointer;
+  cursor: hand;
 }
 
 td.editmenuhover
 {
   background-color:#AAAAAA;
-  cursor:hand;
+  cursor: pointer;
+  cursor: hand;
   border-color: black;
   border-style: solid;
   font-family: Verdana, Arial, Helvetica, sans-serif;
@@ -110,13 +112,15 @@ td.insertmenu
 td.insertmenuhover
 {
   background-color:#FFE051;
-  cursor:hand;
+  cursor: pointer;
+  cursor: hand;
 }
 
 .tinybutton
 {
   font-weight: bold;
   font-size: x-small;
+  cursor: pointer;
   cursor: hand;
   font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
 }
@@ -161,6 +165,7 @@ td.insertmenuhover
 {
   font-weight: bolder;
   font-size: xx-small;
+  cursor: pointer;
   cursor: hand;
   font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
 }

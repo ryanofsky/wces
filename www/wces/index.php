@@ -97,6 +97,7 @@ and make the rest of the site accessible to you.
       for($i = 0; $i < $n; ++$i)
       {
         extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
+        $name = format_class($name);
         $found = true;
         $complete = true;
         if ($surveyed)  
@@ -104,7 +105,7 @@ and make the rest of the site accessible to you.
         else
         {
           $complete = false;
-          print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id\">$code $name</a></LI>\n");
+          print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id\">$name</a></LI>\n");
         }  
       }
       if ($n == 0) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</LI>");

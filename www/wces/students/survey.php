@@ -44,12 +44,11 @@ if ($class_id)
       new AbetFactory()
     );
     $q = new SurveyWidget($topic_id, 1, $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
-    $q->loadvalues();    
+    $q->loadvalues();
   }
   else
     $class_id = 0;
 }
-
 
 if ($class_id)
 {
@@ -62,7 +61,7 @@ if ($class_id)
   {
     page_top("Student Survey");
     $r = pg_query("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
-    
+
     $class = format_class(pg_result($r,0,0));
     $prof = format_profs(pg_result($r,0,1), false, "<br>Professor ");
 
