@@ -145,7 +145,7 @@ for($i=0; $i<$n; ++$i)
 {
   extract(pg_fetch_array($classes,$i,PGSQL_ASSOC));
   print("<tr>\n  <td>$responses</td>\n  <td>" . ($students - $responses)  . "</td>\n  <td>$students</td>\n");
-  $classinfo = format_class($cl, true) . format_profs($p, true, "<br>Professor ");
+  $classinfo = format_class($cl, "%c %n Section %s", true) . format_profs($p, true, "<br>Professor ");
   print("  <td>$classinfo</td>\n");  
   print("</tr>\n");
 }
