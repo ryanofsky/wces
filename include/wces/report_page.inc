@@ -23,8 +23,7 @@ function report_topics_cache()
   global $wces;
   wces_connect();
   pg_go("
-    DROP TABLE report_topics;
-    CREATE TABLE report_topics AS
+    INSERT INTO report_topics (topic_id, question_period_id, class_id, category_id, course_id, department_id, user_id)
     SELECT DISTINCT t.topic_id, t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
     FROM survey_responses AS r
     INNER JOIN wces_topics AS t USING (topic_id)
@@ -83,29 +82,6 @@ function report_findtopics($tempname, $criteria, $needprof = true)
     FROM report_topics AS t
     $where
   ", $wces, __FILE__, __LINE__);
-
-  // todo:
-  //
-  // a major optimization would be to have a materialized view like
-  //
-  // CREATE MATERIALIZED VIEW report_topics
-  // SELECT DISTINCT t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
-  // FROM survey_responses AS r
-  // INNER JOIN wces_topics AS t USING (topic_id)
-  // INNER JOIN classes AS cl USING (class_id)
-  // LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3;
-  //
-  // postgres doesn't currently support materialized views, but it might be
-  // possible to set something up with triggers. since reporting isn't typically
-  // accessed in the middle of a question period, the triggers wouldn't have to
-  // actually maintain data in the view, they could just set a flag that would cause
-  // the view to be regenerated before it was used again
-  //
-  // another option would be to use a view like
-  // CREATE MATERIALIZED VIEW professors
-  // SELECT user_id, class_id FROM enrollments WHERE status = 3
-  //
-  // less of an optimization, but less complicated, and could be used to speed up other parts of the site
 };
 
 function report_findgroups($topicstable, $groupings, $orderings)
@@ -593,9 +569,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
     assert($choiceQuestions->row['qitem_id'] == $qitem_id);        
     assert($choiceQuestions->row['qrevision_id'] == $qrevision_id);  
 
-    $qtext = pg_explode($choiceComponents->row['choices']);
-    $first_number = $choiceComponents->row['first_number'];
-    $last_number = $choiceComponents->row['last_number'];
+    $qtext = $choiceQuestions->row['qtext'];
 
     if ($report_debug)
     {
