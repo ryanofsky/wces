@@ -209,7 +209,15 @@ CREATE TABLE sent_mails
   reply_to TEXT,
   mail_to TEXT,
   subject TEXT,
-  body TEXT
+  body TEXT,
+  question_period_id INTEGER,
+  category_id INTEGER
+);
+
+CREATE TABLE sent_mails_topics
+(
+  sent_mail_id INTEGER NOT NULL,
+  topic_id INTEGER NOT NULL
 );
 
 CREATE SEQUENCE sent_mail_ids INCREMENT 1 START 1;
@@ -1042,7 +1050,6 @@ CREATE OR REPLACE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS TEXT AS '
   END;
 ' LANGUAGE 'plpgsql';
 
-DROP FUNCTION professor_merge(INTEGER, INTEGER);
 CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     primary_id ALIAS FOR $1;
@@ -1204,7 +1211,6 @@ CREATE OR REPLACE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
   WHERE cl.class_id = $1
 ' LANGUAGE 'sql' WITH (ISCACHABLE);
 
-DROP FUNCTION get_course(INTEGER);
 CREATE OR REPLACE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
   SELECT COALESCE(s.code, '''') || ''\n'' 
     || COALESCE(c.divisioncode, '''')
@@ -1263,4 +1269,3 @@ CREATE OR REPLACE FUNCTION get_anext_question_period () RETURNS integer AS '
     RETURN i;
   END;
 ' LANGUAGE 'plpgsql';
-

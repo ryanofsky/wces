@@ -195,7 +195,7 @@ CREATE INDEX choice_responses_parent_idx ON choice_responses (parent);
 CREATE INDEX choiceq_responses_parent_idx ON choice_question_responses (parent);
 CREATE INDEX mchoiceq_responses_parent_idx ON mchoice_question_responses (parent);
 
-ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
+--ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
 
 -- Add these foreign keys when a future version of postgres supports them on inherited tables
 --
