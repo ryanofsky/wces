@@ -250,7 +250,7 @@ class MassEmail extends FormWidget
     $s_bdate = date("l, F j", $begindate);
     $s_edate = date("l, F j", $enddate);
     
-    $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
+    $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "AND t.category_id IS NOT NULL";
 
     $status = $this->to == "prof" ? 3 : 1;
 
