@@ -1,4 +1,4 @@
-<%
+<?
   define("server_mode","oracle"); // "oracle" "yahweh"
   
   if (server_mode == "oracle")
@@ -79,4 +79,4 @@
   }
   else
     die("Fatal Error in <b>" . __FILE__ . ", line <b>" . __LINE__ . "</b>: Invalid Server Name");
-%>
+?>
