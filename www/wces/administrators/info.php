@@ -17,6 +17,11 @@ param('delete_enrollment');
 param('user_find');
 param('user_uni');
 param('user_last');
+param('course_find');
+param('course_subject');
+param('course_code');
+param('course_name');
+
 
 function PrintUser(&$uni, &$user_id)
 {
