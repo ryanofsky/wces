@@ -1,28 +1,0 @@
-<%
-  require_once("page.inc");
-  require_once("login.inc");
-  require_once("wces.inc");
-  page_top("Professor Profile","1000");
-  
-$db = wces_connect();
-
-$infoq = mysql_query(
-
-"SELECT cl.section, cl.year, cl.semester, cl.students, p.name as pname, p.professorid, c.code, c.name, c.description, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname
-FROM Classes as cl
-LEFT JOIN Courses as c USING (courseid)
-LEFT JOIN Departments as d USING (departmentid)
-LEFT JOIN Subjects as s ON (c.subjectid = s.subjectid)
-LEFT JOIN Divisions as dv ON (c.divisionid = dv.divisionid)
-LEFT JOIN Schools as sc ON (c.schoolid = sc.schoolid)
-LEFT JOIN Professors as p ON (cl.professorid = p.professorid)
-WHERE cl.classid = '" . addslashes($classid) . "'", $db); 
-
-$info = mysql_fetch_array($infoq);
-if ($info)
-{
-  extract($info);    print("<h3>$name</h3>\n");  if ($description) print ("<p>$description</p>");  print("<p>" . ucwords($semester) . " $year Section $section</p>\n");
-    if ($information) print("<h4>Information</h4>\n<p>$information</p>\n");
-  if ($professorid) print ("<h4>Professor</h4>\n<a href=\"profinfo.php?professorid=$professorid\">" . ($pname ? $pname : "Unknown") . "</a></p>\n");  print("<h4>Other Information</h4>");  if ($students) print ("<i>Enrollment</i> $students Students</p>");  if ($dcode) print ("<p><i>Department:</i> $dname($dcode)</p>");  if ($scode) print ("<p><i>Subject:</i> $sname($scode)</p>");  if ($scname) print ("<p><i>School:</i> $scname</p>");  if ($dvname) print ("<p><i>Division:</i> $dvname</p>");  if ($code) print ("<p><i>Course ID:</i> $code</p>");
-}  page_bottom();
-%>
