@@ -231,7 +231,7 @@ function importusers($filename, $flags)
 };
 
 $path = "M:/server/special/rland/thayer-data/";
-$path = "/afs/thayer/web/eval/thayer-data";
+$path = "/afs/thayer/web/eval/thayer-data/";
 
 wces_connect();
 pg_query("BEGIN", $wces,__FILE__,__LINE__);
