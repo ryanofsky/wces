@@ -22,6 +22,10 @@ DROP SEQUENCE user_ids;
 DROP TABLE acis_groups;
 DROP SEQUENCE acis_group_ids;
 DROP TABLE acis_affiliations;
+DROP TABLE question_periods;
+DROP TABLE survey_topics;
+DROP SEQUENCE survey_topic_ids INCREMENT 1 START 1;
+DROP SEQUENCE question_period_ids;
 DROP FUNCTION prof_wwwreplace(VARCHAR(60));
 DROP FUNCTION prof_pidreplace(VARCHAR(28), VARCHAR(28), char(1), varchar(10));
 DROP FUNCTION prof_regreplace(VARCHAR(28), VARCHAR(28));
@@ -38,6 +42,9 @@ DROP FUNCTION school_update(VARCHAR(252));
 DROP FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP);
 DROP FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP,INTEGER);
 DROP FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEXT,TEXT);
+DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VARCHAR(28),char(1),varchar(10));
+DROP FUNCTION cunix_associate(INTEGER,INTEGER);
+DROP FUNCTION get_profs(INTEGER);
 
 CREATE TABLE classes
 (
@@ -168,6 +175,9 @@ CREATE TABLE enrollments
 
 COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - professor, 0 - dropped class';
 
+CREATE INDEX class_idx ON enrollments (class_id);
+CREATE INDEX user_idx ON enrollments (user_id);
+
 CREATE TABLE professor_data
 (
   user_id INTEGER NOT NULL PRIMARY KEY,
@@ -217,6 +227,25 @@ CREATE TABLE acis_affiliations
   PRIMARY KEY(user_id, acis_group_id)
 );
 
+CREATE TABLE question_periods
+(
+  question_period_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('question_period_ids'),
+  displayname VARCHAR(60),
+  begindate TIMESTAMP,
+  enddate TIMESTAMP
+);
+
+CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
+
+CREATE TABLE survey_topics
+(
+  survey_topic_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('survey_topic_ids'),
+  class_id INTEGER NOT NULL,
+  question_period_id INTEGER NOT NULL
+);
+
+CREATE SEQUENCE survey_topic_ids INCREMENT 1 START 1;
+
 ALTER TABLE classes ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
 ALTER TABLE classes ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
 ALTER TABLE classes ADD FOREIGN KEY (division_id) REFERENCES divisions(division_id);
@@ -230,6 +259,8 @@ ALTER TABLE enrollments ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
 ALTER TABLE acis_groups ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
 ALTER TABLE acis_affiliations ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
 ALTER TABLE acis_affiliations ADD FOREIGN KEY (acis_group_id) REFERENCES acis_groups(acis_group_id);
+ALTER TABLE survey_topics ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
+ALTER TABLE survey_topics ADD FOREIGN KEY (question_period_id) REFERENCES question_periods(question_period_id);
 
 CREATE FUNCTION prof_wwwreplace(VARCHAR(60)) RETURNS INTEGER AS '
   DECLARE
@@ -514,7 +545,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
         affil := substring(affils FROM 0 FOR i);
       END IF;
       
-      NOTICE ''(%)'',affil;
+      -- RAISE NOTICE ''(%)'',affil;
       
       IF char_length(affil) > 0 THEN
          
@@ -528,7 +559,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
         ELSE
           IF SUBSTRING(affil FROM 1 FOR 9) = ''CUcourse_'' THEN
             classid := class_find(SUBSTRING(affil FROM 10));
-            RAISE NOTICE ''classid (%)'',classid;
+            -- RAISE NOTICE ''classid (%)'',classid;
           END IF;
           IF classid = 0 THEN
             INSERT INTO acis_groups (code) VALUES (affil);
@@ -568,9 +599,9 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
     
     IF FOUND AND rec.max IS NOT NULL THEN
       i := rec.max - 2;
-      RAISE NOTICE ''min %'',rec.min;
-      RAISE NOTICE ''max %'',rec.max;
-      RAISE NOTICE ''i %'',i;
+      -- RAISE NOTICE ''min %'',rec.min;
+      -- RAISE NOTICE ''max %'',rec.max;
+      -- RAISE NOTICE ''i %'',i;
       
       IF rec.min > i THEN
         relevant := rec.min;
@@ -578,7 +609,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
         relevant := i;
       END IF;
       
-      RAISE NOTICE ''relevant %'',relevant;
+      -- RAISE NOTICE ''relevant %'',relevant;
       
       i := EXTRACT(MONTH FROM curtime);
       IF i BETWEEN 1 AND 5 THEN
@@ -595,10 +626,10 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
       
       IF i > relevant THEN relevant := i; END IF;
       
-      i := (relevant - 1) / 3;
-      RAISE NOTICE ''relevant year %'',i;
-      i := ((relevant - 1) % 3) + 1;
-      RAISE NOTICE ''relevant smst %'',i;
+      -- i := (relevant - 1) / 3;
+      -- RAISE NOTICE ''relevant year %'',i;
+      -- i := ((relevant - 1) % 3) + 1;
+      -- RAISE NOTICE ''relevant smst %'',i;
       
       UPDATE enrollments SET status = 0       -- look for dropped classes
       WHERE user_id = userid AND
@@ -916,3 +947,109 @@ CREATE FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEX
     RETURN userid;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VARCHAR(28),char(1),varchar(10)) RETURNS INTEGER AS '
+  DECLARE
+    userid      ALIAS FOR $1;
+    src         ALIAS FOR $2;
+    name_s      ALIAS FOR $3;
+    firstname_s ALIAS FOR $4;
+    lastname_s  ALIAS FOR $5;
+    middle_s    ALIAS FOR $6;
+    pid_s       ALIAS FOR $7;
+    i INTEGER;
+  BEGIN
+    IF src = 1 THEN
+      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 1 and name = name_s;
+    ELSE IF src = 2 THEN
+      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 2 AND firstname = firstname_s AND lastname = lastname_s AND middle = middle_s AND pid = pid_s;
+    ELSE IF src = 3 THEN
+      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 3 AND firstname = firstname_s AND lastname = lastname_s;
+    ELSE IF src = 4 THEN
+      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 4 AND firstname = firstname_s AND lastname = lastname_s;
+    ELSE
+      RETURN 0;
+    END IF; END IF; END IF; END IF;
+    
+    IF FOUND THEN RETURN i; END IF;
+    
+    INSERT INTO professor_hooks (user_id, source, name, firstname, lastname, middle, pid) VALUES (userid, src, name_s, firstname_s, lastname_s, middle_s, pid_s);
+    RETURN currval(''professor_hook_ids'');
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION cunix_associate(INTEGER,INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    cunix_userid     ALIAS FOR $1;
+    professor_userid ALIAS FOR $2;
+    cu RECORD;
+    pr RECORD;
+    i INTEGER;
+  BEGIN
+    SELECT INTO i user_id FROM users WHERE user_id = professor_userid AND uni IS NULL AND flags & 4 = 4;
+    IF NOT FOUND THEN RETURN 0; END IF;
+
+    SELECT INTO cu user_id, uni, department_id, flags, lastlogin FROM users WHERE user_id = cunix_userid AND uni IS NOT NULL AND flags & 4 = 4;
+    IF NOT FOUND THEN RETURN 0; END IF;
+    
+    UPDATE users SET
+      uni = NULL,
+      flags = 4,
+      lastlogin = NULL
+    WHERE user_id = cunix_userid;
+    
+    UPDATE users SET
+      uni = cu.uni,
+      flags = cu.flags,
+      lastlogin = cu.lastlogin
+    WHERE user_id = professor_userid;
+    
+    IF cu.flags & 2 = 2 THEN
+      UPDATE users SET department_id = cu.department_id WHERE user_id = professor_userid;
+    END IF;
+    
+    -- Delete enrollments that already exist
+    
+    DELETE FROM enrollments WHERE
+      user_id = cunix_userid 
+      AND
+      status IN (0,1)
+      AND
+      class_id IN (SELECT class_id FROM enrollments WHERE user_id = professor_userid);
+    
+    UPDATE enrollments SET user_id = professor_userid WHERE user_id = cunix_userid AND status IN (0,1);
+    UPDATE acis_affiliations SET user_id = professor_userid WHERE user_id = cunix_userid;    
+    
+    SELECT INTO i COUNT(*) FROM professor_hooks WHERE user_id = cunix_userid;
+    IF i > 0 THEN RETURN professor_userid; END IF;
+    
+    SELECT INTO i COUNT(*) FROM enrollments WHERE user_id = cunix_userid;
+    IF i > 0 THEN RETURN professor_userid; END IF;
+    
+    SELECT INTO i COUNT(*) FROM professor_data WHERE user_id = cunix_userid;
+    IF i > 0 THEN RETURN professor_userid; END IF;
+
+    DELETE FROM users WHERE user_id = cunix_userid;
+    RETURN professor_userid;
+
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
+  DECLARE
+    classid ALIAS FOR $1;
+    list TEXT := '''';
+    rec RECORD;
+  BEGIN
+    FOR rec IN SELECT
+      u.user_id, u.firstname, u.lastname
+      FROM enrollments AS e
+      INNER JOIN users AS u USING (user_id)
+      WHERE e.class_id = classid AND e.status > 1
+    LOOP
+      list := list || rec.user_id || ''\\n'' || rec.lastname || ''\\n'' || rec.firstname || ''\\n'';
+    END LOOP;
+    RETURN list;
+  END;
+' LANGUAGE 'plpgsql';
+
