@@ -57,13 +57,14 @@ class SurveyEditor extends StatefullWidget
   var $preview;
   var $buttons;
   
-  function SurveyEditor($item_id, $specialization_id, $user_id, $name, &$parent)
+  function SurveyEditor($item_id, $specialization_id, $user_id, $topic_id, $name, &$parent)
   {
     global $server_url;
     $this->StatefullWidget($name, $parent);
     $this->specialization_id = (int)$specialization_id;
     $this->item_id = (int)$item_id;
     $this->user_id = (int)$user_id;
+    $this->topic_id = (int)$topic_id;
     $this->event =& new EventWidget("event", $this);
   }
 
@@ -104,7 +105,7 @@ class SurveyEditor extends StatefullWidget
         if (isset($param))
         {
           $c =& $this->survey->components[$param];
-          $inner =& $c->getWidget("inner", $this->preview);
+          $inner =& $c->getWidget("inner", $this->preview, $this->topic_id);
         }
         else
         {
@@ -167,7 +168,7 @@ class SurveyEditor extends StatefullWidget
 
   function printVisible()
   {
-    global $server_media, $wbes;
+    global $server_media, $wbes, $survey_debug;
 
     $this->event->displayField();
 
@@ -231,7 +232,7 @@ by clicking above and below existing components.</p>
 
         if ($i >= $ncomponents) break;
         $component =& $this->survey->components[$i];
-        $w = $component->getWidget("main_qwidget_$i", $this);
+        $w =& $component->getWidget("main_qwidget_$i", $this, $this->topic_id);
         $this->loadChild($w, true);
 
         $readOnly = false;
@@ -253,7 +254,14 @@ by clicking above and below existing components.</p>
         print("<tr>\n");
         print("  <td width=40><img src=\"$server_media/editor/$image\" width=40 height=18 border=0 id=$name name=$name align=absmiddle alt=Node></td>\n");
         print("  " . cell(1, false, '000000') . "\n");
-        print("  <td style=\"padding: 10px\">"); $w->preview = true; $w->display(); print("</td>\n");
+        print("  <td style=\"padding: 10px\">"); 
+        if ($survey_debug)
+        {
+          debugout($component->item_id, "item_id = ");
+          debugout($component->revision_id, "revision_id = ");
+        }
+        $w->preview = true; $w->display();
+        print("</td>\n");
         print("</tr>\n");
         print($horizontalBorder);
       }
