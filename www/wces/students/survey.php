@@ -11,74 +11,89 @@ require_once("wbes/component_choice.inc");
 require_once("wbes/component_textresponse.inc");
 require_once("wbes/component_pagebreak.inc");
 require_once("wces/component_abet.inc");
+require_once("wces/oldquestions.inc");
 
 login_protect(login_student);
 
-param($class_id);
-param($save);
+param('class_id');
 
 wces_connect();
 
-if ($class_id)
+$user_id = login_getuserid();
+$class_id = (int)$class_id;
+
+list($question_period_id, $survey_listing) = get_surveys();
+$n = pg_numrows($survey_listing);
+$notFound = true;
+for ($i = 0; $i < $n; ++$i)
 {
-  $question_period_id = (int) pg_result(pg_go("SELECT get_question_period()", $wces, __FILE__, __LINE__),0,0);
-  $user_id = login_getuserid();
-  $class_id = (int)$class_id;
-  $result = pg_go("
-      SELECT t.topic_id, EXISTS (SELECT * FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id)
-      FROM wces_topics AS t
-      INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
-      WHERE e.class_id = $class_id
-  ", $wces, __FILE__, __LINE__);
-
-
-  if(pg_numrows($result) == 1 && pg_result($result,0,1) == 'f')
+  $data = pg_fetch_row($survey_listing, $i, PGSQL_ASSOC);
+  if ($data['class_id'] == $class_id)
   {
-    $topic_id = (int)pg_result($result,0,0);
-
-    $factories = array
-    (
-      new ChoiceFactory(),
-      new TextResponseFactory(),
-      new TextFactory(),
-      new HeadingFactory(),
-      new PageBreakFactory(),
-      new AbetFactory()
-    );
-    $q = new SurveyWidget($topic_id, get_base($topic_id), $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
-    $q->loadvalues();
+    if ($data['surveyed'])
+      die ("You already filled out a survey for " . format_class($data['name']));
+    $notFound = false;
+    break; 
   }
-  else
-    $class_id = 0;
 }
+if ($notFound) die ("You can't fill out a survey for class #$class_id");
 
-if ($class_id)
+$topic_id = (int)$data['topic_id'];
+$base_branch_id = get_base($topic_id);
+
+$factories = array
+(
+  new ChoiceFactory,
+  new TextResponseFactory,
+  new TextFactory,
+  new HeadingFactory,
+  new PageBreakFactory,
+  new AbetFactory
+);
+$f =& new Form();
+$q =& new SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, 'survey', $f);
+$q->ta =& new TASurvey('ta', $q);
+$f->loadState();
+
+if ($q->done)
 {
-  if ($q->finished)
-  {
-    if ($q->failure) exit();
-    redirect("{$wces_path}index.php$QSID");
-  }
-  else
-  {
-    page_top("Student Survey");
-    $r = pg_go("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
-
-    $class = format_class(pg_result($r,0,0));
-    $prof = format_profs(pg_result($r,0,1), false, "<br>Professor ");
-
-    print("<h3>$class$prof</h3>");
-
-    print("<form name=f method=post>");
-    print($ISID);
-    $q->display();
-    print("</form>");
-    page_bottom();
-  }
+  if ($q->failure) exit();
+  redirect("{$wces_path}index.php$QSID");
 }
 else
-  print("Invalid Class ID.");
+{
+  page_top("Student Survey");
+  $r = pg_go("SELECT get_profs($class_id)", $wces, __FILE__, __LINE__);
+  $class = format_class($data['name']);
+  $prof = format_profs(pg_result($r,0,0), false, "<br>Professor ");
 
-page_bottom();
+  print("<h3>$class$prof</h3>");
+
+  print("<form name=f method=post>");
+?>
+<script>
+<!--
+  
+  function handleSubmit()
+  {
+    window.onbeforeunload = null;
+  }
+  
+  function handleBeforeUnload()
+  {
+    return "Your survey responses will not saved."; 
+  }
+  
+  window.onbeforeunload = handleBeforeUnload
+  document.forms.f.onsubmit = handleSubmit;
+// -->
+</script>
+<?
+  print($ISID);
+  $f->display();
+  $q->display();
+  print("</form>");
+  page_bottom();
+}
 
 ?>
