@@ -161,53 +161,50 @@ flush();
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// TODO: this section has still not been converted for new database
-//
-// pg_query("CREATE TEMPORARY TABLE studsurvs( cunix TINYTEXT, surveys INTEGER, surveyed INTEGER )", $wces, __FILE__, __LINE__);
-// pg_query("
-//
-//   REPLACE INTO studsurvs(cunix, surveys, surveyed)
-//   SELECT u.cunix, COUNT(DISTINCT q.questionsetid), COUNT(DISTINCT cs.answersetid)
-//   FROM qsets AS qs
-//   INNER JOIN enrollments AS e ON e.classid = qs.classid
-//   INNER JOIN users AS u ON u.userid = e.userid
-//   INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
-//   LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
-//   LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
-//   GROUP BY u.userid
-//
-// ", $wces, __FILE__, __LINE__);
-//
-// $times["getstudentusage"] = microtime();
-//
-// $students = pg_query("SELECT cunix, IF(surveys-surveyed<=0,1,0) AS didall, IF(surveyed>0,1,0) AS didone FROM studsurvs ORDER BY didall DESC, didone DESC, RAND()", $wces, __FILE__, __LINE__);
-//
-// print("<h3>Individual Student Usage</h3>\n");
-//
-// $levels = array
-// (
-//   2 => "<h4>Students who completed all of their surveys</h4>\n<blockquote>",
-//   1 => "\n</blockquote>\n<h4>Students who completed at least one of their surveys</h4>\n<blockquote>",
-//   0 => "\n</blockquote>\n<h4>Students who completed at none of their surveys</h4>\n<blockquote>"
-// );
-//
-// $oldlevel = "";
-//
-// while ($student = mysql_fetch_array($students))
-// {
-//   $didall = $didone = "";
-//   extract($student);
-//   $level = $didall + $didone;
-//   if (!($level === $oldlevel))
-//   {
-//     print($levels[$level]);
-//     $first = true;
-//   }
-//   if ($first) $first = false; else print(", ");
-//   print("\n  <a href=\"${wces_path}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
-//   $oldlevel = $level;
-// }
-// print("</blockquote>");
+$cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
+
+$students = pg_query("
+  SELECT i.user_id, u.uni, CASE WHEN i.responses = 0 THEN 0 WHEN i.classes <= i.responses THEN 2 ELSE 1 END AS level
+  FROM
+    (SELECT e.user_id, COUNT (DISTINCT t.topic_id) AS classes, COUNT(DISTINCT s.topic_id) AS responses
+    FROM wces_topics AS t
+    INNER JOIN enrollments AS e ON e.class_id = t.class_id AND e.status = 1
+    LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id
+    WHERE t.class_id IS NOT NULL $cat
+    GROUP BY e.user_id) AS i
+  INNER JOIN users AS u USING (user_id)
+  ORDER BY level DESC, random();
+", $wces, __FILE__, __LINE__);
+
+$times["get_individual_students"] = microtime();
+
+print("<h3>Individual Student Usage</h3>\n");
+
+$levels = array
+(
+  2 => "<h4>Students who completed all of their surveys</h4>\n<blockquote>",
+  1 => "\n</blockquote>\n<h4>Students who completed at least one of their surveys</h4>\n<blockquote>",
+  0 => "\n</blockquote>\n<h4>Students who completed at none of their surveys</h4>\n<blockquote>"
+);
+
+$oldlevel = "";
+
+$n = pg_numrows($students);
+for($i = 0; $i < $n; ++$i)
+{
+  extract(pg_fetch_row($students, $i, PGSQL_ASSOC));
+  if (!($level === $oldlevel))
+  {
+    print($levels[$level]);
+    $first = true;
+  }
+  if ($first) $first = false; else print(", ");
+  print("\n  <a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$uni</a>");
+  $oldlevel = $level;
+}
+print("</blockquote>");
+
+$times["print_individual_students"] = microtime();
 
 //printtimes($times);
 
