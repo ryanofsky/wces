@@ -184,6 +184,7 @@ class AbetEditor extends ComponentEditor
       print("</td></tr>\n");
     }
     print("</table>");
+    $this->buttons->printButtons();
   }
 }
 
