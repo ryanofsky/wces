@@ -56,9 +56,16 @@ Means that B points to A and C
 
 */
 
+$wces = NULL;
 $wces_verbose = false;
 
 function wces_connect()
+{
+  global $wces;
+  if (!isset($wces)) $wces = server_pginit("wces");
+}
+
+function wces_oldconnect()
 {
   $db = server_mysqlinit();
   mysql_select_db("wces",$db);
