@@ -27,6 +27,8 @@ require_once("wces/taskwindow.inc");
 
 function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3), $questionsetid = 0)
 {
+  $classcache = array();
+  
   if (strlen($year) == 4 && strlen($semester) && ($semester == 1 || $semester == 2 || $semester == 3) && is_array($fieldorder) && isset($fieldorder["coursecode"]) && isset($fieldorder["section"]) && isset($fieldorder["professor"]) && isset($fieldorder["students"]))
   {
     taskwindow_start("Progress Window");
@@ -50,21 +52,34 @@ function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursec
         $section = $data[$fieldorder["section"]];
         if (strlen($coursecode) == 9 && strlen($section) == 3)
         {
-          $classid = class_update($db, $coursecode . "_" . $section . "_" . $year . "_" . $semester, &$courseid);
-          prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);
-          $pids = prof_findwithfirstlast($db, $first, $last);
-          $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
-          $i = Array("professorid" => $pid);
-          if ($data[$fieldorder["students"]]) $i["students"] = $data[$fieldorder["students"]];
-          db_updatevalues($db, "classes", Array("classid" => $classid), $i);
-          if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+          $classcode = "${coursecode}_${section}_${year}_${semester}";
+          if (isset($classcache[$classcode]))
+          {
+            $classid = $classcache[$classcode];
+          }  
+          else
+          {
+            $classid = class_update($db, $classcode, &$courseid);
+            $classcache[$classcode] = $classid;
+            db_exec("DELETE FROM enrollments WHERE classid = '$classid'", $db, __FILE__, __LINE__);
+            prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);
+            $pids = prof_findwithfirstlast($db, $first, $last);
+            $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
+            $i = Array("professorid" => $pid);
+            if ($data[$fieldorder["students"]]) $i["students"] = $data[$fieldorder["students"]];
+            db_updatevalues($db, "classes", Array("classid" => $classid), $i);
+            //if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+          }  
           $cunix = $data[$fieldorder["cunix"]];
           if ($cunix)
           {
             $userid = db_replace($db,"users", Array("cunix" => $cunix), false, "userid");
             if ($userid) db_exec("REPLACE INTO enrollments(classid, userid) VALUES ('$classid','$userid')",$db,__FILE__,__LINE__);
-          }  
-          taskwindow_cprint("$coursecode Section $section added (courseid = $courseid, classid = $classid, professorid = $pid)<br>\n");
+            taskwindow_cprint("<hr>");
+          }
+          else 
+            $userid = ""; 
+          taskwindow_cprint("$coursecode Section $section added (courseid = $courseid, classid = $classid, professorid = $pid, userid = $userid)<br>\n");
         }
         else
           taskwindow_cprint("<b>Warning:</b> Invalid course or section code (course = '$coursecode' && section = '$section')<br>\n");  
@@ -216,7 +231,7 @@ function importregcsv($filename)
 function arrayagrees($base,$newbie)
 {
   foreach($newbie as $key => $value)
-    if ($base[$key] && $base[$key] != $value) return false;
+    if (isset($base[$key]) && $base[$key] && $base[$key] != $value) return false;
   return true;  
 }
 
@@ -239,7 +254,7 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
       while($row = mysql_fetch_assoc($result))
       {
         $s = $row["source"];
-        if (!is_array($sources[$s]))
+        if ( !isset($sources[$s]) || !is_array($sources[$s]) )
           $sources[$s] = $row;
         else if (!arrayagrees($sources[$s],$row))
           continue(2);

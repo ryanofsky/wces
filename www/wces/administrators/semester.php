@@ -48,9 +48,3 @@ else
 };
 page_bottom();
 %>
-
-
-
-
-
-
