@@ -126,8 +126,6 @@ CREATE TABLE saves
   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
-
 -- this entire table is redundant
 CREATE TABLE branch_ancestor_cache
 (
@@ -142,8 +140,6 @@ CREATE TABLE question_periods
   begindate TIMESTAMP,
   enddate TIMESTAMP
 );
-
-
 
 CREATE TABLE responses
 (
@@ -181,10 +177,20 @@ CREATE TABLE textresponse_responses
   rtext TEXT
 ) INHERITS (responses);
 
--- TODO: add indices and foreign key constraints
+CREATE TABLE cached_choice_responses
+(
+  topic_id INTEGER NOT NULL,
+  citem_id INTEGER NOT NULL,
+  crevision_id INTEGER NOT NULL,
+  qitem_id INTEGER NOT NULL,
+  qrevision_id INTEGER NOT NULL,
+  dist INTEGER[] NOT NULL
+);
 
 -- drastically speeds up mass mailing
 CREATE INDEX survey_response_m ON survey_responses(topic_id, user_id);
+CREATE INDEX survey_response_ut ON survey_responses(user_id, topic_id);
+CREATE INDEX survey_response_u ON survey_responses(user_id);
 
 CREATE INDEX response_topic_idx ON survey_responses (topic_id);
 CREATE UNIQUE INDEX choice_component_idx ON choice_components(component_id);
@@ -195,32 +201,39 @@ CREATE INDEX choice_responses_parent_idx ON choice_responses (parent);
 CREATE INDEX choiceq_responses_parent_idx ON choice_question_responses (parent);
 CREATE INDEX mchoiceq_responses_parent_idx ON mchoice_question_responses (parent);
 
---ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
+ALTER TABLE revisions ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES revisions(revision_id);
+ALTER TABLE revisions ADD CONSTRAINT branch_fk FOREIGN KEY (branch_id) REFERENCES branches;
+ALTER TABLE revisions ADD CONSTRAINT save_fk FOREIGN KEY (save_id) REFERENCES saves;
+ALTER TABLE revisions ADD CONSTRAINT merged_fk FOREIGN KEY (merged) REFERENCES revisions(revision_id);
+ALTER TABLE branches ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES branches(branch_id);
+ALTER TABLE branches ADD CONSTRAINT latest_fk FOREIGN KEY (latest_id) REFERENCES revisions(revision_id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE specializations ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES specializations(specialization_id);
+ALTER TABLE item_specializations ADD CONSTRAINT branch_fk FOREIGN KEY (branch_id) REFERENCES branches;
+ALTER TABLE branch_ancestor_cache ADD CONSTRAINT ancestor_fk FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
+ALTER TABLE branch_ancestor_cache ADD CONSTRAINT descendant_fk FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
+ALTER TABLE responses DROP CONSTRAINT merged_fk;
+ALTER TABLE responses ADD CONSTRAINT revision_fk FOREIGN KEY (revision_id) REFERENCES revisions;
+ALTER TABLE cached_choice_responses ADD CONSTRAINT crevision_fk FOREIGN KEY (crevision_id) REFERENCES revisions(revision_id);
+ALTER TABLE cached_choice_responses ADD CONSTRAINT qrevision_fk FOREIGN KEY (qrevision_id) REFERENCES revisions(revision_id);
 
--- Add these foreign keys when a future version of postgres supports them on inherited tables
---
--- ALTER TABLE revisions ADD FOREIGN KEY (parent) REFERENCES revisions(revision_id);
--- ALTER TABLE revisions ADD FOREIGN KEY (branch_id) REFERENCES branches(branch_id);
--- ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
--- ALTER TABLE revisions ADD FOREIGN KEY (merged) REFERENCES revisions(revision_id);
---
--- ALTER TABLE branches ADD FOREIGN KEY (specialization_id) REFERENCES specializations(specialization_id);
--- ALTER TABLE branches ADD FOREIGN KEY (parent) REFERENCES branches(branch_id);
--- ALTER TABLE branches ADD FOREIGN KEY (latest_id) REFERENCES revisions(revision_id);
---
--- ALTER TABLE branch_ancestor_cache ADD FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
--- ALTER TABLE branch_ancestor_cache ADD FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
---
--- ALTER TABLE list_items ADD FOREIGN KEY (revision_id) REFERENCES revisions(revision_id);
--- ALTER TABLE list_items ADD FOREIGN KEY (item_id) REFERENCES branches(branch_id);
---
--- ALTER TABLE specializations ADD FOREIGN KEY (parent) REFERENCES specializations(specialization_id);
---
--- ALTER TABLE responses ADD FOREIGN KEY (revision_id) REFERENCES revisions(revision_id);
--- ALTER TABLE responses ADD FOREIGN KEY (parent) REFERENCES responses(response_id);
---
--- ALTER TABLE survey_responses ADD FOREIGN KEY (question_period_id) REFERENCES question_periods(question_period_id);
--- ALTER TABLE survey_responses ADD FOREIGN KEY (specialization_id) REFERENCES specializations(specialization_id);
+-- can't currently create these due to errors
+ALTER TABLE item_specializations ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations;
+--  select * from item_specializations AS i where not exists(select * from specializations AS s where s.specialization_id = i.specialization_id);
+ALTER TABLE survey_responses ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations;
+--  select * from survey_responses AS i where not exists(select * from specializations AS s where s.specialization_id = i.specialization_id);
+
+--requires unique index on inherited tables, so can't work in postgres 7.3 
+--ALTER TABLE revisions ADD CONSTRAINT component_fk FOREIGN KEY (component_id) REFERENCES components;
+--ALTER TABLE list_items ADD CONSTRAINT component_fk FOREIGN KEY (component_id) REFERENCES components;
+--ALTER TABLE responses ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES responses(response_id);
+
+-- might someday create items and topics tables...
+--ALTER TABLE list_items ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
+--ALTER TABLE item_specializations ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
+--ALTER TABLE survey_responses ADD CONSTRAINT topic_fk FOREIGN KEY (topic_id) REFERENCES ???;
+--ALTER TABLE cached_choice_responses ADD CONSTRAINT topic_fk FOREIGN KEY (topic_id) REFERENCES ???;
+--ALTER TABLE cached_choice_responses ADD CONSTRAINT item_fk FOREIGN KEY (citem_id) REFERENCES ???;
+--ALTER TABLE cached_choice_responses ADD CONSTRAINT item_fk FOREIGN KEY (qitem_id) REFERENCES ???;
 
 CREATE OR REPLACE FUNCTION is_true(BOOLEAN) RETURNS BOOLEAN AS '
   SELECT ($1 IS NOT NULL) AND $1;
@@ -1925,16 +1938,6 @@ CREATE OR REPLACE FUNCTION func_last (text[],text[]) RETURNS text[] AS '
 --DROP AGGREGATE first text[];
 CREATE AGGREGATE last ( BASETYPE = text[], SFUNC = func_last, STYPE = text[]);
 CREATE AGGREGATE first ( BASETYPE = text[], SFUNC = func_first, STYPE = text[]);
-
-CREATE TABLE cached_choice_responses
-(
-  topic_id INTEGER NOT NULL,
-  citem_id INTEGER NOT NULL,
-  crevision_id INTEGER NOT NULL,
-  qitem_id INTEGER NOT NULL,
-  qrevision_id INTEGER NOT NULL,
-  dist INTEGER[] NOT NULL
-);
 
 CREATE OR REPLACE FUNCTION cached_choice_responses_update() RETURNS INTEGER AS '
   DELETE FROM cached_choice_responses;

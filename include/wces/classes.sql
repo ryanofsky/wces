@@ -224,11 +224,15 @@ CREATE SEQUENCE sent_mail_ids INCREMENT 1 START 1;
 
 CREATE TABLE wces_topics
 (
-  class_id INTEGER UNIQUE,
+  topic_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('topic_ids'),
+  class_id INTEGER NOT NULL,
+  question_period_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  specialization_id INTEGER NOT NULL,
   category_id INTEGER,
-  make_public BOOLEAN NOT NULL DEFAULT 't'
-)
-INHERITS (topics);
+  make_public BOOLEAN NOT NULL,
+  cancelled BOOLEAN NOT NULL
+);
 
 CREATE TABLE survey_categories
 (
@@ -247,26 +251,55 @@ CREATE TABLE semester_question_periods
 
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 
-ALTER TABLE classes ADD FOREIGN KEY fk_class_course(course_id) REFERENCES courses(course_id);
-ALTER TABLE classes ADD FOREIGN KEY fk_class_dept(department_id) REFERENCES departments(department_id);
-ALTER TABLE classes ADD FOREIGN KEY fk_class_div(division_id) REFERENCES divisions(division_id);
-ALTER TABLE classes ADD FOREIGN KEY fk_class_school(school_id) REFERENCES schools(school_id);
-ALTER TABLE courses ADD FOREIGN KEY fk_course_subject(subject_id) REFERENCES subjects(subject_id);
-ALTER TABLE users ADD FOREIGN KEY fk_user_dept(department_id) REFERENCES departments(department_id);
-ALTER TABLE professor_data ADD FOREIGN KEY fk_pdata_user(user_id) REFERENCES users(user_id);
-ALTER TABLE professor_hooks ADD FOREIGN KEY fk_phook_user(user_id) REFERENCES users(user_id);
-ALTER TABLE enrollments ADD FOREIGN KEY fk_enroll_user(user_id) REFERENCES users(user_id);
-ALTER TABLE enrollments ADD FOREIGN KEY fk_enroll_class(class_id) REFERENCES classes(class_id);
-ALTER TABLE acis_groups ADD FOREIGN KEY fk_group_class(class_id) REFERENCES classes(class_id);
-ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_user(user_id) REFERENCES users(user_id);
-ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_group(acis_group_id) REFERENCES acis_groups(acis_group_id);
-ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_class(class_id) REFERENCES classes(class_id);
-ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_category(category_id) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE classes ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
+ALTER TABLE classes ADD CONSTRAINT department_fk FOREIGN KEY (department_id) REFERENCES departments;
+ALTER TABLE classes ADD CONSTRAINT division_fk FOREIGN KEY (division_id) REFERENCES divisions;
+ALTER TABLE classes ADD CONSTRAINT school_fk FOREIGN KEY (school_id) REFERENCES schools;
+ALTER TABLE courses ADD CONSTRAINT department_fk FOREIGN KEY (guess_department_id) REFERENCES departments(department_id);
+ALTER TABLE courses ADD CONSTRAINT subject_fk FOREIGN KEY (subject_id) REFERENCES subjects;
+ALTER TABLE enrollments ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
+ALTER TABLE enrollments ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE professor_data ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE professor_data ADD CONSTRAINT picture_fk FOREIGN KEY (picture_id) REFERENCES pictures(file_id);
+ALTER TABLE professor_hooks ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE acis_groups ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
+ALTER TABLE acis_affiliations ADD CONSTRAINT acis_group_fk FOREIGN KEY (acis_group_id) REFERENCES acis_groups;
+ALTER TABLE acis_affiliations ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE sent_mails ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE sent_mails ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
+ALTER TABLE sent_mails ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE sent_mails_topics ADD CONSTRAINT sent_mail_fk FOREIGN KEY (sent_mail_id) REFERENCES sent_mails(sent_mail_id);
+ALTER TABLE users ADD CONSTRAINT departmentfk FOREIGN KEY (department_id) REFERENCES departments;
+ALTER TABLE wces_topics ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations(specialization_id);
+
+-- can't currently create these due to errors in data
+ALTER TABLE wces_topics ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
+ALTER TABLE wces_topics ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
+ALTER TABLE wces_topics ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE saves ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE survey_responses ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+
+-- might someday create an items table...
+--ALTER TABLE wces_topics ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
+
+-- foreign keys from temporary tables, these should be moved into whatever files
+-- the tables are declared in. also, some of these tables are probably obsolete
+ALTER TABLE temp_class ADD CONSTRAINT class_fk FOREIGN KEY (newid) REFERENCES classes(class_id);
+ALTER TABLE temp_course ADD CONSTRAINT course_fk FOREIGN KEY (newid) REFERENCES courses(course_id);
+ALTER TABLE temp_dept ADD CONSTRAINT department_fk FOREIGN KEY (newid) REFERENCES departments(department_id);
+ALTER TABLE temp_div ADD CONSTRAINT division_fk FOREIGN KEY (newid) REFERENCES divisions(division_id);
+ALTER TABLE temp_sch ADD CONSTRAINT school_fk FOREIGN KEY (newid) REFERENCES schools(school_id);
+ALTER TABLE temp_subj ADD CONSTRAINT subject_fk FOREIGN KEY (newid) REFERENCES subjects(subject_id);
+ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE temp_prof ADD CONSTRAINT prof_fk FOREIGN KEY (newid) REFERENCES users(user_id);
+ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
+ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE tar ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users(user_id);
 
 CREATE OR REPLACE FUNCTION references_class(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM wces_topics WHERE class_id = $1)                  THEN 1 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM enrollments WHERE class_id = $1 AND status <> 3)  THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM enrollments WHERE class_id = $1 AND status <> 4)  THEN 2 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM acis_groups WHERE class_id = $1)                  THEN 4 ELSE 0 END;
 ' LANGUAGE 'sql';
 
@@ -838,7 +871,7 @@ CREATE OR REPLACE FUNCTION enrollment_update_status(INTEGER, INTEGER, INTEGER, I
           WHERE user_id = user_id_ AND class_id = class_id_;
         DELETE FROM enrollments WHERE user_id = user_id_ AND class_id = class_id_;        
         INSERT INTO enrollments_p (user_id, class_id, status, lastseen)
-        VALUES (user_id_, class_id, new_status, rec.lastseen);
+        VALUES (user_id_, class_id_, new_status, rec.lastseen);
         RETURN 4;
       END IF;
     ELSE
@@ -850,7 +883,7 @@ CREATE OR REPLACE FUNCTION enrollment_update_status(INTEGER, INTEGER, INTEGER, I
             WHERE user_id = user_id_ AND class_id = class_id_;
           DELETE FROM enrollments_p WHERE user_id = user_id_ AND class_id = class_id_;        
           INSERT INTO enrollments (user_id, class_id, status, lastseen)
-          VALUES (user_id_, class_id, new_status, rec.lastseen);
+          VALUES (user_id_, class_id_, new_status, rec.lastseen);
           RETURN new_status;
         END IF;
       ELSE
