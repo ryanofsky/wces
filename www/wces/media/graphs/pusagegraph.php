@@ -1,6 +1,8 @@
 <?
 error_reporting (0);
 
+extract($_GET);
+
 include('wces/server.inc');
 Header("Content-type: image/png");
 
