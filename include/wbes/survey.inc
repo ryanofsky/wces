@@ -35,31 +35,21 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
   
-  function load($survey_id, $branch, $component_types)
+
+  function load($survey_id, $index)
   {
-    $this->survey_id = $survey_id = (int)$survey_id;
-    if ($branch)
-      $this->branch = $branch = (int)$branch;
-    else
-    {
-      $this->branch = false;
-      $branch = "NULL";  
-    }  
-
-    global $wbes;
-    wbes_connect();
-
-    $result = db_exec("SELECT list_latest((SELECT list_head FROM surveys WHERE survey_id = $survey_id),$branch)", $wbes, __FILE__, __LINE__);
-    $list_id = pg_result($result, 0, 0);
-    if (!$list_id) return;
-
-    $result = db_exec("
-      SELECT c.component_id, c.type, l.ordinal
-      FROM list_items AS l, components AS c
-      WHERE list_id = $list_id AND c.component_id = l.item_id
-      ORDER BY type, ordinal
-    ", $wbes, __FILE__, __LINE__);
-
+    SELECT $branches, $depth FROM surveys WHERE survey_id = $survey_id;
+    $revision = list_getrevision($branches);
+    
+    $list_id = $revision[$depth*3 + 1];
+    
+    $result = 
+      SELECT c.component_id, c.type
+      FROM list_items AS li
+      INNER JOIN components AS c ON c.component_id = li.item_id
+      WHERE list_id = $list_id
+      ORDER BY type,ordinal;
+    
     $n = pg_numrows($result);
     $lasttype = false;
     $ordinals = $components = $array();
@@ -76,97 +66,70 @@ class Survey
       else
       {
         if ($lasttype !== false)
-          Component_Factory($this->components, $components, $ordinals);
+          $component_factory($this->components, $ids, $ordinals, $revision);
         $components = array($component_id);
         $ordinals = array($ordinal);
       }
       $lasttype = $type;
     }
-
+    
     if ($lasttype !== false)
-      Component_Factory($this->components, $components, $ordinals);
+      $component_factory($this->components, $ids, $ordinals, $revision);
   }
-
-  function save($b1, $r1, $b2, $r2)
+  
+  function save($link_id, $depth);
   {
-    $sql = "";
-    reset($this->components)
-    while($list($k, $v) = each($this->components))
-      $sql .= $c->save($this->branch)
+    $revision = SELECT list_getrevision($this->list_id);
+    
+    SELECT $branches FROM links WHERE link_id = $link;
+    foreach($branches AS $k => $v)
+      if ($v != $revision[$k * 3 + 1])
+        return false;                        // security breach (invalid $this->list_id)
+ 
+    if (count($revision) + 3 == $depth * 3)  // might need to add new branch
+      $b = list_newbranch($depth);           // get a new branch number
+    else if (count($revision) == $depth * 3) // proper depth
+      $b = false;
+    else                                    
+      return false;                          // security breach
+    
 
+    BEGIN TRANSACTION;
+    SELECT $branches FROM links WHERE link = $link_id FOR UPDATE; // lock
+
+    if (!$b || count($branches) == $depth) // branch already added
     {
+      primary = secondary = list_getrevision($branches);
+      primary[-1] += 1;
     }
-    
-    oldlist := select list_id from lists where b1 = $b1, r1 = $r1, b2 = $b2, r2 = $r2;
-    
-    start transaction
-      if ($b2 == 0)
-      {
-        // lock rows to serialze list updates on this branch (is this lock too broad?)
-        SELECT list_id FROM lists WHERE b1 = $b1 AND r1 >= r1 AND b2 = 0 FOR UPDATE;
- 
-        newr1 := SELECT MAX(r1)+1 FROM lists WHERE b1 = $b1 AND b2 = 0;
-        INSERT INTO lists (b1, r1, b2, r2) VALUES ($b1, $newr1, 0, 0);
-        newlist := currval(list_ids);
-        
-        foreach($components as $comp)
-          $comp->save(newlist, ordinal, $newr1, $b2 = 0, $r2 = 0)
-        
-        if (newr1 > $r1 + 1)
-        {
-          common = select listid where (b1 = $b1, r1 = $r1, b2 = 0);
-          secondary = select listid where b1 = $b1, $r1 = newr1 - 1, $b2 = 0);
-          primary = newlist
-          insert into lists(b1,r1,b2,r2,common,merged) values($b1, newr1 + 1, 0,0, common,secondary);
-          select list_join(common,primary, secondary, curval('list_id');
-        }
-      }
-      else // b2 != 0
-      {
-        if (b2 == -1)
-        {
-          r2 = 0;
-          SELECT branch, link_id FROM links WHERE survey_id = $survey_id AND topic_id = $topic_id FOR UPDATE;
-          IF branch = 0 THEN
-            b2 = branch
-          ELSE  
-            -- this next line is potentially a bottleneck, causes branch additions to be
-            -- needlessly serialized. it could be placed in a separate transaction...
-            UPDATE lists SET b2 = b2 + 1 WHERE $b1 = $b1 AND r1 IS NULL;
-            b2 := select b2 from lists where $b2
-            UPDATE links SET branch = b2 WHERE link_id = $link_id
-          END IF
-        }
-        
-        // lock rows to serialize list updates on this branch
-        SELECT list_id FROM lists WHERE b1 = $b1 AND r1 = $r1 AND b2 = $b2 and r2 >=  $r2 FOR UPDATE;
+    else if (count($branches) == $depth - 1)) // need to add a new branch
+    {
+      $branches[] = $b;
+      UPDATE links SET branches = $branches;
 
+      primary = secondary = $revision;
+      primary[] = 0;
+      primary[] = $b; 
+      primary[] = 1;
+    }
+    else // this should never happen  
+    { 
+      ROLLBACK; return false;
+    } 
 
- 
-        newr2 := SELECT COALESCE(MAX(r2),0) + 1 FROM lists WHERE b1 = $b1 AND r1 = r1 AND b2 = b2
-        INSERT INTO lists (b1, r1, b2, r2) VALUES ($b1, $newr1, 0, 0);
-        newlist := currval(list_ids);
-        
-        foreach($components as $comp)
-          $comp->save(newlist, ordinal, $newr1, $b2 = 0, $r2 = 0)
-        
-        if (newr2 > $r2 + 1)
-        {
-          common = select listid where (b1 = $b1, r1 = $r1, b2 = 0);
-          secondary = select listid where b1 = $b1, $r1 = newr1 - 1, $b2 = 0);
-          primary = newlist
-          insert into lists(b1,r1,b2,r2,common,merged) values($b1, newr1 + 1, 0,0, common,secondary);
-          select list_join(common,primary, secondary, curval('list_id');
-        }      
-      }
-      
-      
+    INSERT INTO lists (parent, branch, revision) VALUES (primary[-6], primary[-2], primary[-1]);
+    primary[-3] := currval(list_ids);
+    reset($this->components);
+    while(list($k) = $each($this->components))
+      $this->components->save(primary);
+
+    IF (revision[-3] != secondary[-3]) THEN
+      INSERT INTO lists (parent, branch, revision) VALUES (primary[-6], primary[-2], primary[-1] + 1);          
+      merge(revision[-3],primary[-3],secondary[-3],currval(list_ids));
+    END IF;
     
-    end transaction;
- 
-    ... 
-
-    return pg_query($sql,$db,__FILE__, __LINE__) ? true : false;
+    COMMIT;
+    return true;    
   }
 }
 
