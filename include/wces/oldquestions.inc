@@ -1,11 +1,5 @@
 <?
 
-// XXX: This version of the TA component does not
-// use the lists of TAs stored in the database.
-// An incompatible TA component which does do this
-// was added on the fall-2002 branch in revision 1.9.2.2
-// Changes from that revision need to be merged in here.
-
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");
 
@@ -17,7 +11,7 @@ define("TAWidget_save",1);
 define("TAWidget_saveand",2);
 define("TAWidget_cancel",3);
 
-$TAREVISION = 42;
+$TAREVISION = 42; $TAITEM = 40; $TABRANCH = 40;
 // insert into revisions(revision_id, type, branch_id, revision) values (42, -1, 40,-1);
 //
 // CREATE TABLE ta_ratings
@@ -63,9 +57,11 @@ $TAVALUES = array
 
 class TARating
 {
+  var $user_id = null;
   var $name; //string response
   var $comments; //string response
   var $answers; // array of
+  
 
   function TARating($name = null, $comments = null, $answers = array())
   {
@@ -76,14 +72,24 @@ class TARating
 
   function save($parent)
   {
-    global $TAVALUES, $TAQUESTIONS, $TAREVISION, $wces;
+    global $TAVALUES, $TAQUESTIONS, $TAREVISION, $TAITEM, $wces;
     wces_connect();
 
     $name = nullquot($this->name);
     $comments = nullquot($this->comments);
     
-    $bsql = "INSERT INTO ta_ratings(revision_id, parent, name, comments";
-    $msql = ") VALUES ($TAREVISION, $parent, $name, $comments";
+    if ($this->user_id)
+    {
+      $user_id = (int)$this->user_id; 
+      $name = 'NULL';
+    }
+    else
+    {
+      $user_id = 'NULL'; 
+    }
+    
+    $bsql = "INSERT INTO ta_ratings(revision_id, item_id, parent, name, comments, user_id";
+    $msql = ") VALUES ($TAREVISION, $TAITEM, $parent, $name, $comments, $user_id";
     $esql = ")";
 
     foreach($TAQUESTIONS as $column => $text)
@@ -119,6 +125,7 @@ class TaWidget extends ParentWidget
   {
     $this->ParentWidget($name, $parent);
     $this->event =& new EventWidget('event', $this);
+    $this->parent =& $parent;
   }
 
   function loadRating($taRating)
@@ -141,6 +148,15 @@ class TaWidget extends ParentWidget
 
     $this->taRating->comments  = $this->readValue('comments');
     $this->taRating->name = $this->readValue('name');
+
+    $user_id = $this->readValue('user_id');
+    if (isset($user_id))
+      $this->taRating->user_id = strlen($user_id) ? (int)$user_id : NULL;
+
+    if (!($this->taRating->name || $user_id))
+    {
+      $this->errors["name"] = "Missing TA Name"; 
+    }
     
     foreach($TAQUESTIONS as $fieldname => $text)
     {
@@ -163,7 +179,6 @@ class TaWidget extends ParentWidget
         $this->done = false;
       }
     }
-    print("<h5>done = " . (int)$this->done . "</h5>");
   }
 
   function displayHidden()
@@ -174,7 +189,7 @@ class TaWidget extends ParentWidget
   
   function display()
   {
-    global $TAQUESTIONS, $TAVALUES;
+    global $TAQUESTIONS, $TAVALUES, $wces;
 
     if ($this->showErrors)
     {
@@ -185,8 +200,49 @@ class TaWidget extends ParentWidget
       print("</ul>\n");
     }
 
-    print("<p><strong>Enter a TA Name:</strong> <input name=\"" . $this->name("name") . "\" size=25 value=\"" . htmlspecialchars($this->taRating->name) . "\"><br>\n");
-    print("<font size=-1>(Leave blank to rate all TA's together)</font></p>");
+    $dusers = array();
+    foreach ($this->parent->tas as $k => $r)
+    {
+      if ($this->index == $k) continue;
+      if ($r->user_id) $dusers[] = $r->user_id;
+    }
+
+    if (count($dusers))
+      $dcond = ' AND e.user_id NOT IN (' . implode($dusers, ',') . ')';
+    else
+      $dcond = '';
+
+    wces_connect();
+    $r = pg_go("
+      SELECT e.user_id, u.firstname, u.lastname FROM enrollments AS e
+      INNER JOIN users AS u USING (user_id)
+      WHERE e.class_id = {$this->parent->class_id} AND e.status & 2 <> 0 $dcond
+    ", $wces, __FILE__, __LINE__);
+    
+    
+    $text = "TA Name";
+    if ($this->showErrors && isset($this->errors['name'])) $text = "<font color=red>$text</font>"; 
+    
+    print("<p><strong>$text</strong></p>\n");
+    print("<blockquote>\n");
+    $n = pg_numrows($r);
+    if ($n > 0)
+    {
+      $fname = $this->name('user_id');
+
+      for ($i = 0; $i < $n; ++$i)
+      {
+        $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
+        $selected = $row['user_id'] == $this->taRating->user_id ? " checked" : "";
+        $name = trim("$row[firstname] $row[lastname]");
+        print("<input type=radio name=\"$fname\" id=\"$fname$i\" value=\"$row[user_id]\"$selected><label for=\"$fname$i\">$name</label><br>\n");        
+      }
+      $selected = $this->taRating->user_id === 0 ? " checked" : "";
+      print("<input type=radio name=\"$fname\" id=\"$fname$i\" value=\"0\" $selected><label for=\"$fname$i\">Other (please specify)</label>\n");        
+    }
+    print("<input name=\"". $this->name('name') . "\" size=25 value=\"" . htmlspecialchars($this->taRating->name) . "\">\n");
+    
+    print("</blockquote>\n");
 
     foreach($TAQUESTIONS AS $key => $text)
     {
@@ -219,9 +275,10 @@ class TaSurvey extends StatefullWidget
   var $tas = array();
   var $taWidget; 
 
-  function TaSurvey($name, &$parent)
+  function TaSurvey($class_id, $name, &$parent)
   {
     $this->StatefullWidget($name, $parent);
+    $this->class_id = $class_id;
   }
 
   function & handleEvent($event, $param, $isNew)
@@ -229,9 +286,8 @@ class TaSurvey extends StatefullWidget
     if ($event == OldSurvey_taedit)
     {
       $this->taWidget =& new TaWidget('taWidget', $this);
-      
+      $this->taWidget->index = is_numeric($param) ? $param : -1;
       $this->taWidget->loadRating(isset($this->tas[$param]) ? $this->tas[$param] : new TaRating);
-      print("<h5>isNew = " . (int)$isNew . "</h5>");
       $this->loadChild($this->taWidget, $isNew);
   
       if ($this->taWidget->save)
@@ -260,11 +316,8 @@ class TaSurvey extends StatefullWidget
   function loadState($new)
   {
     assert(isset($new));
+    if (!$new) $this->tas = unserialize($this->readValue('tas'));    
     StatefullWidget::loadState($new);
-    if ($new) return;
-    
-    $this->tas = unserialize($this->readValue('tas'));
-    assert(is_array($this->tas));
   }
 
   function save($parent)
@@ -285,7 +338,6 @@ class TaSurvey extends StatefullWidget
         $success = false;
       }
     }
-    $this->done = true;
     return $success;
   }
 
@@ -314,7 +366,19 @@ class TaSurvey extends StatefullWidget
       {
         print("<tr>\n  <td>");
 
-        $taname = $value->name ? $value->name : "ALL TAs";
+        if ($value->user_id)
+        {
+          global $wces;
+          wces_connect();
+          $r = pg_go("
+            SELECT btrim(firstname || ' ' || lastname) AS name 
+            FROM users WHERE user_id = {$value->user_id}
+          ", $wces, __FILE__, __LINE__);
+          $taname = pg_result($r, 0, 0);
+        }
+        else
+          $taname = $value->name ? $value->name : "??";
+
         print("<table cellspacing=0 cellpadding=1 border=1 bordercolor=black RULES=NONE FRAME=BOX>\n");
         print("<tr><td colspan=2 bgcolor=black background=\"${wces_path}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
         
