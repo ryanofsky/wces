@@ -781,7 +781,7 @@ class ChoiceWidget extends ComponentWidget
     global $wbes;
 
     $result = pg_go("
-      INSERT INTO choice_responses(revision_id, parent) VALUES ({$this->component->revision_id}, $parent);
+      INSERT INTO choice_responses(revision_id, item_id, parent) VALUES ({$this->component->revision_id}, {$this->component->item_id}, $parent);
       SELECT currval('response_ids');
     ", $wbes, __FILE__, __LINE__);
 
@@ -805,9 +805,11 @@ class ChoiceWidget extends ComponentWidget
         else
           $answer = quot($a);
 
+        $q =& $this->component->questions[$i];
+
         $success = $success && pg_go("
-          INSERT INTO $table(revision_id, parent, answer, other)
-          VALUES ({$this->component->question_ids[$i]}, $nparent, $answer, '$other');
+          INSERT INTO $table(revision_id, item_id, parent, answer, other)
+          VALUES ($q->revision_id, {$q->item_id}, $nparent, $answer, '$other');
         ", $wbes, __FILE__, __LINE__);
       }
     }

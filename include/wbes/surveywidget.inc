@@ -40,13 +40,13 @@ class SurveyWidget extends ParentWidget
   // $abc =& new SurveyWidget(...);
   // $abc->ta =& new TASurvey(...);
 
-  function SurveyWidget($item_id, $specialization_id, $user_id, $question_period_id, $name, &$parent)
+  function SurveyWidget($item_id, $specialization_id, $user_id, $topic_id, $name, &$parent)
   {
     $this->ParentWidget($name, $parent);
     $this->item_id            = (int)$item_id;
     $this->specialization_id  = (int)$specialization_id;
     $this->user_id            = (int)$user_id;
-    $this->question_period_id = (int)$question_period_id;
+    $this->topic_id = (int)$topic_id;
     $this->event =& new EventWidget("event", $this);
   }
 
@@ -115,22 +115,23 @@ class SurveyWidget extends ParentWidget
   {
     global $wbes, $_POST, $server_feedback;
 
-    $anonymous = $this->anonymous;
     global $wbes;
 
     $this->showErrors = true;
     foreach(array_keys($this->questionWidgets) as $key)
       if (count($this->questionWidgets[$key]->errors) > 0) return;
 
+    $s =& $this->survey;
+
     wbes_connect();
     $sql = "BEGIN;\n";
-    if ($anonymous)
+    if ($this->anonymous)
     {
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, response_id, specialization_id, user_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->specialization_id, $this->user_id);\n";
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, date, specialization_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->specialization_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, item_id, topic_id, response_id, specialization_id, user_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, NULL, $this->specialization_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, item_id, topic_id, date, specialization_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, NULL, $this->specialization_id);\n";
     }
     else
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, specialization_id, user_id) VALUES ({$this->survey->orig_id}, $question_period_id, $this->specialization_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, item_id, topic_id, specialization_id, user_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, $this->specialization_id, $this->user_id);\n";
 
     $sql .= "SELECT currval('response_ids')";
     $result = pg_go($sql, $wbes, __FILE__, __LINE__);
@@ -149,8 +150,9 @@ class SurveyWidget extends ParentWidget
     //
     // CREATE TABLE safe_backup (
     //   user_id INTEGER,
+    //   topic_id INTEGER,
+    //   item_id INTEGER,
     //   specialization_id INTEGER,
-    //   question_period_id INTEGER,
     //   date DATETIME DEFAULT 'now',
     //   form_vals TEXT
     // );
@@ -158,8 +160,8 @@ class SurveyWidget extends ParentWidget
     if ($this->backup)
     {
       $failure = $failure || !pg_go("
-        INSERT INTO safe_backup (user_id, specialization_id, question_period_id, form_vals)
-        VALUES ($this->user_id, $this->specialization_id, $this->question_period_id, $fields)
+        INSERT INTO safe_backup (user_id, topic_id, item_id, specialization_id, form_vals)
+        VALUES ($this->user_id, $this->topic_id, $this->item_id, $this->specialization_id, $fields)
       ", $wbes, __FILE__, __LINE__);
     }
 
@@ -205,6 +207,7 @@ class SurveyWidget extends ParentWidget
       {
         $q = &$this->questionWidgets[$i];
         $q->showErrors = true;
+        if (isset($q->errors))
         foreach($q->errors as $error)
           $errortext .= "  <li>$error</li>\n";
       }

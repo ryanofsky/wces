@@ -88,6 +88,7 @@ class TextResponseEditor extends ComponentEditor
 
   function loadInitialState()
   {
+    ComponentEditor::loadInitialState();
     $this->rows->text = $this->component->rows;
     $this->cols->text = $this->component->cols;
     $this->labelAlign->selected = $this->component->labelAlign;
@@ -168,8 +169,8 @@ class TextResponseWidget extends ComponentWidget
 
     if ($t)
       return (boolean) pg_go("
-        INSERT INTO textresponse_responses(revision_id, parent, rtext)
-        VALUES ({$this->component->revision_id}, $parent, '$t')
+        INSERT INTO textresponse_responses(revision_id, item_id, parent, rtext)
+        VALUES ({$this->component->revision_id}, {$this->component->item_id}, $parent, '$t')
       ", $wbes, __FILE__, __LINE__);
     else
       return true;
