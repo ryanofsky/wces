@@ -70,36 +70,51 @@ class CheckBox extends FormWidget
 
 class RadioButton extends FormWidget
 { 
-  var $items;
   var $checked;
+  var $exclusive;
   
-  function RadioButton($items,$prefix,$form,$formmethod)
+  function RadioButton($exclusive, $prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
-    $this->items = $items;
+    $this->exclusive = $exclusive;
   }
   
   function display($index, $params="")
   {
-    $n = '"' . $this->prefix . '"';
+    if (strlen($params)) $params = " $params";
+    $n = $this->exclusive ? "\"{$this->prefix}\"" : "\"{$this->prefix}[]\"";
+    
     if ($index === true)
     {
-      $v = '"' . $this->checked . '"';
-      print("<input type=hidden name=$n value=$v$params>");
+      if ($this->exclusive && isset($this->checked))
+        print("<input type=hidden name=$n value=\"{$this->checked}\"$params>");
+      else if (!$this->exclusive && is_array($this->checked))
+        foreach($this->checked as $v)
+          print("<input type=hidden name=$n value=$v$params>");    
     }      
     else
     {
       $i = '"' . $this->prefix . '_' . $index . '"';
       $v = '"' . $index . '"';
+      if ($this->exclusive)
+      {
+        $t = "radio";
+        $c = $this->checked == $index ? " checked" : "";
+      }
+      else
+      {
+        $t = "checkbox";
+        $c = in_array($index, $this->checked) ? " checked" : "";
+      }
       if ($params) $params = " $params";
-      print("<input type=radio name=$n value=$v id=$i$params" . ($this->checked == $index ? " checked" : "") . ">");
+      print("<input type=$t name=$n value=$v id=$i$params$c>");
     }  
   }
 
-  function displaylabel($index,$params = "")
+  function displaylabel($index, $text, $params = "")
   {
     $i = '"' . $this->prefix . '_' . $index . '"';
-    print("<label for=$i $params>" . $this->items[$index] . "</label>");
+    print("<label for=$i $params>$text</label>");
   }
   
   function loadvalues()
