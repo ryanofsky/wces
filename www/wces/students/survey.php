@@ -10,6 +10,7 @@ require_once("wbes/component_heading.inc");
 require_once("wbes/component_choice.inc");
 require_once("wbes/component_textresponse.inc");
 require_once("wbes/component_pagebreak.inc");
+require_once("wces/component_abet.inc");
 
 login_protect(login_student);
 
@@ -39,7 +40,8 @@ if ($class_id)
       new TextResponseFactory(),
       new TextFactory(),
       new HeadingFactory(),
-      new PageBreakFactory()
+      new PageBreakFactory(),
+      new AbetFactory()
     );
     $q = new SurveyWidget($topic_id, 1, $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
     $q->loadvalues();    
@@ -59,7 +61,33 @@ if ($class_id)
   else
   {
     page_top("Student Survey");
+    
+    $result = pg_query("
+      SELECT (s.code || to_char(c.code::int4,'0000') || ' ' || c.name) AS classname, p.firstname, p.lastname
+      FROM classes AS cl
+      INNER JOIN courses AS c USING (course_id)
+      INNER JOIN subjects AS s USING (subject_id)
+      LEFT JOIN enrollments AS e ON e.status = 3 AND e.class_id = cl.class_id
+      LEFT JOIN users AS p ON e.user_id = p.user_id
+      WHERE cl.class_id = $class_id
+    ", $wces, __FILE__, __LINE__);
+    
+    $n = pg_numrows($result);
+    $class = $prof = "";
+
+    for($i = 0; $i < $n; ++$i)
+    {
+      extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
+      $class = $classname;
+      if ($firstname || $lastname)
+      {
+         $prof .= "<br>Professor " . trim("$firstname $lastname");
+      }
+    }
+    print("<h3>$class$prof</h3>");
+    
     print("<form name=f method=post>");
+    print($ISID);
     $q->display();
     print("</form>");
     page_bottom();

@@ -100,7 +100,7 @@ class SurveyWidget extends FormWidget
 
   function save()
   {
-    global $wbes;
+    global $wbes, $HTTP_POST_VARS;
     
     $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
@@ -128,6 +128,25 @@ class SurveyWidget extends FormWidget
     
     foreach(array_keys($this->questionwidgets) as $key)
       $failure = $failure || !$this->questionwidgets[$key]->save($response_id);
+    
+    $fields = "'" . addslashes(serialize($HTTP_POST_VARS)) . "'";
+    
+    // temporary, ensure that even if results not saved correctly, they will still
+    // be recoverable
+    //
+    // CREATE TABLE safe_backup (
+    //   user_id INTEGER,
+    //   topic_id INTEGER,
+    //   question_period_id INTEGER,
+    //   date DATETIME DEFAULT 'now',
+    //   form_vals TEXT
+    // );
+    //
+    
+    pg_query("
+      INSERT INTO safe_backup (user_id, topic_id, question_period_id, form_vals)
+      VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
+    ", $wbes, __FILE__, __LINE__);
     
     if ($failure)
       pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);

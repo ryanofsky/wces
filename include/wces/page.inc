@@ -10,7 +10,7 @@ $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && s
 
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID;
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
@@ -110,9 +110,44 @@ function showhelp(topic)
     page_link("Update Association", "login/profsearch.php");
   }
 
-  if (false && ($status & login_student))
+  if ($status & login_student)
   {
-    // show classes
+    if ($nospace) $nospace = false; else page_spacer();
+    
+    wces_connect();
+    
+    $result = pg_query("
+      SELECT question_period_id, displayname, year, semester
+      FROM semester_question_periods
+      WHERE question_period_id = (SELECT get_question_period())
+    ", $wces, __FILE__, __LINE__);
+
+    extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+    
+    $user_id = login_getuserid();
+    wces_connect();
+    
+    $survey_listing = pg_query("
+      SELECT cl.class_id, (s.code || to_char(c.code::int4,'0000')) AS code, c.name,
+        CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
+      FROM wces_topics AS t
+      INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
+      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id
+      INNER JOIN classes AS cl ON cl.class_id = e.class_id AND cl.year = $year AND cl.semester = $semester
+      INNER JOIN courses AS c USING (course_id)
+      INNER JOIN subjects AS s USING (subject_id)
+      GROUP BY cl.class_id, c.code, s.code, c.name, sr.user_id
+      ORDER BY surveyed, s.code, c.code
+    ", $wces, __FILE__, __LINE__);
+    
+    $n = pg_numrows($survey_listing);
+    
+    for($i = 0; $i < $n; ++$i)
+    {
+      extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
+      if ($surveyed) break;
+      page_link($name, "students/survey.php?class_id=$class_id", $QSID, "");
+    }
   }
 
   if ($nospace) $nospace = false; else page_spacer();
