@@ -531,7 +531,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     // done with header, format individual questions within the set
 
     // get the numbers
-    $sums = array_pad(pg_explode($dist), count($cchoices), 0);
+    $sums = array_pad(pg_explode($dist), count($values), 0);
     
     $dist = false;
     if ($showstats)
