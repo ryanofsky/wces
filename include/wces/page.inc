@@ -8,7 +8,7 @@ $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
-$wces_closed = false;
+$wces_closed = true;
 
 function page_top($title, $minimal = false)
 {
