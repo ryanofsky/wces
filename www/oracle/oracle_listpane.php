@@ -67,7 +67,17 @@ if ($mode == "professors")
   <script>AttachImage('courses','courses_on.gif')</script>
   <% 
 
-  $y = mysql_query("SELECT p.professorid, p.name FROM answersets INNER JOIN classes as cl USING (classid) INNER JOIN professors AS p USING (professorid) GROUP BY p.professorid",$db);
+  $y = mysql_query("
+
+  SELECT p.professorid, p.name
+  FROM answersets AS a
+  INNER JOIN classes as cl USING (classid)
+  INNER JOIN professors AS p USING (professorid)
+  WHERE a.questionperiodid < 6
+  GROUP BY p.professorid
+
+  ",$db);
+
   $plist = array();
   while($row = mysql_fetch_array($y))
     if ($row["name"]) 
@@ -107,7 +117,7 @@ else // $mode == "courses"
   INNER JOIN courses AS c USING (courseid)
   INNER JOIN departments AS d USING (departmentid)
   LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
-  WHERE (a.responses > 0) AND (a.questionsetid = 1)
+  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND (a.questionperiodid < 6)
   GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);
   
   
