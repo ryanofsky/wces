@@ -4,6 +4,10 @@ require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/oracle.inc");
 
+define("PAGE_FULL", 0);
+define("PAGE_PRINTABLE", 1);
+define("PAGE_BARE", 2);
+
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = isset($_SERVER["HTTP_USER_AGENT"]) && substr($_SERVER["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($_SERVER["HTTP_USER_AGENT"], "compatible;") === false;
 
@@ -57,6 +61,8 @@ function page_links()
       page_spacer();
       page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
       page_link("Survey Results",   "professors/seeresults.php", $QSID);
+      page_link("Edit Profile",     "professors/profile.php", $QSID);
+      page_link("Comment On Results", "professors/new_prof.php", $QSID);
       //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
       //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
       //page_link("Edit Profile",     "professors/infoedit.php", $QSID);

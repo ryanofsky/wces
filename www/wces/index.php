@@ -73,6 +73,8 @@ and make the rest of the site accessible to you.
 <ul>
   <li><a href="<?=$wces_path?>professors/surveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
   <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys</li>
+  <li><a href="<?=$wces_path?>professors/profile.php<?=$QSID?>">Edit Profile</a> - Update the biographical information that appears in Oracle</li>
+  <li><a href="<?=$wces_path?>professors/new_prof.php<?=$QSID?>">Comment on Results</a> - Review your courses' longitudinal data</li>
 <? /*
   <li><a href="<?=$wces_path?>professors/respond/multiclasses.php<?=$QSID?>">Survey Responses</a> - Post responses to your survey results</li>
   <li><a href="<?=$wces_path?>professors/respond/historygraph.php<?=$QSID?>">Past Averages</a> - View graphs of past survey averages.</li>
