@@ -62,17 +62,47 @@ your listing and save the association.</p><p>&nbsp;</p>
 
   if ($status & login_student)
   {
+    if (!isset($db)) $db = wces_connect();
+    $userid = login_getuserid();
+    wces_GetCurrentQuestionPeriod($db, $questionperiodid, $description, $year, $semester);
+    
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
-The WCES will open for Midterm Evaluations on Friday, October 6.<p>
-<!-- Choose a class to evaluate from the list below.</p>
-<ul>
-  <li><a href="<?=$wces_path?>students/survey.php?surveyid=1<?=$ASID?>">Survey 1</a></li>
-  <li><a href="<?=$wces_path?>students/survey.php?surveyid=2<?=$ASID?>">Survey 2</a></li>
-</ul>
-<p>Sick of automated emails? Adjust your <a href="<?=$wces_path?>students/optout.php<?=$QSID?>">email settings</a>.</p> -->
+Choose a class to evaluate from the list below.</p>
 <?
+    $classes = db_exec("
+      SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code AS scode, if(cr.userid IS NULL, 0, 1) AS surveyed
+      FROM enrollments AS e
+      INNER JOIN groupings AS g ON e.classid = g.linkid AND g.linktype = 'classes'
+      INNER JOIN classes AS cl ON g.linkid = cl.classid AND year = '$year' AND semester = '$semester'
+      INNER JOIN courses AS c USING (courseid)
+      INNER JOIN subjects AS s USING (subjectid)
+      LEFT JOIN cheesyresponses AS cr ON cr.userid = e.userid AND cr.classid = e.classid AND cr.questionperiodid = '$questionperiodid'
+      WHERE e.userid = '$userid'
+      ORDER BY surveyed, s.code, c.code
+      ", $db, __FILE__, __LINE__);
+    
+    print ("<p>Choose a class link from this list below.</p>");
+    print ("<UL>\n");
+    $found = false;
+    while ($class = mysql_fetch_assoc($classes))
+    {
+      $found = true;
+      $complete = true;
+      extract($class);
+      if ($surveyed)  
+        print ("  <LI>Survey Complete: " . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>\n");
+      else
+      {
+        $complete = false;
+        print ("  <LI><A HREF=\"students/survey.php?classid=$classid\">" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</a></LI>\n");
+      }  
+    }
+    if (!$found) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, check our <a href=\"evaluations.php\">class evaluation listing</a> and email <a href=\"mailto:wces@columbia.edu\">wces@columbia.edu</a> so we can update our database with your information.</LI>");
+    print ("</UL>");
+    
+    print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
   }  
   
   page_bottom();
