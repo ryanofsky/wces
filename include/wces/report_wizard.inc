@@ -110,7 +110,7 @@ class ReportWizard extends Wizard
 
     $this->queries = array(
       CATEGORIES => "SELECT survey_category_id AS id, name FROM survey_categories ORDER BY survey_category_id",
-      QUESTION_PERIODS => "SELECT question_period_id AS id, displayname AS name FROM question_periods ORDER BY question_period_id DESC",
+      QUESTION_PERIODS => "SELECT question_period_id AS id, displayname AS name FROM semester_question_periods ORDER BY question_period_id DESC",
       DEPARTMENTS => "
         SELECT t.department_id AS id, d.code::text || ' - ' || d.name::text AS name
         FROM rwtopics AS t
