@@ -204,11 +204,15 @@ class TextResponseWidget extends ComponentWidget
   function save($parent)
   {
     global $wbes;
-    $t = addslashes($this->response->text);
-    return (boolean) pg_query("
-      INSERT INTO textresponse_responses(revision_id, parent, rtext)
-      VALUES ({$this->component->revision_id}, $parent, '$t')
-    ", $wbes, __FILE__, __LINE__);
+    $t = addslashes(trim($this->response->text));
+    
+    if ($t)
+      return (boolean) pg_query("
+        INSERT INTO textresponse_responses(revision_id, parent, rtext)
+        VALUES ({$this->component->revision_id}, $parent, '$t')
+      ", $wbes, __FILE__, __LINE__);
+    else
+      return true;
   }
   
   function display($hidden = false, $showerrors = false)
