@@ -99,6 +99,12 @@ function showhelp(topic)
     page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
   }
 
+  if ($status & login_deptadmin)
+  {
+    page_spacer();
+    page_link("Reporting Wizard", "administrators/report.php", $QSID);
+  }
+
   if ($status & login_professor)
   {
     if ($status & login_knownprofessor)
