@@ -79,6 +79,8 @@ class TextResponseEditor extends ComponentEditor
   
   function display()
   {
+    global $server_media;
+    
     ComponentEditor::display();
 ?>
 <table>
@@ -88,7 +90,10 @@ class TextResponseEditor extends ComponentEditor
 </tr>
 <tr>
   <td valign=top><strong><? $this->fieldname("Height (rows)",$this->rows->broken); ?></strong></td>
-  <td><?$this->rows->display(false);?></td>
+  <td>
+    <?$this->rows->display(false);?>
+    <a href="javascript:showhelp('textsize')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
+  </td>
 </tr>
 <tr>
   <td valign=top><strong><? $this->fieldname("Width (columns)",$this->cols->broken); ?></strong></td>
