@@ -3,192 +3,262 @@
 define("WIDGET_POST",1);
 define("WIDGET_GET",2);
 
-class Widget //abstract
-{
-  var $prefix;
-  
-  function Widget($prefix)
-  {
-    $this->prefix = $prefix;
-  }
-  
-  function display()
-  {
-    assert(0);
-  }
-  
-  function dumpscript()
-  {
-    assert(0);
-  }
-}
+/*
 
-class FormWidget
+The widget separator should have the following properties
+
+1) It shouldn't be a legal character in an identifier. This eliminates
+   the letters, numbers, and the underscore.
+
+2) It can't be one of the characters that gets mangled by PHP's variable
+   parsing routine. The eliminates the period symbol and the space and
+   the square brackets []. (If it weren't for this condition,
+   period would be perfect, since it has the right connotation and
+   meets all the other requirements.)
+
+3) To save space and make the html more transparent, the characters
+   shouldn't need to be encoded in html or URLs. This eliminates
+   the bizarre ascii characters, spaces, and <">#%&?+=
+
+4) At this point what is left is: !$'()*+,-/:;\^`{|}~
+   But of these, the only ones that internet explorer and netscape
+   won't escape when url encoding form field names are: *-
+*/
+
+define("WIDGET_SEPARATOR", "-");
+define("WIDGET_FORM",    0x1);
+define("WIDGET_URL",     0x2);
+define("WIDGET_BIGURL",  0x4);
+define("WIDGET_SESSION", 0x8);
+
+function quote($str)
 {
-  var $prefix;
+  return '"' . htmlspecialchars($str) . '"';
+};
+
+class Widget
+{
+  var $name;
   var $form;
-  var $formmethod;
-    
-  function FormWidget($prefix,$form,$formmethod)
+
+  function Widget($name, &$parent)
   {
-    $this->prefix = $prefix;
-    $this->form = $form;
-    $this->formmethod = $formmethod;
+    $this->name = $this->joinName($parent->name, $name);
+    $this->form = &$parent->form;
+    $parent->addChild($this);
   }
-  
-  function loadvalues()
+
+  function joinName($str1, $str2)
   {
-    assert(0);
+    if (strlen($str1) == 0)
+      return $str2;
+    else if (strlen($str2) == 0)
+      return $str1;
+    else
+      return $str1 . WIDGET_SEPARATOR . $str2;
   }
-  
-  function display($hidden)
+
+  function scriptName($str)
   {
-    assert(0);
+    static $i = 0;
+    ++$i;
+    $s = $this->fullName($str);
+    return str_replace(WIDGET_SEPARATOR, '_', $s) . '_' . $i;
   }
-  
-  function dumpscript()
+
+  function fullName($str)
   {
+    return $this->joinName($this->name, $str);
   }
-  
-  function loadattribute($attrname = "")
+
+  function readValue($name = "")
   {
     global $HTTP_POST_VARS, $HTTP_GET_VARS;
-    $attrname = $attrname ? $this->prefix . "_$attrname" : $this->prefix;
-    if ($this->formmethod == WIDGET_GET)
-      return isset($HTTP_GET_VARS[$attrname]) ? $HTTP_GET_VARS[$attrname] : NULL;
-    else if ($this->formmethod == WIDGET_POST)
-      return isset($HTTP_POST_VARS[$attrname]) ? $HTTP_POST_VARS[$attrname] : NULL;
+    $full = $this->fullName($name);
+    if (isset($HTTP_POST_VARS[$full]))
+      return $HTTP_POST_VARS[$full];
+    else if (isset($HTTP_GET_VARS[$full]))
+      return $HTTP_GET_VARS[$full];
     else
-      assert(0);
+      return NULL;
   }
-  
-  function printattribute($attrname,$value)
+
+  function printValue($name, $value, $type = WIDGET_FORM)
   {
     if (!isset($value)) return;
-    if ($attrname) $attrname = "_$attrname";
-    $attrname = htmlspecialchars($this->prefix . $attrname);
-    $i = htmlspecialchars($value);
-    print("<input type=hidden name=\"$attrname\" value=\"$i\">\n");
+
+    $full = $this->fullName($name);
+    if ($type & WIDGET_FORM)
+      print('<input type=hidden name=' . $full . ' value="'
+        . htmlspecialchars($value) . '">');
+
+    if ($type & WIDGET_URL)
+      $this->form->addUrlVar($full, $value);
+
+    if ($type & WIDGET_BIGURL)
+      die("Feature Not Implemented Yet at " . __FILE__ . ":" . __LINE__);
+
+    if ($type & WIDGET_SESSION)
+      die("Feature Not Implemented Yet at " . __FILE__ . ":" . __LINE__);
+
   }
-  
-  function printarrayattribute($attrname,&$value)
+
+  function printArrayValue($name, $value)
   {
-    if (!isset($value)) return;
-    if ($attrname) $attrname = "_$attrname";
-    $attrname = htmlspecialchars($this->prefix . $attrname . "[]");
-    foreach($value as $item)
-      print("<input type=hidden name=\"$attrname\" value=\"$item\">\n");
+    if (!is_array($value)) return;
+    $full = $this->fullName($name) . '[]';
+    foreach($value as $v)
+      print('<input type=hidden name=' . $full . ' value="'
+        . htmlspecialchars($v) . '">');
   }
-  
-  function preserveattribute($attrname = "")
-  {
-    $this->printattribute($attrname,$this->loadattribute($attrname));
-  }
-  
-  function preservearrayattribute($attrname)
-  {
-    if (is_array($a = $this->loadattribute($attrname))) $this->printarrayattribute($attrname, $a);
-  }
+
+  function loadInitialState()
+  {}
+
+  function loadState()
+  {}
+
+  function displayHidden()
+  {}
+
+  function display()
+  {}
+
+  function DumpScript()
+  {}
 }
 
-class ImageButton extends Widget
+class ParentWidget extends Widget
 {
-  var $raisedsrc;
-  var $pushedsrc;
-  var $iparams;
-  var $aparams;
+  var $children = array();
+  var $modalChild = null;
 
-  function ImageButton($href,$raisedsrc,$pushedsrc,$iparams,$aparams,$prefix,$form,$formmethod) //public constructor inherited
+  function ParentWidget($name, &$parent)
   {
-    $this->Widget($prefix,$form,$formmethod);
-    $this->raisedsrc = $raisedsrc;
-    $this->pushedsrc = $pushedsrc;
-    $this->iparams = $iparams;
-    $this->aparams = $aparams;
-    $this->dumpscript();
+    $this->Widget($name, $parent);
   }
 
-  function display($hidden = false)
+  function addChild(&$child)
   {
-    if ($hidden) return;
-    ?><a onmousedown="button_push('<?=$this->prefix?>')" onmouseup="button_unpush('<?=$this->prefix?>')" onmouseout="button_unpush('<?=$this->prefix?>')" <?=$this->aparams?>"><img name="<?=$this->prefix?>" src="<?=$this->raisedsrc?>" border=0 <?=$this->iparams?>"></a><script>AttachPushed('<?=$this->prefix?>','<?=$this->pushedsrc?>')</script><?  
+    $this->children[] =& $child;
   }
-  
-  function dumpscript()
-  {
-    static $dumped = false;
-    if ($dumped) return; else $dumped = true;
 
-    $str = <<<EOS
-<!-- Begin ImageButton Script -->
-<script>
-<!--
-
-  var happyrollover = document.images && window.Image ? true : false;
-  var happytree = happyrollover && RegExp && (document.all || document.getElementById) ? true : false;
-  var detect = navigator.userAgent.toLowerCase();
-  var refreshbug =  (detect.indexOf('compatible') < 0 && detect.charAt(8) == '5') ? true : false; // check for mozilla
-
-  // fix for Netscape 3 string object
-  if (happyrollover && !String.prototype.slice) String.prototype.slice = new Function("start","len","if(len<0 || len>this.length) len = this.length; var ret = new String(); for(var i = start; i < len; i++) ret += this.charAt(i); return ret");
-
-  function getImage(oldimage,filename)
+  function loadChild(&$child, $new)
   {
-    var p = oldimage.src.lastIndexOf("/");
-    var q = oldimage.src.lastIndexOf("\\\\");
-    var i = new Image();
-    i.src = oldimage.src.slice(0,(p>q && p>0) ? p+1 : (q>0)?q+1 : 0) + filename;;
-    return i;
-  }; 
-
-  function AttachPushed(img, filename)
-  {
-    if(happyrollover)
-    {
-      var i = document.images[img];
-      i.flipimage = getImage(i,filename);
-      i.pushed = false;
-    };
-  };
-  
-  function button_push(img)
-  {
-    if(happyrollover)
-    {
-      var i = document.images[img];
-      if (!i.pushed)
-      {  
-        i.pushed = true;
-        var temp = i.src;
-        i.src = i.flipimage.src;
-        i.flipimage.src = temp;
-      }; 
-    };  
-  };
-  
-  function button_unpush(img)
-  {
-    if(happyrollover)
-      window.setTimeout("button_realunpush('" + img + "')", 0);  // defeat ie's lazy refresh
-  };
-  
-  function button_realunpush(img)
-  {
-    var i = document.images[img];
-    if (i.pushed)
-    {
-      i.pushed = false;
-      var temp = i.src;
-      i.src = i.flipimage.src;
-      i.flipimage.src = temp;
-    };   
-  };
-// -->
-</script>
-<!-- End ImageButton Script -->
-EOS;
-    headPrint($str);
+    if ($new) $child->loadInitialState(); else $child->loadState();
+    if (isset($child->modal) && $child->modal) $this->modalChild = &$child;
   }
-}
+
+  function loadInitialState()
+  {
+    foreach(array_keys($this->children) as $k)
+      $this->loadChild($this->children[$k], true);
+  }
+
+  function loadState()
+  {
+    foreach(array_keys($this->children) as $k)
+      $this->loadChild($this->children[$k], false);
+  }
+
+  function display()
+  {
+    if (isset($this->modalChild))
+    {
+      foreach(array_keys($this->children) as $k)
+      {
+        $c = &$this->children[$k];
+        if (!isset($c)) continue;
+        if (isset($c->modal) && $c->modal) $c->display(); else $c->displayHidden();
+      }
+      $this->printHidden();
+    }
+    else
+      $this->printVisible();
+    $this->printState();
+  }
+
+  function displayHidden()
+  {
+    foreach(array_keys($this->children) as $k)
+    {
+      $c = &$this->children[$k];
+      if (!isset($c)) continue;
+      $c->displayHidden();
+    }
+    $this->printHidden();
+    $this->printState();
+  }
+
+  function printState()
+  {}
+
+  function printHidden()
+  {}
+
+  function printVisible()
+  {}
+
+};
+
+class Form extends ParentWidget
+{
+  var $formName; // name of form, used for javascripting
+  var $pageName; // name of current page, used for linking
+  var $isStale = false; // true if this page load is not the first
+  var $names = array(); // array of alternate names for isStale
+  var $urlVars = "";
+
+  function addUrlVar($name, &$value)
+  {
+    if ($this->urlVars) $this->urlVars .= "&";
+    $this->urlVars .= "$name=" . urlencode($value);
+  }
+
+  function getUrlVars($needStale = true)
+  {
+    if ($needStale)
+    {
+      if (strlen($this->urlVars) == 0)
+        return "isStale=1";
+      else
+        return "$this->urlVars&isStale=1";
+    }
+    else
+      return $this->urlVars;
+  }
+
+  function Form($formName = null, $pageName = null)
+  {
+    global $server_url;
+    $this->form = &$this;
+    $this->name = "";
+    $this->formName = $formName;
+    $this->pageName = isset($pageName) ? $pageName : $server_url->toString(false, true, false);
+  }
+
+  function loadState($isStale = null)
+  {
+    global $HTTP_GET_VARS;
+
+    $this->isStale = $this->readValue('isStale')
+      || (count(array_intersect($this->names,array_keys($HTTP_GET_VARS)))!= 0);
+
+    if ($this->isStale)
+      ParentWidget::loadState();
+    else
+      ParentWidget::loadInitialState();
+  }
+
+  function displayHidden()
+  {
+    $this->printValue('isStale', 1);
+  }
+
+  function display()
+  {
+    $this->printValue('isStale', 1);
+  }
+};
 
 ?>

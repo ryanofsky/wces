@@ -2,283 +2,628 @@
 
 require_once("widgets/widgets.inc");
 
-class Textbox extends FormWidget
+class Textbox extends Widget
 {
-  var $rows,$cols,$params,$text;
-  
-  function Textbox($rows, $cols, $params, $prefix,$form,$formmethod)
+  var $text = null;
+  var $rows,$cols,$params;
+
+  function Textbox($rows, $cols, $params, $name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->rows = $rows;
-    $this->cols = $cols;
-    $this->params = $params;
-    $this->text = "";
+    $this->Widget($name, $parent);
+    $this->rows = (int)$rows;
+    $this->cols = (int)$cols;
+    $this->params = strlen($params) > 0 ? " $params" : $params;
   }
-  
-  function display($hidden = false)
+
+  function displayHidden()
   {
-    $n = '"' . $this->prefix . '"';
+    $this->printValue("", $this->text);
+  }
+
+  function display()
+  {
     $t = htmlspecialchars($this->text);
-    $s = $this->params ? " " . $this->params : "";
     $r = $this->rows;
     $c = $this->cols;
-    if ($hidden)
-      print("<input type=hidden name=$n value=\"$t\"$s>");
-    else if ($this->rows == 0)
-      print("<input type=text name=$n value=\"$t\" size=$c$s>");
+    $s = strlen($this->params > 0) ? " $this->params" : "";
+
+    if ($this->rows == 0)
+      print("<input type=text name=$this->name value=\"$t\" size=$c$s>");
     else
-      print("<textarea name=$n rows=$r cols=$c$s>$t</textarea>");
+      print("<textarea name=$this->name rows=$r cols=$c$s>$t</textarea>");
   }
-  
-  function loadvalues()
+
+  function loadState()
   {
-    $this->text = $this->loadattribute("");
+    $this->text = $this->readValue();
   }
 };
 
-class CheckBox extends FormWidget
+class CheckBox extends Widget
 {
-  var $checked;
-  
-  function CheckBox($prefix,$form,$formmethod)
+  var $checked = false;
+
+  function CheckBox($name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->checked = false;
+    $this->Widget($name, $parent);
   }
-  
-  function display($hidden = false, $params = "")
+
+  function displayHidden()
   {
-    $n = '"' . $this->prefix . '"';
+    if ($this->checked) $this->printValue("", 1);
+  }
+
+  function display($params = "")
+  {
     if ($params) $params = " $params";
-    if($hidden)
-      print("<input type=hidden name=$n value=" . ($this->checked ? 1 : 0) . ">");
-    else
-      print("<input type=checkbox name=$n id=$n value=1" . ($this->checked ? " checked" : "") . "$params>");
+    print("<input type=checkbox name=$this->name id=$this->name value=1"
+      . ($this->checked ? " checked" : "") . "$params>");
   }
-  
-  function displaylabel($label, $params = "")
+
+  function displayLabel($label, $params = "")
   {
-    $n = '"' . $this->prefix . '"';
-    print("<label for=$n $params>$label</label>");
+    print("<label for=$this->name $params>$label</label>");
   }
-  
-  function loadvalues()
+
+  function loadState()
   {
-    $this->checked = $this->loadattribute("") ? true : false;
-  } 
+    $this->checked = (bool)$this->readValue();
+  }
 }
 
-class RadioButton extends FormWidget
-{ 
-  var $checked;
-  var $exclusive;
-  
-  function RadioButton($exclusive, $prefix,$form,$formmethod)
-  {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->exclusive = $exclusive;
-  }
-  
-  function display($index, $params="")
-  {
-    if (strlen($params)) $params = " $params";
-    $n = $this->exclusive ? "\"{$this->prefix}\"" : "\"{$this->prefix}[]\"";
-    
-    if ($index === true)
-    {
-      if ($this->exclusive && isset($this->checked))
-        print("<input type=hidden name=$n value=\"{$this->checked}\"$params>");
-      else if (!$this->exclusive && is_array($this->checked))
-        foreach($this->checked as $v)
-          print("<input type=hidden name=$n value=$v$params>");    
-    }      
-    else
-    {
-      $i = '"' . $this->prefix . '_' . $index . '"';
-      $v = '"' . $index . '"';
-      if ($this->exclusive)
-      {
-        $t = "radio";
-        $c = $this->checked == $index ? " checked" : "";
-      }
-      else
-      {
-        $t = "checkbox";
-        $c = in_array($index, $this->checked) ? " checked" : "";
-      }
-      if ($params) $params = " $params";
-      print("<input type=$t name=$n value=$v id=$i$params$c>");
-    }  
-  }
-
-  function displaylabel($index, $text, $params = "")
-  {
-    $i = '"' . $this->prefix . '_' . $index . '"';
-    print("<label for=$i $params>$text</label>");
-  }
-  
-  function loadvalues()
-  {
-    $this->checked = $this->loadattribute();
-  }
-};
-
-class DropBox extends FormWidget
-{ 
-  var $items;
-  var $selected;
-  
-  function DropBox($items,$prefix,$form,$formmethod)
-  {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->items = $items;
-    $this->selected = "";
-  }
-  
-  function display($hidden = false, $params="")
-  {
-    $n = '"' . $this->prefix . '"';
-    if ($params) $params = " $params";
-    
-    if ($hidden)
-    {
-      print("<input type=hidden name=$n value=\"" . htmlspecialchars($this->selected) . "\"$params>");
-    }
-    else
-    {
-      print("<select name=$n$params>\n");
-      foreach($this->items as $k => $v)
-      {
-        if ($k == $this->selected)
-          print("  <option value=$k selected>$v\n");
-        else  
-          print("  <option value=$k>$v\n");
-      }
-      print("</select>");
-    }
-  }
-
-  function loadvalues()
-  {
-    $this->selected = $this->loadattribute();
-  }
-};
-
-class ActionButton extends FormWidget
+class RadioButton extends Widget
 {
-  var $action;
-  var $object;
-  
-  function ActionButton($prefix,$form,$formmethod)
+  var $exclusive;
+  var $checked = null;
+
+  function RadioButton($exclusive, $name, &$parent)
   {
-    $this->FormWidget($prefix, $form, $formmethod);
-    $this->action = $this->object = "";
+    $this->Widget($name, $parent);
+    $this->exclusive = (bool)$exclusive;
+    if (!$exclusive) $this->checked = array();
   }
-  
-  function loadvalues() // public abstract
+
+  function displayHidden()
   {
-    $this->object = "";
-    if($this->action = $this->loadattribute(""))
+    if ($this->exclusive && isset($this->checked))
+      $this->printValue("", $this->checked);
+    else if (!$this->exclusive && is_array($this->checked))
+      $this->printArrayValue("", $this->checked);
+  }
+
+  function display($index, $params='')
+  {
+    $n = $this->exclusive ? $this->name : ($this->name . '[]');
+    $i = $this->fullName($index);
+
+    if ($this->exclusive)
     {
-      $p = strrpos($this->action,"-");
-      if ($p !== false)
-      {
-        $this->object = substr($this->action,$p+1);
-        $this->action = substr($this->action,0,$p);
-      }
+      $t = 'radio';
+      $c = $this->checked == $index ? ' checked' : '';
     }
     else
     {
-      global $HTTP_POST_VARS, $HTTP_GET_VARS;
-      if ($this->formmethod == WIDGET_GET) $vars = &$HTTP_GET_VARS; else if ($this->formmethod == WIDGET_POST) $vars = &$HTTP_POST_VARS;
-      $pref = $this->prefix . '-';
-      $l = strlen($pref);
-      foreach($vars as $key => $value)
-      if ($value && $pref == substr($key,0,$l))
+      $t = 'checkbox';
+      $c = in_array($index, $this->checked) ? ' checked' : '';
+    }
+
+    if (strlen($params) > 0) $params = " $params";
+    print("<input type=$t name=$n value=$index id=$i$params$c>");
+  }
+
+  function displayLabel($index, $text, $params = "")
+  {
+    $i = $this->fullName($index);
+    if (strlen($params) > 0) $params = " $params";
+    print("<label for=$i$params>$text</label>");
+  }
+
+  function loadState()
+  {
+    $this->checked = $this->readValue();
+    if (!$this->exclusive && !is_array($this->checked))
+      $this->checked = array();
+  }
+};
+
+class DropBox extends Widget
+{
+  var $selected = null;
+  var $items;
+
+  function DropBox($items, $name, &$parent)
+  {
+    $this->Widget($name, $parent);
+    $this->items = $items;
+  }
+
+  function displayHidden()
+  {
+    $this->printValue("", $this->selected);
+  }
+
+  function display($params = "")
+  {
+    if (strlen($params) > 0) $params = " $params";
+
+    print("<select name=$this->name$params>\n");
+    foreach($this->items as $k => $v)
+    {
+      if ($k == $this->selected)
+        print("  <option value=$k selected>$v\n");
+      else
+        print("  <option value=$k>$v\n");
+    }
+    print("</select>");
+  }
+
+  function loadState()
+  {
+    $this->selected = $this->readValue();
+  }
+};
+
+define('EVENT_WIDGET_SEPARATOR', '*');
+
+class EventWidget extends Widget
+{
+  var $event = null;
+  var $param = null;
+  var $names = array();
+
+  function EventWidget($name, &$parent)
+  {
+    $this->Widget($name, $parent);
+  }
+
+  function setEvent($str)
+  {
+    $p = strrpos($str, EVENT_WIDGET_SEPARATOR);
+    if ($p === false)
+    {
+      $this->event = $str;
+      $this->param = null;
+    }
+    else
+    {
+      $this->event = substr($str, 0, $p);
+      $this->param = substr($str, $p + 1);
+    }
+  }
+
+  function makeEvent($event, $param)
+  {
+    return isset($param) ? ($event . EVENT_WIDGET_SEPARATOR . $param) : $event;
+  }
+
+  function shortName($event, $name)
+  {
+    $this->names[$event] = $name;
+    $this->form->names[] = $name;
+  }
+
+  function getUrl($event, $param)
+  {
+    $hasName = isset($this->names[$event]);
+    $arg = $hasName ? "{$this->names[$event]}=$param"
+      : "$this->name=" . $this->makeEvent($event, $param);
+    $full = $this->form->getUrlVars(!$hasName);
+    return $this->form->pageName . "?$arg" . (strlen($full) ? '&' : '') . $full;
+  }
+
+  function loadState() // public abstract
+  {
+    $v = $this->readValue();
+    if(isset($v) && strlen($v) > 0)
+    {
+      $this->setEvent($v);
+      return;
+    }
+
+    global $HTTP_POST_VARS, $HTTP_GET_VARS;
+    $search = array(&$HTTP_POST_VARS, &$HTTP_GET_VARS);
+
+    $prefix = $this->name . WIDGET_SEPARATOR;
+    $length = strlen($prefix);
+
+    foreach(array_keys($search) as $i)
+    foreach(array_keys($search[$i]) as $j)
+    if ((strlen($j) >= $length) && (substr($j, 0, $length) == $prefix))
+    {
+      $this->setEvent(substr($j,$length));
+      return;
+    };
+
+    foreach($this->names as $event => $name)
+    {
+      if (isset($HTTP_GET_VARS[$name]))
       {
-        $p = strrpos($key,'-');
-        $this->action = substr($key,$l,$p-$l);
-        $this->object = substr($key,$p+1);
+        $this->event = $event;
+        $this->param = $HTTP_GET_VARS[$name];
         return;
       }
     }
   }
 
-  function dumpscript()
+  function displayPersistent()
+  {
+    $this->printValue('', $this->makeEvent($this->event, $this->param));
+  }
+
+  function display($event = null, $param = null)
+  {
+    $this->printValue('', $this->makeEvent($event, $param));
+  }
+
+  function displayButton($label = false, $event, $param = null, $attribs = "")
+  {
+    $n = $this->fullName($this->makeEvent($event, $param));
+    $l = '"' . htmlspecialchars($label) . '"';
+    if (strlen($attribs) > 0) $attribs = " $attribs";
+    print("<input type=submit name=$n value=$l$attribs>");
+  }
+
+  function displayField()
+  {
+    $this->printValue('', ''); 
+  }
+
+  function gethref($event,$object)
+  {
+    return "javascript:EventWidget_sgo('$event','$object','{$this->form->formName}','$this->name');";
+  }
+
+  function DumpScript()
   {
     static $dumped = false;
     if ($dumped) return; else $dumped = true;
-    
+    $as = EVENT_WIDGET_SEPARATOR;
+    $ws = WIDGET_SEPARATOR;
+
     $str = <<<EOD
-<!-- Begin ActionButton Script -->
+<!-- Begin EventWidget Script -->
 <script>
 <!--
-  function ActionButton_go(action,object,actionobject)
+
+  WIDGET_SEPARATOR = '$ws';
+  EVENT_WIDGET_SEPARATOR = '$as';
+
+  function EventWidget_go(event,object,eventObject)
   {
-    //alert(actionobject.name + " set to '" + action + "'");
-    actionobject.value = action + '-' + object;
-    if (actionobject.form.onsubmit) actionobject.form.onsubmit();
-    actionobject.form.submit();
+    //alert(eventObject.name + " set to '" + event + "'");
+    eventObject.value = event;
+    if (object != null) eventObject.value += EVENT_WIDGET_SEPARATOR + object;
+    
+    if (eventObject.length)
+      alert("Warning: An event object has been displayed multiple times on the same page");
+    
+    if (eventObject.form.onsubmit) eventObject.form.onsubmit();
+    eventObject.form.submit();
   }
 
-  function ActionButton_sgo(action,object,form,actionelement)
+  function EventWidget_sgo(event,object,form,eventelement)
   {
-    
-    //alert(document.forms[form][actionelement]);
-    ActionButton_go(action,object,document.forms[form][actionelement]);
+    //alert(document.forms[form][eventelement]);
+    EventWidget_go(event,object,document.forms[form][eventelement]);
   }
 // -->
 </script>
-<!-- End ActionButton Script -->
+<!-- End EventWidget Script -->
 EOD;
     headprint($str);
   }
-
-  function display($label = false, $action = false, $object = false, $attribs = "")
-  {
-    if ($label === false) // trigger an action for the next page load that can be reset by javascript
-    {
-      if ($action === false)
-      {
-        $action = $this->action;
-        $object = $this->object;
-      }
-      $value = $action ? "$action-$object" : "";
-      print("<input type=hidden name=\"$this->prefix\" value=\"$value\">");
-    }  
-    else // display form button that can trigger an action
-    {
-      if ($attribs) $attribs = " $attribs";  
-      print('<input type=submit name="' . $this->prefix . '-' . $action . '-' . $object . '" value="' . $label . '"' . $attribs . '>');
-    }  
-  }
-  
-  function gethref($action,$object)
-  {
-    return "javascript:ActionButton_sgo('$action','$object','$this->form','$this->prefix');";
-  }
 };
 
-class Form extends FormWidget
+/*
+
+The idea behind this class is to factor out repetitive state-management
+code that tended to exist in complex widget classes.
+
+These classes would typically have some kind of menu screen where a selection
+from the menu would result in construction of a new modal widget, which would
+last for a one or more page loads before it was destroyed and the main menu
+screen shown again.
+
+With this class, the logic behind the system no longer needs to be reimplemented.
+Complex menu widgets need only inherit from Widget and write a
+handleEvent() method. The handleEvent() method should look like this:
+
+  function & handleEvent($event, $param, $isNew)
+  {
+    // decide what to do based on the value of $event and $param
+    // if this merits creation of a new modal widget then
+    // return a create that widget and return a reference to it,
+    // otherwise return null.
+  }
+
+When the handleEvent method returns a non-null value, it indicates that
+a new modal Widget has been created and should be recreated on the next
+page load. The modal widget creation always occurs in the handleEvent method.
+In the case of an initial creation, the $isNew parameter will be true, and
+during a recreation it will be false. Recreation at subsequent page loads will
+occur until the modal widget sets its "done" parameter to true or until a future
+call to handleEvent returns a different modal widget that will replace the
+current one.
+
+*/
+
+class StatefullWidget extends ParentWidget
 {
-  var $isstale;
-  
-  function Form($prefix,$form,$formmethod)
+  var $event;
+  var $currentEvent = null;
+  var $currentParam = null;
+  var $newEvent = null;
+  var $newParam = null;
+
+  function StatefullWidget($name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->isstale = false;
+    $this->ParentWidget($name, $parent);
+    $this->event =& new EventWidget("event", $this);
+  }
+
+  function loadState()
+  {
+    ParentWidget::loadState();
+    $this->eventLoop($this->readValue("currentEvent"), $this->readValue("currentParam"), false);
+    $this->eventLoop($this->event->event, $this->event->param, true);
   }
   
-  function loadvalues()
+  function eventLoop($event, $param, $new)
   {
-    $this->isstale = $this->loadattribute("isstale") ? true : false;
+    while(isset($event))
+    {
+      $this->newEvent = $this->newParam = null;
+      $widget =& $this->handleEvent($event, $param, $new);
+      $this->setCurrent($widget, $event, $param);
+      $event = $this->newEvent;
+      $param = $this->newParam;
+      $new = true;
+    } 
   }
   
-  function display()
+  function setCurrent(&$widget, $event, $param)
   {
-    $this->printattribute("isstale",true);
+    if (isset($widget))
+    {
+      if (isset($this->modalChild))
+      {
+        $this->modalChild->modal = false;
+        unset($this->modalChild);
+      }
+
+      if ($widget->done)
+      {
+        $widget->modal = false;
+        $this->currentEvent = null;
+        $this->currentParam = null;
+        $this->modalChild = null;
+      }
+      else
+      {
+        $widget->modal = true;
+        $this->currentEvent = $event;
+        $this->currentParam = $param;
+        $this->modalChild =& $widget;
+      }
+    }
+  }
+
+  function addEvent($event, $param)
+  {
+    $this->newEvent = $event;
+    $this->newParam = $param;
+  }
+
+  function printState()
+  {
+    $this->printValue('currentEvent', $this->currentEvent);
+    $this->printValue('currentParam', $this->currentParam);
   }
 };
 
+class TabbedWidget extends ParentWidget
+{
+  // eventwidget
+  var $event;
+
+  // array all widget-returning events seen so far
+  //   true if widget was modal, false otherwise
+  var $seen = array(); 
+  
+  // references to child widgets corresponding to events
+  var $handled = array();
+  
+  var $currentEvent;
+  
+  function TabbedWidget($name, &$parent)
+  {
+    $this->ParentWidget($name, $parent);
+    $this->event =& new EventWidget('event', $this);
+  }
+  
+  function addEvent($event, $param)
+  {
+    $this->newEvent = $event;
+    $this->newParam = $param; 
+  }
+
+  function setCurrent(&$widget, $event, $setCurrent)
+  {
+    if (isset($widget))
+    {
+      $this->handled[$event] =& $widget;
+      
+      if (!$setCurrent) 
+      {
+        $this->seen[$event] = false;
+        return;
+      }
+      
+      if (isset($this->currentEvent))
+      {
+        $this->seen[$this->currentEvent] = false;
+        $this->currentEvent = null; 
+      }
+      
+      if (isset($this->modalChild))
+      {
+        $this->modalChild->modal = false;
+        unset($this->modalChild);
+      }
+
+      if ($widget->done)
+      {
+        $this->seen[$event] = false;
+        $widget->done = false;
+      }
+      else
+      {
+        $widget->modal = true;
+        $this->currentEvent = $event;
+        $this->seen[$event] = true;
+        $this->modalChild =& $widget;
+      }
+    }
+  }
+
+  function eventLoop($event, $param, $new, $setCurrent)
+  {
+    while(isset($event))
+    {
+      $this->newEvent = $this->newParam = null;
+      if (isset($this->handled[$event]))
+        $widget =& $this->handled[$event];
+      else
+        $widget =& $this->handleEvent($event, $param, $new);
+      $this->setCurrent($widget, $event, $setCurrent);
+      $event = $this->newEvent;
+      $param = $this->newParam;
+      $new = true;
+    } 
+  }
+
+  function loadState()
+  {
+    ParentWidget::loadState();
+    $this->seen = unserialize($this->readValue('seen'));
+
+    foreach($this->seen as $k => $v)
+      $this->eventLoop($k, null, false, $v);
+
+    $this->eventLoop($this->event->event, $this->event->param, true, true);
+  }
+  
+  function printState()
+  {
+    $this->printValue('seen', serialize($this->seen)); 
+  }
+  
+  function printVisible()
+  {
+    foreach(array_keys($this->handled) as $k)
+      $this->handled[$k]->displayHidden();
+  }
+}
+
+class ImageButton extends Widget
+{
+  var $raisedsrc;
+  var $pushedsrc;
+  var $iparams;
+  var $aparams;
+
+  function ImageButton($href,$raisedsrc,$pushedsrc,$iparams,$aparams,$name,&$parent)
+  {
+    ImageButton::DumpScript();
+    $this->Widget($name, $parent);
+    $this->href = $href; //XXX: this parameter never seems to be used
+    $this->raisedsrc = $raisedsrc;
+    $this->pushedsrc = $pushedsrc;
+    $this->iparams = $iparams;
+    $this->aparams = $aparams;
+  }
+
+  function display($hidden = false)
+  {
+    if ($hidden) return;
+    ?><a onmousedown="button_push('<?=$this->name?>')" onmouseup="button_unpush('<?=$this->name?>')" onmouseout="button_unpush('<?=$this->name?>')" <?=$this->aparams?>"><img name="<?=$this->name?>" src="<?=$this->raisedsrc?>" border=0 <?=$this->iparams?>"></a><script>AttachPushed('<?=$this->name?>','<?=$this->pushedsrc?>')</script><?
+  }
+
+  function dumpScript()
+  {
+    static $dumped = false;
+    if ($dumped) return; else $dumped = true;
+
+    $str = <<<EOS
+<!-- Begin ImageButton Script -->
+<script>
+<!--
+
+  var happyrollover = document.images && window.Image ? true : false;
+  var happytree = happyrollover && RegExp && (document.all || document.getElementById) ? true : false;
+  var detect = navigator.userAgent.toLowerCase();
+  var refreshbug =  (detect.indexOf('compatible') < 0 && detect.charAt(8) == '5') ? true : false; // check for mozilla
+
+  // fix for Netscape 3 string object
+  if (happyrollover && !String.prototype.slice) String.prototype.slice = new Function("start","len","if(len<0 || len>this.length) len = this.length; var ret = new String(); for(var i = start; i < len; i++) ret += this.charAt(i); return ret");
+
+  function getImage(oldimage,filename)
+  {
+    var p = oldimage.src.lastIndexOf("/");
+    var q = oldimage.src.lastIndexOf("\\\\");
+    var i = new Image();
+    i.src = oldimage.src.slice(0,(p>q && p>0) ? p+1 : (q>0)?q+1 : 0) + filename;;
+    return i;
+  };
+
+  function AttachPushed(img, filename)
+  {
+    if(happyrollover)
+    {
+      var i = document.images[img];
+      i.flipimage = getImage(i,filename);
+      i.pushed = false;
+    };
+  };
+
+  function button_push(img)
+  {
+    if(happyrollover)
+    {
+      var i = document.images[img];
+      if (!i.pushed)
+      {
+        i.pushed = true;
+        var temp = i.src;
+        i.src = i.flipimage.src;
+        i.flipimage.src = temp;
+      };
+    };
+  };
+
+  function button_unpush(img)
+  {
+    if(happyrollover)
+      window.setTimeout("button_realunpush('" + img + "')", 0);  // defeat ie's lazy refresh
+  };
+
+  function button_realunpush(img)
+  {
+    var i = document.images[img];
+    if (i.pushed)
+    {
+      i.pushed = false;
+      var temp = i.src;
+      i.src = i.flipimage.src;
+      i.flipimage.src = temp;
+    };
+  };
+// -->
+</script>
+<!-- End ImageButton Script -->
+EOS;
+    headPrint($str);
+  }
+}
 
 ?>

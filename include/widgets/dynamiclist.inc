@@ -3,47 +3,52 @@
 require_once("widgets/widgets.inc");
 require_once("wbes/server.inc");
 
-class DynamicList extends FormWidget
+class DynamicList extends Widget
 {
   var $width;
   var $height;
-  var $orderonly = false;
+  var $orderOnly = false;
   
   var $items = array();
   var $keys = array();
   
-  function DynamicList($width,$height,$orderonlyitems,$prefix,$form,$formmethod) // public constructor inherited
+  function DynamicList($width, $height, $orderOnlyitems, $name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
+    $this->Widget($name, $parent);
     $this->width = (int)$width;
     $this->height = (int)$height;
-    if (is_array($orderonlyitems))
+    if (is_array($orderOnlyitems))
     {
-      $this->keys = array_keys($orderonlyitems);
-      $this->items = array_values($orderonlyitems);
-      $this->orderonly = true;
+      $this->keys = array_keys($orderOnlyitems);
+      $this->items = array_values($orderOnlyitems);
+      $this->orderOnly = true;
     }
-    $this->dumpscript();    
+    $this->DumpScript();    
   }
   
-  function loadstrarray($attr, $separator = "\t")
+  function loadStringArray($attr, $separator = "\t")
   {
-    $data = $this->loadattribute($attr);
+    $data = $this->readValue($attr);
     if (!isset($data) || $data === "") return array();
     return explode($separator,$data);
   }
   
-  function loadvalues($strongchecking = true) // public inherited
+  function makeStringArray($array)
   {
-    if (!$this->orderonly)
+    return implode("\t", $array);
+  }
+  
+  function loadState($strongchecking = true) // public inherited
+  {
+    if (!$this->orderOnly)
     {
-      $this->items = $this->loadstrarray("items");
-      $this->keys = $this->loadstrarray("keys");
+      $this->items = $this->loadStringArray("items");
+      $this->keys = $this->loadStringArray("keys");
     }  
     else
     {  
       $items = $keys = array();
-      foreach ($this->loadstrarray("keys") as $k)
+      foreach ($this->loadStringArray("keys") as $k)
       if (($i = array_search($k,$this->keys)) !== false)
       { 
         $items[] = $this->items[$i];
@@ -59,14 +64,87 @@ class DynamicList extends FormWidget
       $this->keys = $keys;
     }   
   }
+
+  function displayHidden()
+  {
+    $this->printValue("keys", $this->makeStringArray($this->keys));
+    $this->printValue("items", $this->makeStringArray($this->items));
+  }
+  
+  function display($hidden = false) // public inherited
+  {
+    global $wces_path, $server_media;
+    $this->printValue("keys", "");
+    $this->printValue("items", "");
+    $controller = $this->scriptName("controller");
+    $doWidth = $this->width > 0 && count($this->items) <= 0;
+?>  
+<!-- begin FormWidget <?=$this->name?> -->
+<table border="0" cellpadding="2" cellspacing="0">
+  <tr>
+    <td align=center>
+      <select size="<?=$this->height?>" name="<?=$this->fullName("box")?>" multiple>
+<?
+  if ($doWidth)
+    print("<option>" . str_repeat('-',$this->width) . "</option>\n");
+
+  foreach(array_keys($this->items) as $i)
+  {
+    $v = isset($this->keys[$i]) ? ' value="' . htmlspecialchars($this->keys[$i]) . '"' : "";
+    $t = htmlspecialchars($this->items[$i]);
+    print("<option$v>$t</option>\n");
+  }
+?>
+      </select>
+    </td>
+<? if (!$this->orderOnly) { ?>
+    <td>
+      <input type="button" value="Add..." name="<?=$this->fullName("additem")?>" style="width: 75px"><br>
+      <input type="button" value="Modify..." name="<?=$this->fullName("modifyitem")?>" style="width: 75px"><br>
+      <input type="button" value="Remove" name="<?=$this->fullName("removeitem")?>" style="width: 75px"><br>
+    </td>
+<? } ?>          
+  </tr>
+  <tr><td align=center>
+    <a onmousedown="button_push('<?=$this->fullName('moveup')?>'); <?=$controller?>.moveup();"
+       onmouseup="button_unpush('<?=$this->fullName('moveup')?>')"
+       onmouseout="button_unpush('<?=$this->fullName('moveup')?>')"
+       href="javascript:void(<?=$controller?>.moveup())"
+       onclick="return false;"
+    ><img name="<?=$this->fullName('moveup')?>" src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->fullName('movedown')?>'); <?=$controller?>.movedown();"
+       onmouseup="button_unpush('<?=$this->fullName('movedown')?>')"
+       onmouseout="button_unpush('<?=$this->fullName('movedown')?>')"
+       href="javascript:void(<?=$controller?>.movedown())"
+       onclick="return false;"
+    ><img name="<?=$this->fullName('movedown')?>" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
+    <script>
+    <!--
+      AttachPushed('<?=$this->fullName('moveup')?>',  "moveup_pushed.gif");
+      AttachPushed('<?=$this->fullName('movedown')?>',"movedown_pushed.gif"); 
+    //-->
+    </script>
+  </td><? if (!$this->orderOnly) { ?><td>&nbsp;</td><? } ?></tr>  
+</table>
+<script language="javascript">
+<!--
+    <?=$controller?> = DynamicList('<?=$this->form->formName?>','<?=$this->name?>');
+    <? if($doWidth) print("$controller.selectedIndex = 0;\n    $controller.mremove();\n"); ?> 
+// -->
+</script>
+<!-- end FormWidget <?=$this->name?> -->
+<?
+  }
  
-  function dumpscript()
+  function DumpScript()
   {
     global $server_media;
     static $dumped = false;
     if ($dumped) return false; else $dumped = true;
-    
-    ImageButton::dumpscript();
+
+    ImageButton::DumpScript();
+
+    $ws = WIDGET_SEPARATOR;
 
     $str = <<<EOD
 <!-- begin DynamicList FormWidget script -->
@@ -76,9 +154,9 @@ class DynamicList extends FormWidget
   function DynamicList(formname,prefix)
   {
     var form = document.forms[formname];
-    var box = form[prefix + "_box"];
-    box.items = form[prefix + "_items"];
-    box.keys = form[prefix + "_keys"];
+    var box = form[prefix + "{$ws}box"];
+    box.items = form[prefix + "{$ws}items"];
+    box.keys = form[prefix + "{$ws}keys"];
     // members 'add' and 'remove' are apparently reserved on ie for mac
     box.madd = DynamicList_add;
     box.mremove = DynamicList_remove;
@@ -87,6 +165,7 @@ class DynamicList extends FormWidget
     box.moveup = DynamicList_moveup;
     box.movedown = DynamicList_movedown;
     box.save = DynamicList_save;
+    box.getItem = DynamicList_getItem
     
     if (!form.DynamicList_lists)
     {
@@ -96,9 +175,9 @@ class DynamicList extends FormWidget
     }
 
     form.DynamicList_lists[form.DynamicList_lists.length] = box;
-    DynamicList_GenericButton(form[prefix + "_additem"]    , box, "this.list.madd()");
-    DynamicList_GenericButton(form[prefix + "_modifyitem"] , box, "this.list.modify()");
-    DynamicList_GenericButton(form[prefix + "_removeitem"] , box, "this.list.mremove()");
+    DynamicList_GenericButton(form[prefix + "{$ws}additem"]    , box, "this.list.madd()");
+    DynamicList_GenericButton(form[prefix + "{$ws}modifyitem"] , box, "this.list.modify()");
+    DynamicList_GenericButton(form[prefix + "{$ws}removeitem"] , box, "this.list.mremove()");
     return box;
   };
 
@@ -143,8 +222,11 @@ class DynamicList extends FormWidget
 
   function DynamicList_remove()
   {
-    if (this.selectedIndex >= 0)
-      this.options[this.selectedIndex] = null;
+    for (var i = this.options.length - 1; i >= 0; --i)
+    {
+      if (this.options[i].selected)
+        this.options[i] = null;
+    }
   }
 
   function DynamicList_modify()
@@ -159,38 +241,103 @@ class DynamicList extends FormWidget
     }
   }
 
-  function DynamicList_move()
+  function DynamicList_getItem(index, direction)
+  {
+    if (direction < 0)
+      return this.options[this.options.length - index - 1];
+    else
+      return this.options[index];
+  }
+
+  // Move selected items in the list box up or down. The list box
+  // is allowed to have many non-consecutive items selected.
+  // (this is the reason why the function is so long and complicated).
+  // 
+  // Arguments:
+  // 
+  //   direction  a negative number for down, a positive number for up
+  //   extreme    boolean. If true it moves the currently selected items
+  //              to the top or bottom of the list instead of just one
+  //              position up or down.
+
+  // XXX: this needs to be tested on IE5 for mac. If it doesn't work, see
+  // comment in revision 1.9 of this file on "moveDirection" for a possible
+  // fix. 
+
+  function DynamicList_move(direction, extreme)
   {
     var o = this.options;
-    var a = this.selectedIndex;
-
-    // why is moveDirection a property instead of an argument?
-    // because of a bizarre javascript bug in IE5 for mac (build 2022)
-    // On this platform, the call to this function is completely
-    // ignored whenever any argument is specified. by ignored I mean
-    // that the function returns null, and its body is never executed.
-    // it works just fine though, when called with no arguments
-    var b = this.selectedIndex+this.moveDirection;
-
-    if (a>=0 && b>=0 && b<o.length)
+    var move = null;
+    var target = null;
+    
+    // find the first element that needs to be moved
+    // and the position where it needs to be moved.
+    
+    for(var i = 0; i < o.length; ++i)
     {
-      var tv = o[a].value; var tt = o[a].text;
-      o[a].value = o[b].value; o[a].text =  o[b].text;
-      o[b].value = tv; o[b].text = tt;
-      this.selectedIndex = b;
-    };
+      var s = this.getItem(i, direction);
+      if (s.selected)
+      {
+        move = i;
+        target = extreme ? 0 : (i == 0 ? i : i - 1);
+        break;
+      }
+    }
+    
+    // return if nothing is selected
+    if (move == null) return;
+    
+    // cache array is used to avoid spurious writes to options array. 
+    var cache = new Array();
+    
+    // line up selected items at the target positions.
+    // move the non-selected items which are overwritten
+    // to the cache array
+    outer:
+    for(;;)
+    {
+      //assert(target <= move);
+      if (move != target)
+      {
+        var t = this.getItem(target, direction);
+        var m = this.getItem(move, direction);
+        if (!t.selected)
+          cache[cache.length] = new Option(t.text, t.value);
+        t.text = m.text;
+        t.value = m.value;
+        t.selected = true;
+      }
+      ++target;
+      do
+      {
+        ++move;
+        if (move >= o.length) break outer;
+      }
+      while (!(this.getItem(move, direction).selected));
+    }
+    
+    // write out entries in the cache array
+    for(var i = 0; i < cache.length; ++i)
+    {
+      var t = this.getItem(target, direction);
+      var c = cache[i];
+      if (!t.selected)
+        cache[cache.length] = new Option(t.text, t.value);
+      t.text = c.text;
+      t.value = c.value;
+      t.selected = false;
+      ++target;
+    }    
   }
 
   function DynamicList_moveup()
   {
-    this.moveDirection = -1;
-    this.move();
+    this.move(1);
   }
 
   function DynamicList_movedown()
   {
-    this.moveDirection = 1;
-    this.move();
+    this.move(-1);
   }
 
   function DynamicList_GenericButton(button,list,action)
@@ -207,78 +354,6 @@ class DynamicList extends FormWidget
 <!-- end DynamicList FormWidget script -->
 EOD;
     headPrint($str);
-  }
-  
-  function display($hidden = false) // public inherited
-  {
-    global $wces_path, $server_media;
-
-    if ($hidden)
-    {
-      $this->preserveattribute("keys");
-      $this->preserveattribute("items");
-      return;
-    }
-    
-    $dowidth = $this->width > 0 && count($this->items) <= 0;
-?>  
-<!-- begin FormWidget <?=$this->prefix?> -->
-<table border="0" cellpadding="2" cellspacing="0">
-  <tr>
-    <td align=center>
-      <select size="<?=$this->height?>" name="<?=$this->prefix?>_box">
-<?
-  if ($dowidth)
-    print("<option>" . str_repeat('-',$this->width) . "</option>\n");
-
-  foreach(array_keys($this->items) as $i)
-  {
-    $v = isset($this->keys[$i]) ? ' value="' . htmlspecialchars($this->keys[$i]) . '"' : "";
-    $t = htmlspecialchars($this->items[$i]);
-    print("<option$v>$t</option>\n");
-  }
-?>
-      </select>
-    </td>
-<? if (!$this->orderonly) { ?>
-    <td>
-      <input type="button" value="Add..." name="<?=$this->prefix?>_additem" style="width: 75px"><br>
-      <input type="button" value="Modify..." name="<?=$this->prefix?>_modifyitem" style="width: 75px"><br>
-      <input type="button" value="Remove" name="<?=$this->prefix?>_removeitem" style="width: 75px"><br>
-    </td>
-<? } ?>          
-  </tr>
-  <tr><td align=center>
-    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.moveup();"
-       onmouseup="button_unpush('<?=$this->prefix?>_moveup')"
-       onmouseout="button_unpush('<?=$this->prefix?>_moveup')"
-       href="javascript:void(<?=$this->prefix?>_controller.moveup())"
-       onclick="return false;"
-    ><img name="<?=$this->prefix?>_moveup"   src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
-    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.movedown();"
-       onmouseup="button_unpush('<?=$this->prefix?>_movedown')"
-       onmouseout="button_unpush('<?=$this->prefix?>_movedown')"
-       href="javascript:void(<?=$this->prefix?>_controller.movedown())"
-       onclick="return false;"
-    ><img name="<?=$this->prefix?>_movedown" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
-    <script>
-    <!--
-      AttachPushed('<?=$this->prefix?>_moveup',  "moveup_pushed.gif");
-      AttachPushed('<?=$this->prefix?>_movedown',"movedown_pushed.gif"); 
-    //-->
-    </script>
-  </td><? if (!$this->orderonly) { ?><td>&nbsp;</td><? } ?></tr>  
-</table>
-<input type="hidden" name="<?=$this->prefix?>_items">
-<input type="hidden" name="<?=$this->prefix?>_keys">
-<script language="javascript">
-<!--
-    <?=$this->prefix?>_controller = DynamicList('<?=$this->form?>','<?=$this->prefix?>');
-    <? if($dowidth) print("{$this->prefix}_controller.selectedIndex = 0;\n    {$this->prefix}_controller.mremove();\n"); ?> 
-// -->
-</script>
-<!-- end FormWidget <?=$this->prefix?> -->
-<?
   }
 };
 
