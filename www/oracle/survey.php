@@ -1,6 +1,6 @@
 <?
-require_once("oracle/page.inc");
-page_top("SEAS Oracle Homepage - Survey","survey.gif");
+require_once("wces/oracle.inc");
+oracle_top("SEAS Oracle Homepage - Survey","survey.gif");
 ?>
       <FORM action=http://www.columbia.edu/cgi-bin/generic-inbox.pl 
       method=post>
@@ -61,5 +61,5 @@ page_top("SEAS Oracle Homepage - Survey","survey.gif");
       <BR></P><INPUT type=reset value=Reset> <INPUT type=submit value=Submit> 
       </FONT>
 <?
-page_bottom();
+oracle_bottom();
 ?>

@@ -1,6 +1,6 @@
 <?
-  require_once("oracle/page.inc");
-  page_top("SEAS Oracle Homepage","home.gif");
+  require_once("wces/oracle.inc");
+  oracle_top("SEAS Oracle Homepage","home.gif");
 ?>
 <font face="Verdana,Trebuchet MS" size="-1">
 <p align="left"><font
@@ -47,4 +47,4 @@ professors. </p>
 questions concerning this webpage, please email the <a href=
 "mailto:wces@columbia.edu">webmaster</a>.</font></p>
 
-<? page_bottom(); ?>
+<? oracle_bottom(); ?>

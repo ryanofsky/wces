@@ -1,6 +1,6 @@
 <?
-require_once("oracle/page.inc");
-page_top("SEAS Oracle Homepage - Background","background.gif");
+require_once("wces/oracle.inc");
+oracle_top("SEAS Oracle Homepage - Background","background.gif");
 ?>
 
       <FONT 
@@ -162,7 +162,7 @@ page_top("SEAS Oracle Homepage - Background","background.gif");
       src="images/spacer.gif" width=8> <!-- Adjust this width --></TD><!--- End of Spacer Column ---------------------------------------------------><!--- Do Not Edit Below this line or else! --></TR></TBODY></TABLE></BODY></HTML>
 
 <?
-page_bottom();
+oracle_bottom();
 ?>
 
 
