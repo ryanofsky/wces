@@ -803,10 +803,10 @@ class ChoiceWidget extends ComponentWidget
     {
       $c = &$this->component;
       $name = "q$i";
-      if ($c->select_many) $name .= "[]";
       $a = $this->loadattribute($name);
+
       if ($c->select_many)
-        $this->answers[$i] = is_array($a) ? $a : array();
+        $this->answers[$i] = is_array($a) ? $a : NULL;
       else if (isset($a))
         $this->answers[$i] = (int)$a;
       else
@@ -835,15 +835,23 @@ class ChoiceWidget extends ComponentWidget
 
     foreach(array_keys($this->questions) as $i)
     {
-      if ($this->component->select_many)
-        $answer = pg_implode($this->answers[$i]);
-      else
-        $answer = quot($this->answers[$i]);
       $other = addslashes($this->others[$i]);
-      $success = $success && pg_query("
-        INSERT INTO $table(revision_id, parent, answer, other)
-        VALUES ({$this->component->question_ids[$i]}, $nparent, $answer, '$other');
-      ", $wbes, __FILE__, __LINE__);
+      $a = &$this->answers[$i];
+      
+      if ($other || isset($a))
+      {
+        if (!isset($a))
+          $answer = "NULL";
+        else if ($this->component->select_many)
+          $answer = pg_implode($a);
+        else
+          $answer = quot($a);
+
+        $success = $success && pg_query("
+          INSERT INTO $table(revision_id, parent, answer, other)
+          VALUES ({$this->component->question_ids[$i]}, $nparent, $answer, '$other');
+        ", $wbes, __FILE__, __LINE__);
+      }
     }
     return $success;
   }
@@ -851,6 +859,7 @@ class ChoiceWidget extends ComponentWidget
   function showchoices($questionno, $tdparams = "")
   {
     $c = &$this->component;
+    $a = &$this->answers[$questionno];
     $name = $this->prefix . "_q" . $questionno;
     if ($c->select_many) $name .= "[]";
 
@@ -860,7 +869,7 @@ class ChoiceWidget extends ComponentWidget
       print("<select name=$name" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
       foreach($this->choices as $i => $choice)
       {
-        $selected = (!$c->select_many && $i === $this->answers[$questionno]) && ($c->select_many && is_array($this->answers) && in_array($i, $this->answers[$questionno])) ? " selected" : "";
+        $selected = (!$c->select_many && $i === $a) || ($c->select_many && is_array($a) && in_array($i, $a)) ? " selected" : "";
         print("  <option value=$i$selected>$choice\n");
       }
       print("</select>\n");
@@ -879,16 +888,16 @@ class ChoiceWidget extends ComponentWidget
       {
         if ($first) $first = false; else print($sep);
 
-        $id = $this->prefix . '_q' . $questionno . '_' . $i;
+        $id = "{$name}_{$i}";
 
         if ($c->select_many)
         {
-            $checked = isset($this->answers) && in_array($i, $this->answers[$questionno]) ? " checked" : "";
+            $checked = is_array($a) && in_array($i, $a) ? " checked" : "";
             print("<input type=checkbox name=$name value=$i id=$id$checked>");
         }
         else
         {
-            $checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
+            $checked = $i === $a ? " checked" : "";
             print("<input type=radio name=$name value=$i id=$id$checked>");
         }
 
