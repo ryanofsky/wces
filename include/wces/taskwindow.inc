@@ -1,17 +1,20 @@
 <%
 
-function taskwindow_start($title)
+function taskwindow_start($title, $localtoo = true)
 {
-  global $taskwindow_inuse;
+  global $taskwindow_inuse, $taskwindow_localtoo;
   $taskwindow_inuse = true;
+  $taskwindow_localtoo = $localtoo ? ", true" : "";
 %>
 <script>
-  function _p(str) { document.write(str); _t.write(str) };
-  
-  var _t = window.open("", "task", "width=300,height=400,channelmode=0,dependent=0,directories=0,fullscreen=0,location=0,menubar=0,resizable=1,scrollbars=1,status=1,toolbar=0").document;
-  _t.open(); //("text/html", "replace");
-  _t.write('<title><%=$title%></title>');
-  _t.write('<center><form><input type=button value="Close This Window" onclick="window.close()"></form></center>');
+  function pr(str, localtoo) { if(localtoo) document.write(str); if (window.task) window.taskd.write(str) };
+  window.task = window.open("", "task", "width=400,height=400,channelmode=0,dependent=0,directories=0,fullscreen=0,location=0,menubar=0,resizable=1,scrollbars=1,status=1,toolbar=0");
+  window.taskd = window.task.document
+  window.taskd.open(); //("text/html", "replace");
+  window.task.isok = false;
+  if (!window.task.opener) window.task.opener = window;
+  window.taskd.write('<html><head><title><%=$title%></title></head>');
+  window.taskd.write('<body><center><form><input type=button value="Close This Window" onclick="if (window.isok) window.close(); else alert(\'Please wait for the task to complete\');"></form></center>');
 </script>
 <%
 }
@@ -22,7 +25,7 @@ function taskwindow_end()
   taskwindow_flush();
   if($taskwindow_inuse)
   {
-    %><script>_t.close();</script><%  
+    %><script>window.taskd.write('</body></html>'); window.taskd.close(); window.task.isok = true;</script><%  
   };  
 }
 
@@ -31,11 +34,11 @@ $taskwindow_inuse = false;
 
 function taskwindow_print($str)
 {
-  global $taskwindow_inuse, $taskwindow_cache;
+  global $taskwindow_inuse, $taskwindow_cache, $taskwindow_localtoo;
   if ($taskwindow_inuse)
   {
     if ($taskwindow_cache) taskwindow_flush();
-    %><script>_p("<%=addcslashes($str,"\\\"\n\r")%>");</script><%  
+    %><script>pr("<%=addcslashes($str,"\\\"\n\r")%>"<%=$taskwindow_localtoo%>);</script><%  
   }
   else
     print($str);
@@ -55,7 +58,7 @@ function taskwindow_cprint($str)
 
 function taskwindow_flush()
 {
-  global $taskwindow_inuse, $taskwindow_cache;
+  global $taskwindow_inuse, $taskwindow_cache, $taskwindow_localtoo;
   if ($taskwindow_cache != "")
   {  
     if ($taskwindow_inuse)
@@ -64,13 +67,14 @@ function taskwindow_flush()
       $l = strlen($taskwindow_cache);
       for ($i = 0; $i < $l; $i += 240)
       {
-        echo "_p(\"" , addcslashes(substr($taskwindow_cache,$i,240),"\\\"\n\r") , "\");\n";
+        echo "pr(\"" , addcslashes(substr($taskwindow_cache,$i,240),"\\\"\n\r") , "\"${taskwindow_localtoo});\n";
       }
-      echo "_p(\"" , addcslashes(substr($taskwindow_cache,$i),"\\\"\n\r") , "\");\n";
+      echo "pr(\"" , addcslashes(substr($taskwindow_cache,$i),"\\\"\n\r") , "\"${taskwindow_localtoo});\n";
       print("</script>\n");
     }
     else
       print($taskwindow_cache);
     $taskwindow_cache = "";
-  };  
+  }; 
+  flush(); 
 };
