@@ -93,6 +93,7 @@ function format_profs($profs, $link = false, $before = "", $after = "", $between
 {
   
   global $wces_path;
+  if (strlen($profs) == 0) return; // php 4.0.6 fix
   $c = explode("\n", $profs);
   $str = "";
   for ($i = 0; $i < count($c); $i += FORMAT_PROF_COUNT)
