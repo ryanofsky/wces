@@ -9,7 +9,8 @@ $MassEmail_students = array
   "all" => "All Students",
   "dumb" => "Students who completed no surveys",
   "bad" => "Students who completed some surveys",
-  "good" => "Students who completed all of their surveys"
+  "good" => "Students who completed all of their surveys",
+  "prof" => "Professors"
 );
 
 define("MassEmail_send",1);
@@ -75,7 +76,7 @@ class MassEmail extends FormWidget
       $this->to = "";
       $this->replyto->text = "wces@columbia.edu";
       $this->subject->text = "WCES Reminder";
-      $this->text->text = "Dear %studentname%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
+      $this->text->text = "Dear %name%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
     }
 
     if (!emailvalid($this->from->text))
@@ -129,16 +130,21 @@ class MassEmail extends FormWidget
         print("</ul>\n");
       }
 ?>
-<p>From this page you can send customized emails to students in classes being surveyed this semester.</p>
-<p>Use the <strong>To:</strong> drop down box to send emails to a specific group of students.</p>
-<p>The following variables can be used in the subject and message body. They will be replaced by student data taken from the WCES database.</p>
+<p>From this page you can send customized emails to students and professors in classes being surveyed this semester.</p>
+<p>Use the <strong>To:</strong> drop down box to select who the recipients will be.</p>
+<p>The following variables can be used in the subject and message body. They will be replaced by with user information taken from the WCES database:</p>
 <div style="background: #EEEEEE">
 <pre>
-  <strong>%studentname%</strong>      - The full name of the student.
-  <strong>%allclasses%</strong>       - A list of the student's classes that have surveys available.
+  <strong>%name%</strong>             - The full name of the recipient.
+  <strong>%classes%</strong>          - A list of the recipient's classes that have surveys available.
+  <strong>%nclasses%</strong>         - The number of the recipient's classes that have surveys available.
+</pre>
+</div>  
+<p>These variables work for emails to students only, not professors:</p>  
+<div style="background: #EEEEEE">
+<pre>
   <strong>%missingclasses%</strong>   - A list of classes that the student has not filled out surveys for.
   <strong>%finishedclasses%</strong>  - A list of classes that the student has filled out surveys for.
-  <strong>%nallclasses%</strong>      - The number of the student's classes that have surveys available.
   <strong>%nmissingclasses%</strong>  - The number of classes that the student has not filled out surveys for.
   <strong>%nfinishedclasses%</strong> - The number of classes that the student has filled out surveys for.
 </pre>
@@ -169,7 +175,7 @@ class MassEmail extends FormWidget
       $n = pg_numrows($survey_categories);
 
       print("<select name=\"${prefix}_survey_category_id\">");
-      print("<option value=\"0\"$selected>All Students</option>");
+      print("<option value=\"0\"$selected>All Class Categories</option>");
       for($i=0; $i<$n; ++$i)
       {
         extract(pg_fetch_array($survey_categories,$i,PGSQL_ASSOC));
@@ -203,6 +209,21 @@ class MassEmail extends FormWidget
     global $wces;
     
     wces_connect();
+    if ($send)
+    {
+      $user_id = login_getuserid();
+      $from = addslashes($this->from->text);
+      $reply_to = addslashes($this->replyto->text);
+      $mail_to = addslashes($this->to) . " " . addslashes($this->survey_category_id);
+      $subject = addslashes($this->subject->text);
+      $body = addslashes($this->text->text);
+
+      pg_query("
+        INSERT INTO sent_mails (user_id, mail_from, reply_to, mail_to, subject, body)
+        VALUES ($user_id, '$from', '$reply_to', '$mail_to', '$subject', '$body');
+      ", $wces, __FILE__, __LINE__); 
+      
+    }
     
     $result = pg_query("
       SELECT question_period_id, displayname, year, semester
@@ -213,52 +234,53 @@ class MassEmail extends FormWidget
     
     $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
 
+    $status = $this->to == "prof" ? 3 : 1;
+
     $result = pg_query("
       CREATE TEMPORARY TABLE studclasses AS
-      SELECT e.class_id, e.user_id, CASE WHEN COUNT(DISTINCT s.response_id) > 0 THEN 1 ELSE 0 END AS surveyed
+      SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.response_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 1
-      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id)
+      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = $status " . ($status == 1 ? "
+      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id)" : "") . "
       WHERE cl.year = $year AND cl.semester = $semester $cat
       GROUP BY e.class_id, e.user_id
     ", $wces, __FILE__, __LINE__);      
 
     if ($this->to == "good")
-      $having = "HAVING bob <= SUM(sc.surveyed)";
+      $having = "HAVING SUM(sc.surveyed) >= COUNT(DISTINCT sc.class_id)";
     else if ($this->to == "dumb")
-      $having = "HAVING 0 = SUM(sc.surveyed)";
+      $having = "HAVING SUM(sc.surveyed) = 0";
     else if ($this->to == "bad")
-      $having = "HAVING bob > SUM(sc.surveyed) AND SUM(sc.surveyed) > 0";
+      $having = "HAVING 0 < SUM(sc.surveyed) AND SUM(sc.surveyed) < COUNT(DISTINCT sc.class_id)";
     else
       $having = "";
 
     pg_query("
       CREATE TEMPORARY TABLE recipients AS
-      SELECT user_id, COUNT(DISTINCT sc.class_id) AS bob
+      SELECT user_id, COUNT(DISTINCT sc.class_id) AS surveys, SUM(sc.surveyed) AS surveyed
       FROM studclasses AS sc GROUP BY sc.user_id
       $having
     ",$wces, __FILE__, __LINE__);
 
     $users = pg_query("
-      SELECT u.uni AS cunix, sc.user_id AS userid, u.email, u.firstname || ' ' || u.lastname AS name, COUNT(DISTINCT sc.class_id) AS surveys, SUM(sc.surveyed) AS surveyed
-      FROM studclasses AS sc
-      INNER JOIN recipients AS r USING (user_id)
+      SELECT r.user_id, r.surveys, r.surveyed, u.uni AS cunix, u.email, u.firstname || ' ' || u.lastname AS name
+      FROM recipients AS r
       INNER JOIN users AS u USING (user_id)
-      GROUP BY sc.user_id, u.uni, u.email, u.firstname, u.lastname
-      ORDER BY sc.user_id
+      GROUP BY r.user_id, r.surveys, r.surveyed, u.uni, u.email, u.firstname, u.lastname
+      ORDER BY r.user_id
     ", $wces, __FILE__, __LINE__);
 
     $classes = pg_query("
-      SELECT sc.user_id AS cluserid, cl.section, c.code, c.name AS cname, s.code AS scode, p.firstname || ' ' || p.lastname as pname, sc.surveyed
-      FROM studclasses AS sc
-      INNER JOIN recipients AS r USING (user_id)
-      INNER JOIN classes AS cl ON cl.class_id = sc.class_id
+      SELECT sc.user_id AS cluser_id, sc.surveyed, cl.class_id, cl.section, c.code, c.name AS cname, s.code AS scode, p.firstname || ' ' || p.lastname as pname
+      FROM recipients AS r
+      INNER JOIN studclasses AS sc USING (user_id)
+      INNER JOIN classes AS cl USING (class_id)
       INNER JOIN courses AS c USING (course_id)
       INNER JOIN subjects AS s USING (subject_id)
       LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND status = 3
       LEFT JOIN users AS p ON p.user_id = e.user_id
-      GROUP BY sc.user_id, sc.class_id, cl.section, c.code, c.name, s.code, p.firstname, p.lastname, sc.surveyed
+      GROUP BY sc.user_id, cl.class_id, e.user_id, cl.section, c.code, c.name, s.code, p.firstname, p.lastname, sc.surveyed
       ORDER BY sc.user_id
     ", $wces, __FILE__, __LINE__);
 
@@ -276,44 +298,51 @@ class MassEmail extends FormWidget
       print("<h5>Previewing $total messages.</h5>");
     }
 
-    $classno = 0;
-    $classe = pg_fetch_array($classes,$classno,PGSQL_ASSOC);
-
+    $class_num = 0;
+    $class_row = pg_fetch_array($classes,$class_num,PGSQL_ASSOC);
+    $class_count = pg_numrows($classes);
     for($userno = 0; $userno < $total; ++$userno)
     {
       $user = pg_fetch_array($users,$userno,PGSQL_ASSOC);
-      $studentname = ucwords(strtolower($user["name"]));
-      $nallclasses = $user["surveys"];
-      $nfinishedclasses = $user["surveyed"];
-      $nmissingclasses = $nallclasses - $nfinishedclasses;
-      $missingclasses = "";
-      $finishedclasses = "";
-
-      while($user['userid'] == $classe['cluserid'])
+      $s_name = ucwords(strtolower($user["name"]));
+      $s_nclasses = $user["surveys"];
+      $s_nfinishedclasses = $user["surveyed"];
+      $s_nmissingclasses = $s_nclasses - $s_nfinishedclasses;
+      $s_missingclasses = "";
+      $s_finishedclasses = "";
+      $class_str = "";
+      
+      while($class_row && $user['user_id'] == $class_row['cluser_id'])
       {
-        if ($classe["surveyed"]) $thelist = &$finishedclasses; else $thelist = &$missingclasses;
-        if ($thelist) $thelist .= "\n\n";
-        $thelist .= " * " .  str_replace("\n", "\n   ", wordwrap($classe["scode"] . $classe["code"] . ' ' . $classe["cname"] . ' Section ' . $classe["section"].  ($classe["pname"] ? "\nProfessor " . $classe["pname"] : ''), 70, "\n"));
-        $classe = pg_fetch_array($classes,++$classno,PGSQL_ASSOC);
+        $next_row = ++$class_num < $class_count ? pg_fetch_array($classes,$class_num,PGSQL_ASSOC) : NULL;
+
+        if (!$class_str) $class_str = $class_row["scode"] . $class_row["code"] . ' ' . $class_row["cname"] . ' Section ' . $class_row["section"];
+        $class_str .= ($class_row["pname"] ? "\nProfessor " . $class_row["pname"] : '');
+        
+        if ($class_row['class_id'] != $next_row['class_id'] || $user['user_id'] != $class_row['cluser_id'])
+        {
+          if ($class_row["surveyed"]) $cl = &$s_finishedclasses; else $cl = &$s_missingclasses;
+          if ($cl) $cl .= "\n\n";
+          $cl .= " * " .  str_replace("\n", "\n   ", wordwrap($class_str, 70, "\n"));
+          $class_str = "";
+        }
+        $class_row = $next_row;
       }
 
-      $allclasses = $finishedclasses;
-      if ($missingclasses)
+      $s_classes = $s_finishedclasses;
+      if ($s_missingclasses)
       {
-        if ($allclasses) $allclasses .= "\n\n";
-        $allclasses .= $missingclasses;
+        if ($s_classes) $s_classes .= "\n\n";
+        $s_classes .= $s_missingclasses;
       }
 
-      $fields = array("studentname", "nallclasses", "nfinishedclasses", "nmissingclasses", "missingclasses", "finishedclasses", "allclasses");
-      $text = $this->text->text;
-      foreach($fields as $field)
-        $text = str_replace("%${field}%", ${$field}, $text);
-      $text = wordwrap($text, 75);
+      $names = array("%name%", "%classes%", "%nclasses%", "%missingclasses%", "%finishedclasses%", "%nmissingclasses%", "%nfinishedclasses%");
+      $vals = array($s_name, $s_classes, $s_nclasses, $s_missingclasses, $s_finishedclasses, $s_nmissingclasses, $s_nfinishedclasses);
+      $text = wordwrap(str_replace($names, $vals, $this->text->text), 75);
 
       ++$sofar;
       $email = $user["email"];
-
-      $address = $email ? ($studentname ? "$studentname <$email>" : $email) : "";
+      $address = $email ? ($s_name ? "$s_name <$email>" : $email) : "";
       $from = $this->from->text;
       $replyto = $this->replyto->text;
 
@@ -322,8 +351,8 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          $address = "rey4@columbia.edu"; // debug
-          // mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
+          //$email = "rey4@columbia.edu"; // debug
+          mail($email, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nTo: $address\nX-Mailer: PHP/" . phpversion());
         }
         else
         {
@@ -348,8 +377,6 @@ class MassEmail extends FormWidget
       taskwindow_end("Progress Window");
       print("<h3>Done.</h3>");
     }
-    // todo: make a new table to keep track of sent mails
-    //if ($send) db_addrow($db, "sentmails", array("sfrom" => $this->from->text, "sto" => $this->to, "replyto" => $this->replyto->text, "title" => $this->subject->text, "body" => $this->text->text));
   }
 }
 

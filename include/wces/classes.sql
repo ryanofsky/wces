@@ -47,6 +47,20 @@ DROP FUNCTION get_question_period();
 DROP FUNCTION text_join(TEXT, TEXT, TEXT);
 DROP FUNCTION professor_merge(INTEGER, INTEGER);
 
+CREATE TABLE sent_mails
+(
+  sent_mail_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('sent_mail_ids'),
+  sent TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  user_id INTEGER NOT NULL,
+  mail_from TEXT,
+  reply_to TEXT,
+  mail_to TEXT,
+  subject TEXT,
+  body TEXT
+);
+
+CREATE SEQUENCE sent_mail_ids INCREMENT 1 START 1;
+
 CREATE TABLE classes
 (
   class_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('class_ids'),
