@@ -1869,14 +1869,14 @@ CREATE OR REPLACE FUNCTION boolean_merge(BOOLEAN, BOOLEAN, BOOLEAN) RETURNS BOOL
 -- function body is *exactly* the same for merge_integer
 CREATE OR REPLACE FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[]) RETURNS INTEGER[] AS '
   SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
-    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+    AND ($1 IS NULL OR $2 IS NULL OR NOT ($1 = $2))
   THEN $2 ELSE $3 END;
 ' LANGUAGE 'sql';
 
 -- function body is *exactly* the same for merge_integer
 CREATE OR REPLACE FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[]) RETURNS TEXT[] AS '
   SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
-    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+    AND ($1 IS NULL OR $2 IS NULL OR NOT ($1 = $2))
   THEN $2 ELSE $3 END;
 ' LANGUAGE 'sql';
 
@@ -2008,7 +2008,7 @@ CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RE
       WHERE revision_id = (SELECT branch_find(rec.item_id, new_parent);
 
       -- if original is not null and secondary is null then
-      -- don't bother adding the component
+      -- don''t bother adding the component
       IF orig_rec.component_id IS NOT NULL 
         AND secondary_rec.component_id IS NULL THEN
         cid := NULL;
@@ -2060,7 +2060,7 @@ CREATE OR REPLACE FUNCTION specialization_move(INTEGER, INTEGER) RETURNS VOID AS
     
     FOR rec1 IN SELECT * FROM specializations WHERE parent = specialization_id_
   END;
-' LANGUAGE 'plpgsql'
+' LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION base_survey_create(INTEGER, INTEGER) RETURNS VOID AS '
   DECLARE
