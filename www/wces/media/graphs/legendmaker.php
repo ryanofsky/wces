@@ -1,4 +1,4 @@
-<%include('wces/server.inc');include('VHGraph1_0/class.graph1');
+<?include('wces/server.inc');include('VHGraph1_0/class.graph1');
 $a = array(array(0,0),array(0,0),array(0,0));
 
 $RGB["wcesyellow"] = Array(0xFF,0xFB,0x18);
@@ -18,4 +18,4 @@ phpdata($a);
 phpshow($fname,"gif");
 readfile($fname);
 unlink($fname);
-%>
+?>
