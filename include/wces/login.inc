@@ -6,6 +6,30 @@ require_once("wbes/session.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 require_once("wbes/postgres.inc");
+require_once("widgets/basic.inc");
+
+require_once("$WBES_LOGIN_INCLUDE");
+
+function & LoginInstance()
+{
+  if (!isset($GLOBALS['LoginInstance'])) 
+    $GLOBALS['LoginInstance'] =& new $GLOBALS['WBES_LOGIN'];
+  return $GLOBALS['LoginInstance'];
+}
+
+function LoginProtect($requiredStatus)
+{
+  global $server_url;
+  $login =& LoginInstance();
+  if (!$login->meetsStatus($requiredStatus))
+    $login->prompt($server_url->toString(true, true, true), $requiredStatus);
+};
+
+function & LoginValue($param)
+{
+  $login =& LoginInstance();
+  return $login->get($param);
+}
 
 //-----------------------------------------------------------------------------
 // LOGIN GLOBALS
@@ -18,332 +42,208 @@ define("login_any",            0x0000000F);
 define("login_knownprofessor", 0x10000000);
 
 session_restore();
-$LOGIN_PROMPTING = false;
 
-//-----------------------------------------------------------------------------
-// LOGIN MANAGEMENT FUNCTIONS
-
-function login_protect($requiredstatus)
+class WcesLogin
 {
-  global $rs, $server_url, $wces_path;
-  if ($requiredstatus && !($requiredstatus & login_getstatus()) || !$requiredstatus && !login_getuserid())
-    login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
-};
-
-function login_refresh()
-{
-  return login_update($_SESSION["login/userid"], $_SESSION["login/fake"],
-    $_SESSION["login/fakeuni"]); 
-}
-
-function login_update($user_id, $fake = NULL, $fakeuni = NULL)
-{
-  global $wces;
-  wces_connect();
+  var $error;
   
-  $result = pg_go("
-    select u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
-    from users AS u
-    left join enrollments AS e ON 
-      u.user_id = e.user_id
-      AND
-      e.status = 3
-    where u.user_id = $user_id
-    group by u.user_id, u.flags, u.department_id, u.firstname, u.lastname, u.uni
-  ", $wces, __FILE__, __LINE__);  
-
-  if (pg_numrows($result) == 1)
-    $row = pg_fetch_array($result,0,PGSQL_ASSOC);
-  else
-    $row = array("uni" => "", "name" => "__", "flags" => 0, "dept" => 0, "known" => false);
+  function get($name)
+  {
+    $n = $GLOBALS['WBES_LOGIN_PREFIX'] . $name;
+    if (isset($_SESSION[$n])) return $_SESSION[$n];
+    return null;
+  }
   
-  $status = 0;
-  if ($row['flags'] & 8)
-    $status |= login_student;
-
-  if ($row['flags'] & 4)
-    $status |= login_professor;
-
-  if ($row['flags'] & 2)
-    $status |= login_deptadmin;
+  function meetsStatus($status)
+  {
+    if ($status)
+      return (bool)($this->get('status') & $status);
+    else // true when logged in
+      return (bool)$this->get('user_id');
+  }
   
-  if ($row['known'])
-    $status |= login_knownprofessor;
+  function & getWidget($name, &$parent)
+  {
+    return new LoginWidget($name, $parent);
+  }
+  
+  function prompt($destUrl = '', $requestedStatus = 0)
+  {
+    global $WBES_LOGIN_URL, $WBES_LOGIN_SURL;
+    $page =& WcesPageInstance();
+    $f =& new Form('f', $GLOBALS['WBES_LOGIN_URL']);
+    $w =& $this->getWidget('login', $f);
+    $w->destUrl = $destUrl;
+    $w->requestedStatus = $requestedStatus;
+    $w->uni = $this->get('uni');
+    $f->loadState();
     
-  if ($row['flags'] & 1)
-    $status |= login_administrator;
-    
-  $p['user_id'] = $user_id;
-  
-  login_setup($user_id,$row['uni'],$status,$row['name'],(int)$row['dept'],$fake,$fakeuni);
-}
-
-function login_setup($userid, $uni, $status, $name, $deptid, $fake, $fakeuni)
-{
-  session_initialize();
-  $_SESSION["login/userid"] = (int)$userid;
-  $_SESSION["login/uni"] = $uni;
-  $_SESSION["login/status"] = (int)$status;
-  $_SESSION["login/name"] = $name;
-  $_SESSION["login/depts"] = $deptid ? array($deptid) : false;
-  $_SESSION["login/fake"] = $fake;
-  $_SESSION["login/fakeuni"] = $fakeuni;
-};
-
-function login_logout()
-{
-  session_kill();
-};
-
-//-----------------------------------------------------------------------------
-// LOGIN INFORMATION FUNCTIONS
-
-function login_getstatus()
-{
-  return isset($_SESSION["login/status"]) ? $_SESSION["login/status"] : 0;
-}
-
-function login_getuni()
-{
-  return isset($_SESSION["login/uni"]) ? $_SESSION["login/uni"] : 0;
-};
-
-function login_getdepts()
-{
-  return isset($_SESSION["login/depts"]) ? $_SESSION["login/depts"] : false;
-};
-
-function login_getuserid()
-{
-  return isset($_SESSION["login/userid"]) ? $_SESSION["login/userid"] : false;
-};
-
-function login_getname()
-{
-  return isset($_SESSION["login/name"]) ? $_SESSION["login/name"] : false;
-};
-
-function login_getfake()
-{
-  return isset($_SESSION["login/fake"]) ? $_SESSION["login/fake"] : false;
-};
-
-function login_getfakeuni()
-{
-  return isset($_SESSION["login/fakeuni"]) ? $_SESSION["login/fakeuni"] : false;
-};
-
-
-function login_whoami()
-{
-  if (!isset($_SESSION["login/status"])) return "";
-  
-  $result = "";
-  
-  if ($_SESSION["login/status"] & login_student)
-    $result .= "student";
-
-  if ($_SESSION["login/status"] & login_professor)
-  {
-    if ($result) $result .= ", ";
-    $result .= "professor";
-  }  
-
-  if ($_SESSION["login/status"] & login_administrator)
-  {
-    if ($result) $result .= ", ";
-    $result .= "administrator";
-  }
-
-  $p = strrpos($result, ",");
-  if ($p !== false) $result = substr_replace($result," and ",$p,2);
-  return $result;
-}
-
-//-----------------------------------------------------------------------------
-// PASSWORD VALIDATION ROUTINES
-
-$login_fail = false;
-
-function login_validate($uni,$password)
-{
-  global $wces, $login_fail;
- 
-  $uni = str_replace("@columbia.edu","",$uni);
-  $uni = str_replace("@barnard.edu","",$uni);
-  $uni = trim($uni);
-  $dump = acisget($uni,$password);
-  
-  if (!$dump)
-  {
-    sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
-    $login_fail = "Error: Timeout occurred while trying to contact the AcIS authentication server. Please try again.";
-    return false;
-  }
-     
-  if (strpos($dump,"no soup for you") !== false)
-  {
-    $login_fail = "Invalid username or password.";    
-    return false; // BAD PASSWORD
-  }
-  
-  if(preg_match('/^REMOTE_USER=(.*)$/m', $dump, $matches))
-    $cunix = $matches[1];
-  else
-  {
-    $cunix = $uni;
-    sendwarning("Login parser warning: username '$uni' could not be verified.\n\n----------\n\n$dump", __FILE__, __LINE__);
-  }  
-  
-  $email = preg_match('/^USER_EMAIL=(.*)$/m', $dump, $matches) ? $matches[1] : "";
-  $affils = preg_match('/^USER_AFFILIATIONS=(.*)$/m', $dump, $matches) ? $matches[1] : "";
-  
-  $ds=ldap_connect("ldap.columbia.edu");
-  $r=ldap_bind($ds);
-  $sr=ldap_search($ds,"o=Columbia University,c=US", "uni=$cunix");  
-  $info = ldap_get_entries($ds, $sr);
-  $ldap = array("givenname" => "", "sn" => "", "mail" => false);
-  if ($info["count"] == 1)
-  {
-    $result = $info[0];
-    foreach($ldap as $key => $value)
+    if ($w->done && $w->destUrl)
     {
-      if ((int)$result[$key]["count"] > 0)
-        $ldap[$key] = $result[$key][0];
+      sloppyredirect($w->destUrl);
+      exit();
     }
-  }  
-
-  $p = array('cunix' => $cunix, 'email' => $email ? $email : $ldap['mail'], 'last' => $ldap['sn'], 'first' => $ldap['givenname'], 'affils' => $affils);
-  aarray_map('quot',$p);
-  
-  wces_connect();
-  $result = pg_go("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
-  $user_id = (int)pg_result($result,0,0);
-  login_update($user_id);
-
-  if ($_SESSION["login/status"] == 0)
-    sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
- 
-  return true;
-};
-
-function contains($haystack,$needles)
-{
-  foreach($needles as $needle)
-    if (!(false === strpos($haystack,$needle))) return true;
-  return false;  
-};
-
-function acisget($uni,$pw)
-{
-  global $server_win32, $server_tempdir;
-  
-  if ($server_win32)
-  {
-    $grabber = new COM("Oracle.AffilGrabber");
-    $grabber->Validate((string)$uni,(string)$pw,"https://www1.columbia.edu/~rey4/info.html");
-    return $grabber->rawoutput;
-  }
-  else
-  {
-    $fname = tempnam($server_tempdir, "booty");
-
-    // the following line doesn't work with new versions of curl:
-    //   $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
-    //
-    // workaround is to use stunnel:
-    //  /usr/sbin/stunnel -d 12345 -c -r www1.columbia.edu:443
     
-    $ch = curl_init("http://localhost:12345/~rey4/info.html");
-    $fp = fopen($fname, "w");
-    curl_setopt($ch, CURLOPT_FILE, $fp);
-    curl_setopt($ch, CURLOPT_USERPWD, "$uni:$pw");
-    curl_setopt($ch, CURLOPT_HEADER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    curl_exec($ch);
-    curl_close($ch);
-    fclose($fp);
+    $page->loggingIn = true;
+    $page->printTop("Login Page");
+    $url = $w->plaintext ? $WBES_LOGIN_URL : $WBES_LOGIN_SURL;
+    print("<form name=f method=post action=\"$url\">\n");
+    $f->display();
+    $w->display();
+    print("</form>\n");
+    $page->printBottom();
+    exit();
+  }
+  
+  function whatami()
+  {
+    $c = array();
+    $status = (int)$this->get('status');
 
-    $fp = fopen($fname,"r");
-    $result = fread($fp, filesize($fname));
-    fclose($fp);
-    unlink($fname);
-    return $result;
+    if ($status & login_student)       $c[] = "student";
+    if ($status & login_professor)     $c[] = "professor";
+    if ($status & login_administrator) $c[] = "administrator";
+
+    $l = array_splice ($c, -1);
+
+    if (count($c))
+      return implode(', ', $c) . ' and ' . $l[0];
+    else
+      return $l[0];
+  }
+  
+  function logout()
+  {
+    session_kill();
   }
 };
 
-//-----------------------------------------------------------------------------
-// LOGIN DISPLAY
-
-function login_prompt($url, $rs, $de = false, $uni = "")
+class LoginWidget extends ParentWidget
 {
-  global $login_fail, $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING;
-  $LOGIN_PROMPTING = true;
+  var $login;
   
-  // technically, it is not neccessary to call session_initialize here since
-  // no data is being stored in the session on this page load.
-  // The reason it is called here is to allow detection of browser support 
-  // for cookies on the next page load. That way, the SID will never
-  // have to be passed as a URL parameter for browsers that support cookies.
+  var $done = false;
+  var $destUrl = '';
+  var $uni = '';
+  var $plaintext = false;
+  var $requestedStatus = 0;
   
-  session_initialize();
-
-  page_top("Login Page");  
-
-  $luni = login_getuni();
-  if($luni)
+  function LoginWidget($name, &$parent)
   {
-    if ($url && $rs && !($rs & login_getstatus()))
-      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as $luni with " . (($x = login_whoami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../about/feedback.php\">let us know</a>.</small></p>");
-    else     
-      print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
+    $this->ParentWidget($name, $parent);
+    $this->urlShortName('rs');
+    $this->urlShortName('url');
+    $this->urlShortName('p');
   }
-  else if ($login_fail)
-    print("<p><b><font color=red>$login_fail</font></b></p>\n");
-
-  $securesite = "$server_sbase${wces_path}login/login.php";
-  $insecuresite = "$server_base${wces_path}login/login.php";
-  $urlargs = "?url=" . urlencode($url) . "&rs=" . urlencode($rs) . $AASID;
-
+  
+  function loadInitialState()
+  {
+    // technically, it is not neccessary to call session_initialize here since
+    // no data is being stored in the session on this page load.
+    // The reason it is called here is to allow detection of browser support 
+    // for cookies on the next page load. That way, the SID will never
+    // have to be passed as a URL parameter for browsers that support cookies.
+    
+    session_initialize();
+  }
+  
+  function loadState()
+  {
+    ParentWidget::loadState();
+    $mode = WIDGET_FORM | WIDGET_URL;
+    $this->plaintext = (bool)$this->readValue('p', $mode);
+    $this->requestedStatus = (int)$this->readValue('rs', $mode);
+    $this->destUrl = (string)$this->readValue('url', $mode);
+    $this->uni = $this->readValue('uni', $mode);
+    $pw = $this->readValue('pw', $mode);
+ 
+    if ($this->uni || $pw)
+    {
+      $login =& LoginInstance();
+      if ($login->validate($this->uni, $pw))
+      {
+        // ($status meets at least one required flag) || (there aren't any required flags)
+        $this->done = !$login->meetsStatus($this->requestedStatus);
+      }
+    }
+  }
+  
+  function printVisible()
+  {
+    global $WBES_CONFIG_MEDIA_PATH, $WCES_CONFIG_PATH, $WBES_LOGIN_URL, $WBES_LOGIN_SURL, $AASID, $AISID, $server_url, $WBES_LOGIN_LOGOUT;
+  
+    $mode = WIDGET_FORM | WIDGET_URL;
+    
+    if ($this->destUrl)
+      $this->printValue('url', $this->destUrl, $mode);
+    
+    if ($this->requestedStatus);
+      $this->printValue('rs', $this->requestedStatus, $mode);
+      
+    if ($this->plaintext)
+      $this->printValue('p', 1, $mode);
+  
+    $login =& LoginInstance();
+    $luni = $login->get('uni');
+    
+    if ($login->error)
+      print("<p><b><font color=red>$login->error</font></b></p>\n");
+    else if($luni)
+    {
+      if (!$login->meetsStatus($this->requestedStatus))
+        print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as $luni with " . (($x = $login->whatami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$this->destUrl\">$this->destUrl</a>. If this is a mistake, please <a href=\"{$WCES_CONFIG_PATH}about/feedback.php\">let us know</a>.</small></p>");
+      else     
+        print("<p>You are currently logged in as $luni. Click <a href=\"${WBES_LOGIN_LOGOUT}\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
+    }
+  
 ?>  
-  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
-  <form method=post action="<?= $de ? $insecuresite : $securesite ?>">
-  <input type=hidden name=url value="<?= htmlspecialchars($url) ?>">
-  <input type=hidden name=rs value="<?= htmlspecialchars($rs) ?>">
-  <input type=hidden name=de value="<?= htmlspecialchars($de) ?>">
-  <?= $AISID ?>
+  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$WBES_CONFIG_MEDIA_PATH?>help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
+  <?=$AISID?>
   <table>
-  <tr><td>Username:</td><td><input name=uni type=text value="<?= $uni ?>" size=20></td></tr>
-  <tr><td>Password:</td><td><input name=pw type=password value="" size=20></td></tr>
+  <tr><td>Username:</td><td><input name=<?=$this->fullName('uni')?> type=text value="<?=$this->uni?>" size=20></td></tr>
+  <tr><td>Password:</td><td><input name=<?=$this->fullName('pw')?> type=password size=20></td></tr>
   <tr><td>&nbsp;</td><td><input type=submit value="Log In" name=submit> <input type=button value="Help" name=help onclick="showhelp('login')"></td></tr>
   </table>
-  </form>
 <?
-
-  if (!$server_url->secure && !$de)
-  {
+    if (!$server_url->secure && !$this->plaintext)
+    {
+      $plainUrl = $this->getUrl(array('p' => 1));
+      $certUrl = $GLOBALS['WBES_LOGIN_SURL'] . $this->form->getUrlVars();
+      
+      
 ?><font size="-1"><b>Note:</b> The information entered in this form will
 be transmitted using your browser's SSL encryption. If you would like to
 connect with no encryption, click
-<a onclick="alert('Due to security concerns from AcIS, this function has been disabled. Sending your CUNIX username and password over a public network without encryption puts your information and Columbia\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
+<a onclick="alert('Due to security concerns from AcIS, this function has been disabled. Sending your CUNIX username and password over a public network without encryption puts your information and Columbia\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?=$plainUrl?>">here</a>.
 If you would like to view a secure version of this page so you can examine
 our site's certificate before entering your password, click
-<a href="<?= $securesite . $urlargs ?>">here</a>. If your browser does not recognize our
+<a href="<?=$certUrl?>">here</a>. If your browser does not recognize our
 certificate, you'll need to download the latest AcIS
 <a href="http://www.columbia.edu/acis/access/secure/ca.html" target="_blank">root certificate</a> into your browser.</font>
 <?
-  }
-  else if ($de)
-  {
+    }
+    else if ($this->plaintext)
+    {
+      $encryptedUrl = $this->getUrl(array('p' => false));
+      
 ?><font size="-1"><b>Warning:</b> The information submitted through this form will
 be transmitted without encryption. If you would like to use a secure version
-of this form, click <a href="<?= $securesite . $urlargs?>">here</a>.
+of this form, click <a href="<?=$encryptedUrl?>">here</a>.
 </font>
 <?  
+    }
+    print("<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>");
   }
-  print("<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>");
-  page_bottom();  
-  exit();
 }
+
+/////////////
+///////
+/////////////////////
+
+function login_protect($s) 
+{
+  LoginProtect($s);
+}
+
 
 ?>
