@@ -61,7 +61,7 @@ class QuestionPeriodEditor extends StatefullWidget
     if ($this->question_period_id > 0)
     {
       wces_connect();     
-      $r = pg_go("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate FROM semester_question_periods WHERE question_period_id = $this->question_period_id", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate FROM semester_question_periods WHERE question_period_id = $this->question_period_id ORDER BY begindate", $wces, __FILE__, __LINE__);
       assert(pg_numrows($r) == 1);
       extract(pg_fetch_row($r, 0, PGSQL_ASSOC));
       $this->displayName->text = $displayname;
