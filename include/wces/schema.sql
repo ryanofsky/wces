@@ -474,6 +474,7 @@ CREATE TABLE users (
 
 CREATE TABLE warninglog (
   errorid int(11) NOT NULL auto_increment,
+  url tinytext,
   date timestamp(14) NOT NULL,
   file tinytext,
   line int(11) default NULL,
