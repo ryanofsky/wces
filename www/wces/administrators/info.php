@@ -107,6 +107,7 @@ function PrintLDAP($cunix)
   $r=ldap_bind($ds);
   $sr=ldap_search($ds,"o=Columbia University,c=US", "uni=$cunix");  
   $info = ldap_get_entries($ds, $sr);
+  if (!is_array($info)) $info = array("count" => 0);
   print("<p><strong>" . $info["count"] . " results found</strong></p>");
   foreach($info as $number => $result)
   if (strcmp($number,"count") != 0)
