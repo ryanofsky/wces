@@ -8,14 +8,20 @@ require_once("wces/useredit.inc");
 
 param('user_id');
 
-login_protect(login_professor);
+LoginProtect(LOGIN_PROFESSOR);
 
 $f =& new Form("f");
-$q =& new UserEditor(login_getuserid(), "ue", $f);
+$t =& new InitializerWidget("init", $f);
+$q =& new UserEditor(LoginValue('user_id'), "ue", $t);
 $q->show_admin = false;
 $f->loadState();
 
-if ($q->saved) login_refresh();
+if ($q->saved)
+{
+  $login =& LoginInstance();
+  $login->refresh(); 
+}
+
 if ($q->done) redirect($wces_path);
 
 page_top("User Edit");
@@ -26,6 +32,7 @@ print('<form enctype="multipart/form-data" method=post><input type=hidden name=M
 print($ISID);
 
 $f->display();
+$t->display();
 $q->display();
 
 page_bottom();

@@ -12,7 +12,7 @@ function legacy_info()
   if (!isset($professor_id))
   {
     wces_connect(); global $wces;
-    $user_id = (int)login_getuserid();
+    $user_id = (int)LoginValue('user_id');
     $result = pg_go("SELECT oldid FROM temp_prof WHERE newid = $user_id", $wces, __FILE__, __LINE__);
     $professor_id = pg_numrows($result) == 1 ? (int) pg_result($result,0,0) : 0;
   }

@@ -44,7 +44,7 @@ function legacy_makereport($db,&$wizard,$stdout,&$html,&$text)
   {
     $outhtml = "<font size=1>[ $page / $pages ]</font>\n";
     $outhtml .= "<h4>Report Information</h4>\n";
-    $outhtml .= "<table border=0><tr><td>Administrator ID: </td><td><b>" . login_getuni() . "</b></td></tr><tr><td>Date:</td><td><b>" . date("l, F j, Y") . "</b></td></tr><tr><td>Time:</td><td><b>" . date("g:i:s A") . "</b></td></tr></table>";
+    $outhtml .= "<table border=0><tr><td>Administrator ID: </td><td><b>" . LoginValue('uni') . "</b></td></tr><tr><td>Date:</td><td><b>" . date("l, F j, Y") . "</b></td></tr><tr><td>Time:</td><td><b>" . date("g:i:s A") . "</b></td></tr></table>";
     $outhtml .= "<h4>Report Specification</h4><pre>" . htmlspecialchars($wizard->summarize()) . "</pre>";
       
     if ($html) $html = $outhtml;
@@ -56,7 +56,7 @@ function legacy_makereport($db,&$wizard,$stdout,&$html,&$text)
   {
     $text = "${line}[ $page / $pages ]\n\n";
     $text .= "legacy_Report Information\n";
-    $text .= " - Administrator ID: " . login_getuni() . "\n";
+    $text .= " - Administrator ID: " . LoginValue('uni') . "\n";
     $text .= " - Date: " . date("l, F j, Y") . "\n";
     $text .= " - Time: " . date("g:i:s A") . "\n";
   }

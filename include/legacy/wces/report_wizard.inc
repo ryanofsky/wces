@@ -53,10 +53,10 @@ class legacy_ReportWizard extends legacy_Wizard
       $prefix,$form,$formmethod
     );
     
-    if (!(login_getstatus() & LOGIN_ADMIN))
+    if (!(LoginValue('status') & LOGIN_ADMIN))
     {
       $this->depts = array();
-      $d = login_getdepts();    
+      $d = LoginValue('depts');    
       if (is_array($d) && count($d) > 0)
       {
         wces_connect();
