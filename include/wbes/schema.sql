@@ -1,33 +1,34 @@
--- DROP TABLE saves;
--- DROP SEQUENCE save_ids;
--- DROP TABLE branches;
--- DROP SEQUENCE branch_ids;
--- DROP TABLE branch_topics_cache;
--- DROP TABLE branch_ancestor_cache;
--- DROP TABLE generic_components;
--- DROP TABLE choice_components;
--- DROP TABLE choice_questions;
--- DROP TABLE textresponse_components;
--- DROP TABLE text_components;
--- DROP TABLE surveys;
--- DROP TABLE subsurvey_components;
--- DROP TABLE pagebreak_components;
--- DROP TABLE revisions;
--- DROP SEQUENCE revision_ids;
--- DROP TABLE list_items;
--- DROP SEQUENCE list_item_ids;
--- DROP TABLE topics;
--- DROP SEQUENCE topic_ids;
--- DROP TABLE question_periods;
--- DROP SEQUENCE question_period_ids;
--- DROP TABLE survey_responses;
--- DROP TABLE choice_responses;
--- DROP TABLE choice_question_responses;
--- DROP TABLE mchoice_question_responses;
--- DROP TABLE textresponse_responses;
--- DROP TABLE responses;
--- DROP SEQUENCE response_ids;
--- DROP TABLE array_int_composite;
+DROP TABLE saves;
+DROP SEQUENCE save_ids;
+DROP TABLE branches;
+DROP SEQUENCE branch_ids;
+DROP TABLE branch_topics_cache;
+DROP TABLE branch_ancestor_cache;
+DROP TABLE generic_components;
+DROP TABLE choice_components;
+DROP TABLE choice_questions;
+DROP TABLE textresponse_components;
+DROP TABLE abet_components;
+DROP TABLE text_components;
+DROP TABLE surveys;
+DROP TABLE subsurvey_components;
+DROP TABLE pagebreak_components;
+DROP TABLE revisions;
+DROP SEQUENCE revision_ids;
+DROP TABLE list_items;
+DROP SEQUENCE list_item_ids;
+DROP TABLE topics;
+DROP SEQUENCE topic_ids;
+DROP TABLE question_periods;
+DROP SEQUENCE question_period_ids;
+DROP TABLE survey_responses;
+DROP TABLE choice_responses;
+DROP TABLE choice_question_responses;
+DROP TABLE mchoice_question_responses;
+DROP TABLE textresponse_responses;
+DROP TABLE responses;
+DROP SEQUENCE response_ids;
+DROP TABLE array_int_composite;
 DROP FUNCTION array_int_pair(INTEGER, INTEGER);
 DROP FUNCTION array_int_fill(INTEGER, INTEGER);
 DROP FUNCTION boolean_cast(BOOLEAN);
@@ -51,11 +52,15 @@ DROP FUNCTION revision_save_start(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION revision_save_end(INTEGER, INTEGER);
 DROP FUNCTION branch_save(INTEGER, INTEGER);
 DROP FUNCTION branch_topics_update(INTEGER, INTEGER, INTEGER, INTEGER);
-DROP FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[],INTEGER[], TEXT[], TEXT, INTEGER, INTEGER, INTEGER,INTEGER);
-DROP FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN);
-DROP FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, INTEGER, INTEGER, BOOLEAN);
+DROP FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, TEXT[],INTEGER[], TEXT[], TEXT, INTEGER, INTEGER, INTEGER,INTEGER);
+DROP FUNCTION subsurvey_component_save(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, TEXT);
+DROP FUNCTION subsurvey_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, INTEGER);
+DROP FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION choice_question_save(INTEGER, INTEGER, INTEGER, TEXT);
+DROP FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION abet_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
@@ -67,10 +72,16 @@ DROP FUNCTION boolean_merge(BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN);
 DROP FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[], BOOLEAN);
 DROP FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[], BOOLEAN);
 DROP FUNCTION bitmask_merge(INTEGER, INTEGER, INTEGER);
-DROP FUNCTION choice_disti(INTEGER[], INTEGER[]);
+DROP AGGREGATE choice_dist INTEGER;
 DROP AGGREGATE choice_dist INTEGER[];
+DROP FUNCTION int_distf(integer[], integer);
+DROP FUNCTION int_mdistf(integer[], integer[]);
 DROP FUNCTION pagebreak_component_save(INTEGER, INTEGER, INTEGER, BOOLEAN);
 DROP FUNCTION pagebreak_merge(INTEGER, INTEGER, INTEGER, INTEGER);
+DROP AGGREGATE last text[];
+DROP AGGREGATE first text[];
+DROP FUNCTION func_first (text[],text[]);
+DROP FUNCTION func_last (text[],text[]);
 
 
 CREATE TABLE saves
@@ -92,6 +103,7 @@ CREATE SEQUENCE save_ids INCREMENT 1 START 100;
 -- 7 = a generic component (no merge defined for this type)
 -- 8 = a subsurvey component
 -- 9 = a page break component
+-- 10 = abet component
 
 CREATE TABLE revisions
 (
@@ -143,7 +155,17 @@ CREATE TABLE generic_components
 CREATE TABLE text_components
 (
   ctext TEXT,
-  is_html BOOLEAN
+  flags INTEGER
+) INHERITS (revisions);
+
+
+---  survey_id INTEGER NOT NULL,
+
+CREATE TABLE subsurvey_components
+(
+  base_branch INTEGER,
+  flags INTEGER,
+  title TEXT
 ) INHERITS (revisions);
 
 CREATE TABLE choice_components
@@ -152,7 +174,6 @@ CREATE TABLE choice_components
   other_choice TEXT,
   first_number INTEGER,
   last_number  INTEGER,
-  flags        INTEGER,
   rows         INTEGER
 ) INHERITS (text_components);
 
@@ -164,20 +185,19 @@ CREATE TABLE choice_questions
 CREATE TABLE textresponse_components
 (
   rows INTEGER,
-  cols INTEGER,
-  align BOOLEAN
+  cols INTEGER
 ) INHERITS (text_components);
+
+CREATE TABLE abet_components
+(
+  which INTEGER -- bitmask
+) INHERITS (revisions);
 
 CREATE TABLE surveys
 (
   flags INTEGER
 ) INHERITS (revisions);
 
-CREATE TABLE subsurvey_components
-(
-  survey_id INTEGER NOT NULL,
-  flags INTEGER
-) INHERITS (revisions);
 
 CREATE TABLE pagebreak_components
 (
@@ -215,7 +235,7 @@ CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
 
 CREATE TABLE responses
 (
-  response_id INTEGER DEFAULT NEXTVAL ('response_ids'),
+  response_id INTEGER PRIMARY KEY DEFAULT NEXTVAL ('response_ids'),
   revision_id INTEGER NOT NULL,
   parent INTEGER
 );
@@ -255,6 +275,94 @@ CREATE TABLE textresponse_responses
 
 -- drastically speeds up mass mailing
 CREATE INDEX survey_response_m ON survey_responses(topic_id, question_period_id, user_id);
+
+create index text_responses_parent_idx ON textresponse_responses (parent);
+create index choice_responses_parent_idx ON choice_responses (parent);
+create index choiceq_responses_parent_idx ON choice_question_responses (parent);
+create index mchoiceq_responses_parent_idx ON mchoice_question_responses (parent);
+
+ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
+
+-- Add these foreign keys when a future version of postgres supports them on inherited tables
+-- 
+-- ALTER TABLE revisions ADD FOREIGN KEY (parent) REFERENCES revisions(revision_id);
+-- ALTER TABLE revisions ADD FOREIGN KEY (branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE revisions ADD FOREIGN KEY (save_id) REFERENCES saves(save_id);
+-- ALTER TABLE revisions ADD FOREIGN KEY (merged) REFERENCES revisions(revision_id);
+-- 
+-- ALTER TABLE branches ADD FOREIGN KEY (topic_id) REFERENCES topics(topic_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (base_branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (parent) REFERENCES branches(branch_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (latest_id) REFERENCES revisions(revision_id);
+-- ALTER TABLE branches ADD FOREIGN KEY (content_id) REFERENCES revisions(revision_id);
+-- 
+-- ALTER TABLE branch_topics_cache ADD FOREIGN KEY (base_branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branch_topics_cache ADD FOREIGN KEY (branch_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branch_topics_cache ADD FOREIGN KEY (topic_id) REFERENCES topics(topic_id);
+-- 
+-- ALTER TABLE branch_ancestor_cache ADD FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
+-- ALTER TABLE branch_ancestor_cache ADD FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
+-- 
+-- ALTER TABLE list_items ADD FOREIGN KEY (revision_id) REFERENCES revisions(revision_id); 
+-- ALTER TABLE list_items ADD FOREIGN KEY (item_id) REFERENCES branches(branch_id);
+-- 
+-- ALTER TABLE topics ADD FOREIGN KEY (parent) REFERENCES topics(topic_id);
+-- 
+-- ALTER TABLE responses ADD FOREIGN KEY (revision_id) REFERENCES revisions(revision_id);
+-- ALTER TABLE responses ADD FOREIGN KEY (parent) REFERENCES responses(response_id);
+-- 
+-- ALTER TABLE survey_responses ADD FOREIGN KEY (question_period_id) REFERENCES question_periods(question_period_id);
+-- ALTER TABLE survey_responses ADD FOREIGN KEY (topic_id) REFERENCES topics(topic_id);
+
+-- in lieu of foreign keys, use these functions to quickly see if a branch,
+-- topic, or revision is being referenced from some table
+
+CREATE FUNCTION references_branch(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE branch_id = $1)                 THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE base_branch_id = $1)             THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE parent = $1)                     THEN 4 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_topics_cache WHERE base_branch_id = $1)  THEN 8 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_topics_cache WHERE branch_id = $1)       THEN 16 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_ancestor_cache WHERE ancestor_id = $1)   THEN 32 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_ancestor_cache WHERE descendant_id = $1) THEN 64 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM list_items WHERE item_id = $1)                  THEN 128 ELSE 0 END;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION references_revisions(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE parent = $1)       THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE merged = $1)       THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE latest_id = $1)     THEN 4 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE content_id = $1)    THEN 8 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM list_items WHERE revision_id = $1) THEN 16 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM responses WHERE revision_id = $1)  THEN 32 ELSE 0 END;
+' LANGUAGE 'sql';
+
+CREATE FUNCTION references_topic(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM branches WHERE topic_id = $1)            THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM branch_topics_cache WHERE topic_id = $1) THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE topic_id = $1)    THEN 4 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM topics WHERE parent = $1)                THEN 8 ELSE 0 END;
+' LANGUAGE 'sql';
+
+
+-- how to wipe out all customizations (ruins results for customizations) for a particular topic
+--
+-- delete from branch_topics_cache where topic_id = 999998;
+-- delete from branch_ancestor_cache where ancestor_id IN (select branch_id from branches where topic_id = 999998);
+-- delete from branch_ancestor_cache where descendant_id IN (select branch_id from branches where topic_id = 999998);
+-- 
+-- select revision_id, references_revisions(revision_id) from revisions where branch_id IN (select branch_id from branches where topic_id = 999998);
+-- delete from list_items where revision_id IN (select revision_id from revisions where branch_id IN (select branch_id from branches where topic_id = 999998));
+-- 
+-- select revision_id, references_revision(revision_id) from revisions where branch_id IN (select branch_id from branches where topic_id = 999998);
+-- delete from revisions where branch_id IN (select branch_id from branches where topic_id = 999998);
+-- 
+-- select branch_id, references_branch(branch_id) from branches where topic_id = 999998;
+-- delete from branches where topic_id = 999998;
+
 
 -- needed because there is no way currently to directly declare an array variable in plpgsql
 CREATE TABLE array_int_composite(a INTEGER[]);
@@ -524,7 +632,7 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
       i := branch_id_;
       LOOP
         SELECT INTO j revision_id FROM revisions
-        WHERE branch_id = branch_id_ AND save_id <= saveid_
+        WHERE branch_id = branch_id_ AND save_id <= save_id_
         ORDER BY save_id_ DESC;
 
         IF j IS NOT NULL THEN RETURN j; END IF;
@@ -598,7 +706,7 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
 ' LANGUAGE 'plpgsql';
 
 -- this is the same as branch_latest(branch_id_, save_id_) except that
--- there it treats the branch_id_ like a base_branch_id and it has a 
+-- there it treats the branch_id_ like a base_branch_id and it has a
 -- topic_id_ argument which it will use to conveniently find the correct
 -- branch in the branch_topics_cache table. The topic *must* have entries
 -- in the cache. If there is a chance that it doesn't, it should be
@@ -640,12 +748,18 @@ CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INT
     ELSE IF type_ = 7 THEN
       INSERT INTO generic_components(type, parent, branch_id, revision, save_id, merged)
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 8 THEN
+      INSERT INTO subsurvey_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
     ELSE IF type_ = 9 THEN
       INSERT INTO pagebreak_components(type, parent, branch_id, revision, save_id, merged)
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 10 THEN
+      INSERT INTO abet_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
     ELSE
       RAISE EXCEPTION ''revision_create(%,%,%,%,%,%) called with unknown type number'', $1, $2, $3, $4, $5, $6;
-    END IF; END IF; END IF; END IF; END IF; END IF; END IF;
+    END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF;
     RETURN currval(''revision_ids'');
   END;
 ' LANGUAGE 'plpgsql';
@@ -1003,7 +1117,7 @@ CREATE FUNCTION branch_topics_update(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[],
+CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, TEXT[],
   INTEGER[], TEXT[], TEXT, INTEGER, INTEGER, INTEGER,
   INTEGER) RETURNS INTEGER AS '
   DECLARE
@@ -1011,15 +1125,14 @@ CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, 
     orig_id_       ALIAS FOR $2;
     save_id_       ALIAS FOR $3;
     ctext_         ALIAS FOR $4;
-    is_html_       ALIAS FOR $5;
-    questions      ALIAS FOR $6;
-    question_ids   ALIAS FOR $7;
-    choices_       ALIAS FOR $8;
-    other_choice_  ALIAS FOR $9;
-    first_number_  ALIAS FOR $10;
-    last_number_   ALIAS FOR $11;
-    flags_         ALIAS FOR $12;
-    rows_          ALIAS FOR $13;
+    questions      ALIAS FOR $5;
+    question_ids   ALIAS FOR $6;
+    choices_       ALIAS FOR $7;
+    other_choice_  ALIAS FOR $8;
+    first_number_  ALIAS FOR $9;
+    last_number_   ALIAS FOR $10;
+    flags_         ALIAS FOR $11;
+    rows_          ALIAS FOR $12;
     changed        BOOLEAN := ''t'';
     saveto         INTEGER;
     r              RECORD;
@@ -1031,11 +1144,12 @@ CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, 
     rec1           RECORD;
     branch_id_     INTEGER;
   BEGIN
-    -- RAISE NOTICE ''choice_component_save(%,%,%,%,%,%,%,%,%,%,%,%,%) called'', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13;
+    --RAISE NOTICE ''choice_component_save(%,%,%,%,%,%,%,%,%,%,%,%,%) called'', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12;
 
     -- save choices
     LOOP
       EXIT WHEN questions[i] IS NULL;
+      --RAISE NOTICE ''saving question %'', i;
       j := CASE WHEN question_ids[i] = 0 THEN NULL ELSE question_ids[i] END;
       branch_id_ := choice_question_save(topic_id_, j, save_id_, questions[i]);
       s_branch_ids := s_branch_ids || sep || branch_id_::TEXT;
@@ -1048,41 +1162,47 @@ CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, 
     SELECT INTO rec array_integer_cast(s_branch_ids) AS branch_ids;
 
     IF orig_id_ IS NOT NULL THEN
+      --RAISE NOTICE ''is this what deaner was talking about?'';
       changed := ''f'';
 
-      -- see if choice ordering changed
+      -- see if question ordering changed
       i := 1;
 
       FOR rec1 IN SELECT item_id FROM list_items WHERE revision_id = orig_id_ ORDER BY ordinal LOOP
+        --RAISE NOTICE ''question % changed? %'', i;
         j := rec.branch_ids[i];
-        IF j IS NULL OR boolean_cast(j = rec1.item_id) THEN changed := ''t''; EXIT; END IF;
+        IF j IS NULL OR boolean_cast(j <> rec1.item_id) THEN changed := ''t''; EXIT; END IF;
         i := i + 1;
+        --RAISE NOTICE ''question % not changed'', i;
       END LOOP;
 
-      SELECT INTO r branch_id, ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = orig_id_;
+      SELECT INTO r branch_id, ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = orig_id_;
       IF NOT FOUND THEN
-        RAISE EXCEPTION ''choice_component_save(%,%,%,%,%,%,%,%,%,%,%,%,%) fails. orig_id not found'', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13;
+        RAISE EXCEPTION ''choice_component_save(%,%,%,%,%,%,%,%,%,%,%,%,%) fails. orig_id not found'', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12;
       END IF;
 
       branch_id_ := r.branch_id;
 
       IF NOT changed THEN
+        --RAISE NOTICE ''questions did not change'';
         changed := rec.branch_ids[i] IS NOT NULL OR NOT boolean_cast(
-          r.ctext = ctext_ AND r.is_html = is_html_ AND
+          r.ctext = ctext_ AND
           r.choices = choices_ AND r.other_choice = other_choice_ AND
           r.first_number = first_number_ AND r.last_number = last_number_ AND
           r.flags = flags_ AND r.rows = rows_);
+        --RAISE NOTICE ''other parameter changed? %'', changed;
       END IF;
     END IF;
 
     IF changed THEN
+      --RAISE NOTICE ''something changed. beginning save'', changed;
       branch_id_ := branch_save(topic_id_, branch_id_);
       saveto := revision_save_start(branch_id_, orig_id_, 2, save_id_);
       UPDATE choice_components SET
-        ctext = ctext_, is_html = is_html_,
+        ctext = ctext_,
         choices = choices_, other_choice = other_choice_,
         first_number = first_number_, last_number = last_number_,
-        flags = flags_, rows = rows_
+       flags = flags_, rows = rows_
       WHERE revision_id = saveto;
       i := 1;
       LOOP
@@ -1093,37 +1213,59 @@ CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, 
       END LOOP;
       RETURN revision_save_end(branch_id_, saveto);
     ELSE
+      --RAISE NOTICE ''nothing changed'', changed;
       RETURN branch_topics_add(topic_id_, branch_id_);
     END IF;
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN) RETURNS INTEGER AS '
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE FUNCTION subsurvey_component_save(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, TEXT) RETURNS INTEGER AS '
   DECLARE
-    topic_id_    ALIAS FOR $1;
-    orig_id_     ALIAS FOR $2;
-    save_id_     ALIAS FOR $3;
-    type_        ALIAS FOR $4;
-    ctext_       ALIAS FOR $5;
-    is_html_     ALIAS FOR $6;
+    topic_id_      ALIAS FOR $1;
+    orig_id_       ALIAS FOR $2;
+    save_id_       ALIAS FOR $3;
+    base_branch_   ALIAS FOR $4;
+    flags_         ALIAS FOR $5;
+    title_ 	   ALIAS FOR $6;
     branch_id_   INTEGER := NULL;
     changed      BOOLEAN := ''t'';
     saveto       INTEGER;
     rec RECORD;
   BEGIN
     IF orig_id_ IS NOT NULL THEN
-      SELECT INTO rec branch_id, ctext, is_html FROM text_components WHERE revision_id = orig_id_;
+      SELECT INTO rec branch_id, flags, base_branch, title FROM subsurvey_components WHERE revision_id = orig_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''text_component_save(%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6;
       END IF;
       branch_id_ := rec.branch_id;
-      changed := NOT (rec.ctext = ctext_ AND is_html_ = rec.is_html);
+      changed := NOT (rec.base_branch = base_branch_ AND flags_ = rec.flags AND title_ = rec.title);
     END IF;
 
     IF changed THEN
       branch_id_ := branch_save(topic_id_, branch_id_);
-      saveto := revision_save_start(branch_id_, orig_id_, type_, save_id_);
-      UPDATE text_components SET ctext = ctext_, is_html = is_html_ WHERE revision_id = saveto;
+      saveto := revision_save_start(branch_id_, orig_id_, 8, save_id_);
+      UPDATE subsurvey_components SET base_branch = base_branch_, flags = flags_, title = title_ WHERE revision_id = saveto;
       RETURN revision_save_end(branch_id_, saveto);
     ELSE
       RETURN branch_topics_add(topic_id_, branch_id_);
@@ -1131,34 +1273,117 @@ CREATE FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, BO
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, INTEGER, INTEGER, BOOLEAN) RETURNS INTEGER AS '
+
+
+
+
+CREATE FUNCTION subsurvey_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    orig_id       ALIAS FOR $1;
+    primary_id    ALIAS FOR $2;
+    secondary_id  ALIAS FOR $3;
+    new_id        ALIAS FOR $4;
+    orig_row      RECORD;
+    primary_row   RECORD;
+    secondary_row RECORD;
+  BEGIN
+    SELECT INTO orig_row      flags, base_branch, title FROM subsurvey_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   flags, base_branch, title FROM subsurvey_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row flags, base_branch, title FROM subsurvey_components WHERE revision_id = secondary_id;
+    UPDATE choice_questions SET
+      flags = integer_merge(orig_row.flags, primary_row.flags, secondary_row.flags, ''t''),
+      base_branch = integer_merge(orig_row.base_branch, primary_row.base_branch, secondary_row.base_branch, ''t''),
+      title = text_merge(orig_row.title, primary_row.title, secondary_row.title, ''t'')
+    WHERE revision_id = new_id;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_    ALIAS FOR $1;
+    orig_id_     ALIAS FOR $2;
+    save_id_     ALIAS FOR $3;
+    type_        ALIAS FOR $4;
+    ctext_       ALIAS FOR $5;
+    flags_       ALIAS FOR $6;
+    branch_id_   INTEGER := NULL;
+    changed      BOOLEAN := ''t'';
+    saveto       INTEGER;
+    rec RECORD;
+  BEGIN
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, ctext, flags FROM text_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''text_component_save(%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.ctext = ctext_ AND flags_ = rec.flags);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, type_, save_id_);
+      UPDATE text_components SET ctext = ctext_, flags = flags_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     topic_id_  ALIAS FOR $1;
     orig_id_   ALIAS FOR $2;
     save_id_   ALIAS FOR $3;
     ctext_     ALIAS FOR $4;
-    is_html_   ALIAS FOR $5;
+    flags_     ALIAS FOR $5;
     rows_      ALIAS FOR $6;
     cols_      ALIAS FOR $7;
-    align_     ALIAS FOR $8;
     branch_id_ INTEGER := NULL;
     changed    BOOLEAN := ''t'';
     saveto     INTEGER;
     rec RECORD;
   BEGIN
     IF orig_id_ IS NOT NULL THEN
-      SELECT INTO rec branch_id, ctext, is_html, rows, cols, align FROM textresponse_components WHERE revision_id = orig_id_;
+      SELECT INTO rec branch_id, ctext, flags, rows, cols FROM textresponse_components WHERE revision_id = orig_id_;
       IF NOT FOUND THEN
-        RAISE EXCEPTION ''textresponse_component_save(%,%,%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6, $7, $8;
+        RAISE EXCEPTION ''textresponse_component_save(%,%,%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6, $7;
       END IF;
       branch_id_ := rec.branch_id;
-      changed := NOT (rec.ctext = ctext_ AND is_html_ = rec.is_html AND rec.rows = rows_ and rec.cols = cols_ and rec.align = align_);
+      changed := NOT (rec.ctext = ctext_ AND flags_ = rec.flags AND rec.rows = rows_ and rec.cols = cols_);
     END IF;
 
     IF changed THEN
       branch_id_ := branch_save(topic_id_, branch_id_);
       saveto := revision_save_start(branch_id_, orig_id_, 3, save_id_);
-      UPDATE textresponse_components SET ctext = ctext_, is_html = is_html_, rows = rows_, cols = cols_, align = align_ WHERE revision_id = saveto;
+      UPDATE textresponse_components SET ctext = ctext_, flags = flags_, rows = rows_, cols = cols_ WHERE revision_id = saveto;
       RETURN revision_save_end(branch_id_, saveto);
     ELSE
       RETURN branch_topics_add(topic_id_, branch_id_);
@@ -1229,6 +1454,38 @@ CREATE FUNCTION choice_question_save(INTEGER, INTEGER, INTEGER, TEXT) RETURNS IN
   END;
 ' LANGUAGE 'plpgsql';
 
+CREATE FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_    ALIAS FOR $1;
+    orig_id_     ALIAS FOR $2;
+    save_id_     ALIAS FOR $3;
+    which_       ALIAS FOR $4;
+    branch_id_   INTEGER := NULL;
+    changed      BOOLEAN := ''t'';
+    saveto       INTEGER;
+    rec RECORD;
+  BEGIN
+    -- RAISE NOTICE ''abet_component_save(%,%,%,%) called'', $1, $2, $3, $4;
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, which FROM abet_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''abet_component_save(%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.which = which_);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, 10, save_id_);
+      UPDATE abet_components SET which = which_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
 CREATE FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     common_id    ALIAS FOR $1;
@@ -1274,10 +1531,18 @@ CREATE FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEG
     IF t = 6 THEN
       RETURN choice_question_merge(common_id, primary_id, secondary_id, new_id);
     END IF;
-    
+
+    IF t = 8 THEN
+	RETURN subsurvey_component_merge(common_id, primary_id, secondary_id, new_id);
+    END IF;
+
     IF t = 9 THEN
       RETURN pagebreak_merge(common_id, primary_id, secondary_id, new_id);
-    END IF;    
+    END IF;
+
+    IF t = 10 THEN
+      RETURN abet_component_merge(common_id, primary_id, secondary_id, new_id);
+    END IF;
 
     RAISE EXCEPTION ''revision_merge(%,%,%,%) failed. Revision type unknown.'', $1, $2, $3, $4;
   END;
@@ -1294,13 +1559,34 @@ CREATE FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
     secondary_row RECORD;
   BEGIN
     -- RAISE NOTICE ''choice_question_merge(%,%,%,%) called'', $1, $2, $3, $4;
-    SELECT INTO orig_row      ctext, is_html FROM text_components WHERE revision_id = orig_id;
-    SELECT INTO primary_row   ctext, is_html FROM text_components WHERE revision_id = primary_id;
-    SELECT INTO secondary_row ctext, is_html FROM text_components WHERE revision_id = secondary_id;
+    SELECT INTO orig_row      qtext FROM choice_questions WHERE revision_id = orig_id;
+    SELECT INTO primary_row   qtext FROM choice_questions WHERE revision_id = primary_id;
+    SELECT INTO secondary_row qtext FROM choice_questions WHERE revision_id = secondary_id;
     UPDATE choice_questions SET
       qtext = text_merge(orig_row.qtext, primary_row.qtext, secondary_row.qtext, ''t'')
     WHERE revision_id = new_id;
-    RAISE NOTICE ''choice_question_merge(%,%,%,%) returns'', $1, $2, $3, $4;
+    -- RAISE NOTICE ''choice_question_merge(%,%,%,%) returns'', $1, $2, $3, $4;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION abet_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    orig_id       ALIAS FOR $1;
+    primary_id    ALIAS FOR $2;
+    secondary_id  ALIAS FOR $3;
+    new_id        ALIAS FOR $4;
+    orig_row      RECORD;
+    primary_row   RECORD;
+    secondary_row RECORD;
+  BEGIN
+    -- RAISE NOTICE ''abet_component_merge(%,%,%,%) called'', $1, $2, $3, $4;
+    SELECT INTO orig_row      which FROM abet_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   which FROM abet_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row which FROM abet_components WHERE revision_id = secondary_id;
+    UPDATE abet_components SET
+      which = bitmask_merge(orig_row.which, primary_row.which, secondary_row.which)
+    WHERE revision_id = new_id;
     RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
@@ -1315,15 +1601,14 @@ CREATE FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETUR
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    RAISE NOTICE ''choice_component_merge(%,%,%,%) called'', $1, $2, $3, $4;
-    SELECT INTO orig_row      ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = orig_id;
-    SELECT INTO primary_row   ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = primary_id;
-    SELECT INTO secondary_row ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = secondary_id;
+    -- RAISE NOTICE ''choice_component_merge(%,%,%,%) called'', $1, $2, $3, $4;
+    SELECT INTO orig_row      ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = secondary_id;
     PERFORM list_merge(orig_id, primary_id, secondary_id, new_id);
     PERFORM text_component_merge(orig_id, primary_id, secondary_id, new_id);
     UPDATE choice_components SET
       ctext        = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
-      is_html      = boolean_merge(orig_row.is_html, primary_row.is_html, secondary_row.is_html, ''t''),
       choices      = text_array_merge(orig_row.choices, primary_row.choices, secondary_row.choices, ''t''),
       other_choice = text_merge(orig_row.other_choice, primary_row.other_choice, secondary_row.other_choice, ''t''),
       first_number = integer_merge(orig_row.first_number, primary_row.first_number, secondary_row.first_number, ''t''),
@@ -1345,13 +1630,13 @@ CREATE FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      ctext, is_html FROM text_components WHERE revision_id = orig_id;
-    SELECT INTO primary_row   ctext, is_html FROM text_components WHERE revision_id = primary_id;
-    SELECT INTO secondary_row ctext, is_html FROM text_components WHERE revision_id = secondary_id;
+    SELECT INTO orig_row      ctext, flags FROM text_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   ctext, flags FROM text_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row ctext, flags FROM text_components WHERE revision_id = secondary_id;
 
     UPDATE text_components SET
-      ctext   = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
-      is_html = boolean_merge(orig_row.is_html, primary_row.is_html, secondary_row.is_html, ''t'')
+      ctext = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      flags = bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
     WHERE revision_id = new_id;
     RETURN 1;
   END;
@@ -1367,16 +1652,15 @@ CREATE FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGER, INTEGER)
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      ctext, is_html, rows, cols, align FROM text_components WHERE revision_id = orig_id;
-    SELECT INTO primary_row   ctext, is_html, rows, cols, align FROM text_components WHERE revision_id = primary_id;
-    SELECT INTO secondary_row ctext, is_html, rows, cols, align FROM text_components WHERE revision_id = secondary_id;
+    SELECT INTO orig_row      ctext, flags, rows, cols FROM text_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   ctext, flags, rows, cols FROM text_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row ctext, flags, rows, cols FROM text_components WHERE revision_id = secondary_id;
 
     UPDATE text_components SET
-      ctext   = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
-      is_html = boolean_merge(orig_row.is_html, primary_row.is_html, secondary_row.is_html, ''t'')
-      rows    = integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t''),
-      cols    = integer_merge(orig_row.cols, primary_row.cols, secondary_row.cols, ''t'')
-      align   = boolean_merge(orig_row.align, primary_row.align, secondary_row.align, ''t'')
+      ctext = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      flags = bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags),
+      rows  = integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t''),
+      cols  = integer_merge(orig_row.cols, primary_row.cols, secondary_row.cols, ''t'')
     WHERE revision_id = new_id;
     RETURN 1;
   END;
@@ -1544,43 +1828,25 @@ CREATE FUNCTION bitmask_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   SELECT (~ $1 & ($2 | $3)) | ($2 & $3)
 ' LANGUAGE 'sql';
 
-CREATE FUNCTION choice_disti(INTEGER[], INTEGER[]) RETURNS INTEGER[] AS '
-  DECLARE
-    state ALIAS FOR $1;
-    input ALIAS FOR $2;
---    newstate array_int_composite%ROWTYPE;
-    newstate RECORD;
-    i INTEGER;
-    rec RECORD;68.83.25.8
-  BEGIN
-    IF state IS NOT NULL THEN
-      newstate.a := state;
-    ELSE
---    SELECT INTO rec r.revision_id, c.is_numeric, c.choices, c.first_number, c.last_number, c.other_choice
---    FROM choice_responses AS r
---    INNER JOIN choice_components AS c USING (revision_id)
---    WHERE r.response_id = state[2];
---
---    IF rec.is_numeric THEN
---      i := abs(rec.last_number - rec.first_number) + 1;
---    ELSE
---      i := 1;
---      WHILE rec.choices[i] IS NOT NULL LOOP
---        i := i + 1;
---      END LOOP;
---      i := i - 1;
---    END IF;
---    newstate.a := array_int_fill(size,0);
-    END IF;
-
---  i := input[1] + 1;
-    SELECT INTO newstate.a[i] 1;
-    RETURN newstate.a[i];
-  END;
-' LANGUAGE 'plpgsql';
+CREATE AGGREGATE choice_dist (
+    basetype = INTEGER,
+    stype = INTEGER[],
+    sfunc = int_distf
+);
 
 CREATE AGGREGATE choice_dist (
     basetype = INTEGER[],
     stype = INTEGER[],
-    sfunc = choice_disti
+    sfunc = int_mdistf
 );
+
+CREATE FUNCTION func_first (text[],text[]) RETURNS text[] AS '
+  SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END;
+' LANGUAGE 'sql' WITH ( iscachable );
+
+CREATE FUNCTION func_last (text[],text[]) RETURNS text[] AS '
+  SELECT $2;
+' language 'sql' WITH ( iscachable );
+
+CREATE AGGREGATE last ( BASETYPE = text[], SFUNC = func_last, STYPE = text[]);
+CREATE AGGREGATE first ( BASETYPE = text[], SFUNC = func_first, STYPE = text[]);

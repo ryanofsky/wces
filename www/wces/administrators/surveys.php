@@ -1,36 +1,5 @@
 <?
 
-/*
-
-first initialize the database:
-
-\o nul
-DELETE FROM topics;
-DELETE FROM branches;
-DELETE FROM revisions;
-DELETE FROM list_items;
-INSERT INTO topics (topic_id) VALUES (1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (1,1,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (1,1,1,1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (2,2,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (2,1,2,1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (3,3,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (3,1,3,1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (4,4,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (4,1,4,1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (5,5,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (5,1,5,1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (6,6,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (6,1,6,1);
-INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (7,7,1);
-INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (7,1,7,1);
-SELECT branch_generate();
-SELECT branch_ancestor_generate();
-SELECT branch_topics_generate();
-\o
-
-*/
-
 require_once("wbes/component_text.inc");
 require_once("wbes/component_heading.inc");
 require_once("wbes/component_choice.inc");
@@ -104,6 +73,8 @@ function topics_link($result)
 
 if (!$q || $q->state == SurveyEditor_done)
 {
+  if ($q) print($q->message);
+  
   wces_connect();
   
   print("<p>Choose a survey to edit. Changes to surveys made in general categories propogate downward to surveys beneath them. For example, changes made to the base questions show up in the surveys for groups of classes and for individual classes. Changes made to a survey for a group of classes will show up in the surveys for all the classes in that group.</p>");

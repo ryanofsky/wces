@@ -35,8 +35,8 @@ function texttable($data,$formats)
       $data[$rowname][$colname] = explode("\n", wordwrap(str_replace("\r\n","\n",$data[$rowname][$colname]),$formats[$colname],"\n"));
       $count = sizeof($data[$rowname][$colname]);
       if ($heights[$rowname] < $count) $heights[$rowname] = $count;
-    }  
-    else  
+    }
+    else
     {
       $l = strlen($col);
       if (!isset($widths[$colname]) || ($l > $widths[$colname]))
@@ -49,24 +49,24 @@ function texttable($data,$formats)
     $line .= str_repeat("-", 2 + $width) . "+";
   };
   $line .= "\n";
-  
+
   $table = $line;
-  
+
   foreach($data as $rowname => $row)
   {
     for($i = 0; $i < $heights[$rowname]; ++$i)
     {
       $table .= "|";
       foreach($widths as $colname => $width)
-      {   
+      {
         if ($formats[$colname] === $formats[$colname] + 0)
-          $table .= leftalign(" " . $row[$colname][$i],$width + 2);   
+          $table .= leftalign(" " . $row[$colname][$i],$width + 2);
         else if ($i == floor($heights[$rowname] / 2))
         {
           if ($formats[$colname] == "center")
-            $table .= centeralign(" " . $row[$colname],$width + 2);   
+            $table .= centeralign(" " . $row[$colname],$width + 2);
           else // ($formats[$colname] == "left")
-            $table .= leftalign($row[$colname],$width + 2);   
+            $table .= leftalign($row[$colname],$width + 2);
         }
         else
           $table .= str_repeat(" ",$width + 2);
@@ -76,6 +76,7 @@ function texttable($data,$formats)
     }
     $table .= "$line";
   };
-  return $table; 
+  return $table;
 };
+
 ?>

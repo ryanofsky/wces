@@ -19,6 +19,7 @@ define("ReportWizard_order",7);
 define("ReportWizard_finish",8);
 define("ReportWizard_output_www",0);
 define("ReportWizard_output_email",1);
+define("ReportWizard_output_pemail",1);
 
 class ReportWizard extends Wizard
 {
@@ -53,8 +54,8 @@ class ReportWizard extends Wizard
     );
 
     $this->depts = login_getdepts();
-    
-    $this->output = new RadioButton(array("Display Report on Web Page","Email reports to professors"),$this->prefix . "_output",$this->form,$this->formmethod);
+
+    $this->output = new RadioButton(true, $this->prefix . "_output",$this->form,$this->formmethod);
     $this->includestandard = new CheckBox("{$prefix}_includestandard", $this->form, $this->formmethod);
     $this->includecustom = new CheckBox("{$prefix}_includecustom", $this->form, $this->formmethod);
     $this->includeabet = new CheckBox("{$prefix}_includeabet", $this->form, $this->formmethod);
@@ -120,7 +121,15 @@ class ReportWizard extends Wizard
 
     //////////////////////////////// WIZARD SETUP ////////////////////////////////////////
 
-    $this->crawl(array(ReportWizard_aggreg => ($this->output->checked == ReportWizard_output_email) ? true : false, ReportWizard_order => ($this->output->checked == ReportWizard_output_email) ? true : false));
+    $this->crawl
+    (
+      array
+      (
+        ReportWizard_aggreg => $this->output->checked == ReportWizard_output_email,
+        ReportWizard_order =>  $this->output->checked == ReportWizard_output_email,
+        ReportWizard_output =>  true
+      )
+    );
 
     //////////////////////////////// CRITERIA SETUP //////////////////////////////////////
 
@@ -157,13 +166,6 @@ class ReportWizard extends Wizard
     $labels = array(QUESTION_PERIODS => "Question Period", DEPARTMENTS => "Department", PROFESSORS => "Professor", COURSES => "Course");
     $this->order = new DynamicList(25,4,$labels, $this->prefix . "_order", $this->form, $this->formmethod);
     $this->order->loadvalues();
-    
-    // QUESTION_PERIODS", 0x01);
-    // CLASSES",          0x02);
-    // COURSES",          0x04);
-    // DEPARTMENTS",      0x08);
-    // PROFESSORS",       0x10);
-    // CATEGORIES",       0x20);
 
     $this->queries = array(
       CATEGORIES => "SELECT survey_category_id AS id, name FROM survey_categories ORDER BY survey_category_id",
@@ -194,7 +196,7 @@ class ReportWizard extends Wizard
   function selectquery($which, $sql, $needstemp = false, $block = true, $needprof = false)
   {
     global $wces;
-    wces_connect();    
+    wces_connect();
 
     if ($needstemp)
     {
@@ -202,10 +204,10 @@ class ReportWizard extends Wizard
       if ($block) $c[$which] = false;
       report_findtopics("rwtopics", $c, $needprof);
     }
-    
+
     return pg_query($sql, $wces, __FILE__, __LINE__);
   }
-  
+
   function selectshow($which, $result, $name, $all)
   {
     $criteria = $this->criteria[$which];
@@ -222,13 +224,13 @@ class ReportWizard extends Wizard
       $selected = $hash[$id] ? " selected" : "";
       print("<option value=\"$id\"$selected>$name</option>");
     }
-    print("</select>\n");  
+    print("</select>\n");
   }
-  
+
   function critshow($sql, &$report, $name)
   {
     global $wces;
-    
+
     $result = pg_query($sql, $wces, __FILE__, __LINE__);
     $n = pg_numrows($result);
     for($i = 0; $i < $n; ++$i)
@@ -268,9 +270,11 @@ class ReportWizard extends Wizard
         else
         {
 ?>
+<p><font color=red>These options aren't working right now.</font></p>
 <p><b>Choose a report format:</b><br>
-<? $this->output->display(ReportWizard_output_www,   "onclick=\"show('" . $this->prefix . "_wwwoptions" . "')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www); ?><br>
-<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('" . $this->prefix . "_wwwoptions" . "')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email); ?>
+<? $this->output->display(ReportWizard_output_www,   "onclick=\"show('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www, "Display Report on Web Page"); ?><br>
+<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email, "Email Report to one or people"); ?><br>
+<? $this->output->display(ReportWizard_output_pemail, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_pemail, "Email professor reports"); ?>
 </p>
 
 <p><b>Include these sections:</b><br>
@@ -386,13 +390,13 @@ class ReportWizard extends Wizard
   function summarize($initialized = false)
   {
     global $wces;
-    
+
     if (!$initialized)
     {
       wces_connect();
       report_findtopics("rwtopics", $this->criteria, true);
     }
-    
+
     $report = "------------------------\nREPORT OPTIONS\n\n";
 
     $report .= "Output: " . ($this->output->checked == ReportWizard_output_email ? "Professor Email" : "Web Report") . "\n";
@@ -464,34 +468,6 @@ class ReportWizard extends Wizard
       $report .= "Course: ANY\n";
 
     return $report;
-  }
-
-  function makequery(&$criteria)
-  {
-    $query = new db_SelectMonster();
-    $query->settable("survey_responses AS r");
-    $query->addjoin("wces_topics AS t",db_SelectMonster_inner,"t.topic_id = r.topic_id");
-    $query->addjoin("classes AS cl",db_SelectMonster_inner,"cl.class_id = t.class_id");
-    
-    if (is_array($criteria[CATEGORIES]))
-      $query->addwhere("t.category_id IN " . db_set($criteria["categories"]));
-
-    if (is_array($criteria[QUESTION_PERIODS]))
-      $query->addwhere("r.question_period_id IN " . db_set($criteria["questionperiods"]));
-
-    if (is_array($criteria[DEPARTMENTS]))
-      $query->addwhere("cl.department_id IN " . db_set($criteria["departments"]));
-
-    if (is_array($criteria[PROFESSORS]))
-      $query->addwhere("e.user_id IN " . db_set($criteria["professors"]));
-    
-    if ($criteria[PROFESSORS])
-      $query->addjoin("enrollments AS e",db_SelectMonster_inner,"e.class_id = cl.class_id AND e.status = 3");
-
-    if ($criteria[COURSES])
-      $query->addwhere("cl.course_id IN " . db_set($criteria["courses"]));
-
-    return $query;
   }
 }
 

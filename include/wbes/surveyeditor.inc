@@ -53,16 +53,22 @@ class SurveyEditor extends FormWidget
     $this->topic_id = (int)$topic_id;
     $this->base_branch_id = (int)$base_branch_id;
     $this->factories = $factories;
+    $GLOBALS['topic_id'] = $topic_id;
   }
  
-  function loadvalues()
+  function loadvalues($empty = false)
   {
-    $this->survey = @unserialize(urldecode((string)$this->loadattribute("survey")));
-    if (get_class($this->survey) != "survey")
-      $this->load();
+    if(!$empty)
+	{
+	$this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
+
+	if (get_class($this->survey) != "survey")
+	    $this->load();
+	}
 
     $this->state = $this->loadattribute("state");
     $this->currentcomponent = $this->loadattribute("currentcomponent");
+    //print($this->prefix . " values loaded, now handling action.\n<br>\n");
     $this->handleaction();
   }
 
@@ -74,7 +80,7 @@ class SurveyEditor extends FormWidget
   
   function save()
   {
-    if ($this->survey->save($this->topic_id,$this->base_branch_id,0))
+    if ($this->survey->save($this->topic_id,0))
       $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
     else
       $this->message = "<h1>Save Error</h1>";
@@ -83,17 +89,15 @@ class SurveyEditor extends FormWidget
 
   function handleaction()
   {
+    $GLOBALS['topic_id'] = $this->topic_id;
+
     switch ($this->state)
     {
       case SurveyEditor_insert:
         $this->insert_action = new ActionButton("{$this->prefix}_list_action", $this->form, $this->formmethod);
         $this->insert_action->loadvalues();
         
-        $choices = array();
-        foreach($this->factories as $k => $f)
-          $choices[$k] = $f->name();
-       
-        $this->insert_type = new RadioButton($choices, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
+        $this->insert_type = new RadioButton(true, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
         $this->insert_type->loadvalues();
 
         switch($this->insert_action->action)
@@ -152,6 +156,10 @@ class SurveyEditor extends FormWidget
         break;
       case SurveyEditor_main:
       default:
+      
+	//print($this->prefix . " Doing default. \n<br>\n");
+	
+	
         $this->main_action = new ActionButton("{$this->prefix}_main_action", $this->form, $this->formmethod);
         $this->main_action->loadvalues();
 
@@ -198,13 +206,14 @@ class SurveyEditor extends FormWidget
 
   function display($hidden = false)
   {
-    global $server_media;
+    global $server_media, $wbes;
     
     $this->printattribute("survey", urlencode(serialize($this->survey)));
     $q = unserialize(serialize($this->survey));
     $this->printattribute("currentcomponent",$this->currentcomponent);
     if (!$hidden)
     {
+    //print("Now displaying: " . $this->state);
       switch ($this->state)
       {
         case SurveyEditor_insert:
@@ -212,12 +221,12 @@ class SurveyEditor extends FormWidget
           if ($this->insert_badinput) print("<p><font color=red>You forgot to choose an item from the list</font></p>");
           $first = true;
           print("<h5>Which component type would you like to insert? <a href=\"javascript:showhelp('inserttypes')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a></h5>\n");
-          
-          foreach($this->insert_type->items as $key => $value)
+
+          foreach($this->factories as $key => $f)
           {
             if ($first) $first = false; else print("<br>\n");
             $this->insert_type->display($key);
-            $this->insert_type->displaylabel($key);
+            $this->insert_type->displaylabel($key, $f->name());
           }
           print("\n");
           print("<p>");
@@ -271,6 +280,9 @@ and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
 <?            
             print("<table border=0 cellpadding=0 cellspacing=0>\n");
+            print("<tr><td colspan=6 align=center>");
+            $this->main_action->display("Add new component",SurveyEditor_main_insert,$ncomponents,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
+            print("</td></tr>");
             print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id={$this->prefix}_insertmarker name={$this->prefix}_insertmarker>\n");
             for($i=0;;++$i)
             {
@@ -285,7 +297,35 @@ by clicking above and below existing components.</p>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td rowspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr>
+<?
+
+$needNode = true;
+
+if($component->locked && $component->revision_id)
+{
+  wbes_connect();
+  $sql = "SELECT topic_id FROM branches AS a, revisions AS b WHERE a.branch_id = b.branch_id AND b.revision_id = '$component->revision_id'";
+  $r = pg_query($sql, $wbes, __FILE__, __LINE__);
+  $wr = new pg_wrapper($r);
+    
+  if($wr->row['topic_id'] != $this->topic_id)
+	{
+	  $needNode = false;
+?>
+	<td width=40 valign=center><img src="<?=$server_media?>/editor/grey_node.gif" width=40 height=18 border=0 align=absmiddle alt=locked_node></td>
+<?
+	}
+}
+
+if($needNode)
+    {
+?>
   <td width=40 valign=center><img src="<?=$server_media?>/editor/node.gif" width=40 height=18 border=0 align=absmiddle alt=node id=<?=$this->prefix?>_node<?=$i?> name=<?=$this->prefix?>_node<?=$i?>></td>
+<?
+    }?>
+
+  
+
   <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
   <td><? $w->displaypreview(); ?></td>
 </tr>
@@ -406,6 +446,10 @@ by clicking above and below existing components.</p>
       if (i >= nodes) break;
 
       var node = elem(prefix + "_node" + i);
+
+      if(node == null)
+        {continue;}
+      
       node.onmouseover = SurveyEditor_node_onmouseover;
       node.onmouseout = SurveyEditor_node_onmouseout;
       node.key = i;
@@ -455,6 +499,9 @@ by clicking above and below existing components.</p>
         if (i >= o.nodes) break;
         
         var node = document.images[o.prefix + '_node' + i];
+        
+        if (!node) continue;
+        
         node.ns4_onmouseover = SurveyEditor_node_onmouseover;
         node.ns4_onmouseout = SurveyEditor_node_onmouseout;
         node.key = i;

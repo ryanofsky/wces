@@ -59,32 +59,15 @@ if ($class_id)
   else
   {
     page_top("Student Survey");
+    $r = pg_query("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
     
-    $result = pg_query(" 
-      SELECT (s.code || to_char(c.code::int4,'000') || ' ' || c.name) AS classname, p.firstname, p.lastname 
-      FROM classes AS cl 
-      INNER JOIN courses AS c USING (course_id) 
-      INNER JOIN subjects AS s USING (subject_id) 
-      LEFT JOIN enrollments AS e ON e.status = 3 AND e.class_id = cl.class_id 
-      LEFT JOIN users AS p ON e.user_id = p.user_id 
-      WHERE cl.class_id = $class_id 
-    ", $wces, __FILE__, __LINE__); 
-     
-    $n = pg_numrows($result); 
-    $class = $prof = ""; 
+    $class = format_class(pg_result($r,0,0));
+    $prof = format_profs(pg_result($r,0,1), false, "<br>Professor ");
 
-    for($i = 0; $i < $n; ++$i) 
-    { 
-      extract(pg_fetch_array($result,$i,PGSQL_ASSOC)); 
-      $class = $classname; 
-      if ($firstname || $lastname) 
-      { 
-         $prof .= "<br>Professor " . trim("$firstname $lastname"); 
-      } 
-    } 
-    print("<h3>$class$prof</h3>"); 
+    print("<h3>$class$prof</h3>");
 
     print("<form name=f method=post>");
+    print($ISID);
     $q->display();
     print("</form>");
     page_bottom();

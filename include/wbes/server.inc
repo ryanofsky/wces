@@ -41,8 +41,8 @@
   {                        
     $server_isproduction = false;
     $server_win32 = true;  
-    $server_base = "http://russ.esurveys.hn.org";
-    $server_sbase = "http://russ.esurveys.hn.org";
+    $server_base = "http://dartmouth.esurveys.hn.org";
+    $server_sbase = "http://dartmouth.esurveys.hn.org";
     $server_tempdir = "M:/server/shares/temp";
     $server_cheapredirects = true;
     $server_url = new URL
@@ -62,7 +62,7 @@
     
     function server_pginit($dbname = "wbes")
     {
-      return pg_Connect("host=localhost dbname=$dbname user=postgres password=--------");
+      return pg_Connect("host=localhost dbname=$dbname user=postgres password=lewrujop");
     }
   }
   else if (server_mode == "yahwehisapi")

@@ -4,6 +4,12 @@ require_once("wbes/survey.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/dynamiclist.inc");
 
+// keep global options that apply to all classes that inherit from Component
+// on the high byte so the other three bytes can be used by individual classes
+
+define("FLAG_LOCKED", 0x01000000);
+define("FLAG_ISHTML", 0x02000000);
+
 class ComponentFactory
 {
   // in a normal language, code and name would be static constants, but
@@ -36,13 +42,15 @@ class ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, is_html FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+    $r = pg_query("SELECT revision_id, ctext, flags FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = new $cn();
       $c->revision_id = (int)$wr->row['revision_id'];
-      $c->is_html     = $wr->row['is_html'] == 't';
-      $c->text       = $wr->row['ctext'];
+      $c->text        = $wr->row['ctext'];
+      $flagGroup      = $wr->row['flags'];
+      $c->locked      = (bool)($flagGroup & FLAG_LOCKED);
+      $c->is_html     = (bool)($flagGroup & FLAG_ISHTML);
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
@@ -53,6 +61,8 @@ class Component
   var $text = "";      // string, component text
   var $is_html = false;   // boolean html allowed
   var $revision_id = 0;
+
+  var $locked = false;
 
   function Component()
   {
@@ -74,10 +84,13 @@ class Component
     global $wbes;
 
     $t = addslashes($this->text);
-    $h = $this->is_html ? 't' : 'f';
     $r = $this->revision_id ? $this->revision_id : 'NULL';
 
-    $result = pg_query("SELECT text_component_save($topic_id, $r, $save_id, $cn, '$t', '$h')", $wbes, __FILE__, __LINE__);
+    $flagGroup = 0;
+    if ($this->is_html) $flagGroup |= FLAG_ISHTML;
+    if ($this->locked)  $flagGroup |= FLAG_LOCKED;
+
+    $result = pg_query("SELECT text_component_save($topic_id, $r, $save_id, $cn, '$t', $flagGroup)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
   
@@ -85,7 +98,7 @@ class Component
   // todo: this function is very out of date, needs to be updated
   function save($topic_id, $save_id)
   {
-    assert(false);
+    die("Component::save() method is completely out of date. either rewrite it is a generic save method or write a none generic save for your component.");
     
     global $wbes;
 
@@ -142,6 +155,7 @@ class ComponentEditor extends FormWidget
   var $text,$is_html,$loadprevious; // Widgets
   var $errors; // Mistakes in the form
   var $component; // source component
+  var $locking;
   
   function ComponentEditor(&$component,$prefix,$form,$formmethod)
   {
@@ -149,7 +163,7 @@ class ComponentEditor extends FormWidget
     $this->text = new TextBox(4,40,"wrap=virtual",$this->prefix."_text",$this->form,$this->formmethod);
     $this->is_html = new CheckBox($this->prefix."_usehtml",$this->form,$this->formmethod);
     $this->component = &$component;
-    
+    $this->locking = new CheckBox($this->prefix."_locked", $this->form, $this->formmethod);  
     $this->errors = array();
     
     $this->text->broken = false;
@@ -162,11 +176,13 @@ class ComponentEditor extends FormWidget
     {
       $this->text->loadvalues();
       $this->is_html->loadvalues();
+      $this->locking->loadvalues();
     }
     else
     {
       $this->text->text = $this->component->text;
       $this->is_html->checked = $this->component->is_html ? true : false;
+      $this->locking->checked = $this->component->locked;      
     }
   }
   
@@ -179,6 +195,7 @@ class ComponentEditor extends FormWidget
   {
     $this->component->text = $this->text->text;
     $this->component->is_html = $this->is_html->checked;
+    $this->component->locked = $this->locking->checked;
     return true;
   }
 

@@ -17,19 +17,19 @@ page_top("Professor Usage Data for $displayname]");
 
 pg_query("
   CREATE TEMPORARY TABLE profcounts AS
-  SELECT t.class_id, CASE WHEN COUNT(DISTINCT b.branch_id) >0 THEN 1 ELSE 0 END AS customized
+  SELECT t.class_id, t.topic_id, CASE WHEN COUNT(DISTINCT b.branch_id) >0 THEN 1 ELSE 0 END AS customized
   FROM wces_topics AS t
   INNER JOIN classes AS cl USING (class_id)
   LEFT JOIN branches AS b ON (b.topic_id = t.topic_id)
-  WHERE cl.year = $year AND cl.semester = $semester
-  GROUP BY t.class_id
+  WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
+  GROUP BY t.class_id, t.topic_id
 ",$wces,__FILE__, __LINE__);
 
 $y = pg_query("
   CREATE TEMPORARY TABLE pu AS
-  SELECT pc.class_id, s.code || c.code AS code, c.name AS cname, cl.section,
+  SELECT pc.class_id, pc.topic_id, s.code || c.divisioncode || c.code AS code, c.name AS cname, cl.section,
     cl.students, u.user_id, u.uni, u.firstname, u.lastname, u.lastlogin,
-    CASE WHEN u.lastlogin >= '2001-11-16' THEN 1 ELSE 0 END AS loggedin,
+    CASE WHEN u.lastlogin >= '2002-04-05' THEN 1 ELSE 0 END AS loggedin,
     pc.customized
   FROM profcounts AS pc
   INNER JOIN classes AS cl USING (class_id)
@@ -58,7 +58,7 @@ Number of classes with professors who created custom surveys: <b><?=(int)$profcu
 <?
 
 $result = pg_query("
-  SELECT user_id, class_id, code, section, students, firstname, lastname, uni, loggedin,
+  SELECT user_id, class_id, topic_id, code, section, students, firstname, lastname, uni, loggedin,
    cname, to_char(lastlogin,'YYYY-MM-DD') AS lastlogin, customized
   FROM pu
   ORDER BY customized DESC, loggedin DESC, code, section
@@ -104,7 +104,7 @@ for($i=0; $i<$n; ++$i)
   $pname = "$firstname $lastname";
   if ($uni) $pname .= " ($uni)";
 
-  print("<tr><td nowrap>$code $section</td><td>$cname</td><td>$students</td><td>$pname</td><td nowrap>$lastlogin</td></tr>");
+  print("<tr><td nowrap><a href=\"{$wces_path}administrators/info.php?class_id=$class_id\">$code $section</a></td><td><a href=\"{$wces_path}administrators/surveys.php?topic_id=$topic_id\">$cname</a></td><td>$students</td><td><a href=\"{$wces_path}administrators/info.php?user_id=$user_id\">$pname</a></td><td nowrap>$lastlogin</td></tr>");
   ++$lastcnt;
   $lastcustom = $customized;
   $lastloggedin = $loggedin;

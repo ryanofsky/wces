@@ -3,11 +3,11 @@
 require_once("wbes/component.inc");
 require_once("Numbers/Roman.php");
 
-define("FLAG_ISHTML",     0x1);
-define("FLAG_ISNUMERIC",  0x2);
-define("FLAG_SELECTMANY", 0x4);
-define("FLAG_STACKED",    0x8);
-define("FLAG_VERTICAL",   0x10);
+define("FLAG_ISNUMERIC",  0x1);
+define("FLAG_SELECTMANY", 0x2);
+define("FLAG_STACKED",    0x4);
+define("FLAG_VERTICAL",   0x8);
+define("FLAG_NACHOICE",   0x10);
 
 //numbering options.
 define("MASK_NUMBERING",  0x60);
@@ -15,8 +15,6 @@ define("FLAG_NONUMBERS",  0x00);
 define("FLAG_ROMAN",      0x20);
 define("FLAG_ARABIC",     0x40);
 define("FLAG_ALPHA",      0x60);
-
-define("FLAG_NACHOICE",  0x80);
 
 class ChoiceFactory extends ComponentFactory
 {
@@ -33,13 +31,12 @@ class ChoiceFactory extends ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_query("SELECT revision_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = new Choice();
       $c->revision_id   = (int)$wr->row['revision_id'];
-      $c->is_html       = $wr->row['is_html'] == 't';
       $c->text          = $wr->row['ctext'];
       $c->choices       = pg_explode($wr->row['choices']);
       $c->other_choice  = $wr->row['other_choice'];
@@ -51,8 +48,8 @@ class ChoiceFactory extends ComponentFactory
       $c->intro_text    = $wr->row['ctext'];
 
       $flagGroup        = $wr->row['flags'];
-
-      //new system for storing booleans.
+      $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
+      $c->is_html       = (bool)($flagGroup & FLAG_ISHTML);
       $c->is_numeric    = (bool)($flagGroup & FLAG_ISNUMERIC);
       $c->select_many   = (bool)($flagGroup & FLAG_SELECTMANY);
       $c->stacked       = (bool)($flagGroup & FLAG_STACKED);
@@ -139,7 +136,6 @@ class Choice extends Component
     global $wbes;
     $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
     $ctext        = addslashes($this->intro_text);
-    $is_html      = $this->is_html ? "'t'" : "'f'";
     $questions    = pg_implode($this->questions);
     $question_ids = pg_implode($this->question_ids);
     $choices      = pg_implode($this->choices);
@@ -158,10 +154,12 @@ class Choice extends Component
     if ($this->stacked)     $flagGroup |= FLAG_STACKED;
     if ($this->vertical)    $flagGroup |= FLAG_VERTICAL;
     if ($this->na_choice)   $flagGroup |= FLAG_NACHOICE;
+    if ($this->locked)      $flagGroup |= FLAG_LOCKED;
+    if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
 
     $result = pg_query("
       SELECT choice_component_save($topic_id, $revision_id, $save_id, '$ctext',
-        $is_html, $questions::text[], $question_ids::integer[],
+        $questions::text[], $question_ids::integer[],
         $choices::text[], '$other_choice'::text, $first_number, $last_number,
         $flagGroup, $rows)
     ", $wbes, __FILE__, __LINE__);
@@ -190,6 +188,9 @@ class ChoiceEditor extends ComponentEditor
 
   //added support for numbering. [tyler]
   var $numbering_scheme;
+
+  //added locking [tyler]
+  var $locking;
 
   var $other_label;
   var $first_number;
@@ -346,6 +347,9 @@ class ChoiceEditor extends ComponentEditor
 
       //added to support numbering. [tyler]
       $this->numbering_scheme->selected = $this->component->numbering_scheme;
+
+      //added to support locking. [tyler]
+      $this->locking->checked = $this->component->locked;
 
       if ($this->component->is_numeric)
       {
@@ -532,6 +536,9 @@ class ChoiceEditor extends ComponentEditor
     //added to support numbering. [tyler]
     $c->numbering_scheme = $this->numbering_scheme->selected;
 
+    //added locking support
+    $c->locked = $this->locking->checked;
+
     if ($this->controls->selected == "buttons")
       $c->rows = 0;
     else if ($this->controls->selected == "drop")
@@ -658,6 +665,9 @@ class ChoiceEditor extends ComponentEditor
 
     <? /* added to support N/A option */ ?>
     <?= $this->na->display(); ?> Allow N/A choice <br>
+    
+    <? /* Locking support. [tyler]*/ ?>
+    <?= $this->locking->display();?> Lock this component. <br>
 
   </td>
 </tr>
@@ -752,9 +762,6 @@ class ChoiceWidget extends ComponentWidget
   {
     $this->ComponentWidget($c,$prefix,$form,$formmethod);
 
-    // abstract away the differences between different survey types
-    // for the purpose of displaying
-
     $this->legend = "";
     if ($c->is_numeric)
     {
@@ -796,10 +803,10 @@ class ChoiceWidget extends ComponentWidget
     {
       $c = &$this->component;
       $name = "q$i";
-      if ($c->select_many) $name .= "[]";
       $a = $this->loadattribute($name);
+
       if ($c->select_many)
-        $this->answers[$i] = is_array($a) ? $a : array();
+        $this->answers[$i] = is_array($a) ? $a : NULL;
       else if (isset($a))
         $this->answers[$i] = (int)$a;
       else
@@ -828,15 +835,23 @@ class ChoiceWidget extends ComponentWidget
 
     foreach(array_keys($this->questions) as $i)
     {
-      if ($this->component->select_many)
-        $answer = pg_implode($this->answers[$i]);
-      else
-        $answer = quot($this->answers[$i]);
       $other = addslashes($this->others[$i]);
-      $success = $success && pg_query("
-        INSERT INTO $table(revision_id, parent, answer, other)
-        VALUES ({$this->component->revision_id}, $nparent, $answer, '$other');
-      ", $wbes, __FILE__, __LINE__);
+      $a = &$this->answers[$i];
+      
+      if ($other || isset($a))
+      {
+        if (!isset($a))
+          $answer = "NULL";
+        else if ($this->component->select_many)
+          $answer = pg_implode($a);
+        else
+          $answer = quot($a);
+
+        $success = $success && pg_query("
+          INSERT INTO $table(revision_id, parent, answer, other)
+          VALUES ({$this->component->question_ids[$i]}, $nparent, $answer, '$other');
+        ", $wbes, __FILE__, __LINE__);
+      }
     }
     return $success;
   }
@@ -844,6 +859,7 @@ class ChoiceWidget extends ComponentWidget
   function showchoices($questionno, $tdparams = "")
   {
     $c = &$this->component;
+    $a = &$this->answers[$questionno];
     $name = $this->prefix . "_q" . $questionno;
     if ($c->select_many) $name .= "[]";
 
@@ -853,7 +869,7 @@ class ChoiceWidget extends ComponentWidget
       print("<select name=$name" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
       foreach($this->choices as $i => $choice)
       {
-        $selected = (!$c->select_many && $i === $this->answers[$questionno]) && ($c->select_many && is_array($this->answers) && in_array($i, $this->answers[$questionno])) ? " selected" : "";
+        $selected = (!$c->select_many && $i === $a) || ($c->select_many && is_array($a) && in_array($i, $a)) ? " selected" : "";
         print("  <option value=$i$selected>$choice\n");
       }
       print("</select>\n");
@@ -872,16 +888,16 @@ class ChoiceWidget extends ComponentWidget
       {
         if ($first) $first = false; else print($sep);
 
-        $id = $this->prefix . '_q' . $questionno . '_' . $i;
+        $id = "{$name}_{$i}";
 
         if ($c->select_many)
         {
-            $checked = isset($this->answers) && in_array($i, $this->answers[$questionno]) ? " checked" : "";
+            $checked = is_array($a) && in_array($i, $a) ? " checked" : "";
             print("<input type=checkbox name=$name value=$i id=$id$checked>");
         }
         else
         {
-            $checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
+            $checked = $i === $a ? " checked" : "";
             print("<input type=radio name=$name value=$i id=$id$checked>");
         }
 

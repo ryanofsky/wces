@@ -1,4 +1,3 @@
-
 <?
 require_once("wces/page.inc");
 page_top("Credits");
@@ -33,13 +32,13 @@ Registrar, Thayer School of Engineering<br>
 <blockquote>
 <a href="http://www.gnu.org/"><img src="<?=$wces_path?>media/logo_linux.gif" width=88 height=31 border=0></a>
 <a href="http://www.php.net/"><img src="<?=$wces_path?>media/logo_php.gif" width=88 height=31 border=0></a>
-<a href="http://www.mysql.com/"><img src="<?=$wces_path?>media/logo_mysql.gif" width=88 height=31 border=0></a>
+<a href="http://www.postgresql.org/"><img src="<?=$wces_path?>media/logo_postgres.gif" width=50 height=54 border=0></a>
 </blockquote>
 
 <p><b><i>Best seen in</i></b></p>
 <blockquote>
-<a href="http://www.mozilla.org"><img src="<?=$wces_path?>media/logo_mozilla.gif" width=64 height=64 border=0></a>
-<a href="http://www.microsoft.com/windows/ie/"><img src="<?=$wces_path?>media/logo_ie5.gif" width=88 height=31 border=0></a>
+<a href="http://www.mozilla.org"><img src="<?=$wces_path?>media/logo_mozilla.gif" width=64 height=64 border=0 alt=Mozilla></a>
+<a href="http://www.microsoft.com/windows/ie/"><img src="<?=$wces_path?>media/logo_ie5.gif" width=88 height=31 border=0 alt="Internet Explorer"></a>
 </blockquote>
 
 <?

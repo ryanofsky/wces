@@ -28,6 +28,7 @@ class SurveyWidget extends FormWidget
   var $survey = NULL;
   var $questionwidgets;
   var $page = 0;
+  var $backup = true;
   
   function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, $prefix, $form, $formmethod)
   {
@@ -48,7 +49,7 @@ class SurveyWidget extends FormWidget
     $this->page = (int)$this->loadattribute("page");
     if (!$this->survey)
     {
-      $this->survey = @unserialize((string)$this->loadattribute("survey"));
+      $this->survey = unserialize((string)$this->loadattribute("survey"));
       if (get_class($this->survey) != "survey")
         $this->load();
     }
@@ -100,7 +101,7 @@ class SurveyWidget extends FormWidget
 
   function save()
   {
-    global $wbes;
+    global $wbes, $HTTP_POST_VARS;
     
     $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
@@ -129,6 +130,27 @@ class SurveyWidget extends FormWidget
     foreach(array_keys($this->questionwidgets) as $key)
       $failure = $failure || !$this->questionwidgets[$key]->save($response_id);
     
+    $fields = "'" . addslashes(serialize($HTTP_POST_VARS)) . "'";
+    
+    // temporary, ensure that even if results not saved correctly, they will still
+    // be recoverable
+    //
+    // CREATE TABLE safe_backup (
+    //   user_id INTEGER,
+    //   topic_id INTEGER,
+    //   question_period_id INTEGER,
+    //   date DATETIME DEFAULT 'now',
+    //   form_vals TEXT
+    // );
+    //
+    if ($this->backup)
+    {
+      $failure = $failure || !pg_query("
+        INSERT INTO safe_backup (user_id, topic_id, question_period_id, form_vals)
+        VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
+      ", $wbes, __FILE__, __LINE__);
+    }
+    
     if ($failure)
       pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
     else
@@ -137,7 +159,7 @@ class SurveyWidget extends FormWidget
     if ($failure)  
     {
       $this->failure = true;
-      print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:admin@thayer.dartmouth.edu">wces@columbia.edu</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
+      print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:admin@thayer.dartmouth.edu">admin@thayer.dartmouth.edu</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
     }
     $this->finished = true;
   }

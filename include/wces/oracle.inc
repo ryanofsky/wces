@@ -2,6 +2,7 @@
 require_once("wbes/server.inc");
 
 $oracle_root = "/oracle/";
+$answer_criteria = "a.questionperiodid IN (1,2,4,5,7,9) AND a.topicid IN (1,2,4) AND a.questionsetid = '1'";
 
 function oracle_top($title,$headimage)
 {
@@ -9,7 +10,6 @@ function oracle_top($title,$headimage)
 
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-<!-- This page was created by Mark Sainz & Alexander Haubold for Columbia University, 1999-->
 <html>
 <head>
 <title><?=$title?></title>

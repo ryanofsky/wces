@@ -2,6 +2,8 @@
 
 require_once("wbes/component.inc");
 
+define("FLAG_ALIGN", 0x1);
+
 class TextResponseFactory extends ComponentFactory
 {
   function code() { return 3; }
@@ -17,17 +19,20 @@ class TextResponseFactory extends ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, is_html, rows, cols, align FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_query("SELECT revision_id, ctext, flags, rows, cols FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = new TextResponse();
       $c->revision_id   = (int)$wr->row['revision_id'];
-      $c->is_html       = $wr->row['is_html'] == 't';
       $c->text          = $wr->row['ctext'];
       $c->rows          = (int) $wr->row['rows'];
       $c->cols          = (int) $wr->row['cols'];
-      $c->label_align   = $wr->row['align'] == 't';
+
+      $flagGroup        = $wr->row['flags'];
+      $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
+      $c->is_html       = (bool)($flagGroup & FLAG_ISHTML);
+      $c->label_align   = (bool)($flagGroup & FLAG_ALIGN);
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }  
@@ -59,14 +64,18 @@ class TextResponse extends Component
   function save($topic_id, $save_id)
   {
     global $wbes;
-    //mine [tyler]
-    $alignLeft 	= $this->label_align ? "'t'" : "'f'";    
+
     $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
     $ctext        = addslashes($this->text);
-    $is_html      = $this->is_html ? "'t'" : "'f'";
     $rows         = (int) $this->rows;
     $cols         = (int) $this->cols;
-    $result = pg_query("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $is_html, $rows, $cols, $alignLeft)", $wbes, __FILE__, __LINE__);
+
+    $flagGroup = 0;
+    if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
+    if ($this->locked)      $flagGroup |= FLAG_LOCKED;
+    if ($this->label_align) $flagGroup |= FLAG_ALIGN;
+
+    $result = pg_query("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }  
 };
@@ -195,11 +204,15 @@ class TextResponseWidget extends ComponentWidget
   function save($parent)
   {
     global $wbes;
-    $t = addslashes($this->response->text);
-    return (boolean) pg_query("
-      INSERT INTO textresponse_responses(revision_id, parent, rtext)
-      VALUES ({$this->component->revision_id}, $parent, '$t')
-    ", $wbes, __FILE__, __LINE__);
+    $t = addslashes(trim($this->response->text));
+    
+    if ($t)
+      return (boolean) pg_query("
+        INSERT INTO textresponse_responses(revision_id, parent, rtext)
+        VALUES ({$this->component->revision_id}, $parent, '$t')
+      ", $wbes, __FILE__, __LINE__);
+    else
+      return true;
   }
   
   function display($hidden = false, $showerrors = false)
