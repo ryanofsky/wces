@@ -1184,14 +1184,27 @@ WITH (ISCACHABLE);
 DROP FUNCTION get_class(INTEGER);
 CREATE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
   SELECT COALESCE(s.code, '''') || ''\n'' 
-    || COALESCE(c.divisioncode, '''') || ''\n'' || COALESCE(c.code, '''')  || ''\n''
+    || COALESCE(c.divisioncode, '''') || ''\n'' 
+    || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
     || COALESCE(cl.section, '''')     || ''\n'' || COALESCE(cl.year, '''') || ''\n'' 
     || COALESCE(cl.semester, '''')    || ''\n'' || COALESCE(c.name, '''') || ''\n''
-    || COALESCE(cl.name, '''') || ''\n'' || $1
+    || COALESCE(cl.name, '''') || ''\n'' || $1 || ''\n'' || c.course_id
   FROM classes AS cl
   INNER JOIN courses AS c USING (course_id)
   INNER JOIN subjects AS s USING (subject_id)
   WHERE cl.class_id = $1
+' LANGUAGE 'sql' WITH (ISCACHABLE);
+
+DROP FUNCTION get_course(INTEGER);
+CREATE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
+  SELECT COALESCE(s.code, '''') || ''\n'' 
+    || COALESCE(c.divisioncode, '''') || ''\n'' 
+    || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
+    || COALESCE(c.name, '''') || ''\n''
+    ||  $1
+  FROM courses AS c
+  INNER JOIN subjects AS s USING (subject_id)
+  WHERE c.course_id = $1
 ' LANGUAGE 'sql' WITH (ISCACHABLE);
 
 CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
