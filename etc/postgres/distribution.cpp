@@ -4,6 +4,7 @@ extern "C"
 #include "postgres.h"
 #include "fmgr.h"
 #include "utils/array.h"
+#include "catalog/pg_type.h"
 
 #define INT_DIST_MAX_ELEMS 100
 
@@ -17,14 +18,16 @@ Datum int_dist_sum(PG_FUNCTION_ARGS);
 
 }
 
-ArrayType * alloc_int32_array(int nelems)
+static ArrayType * alloc_int32_array(int nelems)
 {
+  // based on new_intArrayType contrib/intarray/_int.c
   ArrayType * result;
   int nbytes = sizeof(int32) * nelems + ARR_OVERHEAD(1);
   result = (ArrayType *) palloc(nbytes);
-  result->size = nbytes;
-  result->ndim = 1;
-  result->flags = 0;
+  MemSet(result, 0, nbytes);
+  ARR_SIZE(result) = nbytes;
+  ARR_NDIM(result) = 1;
+  ARR_ELEMTYPE(result) = INT4OID;
   ARR_DIMS(result)[0] = nelems;
   ARR_LBOUND(result)[0] = 1;
   return result;
@@ -45,7 +48,12 @@ Datum int_dist_insert_many(PG_FUNCTION_ARGS)
   }
 
   if (PG_ARGISNULL(1))
-    PG_RETURN_ARRAYTYPE_P(PG_GETARG_ARRAYTYPE_P(0));
+  {
+    if (state_vals)
+      PG_RETURN_ARRAYTYPE_P(PG_GETARG_ARRAYTYPE_P(0));
+    else
+      PG_RETURN_NULL();
+  }
   else
   {
     ArrayType * a PG_GETARG_ARRAYTYPE_P(1);
@@ -93,7 +101,12 @@ Datum int_dist_insert_one(PG_FUNCTION_ARGS)
   }
 
   if (PG_ARGISNULL(1))
-    PG_RETURN_ARRAYTYPE_P(PG_GETARG_ARRAYTYPE_P(0));
+  {
+    if (state_vals)
+      PG_RETURN_ARRAYTYPE_P(PG_GETARG_ARRAYTYPE_P(0));
+    else
+      PG_RETURN_NULL();
+  }
   else
   {
     input = PG_GETARG_INT32(1);
