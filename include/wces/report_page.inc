@@ -667,6 +667,15 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       }
       $sections->addSection($citem_id, $sectiontext, $sectionhtml);
       $choiceComponents->advance();
+      
+      // delete loop after I fix abet
+      while ($choiceResponses->row
+        && ($choiceResponses->row['citem_id'] != $choiceComponents->row['citem_id']
+        || $choiceResponses->row['crevision_id'] != $choiceComponents->row['crevision_id']))
+      {
+        $choiceResponses->advance();
+        $choiceQuestions->advance();
+      }       
     }
   } // while($choices->row ...)
 
