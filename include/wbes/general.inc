@@ -309,24 +309,10 @@ function bprint($str, $mod = 10)
   }
 }
 
-$absolutePrintStr = "";
-function absolutePrint($str)
-{
-  global $absolutePrintStr;
-  $absolutePrintStr .= $str;
-}
-
-$headPrintStr = "";
-function headPrint($str)
-{
-  global $headPrintStr;
-  $headPrintStr .= $str;
-}
-
 $inlineScript = false;
 //$inlineScript = "L:/server/shares/russ.esurveys.hn.org/www";
 
-function includeScript($src, $print="headPrint", $version="javascript")
+function includeScript($src, $print="html_head_append", $version="javascript")
 {
   global $inlineScript;
   if (!$inlineScript)
