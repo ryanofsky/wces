@@ -80,7 +80,7 @@ class SurveyEditor extends FormWidget
   
   function save()
   {
-    if ($this->survey->save($this->topic_id,$this->base_branch_id,0))
+    if ($this->survey->save($this->topic_id,0))
       $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
     else
       $this->message = "<h1>Save Error</h1>";
@@ -97,11 +97,7 @@ class SurveyEditor extends FormWidget
         $this->insert_action = new ActionButton("{$this->prefix}_list_action", $this->form, $this->formmethod);
         $this->insert_action->loadvalues();
         
-        $choices = array();
-        foreach($this->factories as $k => $f)
-          $choices[$k] = $f->name();
-       
-        $this->insert_type = new RadioButton($choices, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
+        $this->insert_type = new RadioButton(true, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
         $this->insert_type->loadvalues();
 
         switch($this->insert_action->action)
@@ -225,12 +221,12 @@ class SurveyEditor extends FormWidget
           if ($this->insert_badinput) print("<p><font color=red>You forgot to choose an item from the list</font></p>");
           $first = true;
           print("<h5>Which component type would you like to insert? <a href=\"javascript:showhelp('inserttypes')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a></h5>\n");
-          
-          foreach($this->insert_type->items as $key => $value)
+
+          foreach($this->factories as $key => $f)
           {
             if ($first) $first = false; else print("<br>\n");
             $this->insert_type->display($key);
-            $this->insert_type->displaylabel($key);
+            $this->insert_type->displaylabel($key, $f->name());
           }
           print("\n");
           print("<p>");
@@ -452,7 +448,7 @@ if($needNode)
       var node = elem(prefix + "_node" + i);
 
       if(node == null)
-	{continue;}
+        {continue;}
       
       node.onmouseover = SurveyEditor_node_onmouseover;
       node.onmouseout = SurveyEditor_node_onmouseout;
