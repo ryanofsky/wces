@@ -172,7 +172,7 @@ $students = pg_query("
     INNER JOIN classes AS cl ON cl.class_id = t.class_id AND cl.year = $year AND cl.semester = $semester
     INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 1
     LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id
-    WHERE t.class_id IS NOT NULL $cat
+    WHERE t.category_id IS NOT NULL AND t.class_id IS NOT NULL $cat
     GROUP BY e.user_id) AS i
   INNER JOIN users AS u USING (user_id)
   ORDER BY level DESC, random();
