@@ -53,11 +53,11 @@ class FormWidget // abstract, extends Widget
   function loadattribute($attrname = "") // protected
   {
     global $HTTP_POST_VARS, $HTTP_GET_VARS;
-    if ($attrname) $attrname = "_$attrname";
+    $attrname = $attrname ? $this->prefix . "_$attrname" : $this->prefix;
     if ($this->formmethod == WIDGET_GET)
-      return $HTTP_GET_VARS[$this->prefix . $attrname];
+      return isset($HTTP_GET_VARS[$attrname]) ? $HTTP_GET_VARS[$attrname] : "";
     else if ($this->formmethod == WIDGET_POST)
-      return $HTTP_POST_VARS[$this->prefix . $attrname];
+      return isset($HTTP_POST_VARS[$attrname]) ? $HTTP_POST_VARS[$attrname] : "";
     else
       assert(0);
   }
