@@ -4,11 +4,6 @@ require_once("wbes/server.inc");
 $wces_path = "/wces/";
 $oracle_root = "/oracle/";
 
-$select_classes = "SELECT class_id FROM wces_topics WHERE category_id IN (100, 102, 104) AND make_public = 't'";
-$set_question_periods = "(2)";
-$base_base_branch_id = 14;
-$oracle_branch_id = 13;
-
 function oracle_top($title,$headimage)
 {
   global $oracle_root;
