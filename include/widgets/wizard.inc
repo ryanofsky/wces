@@ -87,7 +87,7 @@ class Wizard extends FormWidget
     }  
     */
     
-    $this->visited = unserialize($this->loadattribute("visited"));
+    $this->visited = unserialize((string)$this->loadattribute("visited"));
     if (!is_array($this->visited)) $this->visited = array();
     $this->visited = array_pad($this->visited, count($this->steps),false);
     $this->visited[$this->showstep] = true;  
