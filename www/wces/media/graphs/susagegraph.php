@@ -1,7 +1,6 @@
 <?
 error_reporting (0);
 
-include('wces/server.inc');
 Header("Content-type: image/png");
 
 if (function_exists('imagecreate'))
