@@ -1,5 +1,9 @@
 <?
 
+// alter table ta_ratings add column user_id INTEGER;
+//ALTER TABLE ta_ratings ADD CONSTRAINT userfk FOREIGN KEY (user_id) REFERENCES users;
+
+
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");
 
@@ -57,6 +61,7 @@ $TAVALUES = array
 
 class TARating
 {
+  var $user_id = NULL;
   var $name; //string response
   var $comments; //string response
   var $answers; // array of
@@ -75,9 +80,10 @@ class TARating
 
     $name = nullquot($this->name);
     $comments = nullquot($this->comments);
+    $user_id = $this->user_id ? (int)$this->user_id : "NULL";
     
-    $bsql = "INSERT INTO ta_ratings(revision_id, parent, name, comments";
-    $msql = ") VALUES ($TAREVISION, $parent, $name, $comments";
+    $bsql = "INSERT INTO ta_ratings(revision_id, parent, name, comments, user_id";
+    $msql = ") VALUES ($TAREVISION, $parent, $name, $comments, $user_id";
     $esql = ")";
 
     foreach($TAQUESTIONS as $column => $text)
@@ -108,19 +114,33 @@ class TAWidget extends FormWidget
   var $action;
   var $showerrors;
 
-  function TAWidget($ta, $prefix, $form, $formmethod)
+  function TAWidget(&$parent, $ta, $prefix, $form, $formmethod)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
+    $this->FormWidget($prefix, $form, $formmethod);
     $this->tarating = $ta ? $ta : new TARating("","",array());
     $this->errors = array();
     $this->save = $this->finished = false;
     $this->action = new ActionButton("${prefix}_action", $form, $formmethod);
     $this->showerrors = false;
+    $this->parent = &$parent;
   }
 
   function loadvalues()
   {
     global $TAQUESTIONS, $TAVALUES;
+
+    $name = $this->loadattribute("name");
+    if (isset($name))
+      $this->tarating->name = $name;
+
+    $user_id = $this->loadattribute("user_id");
+    if (isset($user_id))
+      $this->tarating->user_id = strlen($user_id) ? (int)$user_id : NULL;
+
+    if (!($name || $user_id))
+    {
+      $this->errors["name"] = "Missing TA Name"; 
+    }
 
     foreach($TAQUESTIONS as $fieldname => $text)
     {
@@ -131,8 +151,10 @@ class TAWidget extends FormWidget
         $this->errors[$fieldname] = "Missing response for <i>$text</i>";
     }
 
-    ifassign(trim($this->loadattribute("comments")), $this->tarating->comments);
-    ifassign(trim($this->loadattribute("name")), $this->tarating->name);
+    $comments = $this->loadattribute("comments");
+    if (isset($comments))
+      $this->tarating->comments = $comments;
+
     $this->action->loadvalues();
 
     $this->finished = $this->action->action == TAWidget_save || $this->action->action == TAWidget_cancel;
@@ -151,7 +173,7 @@ class TAWidget extends FormWidget
 
   function display($hidden = false)
   {
-    global $TAQUESTIONS, $TAVALUES;
+    global $TAQUESTIONS, $TAVALUES, $wces;
     $prefix = $this->prefix;
 
     if ($this->showerrors)
@@ -163,9 +185,52 @@ class TAWidget extends FormWidget
       print("</ul>\n");
     }
 
-    print("<p><strong>Enter a TA Name:</strong> <input name=\"${prefix}_name\" size=25 value=\"" . htmlspecialchars($this->tarating->name) . "\"><br>\n");
-    print("<font size=-1>(Leave blank to rate all TA's together)</font></p>");
+    $dusers = array();
+    $o = $this->parent->action->object;
+    if (!is_numeric($o)) $o = -1;
+    foreach ($this->parent->tas as $k => $r)
+    {
+      if ($o == $k) continue;
+      if ($r->user_id) $dusers[] = $r->user_id;
+    }
 
+    if (count($dusers))
+      $dcond = ' AND e.user_id NOT IN (' . implode($dusers, ',') . ')';
+    else
+      $dcond = '';
+
+    wces_connect();
+    $r = pg_go("
+      SELECT e.user_id, u.firstname, u.lastname FROM enrollments AS e
+      INNER JOIN users AS u USING (user_id)
+      WHERE e.class_id = {$this->parent->class_id} AND e.status = 2 $dcond
+    ", $wces, __FILE__, __LINE__);
+    
+    
+    $text = "TA Name";
+    if ($this->showerrors && isset($this->errors['name'])) $text = "<font color=red>$text</font>"; 
+    
+    print("<p><strong>$text</strong></p>\n");
+    print("<blockquote>\n");
+    $n = pg_numrows($r);
+    if ($n > 0)
+    {
+      $fname = "${prefix}_user_id";
+
+      for ($i = 0; $i < $n; ++$i)
+      {
+        $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
+        $selected = $row['user_id'] == $this->tarating->user_id ? " checked" : "";
+        $name = trim("$row[firstname] $row[lastname]");
+        print("<input type=radio name=\"$fname\" id=\"$fname$i\" value=\"$row[user_id]\"$selected><label for=\"$fname$i\">$name</label><br>\n");        
+      }
+      $selected = $this->tarating->user_id === 0 ? " checked" : "";
+      print("<input type=radio name=\"$fname\" id=\"$fname$i\" value=\"0\" $selected><label for=\"$fname$i\">Other (please specify)</label>\n");        
+    }
+    print("<input name=\"${prefix}_name\" size=25 value=\"" . htmlspecialchars($this->tarating->name) . "\">\n");
+    
+    print("</blockquote>\n");
+    
     foreach($TAQUESTIONS AS $key => $text)
     {
       if ($this->showerrors && isset($this->errors[$key])) $text = "<font color=red>$text</font>";
@@ -201,9 +266,11 @@ class TASurvey extends FormWidget
   var $tas;
   var $tawidget = false;
   var $errors = array();
+  var $class_id;
 
-  function TASurvey($prefix, $form, $formmethod)
+  function TASurvey($class_id, $prefix, $form, $formmethod)
   {
+    $this->class_id = $class_id;
     $this->FormWidget($prefix, $form, $formmethod);
     $this->form = new Form("${prefix}_form",$form,$formmethod);
     $this->tas = array();
@@ -224,11 +291,14 @@ class TASurvey extends FormWidget
       $this->modal = true;
       $n = $this->action->object;
       $ta = isset($this->tas[$n]) ? $this->tas[$n] : false;
-      $this->tawidget = new TAWidget($ta, $this->prefix . "_tawidget", $this->form, $this->formmethod);
+      $this->tawidget = new TAWidget($this, $ta, $this->prefix . "_tawidget", $this->form, $this->formmethod);
       $this->tawidget->loadvalues();
 
       if ($this->tawidget->save)
       {
+        if ($this->tawidget->tarating->user_id)
+          $this->tawidget->tarating->name = '';
+        
         if (isset($this->tas[$n]))
           $this->tas[$n] = $this->tawidget->tarating;
         else
@@ -237,7 +307,7 @@ class TASurvey extends FormWidget
 
       if ($this->tawidget->save && !$this->tawidget->finished)
       {
-        $this->tawidget = new TAWidget(false, $this->prefix . "_tawidget", $this->form, $this->formmethod);
+        $this->tawidget = new TAWidget($this, false, $this->prefix . "_tawidget", $this->form, $this->formmethod);
         $this->action->object = "new";
       }
       else if ($this->tawidget->finished)
@@ -303,7 +373,18 @@ class TASurvey extends FormWidget
       {
         print("<tr>\n  <td>");
 
-        $taname = $value->name ? $value->name : "ALL TAs";
+        if ($value->user_id)
+        {
+          global $wces;
+          wces_connect();
+          $r = pg_go("
+            SELECT btrim(firstname || ' ' || lastname) AS name 
+            FROM users WHERE user_id = {$value->user_id}
+          ", $wces, __FILE__, __LINE__);
+          $taname = pg_result($r, 0, 0);
+        }
+        else
+          $taname = $value->name ? $value->name : "??";
         print("<table cellspacing=0 cellpadding=1 border=1 bordercolor=black RULES=NONE FRAME=BOX>\n");
         print("<tr><td colspan=2 bgcolor=black background=\"${wces_path}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
         foreach($TAQUESTIONS as $answerkey => $question)
