@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/page.inc");
 require_once("wces/questions.inc");
@@ -15,4 +15,4 @@ print("</form>");
 
 page_bottom();
 
-%>
+?>
