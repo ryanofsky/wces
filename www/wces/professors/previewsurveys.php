@@ -1,6 +1,6 @@
 <%
-  require_once("page.inc");
-  require_once("database.inc");
+  require_once("wces/page.inc");
+  require_once("wces/database.inc");
   login_protect(login_professor);
   $profid = login_getprofid();
 
@@ -20,7 +20,7 @@
     global $db, $profid,$profname;
     print("<h3>Preview Surveys</h3>\n");
     print("<p>Choose a class from the list below to preview its custom survey questions</p><UL>\n");
-    $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM Classes as cl LEFT JOIN Courses AS c USING (courseid) LEFT JOIN Subjects AS s USING (subjectid) WHERE cl.professorid = '$profid' AND cl.year = '2000' AND cl.semester='fall'",$db);
+    $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM Classes as cl LEFT JOIN Courses AS c USING (courseid) LEFT JOIN Subjects AS s USING (subjectid) WHERE cl.professorid = '$profid' AND cl.year = '2001' AND cl.semester='spring'",$db);
     if (mysql_num_rows($classes) <= 0) print("  <LI><I>No classes found</I></LI>");
     while ($class = mysql_fetch_array($classes))
     {
