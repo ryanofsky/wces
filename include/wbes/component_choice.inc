@@ -777,12 +777,13 @@ class ChoiceWidget extends ComponentWidget
     }
   }
 
-  function save($parent)
+  function save($parent, $topic_id)
   {
     global $wbes;
 
     $result = pg_go("
-      INSERT INTO choice_responses(revision_id, item_id, parent) VALUES ({$this->component->revision_id}, {$this->component->item_id}, $parent);
+      INSERT INTO choice_responses(item_id, revision_id, parent)
+      VALUES ({$this->component->item_id}, {$this->component->revision_id}, $parent);
       SELECT currval('response_ids');
     ", $wbes, __FILE__, __LINE__);
 
@@ -805,12 +806,23 @@ class ChoiceWidget extends ComponentWidget
           $answer = pg_implode($a);
         else
           $answer = quot($a);
-
+          
         $q =& $this->component->questions[$i];
 
+        if (0 && isset($a))
+        {
+          $cast = $this->component->select_many ? '::integer[]' : '::integer';
+          $cache_update = "select cached_choice_responses_add ($topic_id, "
+            . "{$this->component->item_id}, {$this->component->revision_id}, "
+            . "$q->item_id, $q->revision_id, $answer$cast);";
+        }
+        else
+          $cache_update = '';
+
         $success = $success && pg_go("
-          INSERT INTO $table(revision_id, item_id, parent, answer, other)
-          VALUES ($q->revision_id, {$q->item_id}, $nparent, $answer, '$other');
+          INSERT INTO $table(item_id, revision_id, parent, answer, other)
+          VALUES ($q->item_id, $q->revision_id, $nparent, $answer, '$other');
+          $cache_update
         ", $wbes, __FILE__, __LINE__);
       }
     }

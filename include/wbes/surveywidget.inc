@@ -141,7 +141,7 @@ class SurveyWidget extends ParentWidget
     $failure = false;
 
     foreach(array_keys($this->questionWidgets) as $key)
-      $failure = $failure || !$this->questionWidgets[$key]->save($response_id);
+      $failure = $failure || !$this->questionWidgets[$key]->save($response_id, $this->topic_id);
 
     $fields = "'" . addslashes(serialize($_POST)) . "'";
 
