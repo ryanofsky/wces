@@ -498,6 +498,12 @@ class MassEmail extends ParentWidget
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
           //$email = $address = "rey4@columbia.edu"; // debug
+          
+          // XXX: need to add Errors-To: header to set the address that
+          // postfix uses as the FROM address when connecting to the
+          // recieving SMTP server, and which also gets tacked
+          // on as the message's Return-Path
+          
           mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
         }
         else
