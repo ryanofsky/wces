@@ -162,15 +162,7 @@ $login_fail = false;
 function login_validate($uni,$password)
 {
   global $wces, $login_fail;
-
-  login_update(864);
-  return true;
-    
-    login_update($user_id);
-
-  if ($_SESSION["login/status"] == 0)
-    sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
-  
+ 
   $uni = str_replace("@columbia.edu","",$uni);
   $uni = str_replace("@barnard.edu","",$uni);
   $uni = trim($uni);
