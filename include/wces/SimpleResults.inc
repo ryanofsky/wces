@@ -8,7 +8,7 @@ require_once("wces/wces.inc");
 
 //$select_classes = "SELECT DISTINCT class_id FROM wces_topics WHERE make_public";
 $select_classes = "SELECT class_id FROM wces_topics AS tsct WHERE tsct.make_public AND EXISTS (SELECT * FROM question_periods AS tscq WHERE tscq.question_period_id = tsct.question_period_id AND tscq.oracledate < (SELECT NOW()))";
-$set_question_periods = "(2,23)";
+$set_question_periods = "(2,23,28)";
 $base_item_id = 14; // comments
 $oracle_item_id = 13; // multiple choice except for quality of text question
 $oracle_quality_of_text = 305; // multiple choice for quality of text question
@@ -20,7 +20,7 @@ function & array_get(&$array, $index)
   else
     return $array[count($array)+$index];
 }
-$db_debug = 0;
+
 class SimpleResults
 {
   var $class_ids; // an array of class_id's to retrieve results for
