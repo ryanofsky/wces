@@ -729,4 +729,304 @@ class OldQuestionSet extends FormWidget
   }
 }
 
+
+class TSurvey extends FormWidget
+{
+//public:
+
+  var $finished; 
+
+//private:
+  var $pagename;
+  var $db;
+  var $classid;
+  var $userid;
+  var $questionperiodid;
+  var $questionwidgets;
+
+  var $action; // ActionButton widget
+  var $form; // Form widget
+  var $showerrors; //boolean
+  
+  var $tas;
+  var $tawidget;
+  
+  function TSurvey($db, $questionperiodid, $classid, $userid, $pagename, $prefix, $form, $formmethod)
+  {
+    $this->db = $db;
+    $this->classid = $classid;
+    $this->userid = $userid;
+    $this->pagename = $pagename;
+    $this->FormWidget($prefix, $form, $formmethod);
+
+    $this->form = new Form("${prefix}_form",$form,$formmethod);
+    
+    $this->tas = array();
+    
+    if ($userid)
+    {
+      $tar = db_exec("SELECT COUNT(*) FROM tacomplete WHERE questionperiodid = $questionperiodid AND classid = $classid AND userid = $userid", $db, __FILE__, __LINE__);
+      if (mysql_result($tar, 0) != 0)
+        $this->tas = false;
+    } 
+    $this->questionperiodid = $questionperiodid;
+    
+    $this->action = new ActionButton("${prefix}_action",$form,$formmethod);
+    $this->finished = false;
+    $this->showerrors = false;
+    $this->failure = false;
+  }
+  
+  function loadvalues()
+  {
+    $this->form->loadvalues();
+    if($this->form->isstale)
+    {
+      foreach($this->questionwidgets as $key => $value)
+        $this->questionwidgets[$key]->loadvalues();
+      
+      if (is_array($this->tas))
+      {
+        $this->tas = unserialize($this->loadattribute("tas"));
+        if (!is_array($this->tas)) $this->tas = array();
+      }
+
+      $this->action->loadvalues();   
+      $this->handleactions();  
+    }  
+  }
+
+  function handleactions()
+  {
+    global $wces_path;
+    global $HTTP_POST_VARS;
+    $db = $this->db;
+    
+    if ($this->action->action == OldSurvey_save)
+    {
+      $this->action->action = "";	
+      $this->action->object = "";
+
+      $this->showerrors = true;
+
+      foreach($this->questionwidgets as $key => $v)
+        if (count($this->questionwidgets[$key]->errors) > 0) return false;
+        
+      $failure = false;
+      
+      $userid = $this->userid;
+      $classid = $this->classid;
+      $questionperiodid = $this->questionperiodid;
+      
+      if (!db_exec("
+        INSERT INTO cheesyresponses (userid, classid, questionperiodid, dump) VALUES
+        ('$userid', '$classid', '$questionperiodid', '" . addslashes(serialize($HTTP_POST_VARS)) . "')
+      ", $db, __FILE__, __LINE__))
+      {
+        print("<p><strong>Could not save survey responses for ($userid, $classid)</strong></p>");
+        $failure = true;
+      };
+      
+      if(is_array($this->tas))
+      {
+        if (!db_addrow($this->db, "tacomplete",array("userid" => $this->userid, "classid" => $this->classid, "questionperiodid" => $this->questionperiodid)))
+        {
+          print("<p><strong>Failed to save TA completion record.</strong></p>");
+          $failure = true;
+        }
+        else
+        {
+          
+          if (!($tauserid = db_addrow($this->db,"tausers",array())))
+          {
+            $failure = true;
+            print("<p><strong>Failed to obtain TA user id</strong></p>");
+          }  
+          else
+          {
+            foreach($this->tas as $ta)
+            {
+              if (!$ta->validate())
+              {
+                $failure = true;
+                print("<p><strong>TA responses did not validate.</strong></p>\n");
+              }
+              else
+              {
+                if (!$ta->save($this->db, $this->classid, $this->questionperiodid, $tauserid))
+                {
+                  $failure = true;
+                  print("<p><strong>Failed to save results for TA '" . $ta->name . "'</strong></p>");	
+                }
+              }
+            }  
+          }  
+        }    
+      }
+      $this->finished = true;
+      if ($failure)
+      {
+        $this->failure = true;
+        print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
+      }
+    }
+    else if ($this->action->action == OldSurvey_cancel)
+    {
+      $this->finished = true;
+      $this->action->action = "";	
+      $this->action->object = "";
+    }
+    else if ($this->action->action == OldSurvey_taedit)
+    {
+      $ta = isset($this->tas[$this->action->object]) ? $this->tas[$this->action->object] : false;
+      $this->tawidget = new TAWidget($ta, $this->prefix . "_tawidget", $this->form, $this->formmethod);
+      $this->tawidget->loadvalues();
+
+      if ($this->tawidget->save)
+      {
+        if (isset($this->tas[$this->action->object]))
+          $this->tas[$this->action->object] = $this->tawidget->tarating;  
+        else
+          array_push($this->tas, $this->tawidget->tarating);
+      }
+      
+      if ($this->tawidget->save && !$this->tawidget->finished)
+      {
+        $this->tawidget = new TAWidget(false, $this->prefix . "_tawidget", $this->form, $this->formmethod);
+        $this->action->object = "new";
+      }  
+      else if ($this->tawidget->finished)
+      {
+        $this->tawidget = false;
+        $this->action->action = "";	
+        $this->action->object = "";
+      }
+    }
+    else if ($this->action->action == OldSurvey_tadelete)
+    {
+      print("<h1>delete" .$this->action->object . "</h1>");
+      if ($this->tas[$this->action->object])
+        array_splice($this->tas, $this->action->object, 1);
+      $this->action->action = "";	
+      $this->action->object = "";
+    }
+    else
+    {
+      $this->action->action = "";	
+      $this->action->object = "";
+    }
+  }
+ 
+  function display()
+  {
+    global $wces_path, $TAQUESTIONS, $TAVALUES;
+    
+    if ($this->failure) return;
+    if (count($this->questionwidgets) == 0 && !is_array($this->tas))
+    {  
+      print("<p><strong>No new surveys can be found for this class.</strong></p>");
+      return;
+    }  
+  
+    $this->form->display();
+    $this->action->display();
+    if (is_array($this->tas)) $this->printattribute("tas",serialize($this->tas));
+    
+    if (!$this->tawidget)
+    {
+      if ($this->form->isstale) $this->optionbar();
+      if ($this->showerrors)
+      {
+        $errortext = "";
+        foreach($this->questionwidgets as $questionwidget)
+          foreach($questionwidget->errors as $error)
+            $errortext .= "  <li>$error</li>\n";
+        if ($errortext) print("<p><strong>The form is not complete. The missing fields are highlighted in <font color=red>red</font>.</strong></p>\n<ul>\n$errortext</ul>\n");
+      }    
+      if ($this->action->action) $this->action->display();
+      
+      
+      foreach(array_keys($this->questionwidgets) as $i)
+      {
+        print("<div>");
+        $this->questionwidgets[$i]->display(false, $this->showerrors);
+        print("</div>\n<br>\n");
+      }
+
+      if (is_array($this->tas))
+      {
+        print("<h4>TA Ratings</h4>");
+        if (count($this->tas) == 0)
+        {
+          print("<p>If your class has teaching assistants, you can use this section of the survey to rate them.</p>");
+          $this->action->display("Rate a TA...",OldSurvey_taedit,"new");
+        }
+        else
+        {
+          print("<p>You can rate an additional TA by clicking the <i>Rate Another TA</i> button. You can also edit or delete ratings that you have already entered.</p>");
+          $this->action->display("Rate another TA...",OldSurvey_taedit,"new");
+          print("<table>\n");
+          foreach($this->tas as $key => $value)
+          {
+            print("<tr>\n  <td>");
+
+            $taname = $value->name ? $value->name : "ALL TAs";
+            print("<table cellspacing=0 cellpadding=1 border=1 bordercolor=black RULES=NONE FRAME=BOX>\n");
+            print("<tr><td colspan=2 bgcolor=black background=\"${wces_path}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
+            foreach($TAQUESTIONS as $answerkey => $question)
+            {
+              print("<tr>\n");
+              print("  <td valign=top bgcolor=\"0xEEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">$question:</td>\n");
+              print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . $TAVALUES[$value->answers[$answerkey]] . "</td>\n");
+              print("</tr>");
+            };
+            if ($value->comments)
+            {
+              print("<tr>\n");
+              print("  <td valign=top bgcolor=\"0xEEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">Comments:</td>\n");
+              print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . htmlspecialchars(nl2br($value->comments)) . "</td>\n");
+              print("</tr>");                
+            };
+            print("</table>\n");
+            
+            print("</td>\n  <td>");
+            $this->action->display("Edit...", OldSurvey_taedit, $key, 'style="width: 100%"');
+            print("<br>");
+            $this->action->display("Delete", OldSurvey_tadelete, $key);
+            print("  </td>\n</tr>\n");
+            
+          }
+          print("</table>\n");
+        }
+      }
+      print("<p>&nbsp;</p>\n");
+      $this->optionbar();
+    }  
+    else
+    {
+      $this->tawidget->display();
+      foreach($this->questionwidgets as $qw)
+        $qw->display(true);
+    }
+  }
+  
+  function optionbar()
+  {
+    global $wces_path;
+    if ($this->userid)
+    {
+?>
+<table width="100%" cellpadding=5 cellspacing=0>
+<tr>
+  <td align=center bgcolor=black background="<?=$wces_path?>media/0x000000.gif">
+    <? $this->action->display("Save responses", OldSurvey_save, false, ""); ?>
+    <? $this->action->display("Return to class list without saving", OldSurvey_cancel, false, ""); ?>
+  </td>
+</tr>
+</table>
+<?  
+    }
+  }
+}
+
 ?>
