@@ -80,7 +80,7 @@ function wces_FindClasses($db,$temptable)
   mysql_query("REPLACE INTO $temptable (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.classid
     WHERE g.linktype = 'classes' AND cl.year = $year AND cl.semester = $semester",$db);
   mysql_query("REPLACE INTO $temptable (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.courseid
-    WHERE g.linktype = 'courses' AND cl.year = $year AND cl.semester = $semester AND NOT (ASCII(cl.section) IN (82,114,86,118))",$db);
+    WHERE g.linktype = 'courses' AND cl.year = $year AND cl.semester = $semester AND NOT (ASCII(cl.section) IN (66,98,78,110,82,114,86,118))",$db);
   mysql_query("REPLACE INTO $temptable (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes AS cl ON g.linkid = cl.professorid
     WHERE g.linktype = 'professors' AND cl.year = $year AND cl.semester = $semester",$db);
   mysql_query("REPLACE INTO $temptable (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.subjectid INNER JOIN Classes as cl ON c.courseid = cl.courseid
@@ -99,7 +99,7 @@ function wces_FindQuestionSets($db,$temptable)
   mysql_query("REPLACE INTO $temptable (classid,questionsetid) SELECT cl.classid, g.questionsetid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.classid
     WHERE g.linktype = 'classes' AND cl.year = $year AND cl.semester = $semester",$db);
   mysql_query("REPLACE INTO $temptable (classid,questionsetid) SELECT cl.classid, g.questionsetid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.courseid
-    WHERE g.linktype = 'courses' AND cl.year = $year AND cl.semester = $semester AND NOT (ASCII(cl.section) IN (82,114,86,118))",$db);
+    WHERE g.linktype = 'courses' AND cl.year = $year AND cl.semester = $semester AND NOT (ASCII(cl.section) IN (66,98,78,110,82,114,86,118))",$db);
   mysql_query("REPLACE INTO $temptable (classid,questionsetid) SELECT cl.classid, g.questionsetid FROM Groupings AS g INNER JOIN Classes AS cl ON g.linkid = cl.professorid
     WHERE g.linktype = 'professors' AND cl.year = $year AND cl.semester = $semester",$db);
   mysql_query("REPLACE INTO $temptable (classid,questionsetid) SELECT cl.classid, g.questionsetid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.subjectid INNER JOIN Classes as cl ON c.courseid = cl.courseid
@@ -123,13 +123,13 @@ function course_update($db,$code)
   return $courseid;
 }
 
-function class_update($db,$code)
+function class_update($db,$code,$courseid = false)
 {
   $course = substr($code,0,9);
+  $div = substr($code,4,1);
   $section = substr($code,10,3);
   $year = substr($code,14,4);
   $s = substr($code,19,1);
-  $div = substr($course,4,1);
   $semester = ($s == "1") ? "spring" : (($s == "2") ? "summer" : "fall");
   $courseid = course_update($db,$course);  
   $classid = db_replace($db, "Classes", Array("courseid" => $courseid, "divisioncode" => $div, "section" => $section, "year" => $year, "semester" => $semester), 0, "classid");
