@@ -1,7 +1,7 @@
-<%
+<?
 require_once("oracle/page.inc");
 page_top("SEAS Oracle Homepage - Background","background.gif");
-%>
+?>
 
       <FONT 
       face="Verdana,Trebuchet MS" size=-1>Questions Addressed: 
@@ -161,8 +161,8 @@ page_top("SEAS Oracle Homepage - Background","background.gif");
     <TD vAlign=top align=left width="1%"><IMG height=8 
       src="images/spacer.gif" width=8> <!-- Adjust this width --></TD><!--- End of Spacer Column ---------------------------------------------------><!--- Do Not Edit Below this line or else! --></TR></TBODY></TABLE></BODY></HTML>
 
-<%
+<?
 page_bottom();
-%>
+?>
 
 

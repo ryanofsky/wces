@@ -1,7 +1,7 @@
-<%
+<?
 require_once("oracle/page.inc");
 page_top("SEAS Oracle Homepage - Survey","survey.gif");
-%>
+?>
       <FORM action=http://www.columbia.edu/cgi-bin/generic-inbox.pl 
       method=post>
       
@@ -60,6 +60,6 @@ page_top("SEAS Oracle Homepage - Survey","survey.gif");
       us anything...<BR><TEXTAREA name=anything rows=5 cols=50></TEXTAREA> 
       <BR></P><INPUT type=reset value=Reset> <INPUT type=submit value=Submit> 
       </FONT>
-<%
+<?
 page_bottom();
-%>
+?>
