@@ -3,11 +3,13 @@ require_once("wces/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
-page_top("Usage Data");
-
-$db_debug = true;
 
 $db = wces_connect();
+wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
+$semester = ucfirst($semester);
+
+page_top("Professor Usage Data for $semester $year $questionperiod");
+
 wces_Findclasses($db,"currentclasses");
 
 $y = db_exec("
@@ -32,7 +34,7 @@ REPLACE INTO customprofessors (professorid)
 SELECT cl.professorid
 FROM groupings as g INNER JOIN classes as cl ON g.linkid = cl.classid
 INNER JOIN questionsets as q ON g.questionsetid = q.questionsetid
-WHERE g.linktype = 'classes' AND q.type = 'private'
+WHERE g.linktype = 'classes' AND q.type = 'private' AND cl.year >= '$year' AND cl.semester >= '$semester'
 ",$db,__FILE__,__LINE__);
 
 $y = db_exec("
@@ -78,7 +80,7 @@ function printproflist($title,$result,$count)
   {
     extract($row);
     if (!$name) $name = "** Unknown **";
-    print("<li><a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$name</a> ($students students)</li>");
+    print("<li><a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$name</a> ($students students)</li>");
   }
 print("</ul>");
 }

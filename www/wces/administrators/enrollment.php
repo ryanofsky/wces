@@ -24,7 +24,7 @@ if ($uni)
       {
         $classid = ""; $year = ""; $semester = ""; $code = ""; $name = "??????"; $section = ""; $survey = ""; $surveyed = "";
         extract($result);
-        print("  <tr><td>$year</td><td>$semester</td><td>$code</td><td><a href=\"${server_wcespath}students/classinfo.php?classid=$classid\">$name</a></td><td>$section</td><td>$survey</td><td>$surveyed</td></tr>\n");
+        print("  <tr><td>$year</td><td>$semester</td><td>$code</td><td><a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$name</a></td><td>$section</td><td>$survey</td><td>$surveyed</td></tr>\n");
       };
       print("</table>\n<p><a href=\"?\">Back</a></p>");    
     }  

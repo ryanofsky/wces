@@ -3,14 +3,15 @@ require_once("wces/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
-page_top("Usage Data");
 
 $db = wces_connect();
 
-wces_Findclasses($db,"currentclasses");
+wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
+$semester = ucfirst($semester);
 
-$questionperiodid = wces_GetQuestionPeriod($db);
+page_top("Student Usage Data for $semester $year $questionperiod");
 
+wces_Findclasses($db,"currentclasses", &$questionperiodid, &$year, &$semester);
 db_exec("CREATE TEMPORARY TABLE surveyclasses(
 courseid INTEGER NOT NULL,
 classid INTEGER NOT NULL,
@@ -45,10 +46,9 @@ Number of surveys completed: <b><%=$responses%></b><br>
 <img src="<%=$server_wcespath%>media/graphs/susagegraph.php?blank=<%=$students-$responses%>&filled=<%=$responses%>" width=200 height=200><img src="<%=$server_wcespath%>media/graphs/susagelegend.gif" width=147 height=31><br>
 
 <h3>Individual Class Usage</h3>
-<p><font size=-1>Sorted by number of surveys that haven't been filled out</font></p>
+<p><font size="-1">Sorted by number of surveys that haven't been filled out</font></p>
 
 <%
-
 
 $classes = mysql_query("SELECT * FROM surveyclasses ORDER BY (students - responses) DESC, students DESC",$db);
 print("<ul>\n");
@@ -57,7 +57,7 @@ while ($class = mysql_fetch_array($classes))
   $students = $responses = $classid = $professorid = 0; $scode = $code = $section = $name = $pname = "Unknown";
   extract($class);
   $numbers = $students == 0 ? "$responses surveys completed" : (($students - $responses) . " / $students surveys left");
-  print ("  <li>$numbers, <a href=\"${server_wcespath}students/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$pname</a></li>\n");
+  print ("  <li>$numbers, <a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$pname</a></li>\n");
 }
 print("</ul>");
 
