@@ -1,61 +1,67 @@
 <?
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 
 login_protect(login_administrator);
 
-param($uni);
-param($adduser);
+param($unilist);
+param($debug);
 
 $db = wces_connect();
-if ($uni)
+$data = false;
+
+if ($unilist)
 {
-  if ($adduser)
-  {
-    db_replace($db,"users",Array("cunix" => $uni),Array
-    (
-      "isprofessor" => $isprofessor == 1 ? "true" : "false",
-      "isadmin" => $isadministrator == 1 ? "true" : "false",
-    ),"userid");
-  }
-  $data = db_getrow($db,"users",Array("cunix" => $uni),Array("userid","isprofessor","isadmin"));
-  if ($data)
-  {
-    login_setup(
-      $db,
-      $data["userid"],
-      $uni,
-      true,
-      $data["isprofessor"] == "true" ? true : false,
-      $data["isadmin"] == "true" ? true : false
-    );
-    page_top("Fake Logon Success!");
-    print("You are now logged in as '" . login_getuni() . ",' as a " . login_getstatus() . ".<br>Use the links at the left to navigate the site as this user.");
-  }
-  else
-  {
-    page_top("Fake Login Page");
-    print("The user '$uni' does not exist.");
-    ?>    
-    <form name=adduser>
-    <p>The user '$uni' does not exist.</p>
-    <p>Permissions:</p>
-    <blockquote>
-      <input type=checkbox name=isstudent id=isstudent value=1 checked><label for=isstudent>Student</label><br>
-      <input type=checkbox name=isprofessor id=isprofessor value=1 checked><label for=isprofessor>Professor</label><br>
-      <input type=checkbox name=isadministrator id=isadministrator value=1 checked><label for=isadministrator>Administrator</label>
-    </blockquote>  
-    <input type=hidden name=uni value="<?=$uni?>">
-    <p><input type=submit name=adduser value="Add '<?=$uni?>' to the database"></p>
-    </form>
-    <p><a href="fakelogin.php">Back</a></p>
-    <?    
-  };
+  $result = db_exec("
+    SELECT u.userid, u.isprofessor, u.isadmin, IFNULL(p.professorid,0) AS profid
+    FROM users AS u
+    LEFT JOIN professors AS p ON u.userid = p.userid
+    WHERE u.cunix = '" . addslashes($unilist) . "'", $db, __FILE__, __LINE__);
+  
+  if (mysql_num_rows($result) == 1)
+    $data = mysql_fetch_assoc($result);
+}
+
+if ($data)
+{
+  if ($data["isprofessor"] == "true")
+    $status = login_professor; else $status = login_student;
+  if ($data["profid"])
+    $status |= login_knownprofessor;
+  if ($data["isadmin"] == "true")
+    $status |= login_administrator;
+
+  login_setup
+  (
+    $db,
+    $data["userid"],
+    $uni,
+    $status,
+    "Impersonator",
+    $data["profid"]
+  );
+
+  page_top("Fake Logon Success!");
+  print("You are now logged in as '" . login_getuni() . ",' with " . login_whoami() . " privileges.<br>Use the links at the left to navigate the site as this user.");
+}
+else if ($debug)
+{
+  login_setup
+  (
+    $db,
+    0,
+    "abc123",
+    login_any,
+    "Impersonator",
+    165
+  );
+  page_top("Fake Logon Success!");
+  print("Debug mode enabled. You can access any area of the site.");
 }
 else
 {
-page_top("Fake Login Page"); 
+  page_top("Fake Login Page");
 ?>
 <script>
 <!--
@@ -123,8 +129,11 @@ function textonkeydown(e)
 
 // -->
 </script>
+<? if ($unilist) print ("<p><b>The user '$unilist' does not exist.</b></p>"); ?>
 
-This form allows you bypass ACIS authentication and log on as any user. If you type in a username that is unknown, you will have the option of adding that username to the database.
+This form allows you bypass ACIS authentication and log on as any user. If you
+type in a username that is unknown, you will have the option of adding that
+username to the database.
 
 <form name=fakelogin action="fakelogin.php" method=get>
 <table>
@@ -159,9 +168,9 @@ This form allows you bypass ACIS authentication and log on as any user. If you t
 // -->
 </script>
 
+<p><font size="-1">Log on with <a href="<?=$server_url->toString()?>?debug=1<?=$ASID?>">full access</a> (debug mode).</font></p>
+
 <?
 };
 page_bottom();
 ?>
-
-
