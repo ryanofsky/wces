@@ -114,9 +114,16 @@ function showhelp(topic)
       WHERE question_period_id = (SELECT get_next_question_period())
     ", $wces, __FILE__, __LINE__);
 
-    extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-    
-    $wces_closed = (bool)$closed;
+    if (pg_numrows($result) == 0)
+    {
+      $wces_closed = true;
+      $year = $semester = 0;
+    }
+    else
+    {
+      extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+      $wces_closed = (bool)$closed;
+    }
   }
 
   if (!$wces_closed && ($status & login_student))
