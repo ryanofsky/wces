@@ -1,8 +1,8 @@
 <?
 
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("wces/database.inc");
-require_once("wces/taskwindow.inc");
+require_once("wbes/taskwindow.inc");
 
 /*  
 
@@ -60,14 +60,14 @@ $wces_verbose = false;
 
 function wces_connect()
 {
-  $db = server_sqlinit();
+  $db = server_mysqlinit();
   mysql_select_db("wces",$db);
   return $db;
 }
 
 function generic_connect()
 {
-  return server_sqlinit();
+  return server_mysqlinit();
 }
 
 function wces_Findclasses($db,$temptable)
@@ -230,6 +230,5 @@ function class_find($db,$code,$courseid = false)
   $classid = db_getvalue($db, "classes", Array("courseid" => $courseid, "divisioncode" => $div, "section" => $section, "year" => $year, "semester" => $semester), "classid");
   return $classid;
 }
-
 
 ?>
