@@ -35,16 +35,21 @@ class ReportOutput extends ParentWidget
     $this->includePies     =& new CheckBox("includePies", $this);
     $this->bigHead         =& new CheckBox("bigHead", $this);    
   }
-  
-  function loadInitialState()
-  {
-    $this->output->checked = ReportWizard_output_www;
-    $this->includeText->checked = true;
-    $this->includeTa->checked = true;
 
-    $this->printable->checked = true;
-    $this->includePies->checked = false;
-    $this->bigHead->checked = true;        
+  function loadState($new)
+  {
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new)
+    {
+      $this->output->checked = ReportWizard_output_www;
+      $this->includeText->checked = true;
+      $this->includeTa->checked = true;
+  
+      $this->printable->checked = true;
+      $this->includePies->checked = false;
+      $this->bigHead->checked = true;              
+    }
   }
   
   function printVisible()
@@ -113,7 +118,7 @@ class ReportWizard extends Wizard
     $this->Wizard($steps, $wces_path, $name, $parent);
 
     if (!(LoginValue('status') & LOGIN_ADMIN))
-      $this->depts = login_getdepts();
+      $this->depts = LoginValue('depts');
 
     $this->output               =& new ReportOutput("output", $this);
     $this->groupClasses         =& new CheckBox("groupClasses", $this);
