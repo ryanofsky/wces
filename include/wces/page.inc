@@ -6,13 +6,55 @@ require_once("wces/oracle.inc");
 
 $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
-$wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
+$wces_ns4 = substr($_SERVER["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($_SERVER["HTTP_USER_AGENT"], "compatible;") === false;
 
 $absolutePrintStr = $headPrintStr = "";
 
+function get_surveys()
+{
+  global $wces;
+  static $question_period_id;
+  static $survey_listing;
+  
+  if (!isset($question_period_id) || !isset($survey_listing))
+  {
+    wces_connect();
+    
+    $r = pg_go("
+      SELECT question_period_id, displayname, year, semester, 
+        CASE WHEN begindate < NOW() THEN 0 ELSE 1 END AS closed
+      FROM semester_question_periods
+      WHERE question_period_id = (SELECT get_next_question_period())
+    ", $wces, __FILE__, __LINE__);
+
+    if (pg_numrows($r) == 0)
+    {
+      $question_period_id = $survey_listing = false;
+    }
+    else
+    {
+      $row = pg_fetch_array($r,0,PGSQL_ASSOC);
+      $user_id = login_getuserid();
+      $question_period_id = $row['question_period_id'];
+      $survey_listing = pg_go("
+        SELECT t.class_id, t.topic_id, get_class(t.class_id) AS name,
+          CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
+        FROM wces_topics AS t
+        INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
+        INNER JOIN classes AS cl ON cl.class_id = e.class_id AND cl.year = $row[year] AND cl.semester = $row[semester]
+        LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id
+        GROUP BY sr.user_id, t.topic_id, t.class_id
+        ORDER BY surveyed, name
+      ", $wces, __FILE__, __LINE__);
+    }
+  }
+  return array($question_period_id, $survey_listing);
+}
+
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $absolutePrintStr, $headPrintStr;
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, 
+    $wces, $wces_closed, $absolutePrintStr, $headPrintStr;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
@@ -121,50 +163,19 @@ function showhelp(topic)
 
   if ($status & login_student)
   {
-    wces_connect();
-    
-    $result = pg_go("
-      SELECT question_period_id, displayname, year, semester, 
-        CASE WHEN begindate < NOW() THEN 0 ELSE 1 END AS closed
-      FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_next_question_period())
-    ", $wces, __FILE__, __LINE__);
+    list($question_period_id, $survey_listing) = get_surveys();
+    $wces_closed = (bool)$question_period_id;
 
-    if (pg_numrows($result) == 0)
+    if ($survey_listing)
     {
-      $wces_closed = true;
-      $year = $semester = 0;
-    }
-    else
-    {
-      extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-      $wces_closed = (bool)$closed;
-    }
-  }
-
-  if (!$wces_closed && ($status & login_student))
-  {  
-    $user_id = login_getuserid();
-    
-    $survey_listing = pg_go("
-      SELECT t.class_id, get_class(t.class_id) AS name,
-        CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
-      FROM wces_topics AS t
-      INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
-      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id
-      INNER JOIN classes AS cl ON cl.class_id = e.class_id AND cl.year = $year AND cl.semester = $semester
-      GROUP BY sr.user_id, t.class_id
-      ORDER BY surveyed, name
-    ", $wces, __FILE__, __LINE__);
-    
-    $n = pg_numrows($survey_listing);
-
-    for($i = 0; $i < $n; ++$i)
-    {
-      extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
-      if ($surveyed) break;
-      if ($i == 0) page_spacer();
-      page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id", $QSID, "");
+      $n = pg_numrows($survey_listing);
+      for($i = 0; $i < $n; ++$i)
+      {
+        extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
+        if ($surveyed) break;
+        if ($i == 0) page_spacer();
+        page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id", $QSID, "");
+      }
     }
   }
 
