@@ -1,25 +1,15 @@
 <%
-  require_once("login.inc");
- 
-  function bounce($url)
+  require_once("wces/login.inc");
+  session_start(); 
+  
+  if (login_validate($uni,$password,$requestedstatus) && login_isvalid($requestedstatus))
   {
-    redirect($url);
-    if (!redirect($url)) sloppyredirect($url);
+    if (!$destination) $destination = "login.php";
+    if (!redirect($destination)) sloppyredirect($destination);
     exit();
-  }
-
-  if (login_validate($uni,$password,$requestedstatus))
-  {
-    if (login_isvalid($requestedstatus))
-    {
-      if (!$destination) $destination = "login.php";
-      bounce($destination);
-    }
-    else
-      login_prompt($destination,$requestedstatus,"",$uni);
-  }
+  }  
   else
   {
-    login_prompt($destination,$requestedstatus,'<font color=red>Invalid User Name or Password. Please Try Again</font>',$uni);
+    login_prompt($destination,$requestedstatus,$uni);
   }
 %>
