@@ -17,14 +17,14 @@ function db_set($items)
   return $list;
 }
 
-function db_exec($sql,$db,$line = __LINE__,$file = __FILE__)
+function db_exec($sql,$db,$file = __FILE__,$line = __LINE__)
 {
   global $db_debug;
   $result = mysql_query($sql,$db);
   if ($db_debug || !$result)
   {
-    taskwindow_cprint("<p>SQL Query in <b>$file<b>, line <b>$line</b><br>\n");
-    taskwindow_cprint('<pre style="background-color: #DDDDDD width:100%">' . $sql . '</pre><br>\n');
+    taskwindow_cprint("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
+    taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "</pre><br>\n");
     taskwindow_cprint($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
     taskwindow_cprint("</p>\n");
   }
@@ -249,7 +249,7 @@ class db_SelectMonster
 
   function advance()
   {
-    if ($this->row = mysql_fetch_array($this->result))
+    if ($this->row = mysql_fetch_assoc($this->result))
       return true;
     else
       return false;
@@ -300,7 +300,7 @@ class db_SelectMonster
 
     $sql = "SELECT $sql_columns FROM $sql_from $sql_joins $sql_where $sql_groupby $sql_orderby $sql_having";
     $this->result = mysql_query($sql,$db);
-    if (!$this->result) print("<textarea rows=20 cols=80 id=textarea1 name=textarea1>SQL ERROR\n---------\n\n$sql</textarea><br>");
+    if (!$this->result) taskwindow_cprint("<textarea rows=20 cols=80 id=textarea1 name=textarea1>SQL ERROR\n---------\n\n$sql</textarea><br>");
     $this->size = mysql_num_rows($this->result);
   }
 };
@@ -382,9 +382,7 @@ function db_updatevalues($db,$table,$keys,$values)
     $query .= db_whereclause($keys);
   
     if ($db_debug) taskwindow_cprint("$query<br>");
-    $result = mysql_query($query,$db);
-    if (!$result && $db_debug) taskwindow_cprint("<b>SQL Syntax Error</b><br>");
-    return $result;
+    return db_exec($query,$db,__FILE__,__LINE__);
   }
   else
   {
@@ -423,13 +421,13 @@ function db_getrow($db,$table,$keys,$columns)
   $result = db_select($db,$table,$keys,$columns);
   $rows = mysql_num_rows($result);
   if ($rows == 1)
-    $r = mysql_fetch_array($result);
+    $r = mysql_fetch_assoc($result);
   else if ($rows > 1)
   {
     if ($db_debug)
     { 
-      print ("<b>ERROR: DUPLICATE ROWS FOUND IN '$table'</b><br>");
-      while ($j = mysql_fetch_array($result))
+      taskwindow_cprint ("<b>ERROR: DUPLICATE ROWS FOUND IN '$table'</b><br>");
+      while ($j = mysql_fetch_assoc($result))
         db_printrow($j);
       flush();  
     }  
@@ -451,7 +449,7 @@ function db_getrows($db,$table,$keys,$columns)
 {
   $result = db_select($db,$table,$keys,$columns);
   $rows = Array();
-  while($row = mysql_fetch_array($result))
+  while($row = mysql_fetch_assoc($result))
     array_push($rows,$row);
   mysql_free_result($result);
   return count($rows) == 0 ? 0 : $rows;
@@ -461,7 +459,7 @@ function db_getcolumn($db,$table,$keys,$column)
 {
   $result = db_select($db,$table,$keys,Array($column));
   $col = Array();
-  while($value = mysql_fetch_array($result))
+  while($value = mysql_fetch_assoc($result))
     array_push($col,$value[$column]);
   mysql_free_result($result);
   return $col;
@@ -520,23 +518,23 @@ function db_printrow($row)
 
 function db_printresult($result)
 {
-  print ("<table border=1>\n");
+  taskwindow_cprint ("<table border=1>\n");
   if ($result)
   {
     
-    while ($row = mysql_fetch_array($result))
+    while ($row = mysql_fetch_assoc($result))
     {
-      print("<tr>");
+      taskwindow_cprint("<tr>");
       foreach($row as $key => $value)
-        if (!($key === $key + 0)) print("<td>$key = $value</td>");
-      print("</tr>\n"); 
+        taskwindow_cprint("<td>$key = $value</td>");
+      taskwindow_cprint("</tr>\n"); 
     };
   }
   else  
   {
-    print("<tr><td><b>Bad Result</b></td></tr>");
+    taskwindow_cprint("<tr><td><b>Bad Result</b></td></tr>");
   }
-  print("</table>");  
+  taskwindow_cprint("</table>");  
 }
 
 %>

@@ -5,9 +5,6 @@ require_once("wces/database.inc");
 require_once("wces/wces.inc");
 require_once("wces/taskwindow.inc");
 
-//$db_debug = true;
-//$wces_verbose = true;
-
 // CSV Columns
 define ("COURSE",0);             // course name
 define ("COURSECODE",1);         // 4 digit course number
@@ -29,13 +26,10 @@ define ("TIME",16);              // class time
 define ("LOCATION",17);          // class location
 define ("CALLNUMBER",18);        // 5 digit call number
 
-
 function array_clean($arr)
 {
   foreach($arr as $key => $value)
-  {
     if (!$value) unset($arr[$key]);
-  }
   return $arr;
 }
 
@@ -65,16 +59,16 @@ function importregcsv($filename)
       $subjectid    = db_replace($db, "Subjects",    Array("code" => $data[SUBJECTCODE]), Array("name" => $data[SUBJECT]),"subjectid");
       $divisionid   = db_replace($db, "Divisions",   Array("name" => $data[DIVISION]), array_clean(Array("code" => $data[DIVISIONCODE], "shortcode" => $data[DIVISIONSCODE])), "divisionid");
       $departmentid = db_replace($db, "Departments", Array("code" => $data[DEPARTMENTCODE]), array_clean(Array("name" => $data[DEPARTMENT])), "departmentid");
-      $courseid     = db_replace($db, "Courses",     Array("subjectid" => $subjectid, "code" => $data[COURSECODE]), Array("departmentid" => $departmentid, "divisionid" => $divisionid, "schoolid" => $schoolid, "name" => $data[COURSE]),"courseid");
+      $courseid     = db_replace($db, "Courses",     Array("subjectid" => $subjectid, "code" => $data[COURSECODE]), Array("departmentid" => $departmentid, "schoolid" => $schoolid, "name" => $data[COURSE]),"courseid");
       $classid      = db_replace($db, "Classes",     Array("courseid" => $courseid, "section" => $data[CLASSSECTION], "divisioncode" => $data[DIVISIONSCODE], "year" => $data[YEAR], "semester" => $data[SEMESTER]), Array("name" => $cname, "students" => $data[STUDENTS], "time" => $data[TIME], "location" => $data[LOCATION], "callnumber" => $data[CALLNUMBER], "departmentid" => $departmentid, "divisionid" => $divisionid), "classid");
       prof_parserrname($data[INSTRUCTOR],$full,$email,$url);
       $pids = prof_findwithfull($db,$full);
-      $pids = array_merge($pids,prof_findwithclassid($db,$classid));
+      //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
       $pid = prof_merge($db, $pids,Array("name" => $full, "email" => $email, "url" => $url),Array("fullname" => $full, "source" => "regweb"));
       db_updatevalues($db, "Classes", Array("classid" => $classid), Array("professorid" => $pid));
-      taskwindow_cprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]."<br>\n");
-      
+      taskwindow_cprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (classid = $classid, courseid = $courseid,professorid = $pid)<br>\n");
       if (!$data[COURSE]) taskwindow_cprint("<b>Warning:</b> Coursename not specified in row $row<br>\n");
+      if (!$subjectid || !$classid || !$courseid) taskwindow_cprint("<b>Warning:</b> Insertion error in row $row<br>\n");
       //if (0 + $data[COURSECODE] < 1000) taskwindow_cprint("<b>Warning:</b> Invalid course number in row $row<br>\n");
     };
     if (((++$i) % 10) == 1) taskwindow_flush();  
@@ -83,12 +77,43 @@ function importregcsv($filename)
   taskwindow_end("Progress Window");   
 };
 
+
+function arrayagrees($base,$newbie)
+{
+  foreach($newbie as $key => $value)
+    if ($base[$key] && $base[$key] != $value) return false;
+  return true;  
+}
+
 function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge = false)
 {
   global $db_debug;
   
   $professorids = array_values(array_unique($professorids)); // eliminate duplicates in $professorids
   
+  // unless forcemerge is defined, do not merge different professors that come from the same source
+  // this can be rewriten to be more efficient
+  if (!$forcemerge)  
+  {
+    $pids = array();
+    $sources = array();
+    if (is_array($newdupedata)) $sources[$newdupedata["source"]] = $newdupedata;
+    foreach($professorids as $professorid)
+    {
+      $result = db_exec("SELECT source, first, middle, last, fullname, pid FROM ProfessorDupeData WHERE professorid = '$professorid' AND source IS NOT NULL GROUP BY source",$db,__FILE__,__LINE__);
+      while($row = mysql_fetch_assoc($result))
+      {
+        $s = $row["source"];
+        if (!is_array($sources[$s]))
+          $sources[$s] = $row;
+        else if (!arrayagrees($sources[$s],$row))
+          continue(2);
+      }
+      array_push($pids,$professorid);
+    }
+    $professorids = $pids;
+  };
+
   if (count($professorids) == 0) // just add the new values if there is nothing to merge
   {
     if (is_array($newprofessordata) && is_array($newdupedata) && $newprofessordata["name"])
@@ -102,19 +127,6 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
       return false;
   };
 
-  // unless forcemerge is defined, merge only the first professorids that originate from different sources
-
-  if (!$forcemerge) 
-  {
-    $badmerge = true;
-    while($badmerge && count($professorids) > 1)
-    {
-      $result = db_exec("SELECT COUNT(DISTINCT professorid) AS dupes FROM ProfessorDupeData WHERE professorid IN " . db_set($professorids) . " GROUP BY source ORDER BY dupes LIMIT 1",$db);
-      if (mysql_result($result,0) > 1) array_pop($professorids); else $badmerge = false;
-      mysql_free_result($result);  
-    }
-  }  
-  
   sort($professorids);
   $profcondition = "professorid IN " . db_set($professorids);
 
@@ -122,10 +134,10 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
   // then that entry's information is chosen so it will not be overwritten
   // otherwise the first professorid is chosen
   
-  $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE source = 'oracle' AND $profcondition GROUP BY professorid",$db);
+  $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE source = 'oracle' AND $profcondition GROUP BY professorid",$db,__FILE__,__LINE__);
   $rows = mysql_num_rows($result);
   if ($rows == 1)
-  {
+  { 
     $prow = mysql_fetch_assoc($result);
     $chosen = $prow["professorid"];
   }  
@@ -138,7 +150,7 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
   $chosenchanged = false;
     
   // get the other rows, copy their data, clean up and delete
-  $result = db_exec("SELECT * FROM Professors as p WHERE $profcondition",$db);
+  $result = db_exec("SELECT * FROM Professors as p WHERE $profcondition",$db,__FILE__,__LINE__);
   while ($professor = mysql_fetch_assoc($result))
     if ($professor["professorid"] != $chosen)
     {
@@ -156,7 +168,11 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
     foreach($newprofessordata as $key => $value)
       if ($value && !$chosenrow[$key]) { $chosenrow[$key] = $value; $chosenchanged = true; };  
 
-  if ($chosenchanged) db_updatevalues($db,"Professors",Array("professorid" => $chosen),$chosenrow);  
+  if ($chosenchanged)
+  {
+    if (!$chosenrow["userid"]) $chosenrow["userid"] = false;
+    db_updatevalues($db,"Professors",Array("professorid" => $chosen),$chosenrow);  
+  }  
 
   // add newdupedata if it is actually new
   if (is_array($newdupedata))
@@ -175,7 +191,7 @@ function prof_fixname(&$first,&$last)
 {
   $first = ucwords(strtolower(trim($first)));
   $last = ucwords(strtolower(trim($last)));
-  if (last == "Faculty")
+  if ($last == "Faculty")
     { $first = ""; $last = ""; }
   else if ($first == ".")
     $first = "";
@@ -199,7 +215,7 @@ function prof_parsemiddlei(&$first,&$middlei)
     $middlei = "";
 }
 
-function prof_parsepidname($name,&$first,&$last,&$middlei,$dept)
+function prof_parsepidname($name,&$first,&$last,&$middlei,&$dept)
 {
   $first = ""; $last = ""; $middlei = ""; $dept = "";
   $find = strpos($name,",");
@@ -248,7 +264,7 @@ function prof_findwithfull($db, $name)
   
   if ($name)
   {
-    $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE source = 'regweb' AND fullname = '" . addslashes($name) . "' GROUP BY professorid",$db);
+    $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE fullname = '" . addslashes($name) . "' GROUP BY professorid",$db,__FILE__,__LINE__);
     while($row = mysql_fetch_assoc($result))
       array_push($professorids,$row['professorid']);
   }    
@@ -266,12 +282,10 @@ function prof_findwithfull($db, $name)
 function prof_findwithfirstlast($db, $first, $last)
 {
   global $wces_verbose,$db_debug;
-  if (!$name) return array();
-  
   $pids = Array();
   if ($last)
   {
-    $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE first = '" . addslashes($first) . "' AND last = '" . addslashes($last) . "' GROUP by professorid",$db);
+    $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE first = '" . addslashes($first) . "' AND last = '" . addslashes($last) . "' GROUP by professorid",$db,__FILE__,__LINE__);
     while($row = mysql_fetch_assoc($result))
       array_push($pids,$row['professorid']);
   }    
@@ -286,10 +300,10 @@ function prof_findwithfirstlast($db, $first, $last)
   return $pids;
 };
 
+// Importing code should no longer use this function to identify professors
+// to be merged. It causes problems when the professor for a class changes
 function prof_findwithclassid($db, $classid)
 {
-  global $wces_verbose,$db_debug;
-  
   $pid = db_getvalue($db, "Classes", Array("classid" => $classid),"professorid");
   
   if ($wces_verbose)
@@ -308,9 +322,7 @@ function prof_findwithpid($db, $pid)
   
   if (!$pid || $pid == "C000000000" || $pid == "C000000001") return array();
   
-  $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE dd.pid = '" . addslashes($pid) . "' GROUP BY professorid",$db);
-  if ($db_debug) taskwindow_cprint("$sql<br>\n");
-  $result = mysql_query($sql,$db);
+  $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE pid = '" . addslashes($pid) . "' GROUP BY professorid",$db,__FILE__,__LINE__);
   $professorids = array();
   while($row = mysql_fetch_assoc($result))
     array_push($professorids,$row['professorid']);
@@ -329,6 +341,8 @@ function prof_findwithpid($db, $pid)
 
 function importregpid($filename)
 {
+  global $db_debug, $wces_verbose;
+
   taskwindow_start("Progress Window");
   taskwindow_cprint("<h2>Importing Professor List</h2>\n");
   taskwindow_flush();
@@ -353,7 +367,7 @@ function importregpid($filename)
     else
     {  
       $name = substr($buffer,$b + strlen($begin), $m - strlen($begin) - $b);
-      $regid = substr($buffer, $m + strlen($middle), $m - strlen($middle) - $b);
+      $regid = substr($buffer, $m + strlen($middle), $e - strlen($middle) - $m);
       
       prof_parsepidname($name,$first,$last,$middlei,$dept);
       $full = prof_makefull($first,$middlei,$last); 
@@ -363,7 +377,7 @@ function importregpid($filename)
       $pids = array_merge($pids,prof_findwithpid($db,$regid));
       $pid = prof_merge($db,$pids,Array("name" => $full),Array("first" => $first, "middle" => $middlei, "last" => $last, "fullname" => $full, "pid" => $regid, "source" => "regpid"));
 
-      taskwindow_cprint("Adding Professor '$full' as #$pid<br>\n");
+      taskwindow_cprint("Adding Professor '$full' as #$pid<hr>\n");
     }   
     if (((++$i) % 10) == 1) taskwindow_flush();  
   }
@@ -403,9 +417,6 @@ function addelement(&$thearray,$key,$value)
 function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
 {
   global $import_commentspath, $import_questionpath;
-  
-  return;
-  
   taskwindow_start("Progress Window");
   
   taskwindow_cprint("<h2>Importing SEASEVAL Tables</h2>");
@@ -416,23 +427,20 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
 
   if ($doclasses)
   {
-    print ("Transferring Classes...<br>\n");
+    taskwindow_cprint("Transferring Classes...<br>\n");
     mysql_select_db("seaseval",$db);
     $result = mysql_query("SELECT * FROM classinfo",$db);
     mysql_select_db("wces",$db);
     while($row = mysql_fetch_assoc($result))
     {
       $classid = class_update($db,$row["classid"]);
-
       $firstname = $row["classproffname"];
       $lastname = $row["classproflname"];
-      
       prof_fixname($firstname, $lastname);
       prof_parsemiddlei($firstname,$middlei);
       $full = prof_makefull($firstname,$middlei,$lastname);
-      
       $pids = prof_findwithfirstlast($db,$firstname,$lastname);
-      $pids = array_merge($pids,prof_findwithclassid($db,$classid));
+      //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
       $pid = prof_merge($db, $pids, Array("name" => $full), Array("first" => $firstname, "middle" => $middlei, "last" => $lastname, "fullname" => $full, "source" => "oldclasses"));
       db_updatevalues($db,"Classes",Array("classid" => $classid),Array("students" => $row["classenrollment"], "professorid" => $pid));
       taskwindow_cprint(" - Added " . $row["classid"] . " as class #$classid with professor #$pid<br>\n");
@@ -452,10 +460,8 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
       $first = $row["proffname"];
       $last = $row["proflname"];
       prof_fixname($first,$last);
-      
       $full = prof_makefull($first, "", $last);
       $pids = prof_findwithfirstlast($db,$first,$last);
-      
       $pid = prof_merge($db, $pids,
         Array(
           "name" => $full,
@@ -482,7 +488,6 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
   if ($docourses)
   {
     taskwindow_cprint("Transferring Courses...<br>\n");
-  
     mysql_select_db("seaseval",$db);
     $result = mysql_query("SELECT * FROM courseinfo",$db);
     mysql_select_db("wces",$db);
