@@ -135,7 +135,7 @@ class ReportWizard extends Wizard
 
     $t = $this->loadattribute("categories");
     $q = $this->loadattribute("questionperiods");
-    $d = $this->depts ? $this->depts : $this->loadattribute("departments");
+    $d = $this->depts && !(login_getstatus() & login_administrator)? $this->depts : $this->loadattribute("departments");
     $p = $this->loadattribute("professors");
     $c = $this->loadattribute("courses");
 
