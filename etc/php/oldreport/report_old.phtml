@@ -1,209 +1,0 @@
-<?php
-  include_once("D:\server\db_connect.inc");
-  
-  function dotable($classid)
-  {
-    $classes = mysql_query("SELECT * FROM classinfo WHERE classid = '$classid');
-    $klass=mysql_fetch_row($classes);
-    echo "Professor: $klass[1] $professor[2]<BR><BR>\n";
-
-    $courseid = substr($klass[0],0,9);
-    $sect = substr($klass[0],10,3);
-        $courses = mysql_query("SELECT coursename FROM courseinfo WHERE courseid = \"$courseid\"");
-    $course = mysql_fetch_row($courses);
-    $responses = mysql_query("SELECT * FROM classevalresponse WHERE classid LIKE \"$klass[0]\"");
-    $response = mysql_fetch_row($responses);
-    $questions = mysql_query("SELECT genID FROM evalquest WHERE evalid LIKE \"$response[1]\"");
-    $question = mysql_fetch_row($questions);
-    $generics = mysql_query("SELECT * FROM generic WHERE genID LIKE \"$question[0]\"");
-    $generic = mysql_fetch_row($generics);
-    $filled=$response[2]+$response[3]+$response[4]+$response[5]+$response[6];
-     /*       <table width=100% border=1 cellspacing=0 cellpadding=0>
-    <tr>
-      <td width=40%>&nbsp;<td width=5% valign=bottom><img src=images/excellent.gif width=25 height=78>
-      <td width=5% valign=bottom><img src=images/verygood.gif width=25 height=86>
-      <td width=5% valign=bottom><img src=images/satisfactory.gif width=25 height=97>
-      <td width=5% valign=bottom><img src=images/poor.gif width=25 height=47>
-      <td width=5% valign=bottom><img src=images/disastrous.gif width=25 height=88>
-      <td width=5% valign=bottom><img src=images/NA.gif width=25 height=40>
-      <td width=5% valign=bottom><img src=images/average.gif width=25 height=75>
-      <td width=5% valign=bottom><img src=images/mode.gif width=25 height=56>
-      <td valign=bottom width=5%><img src=images/SD.gif width=25 height=49>
-      <td valign=bottom>Average (Graphic)</font>
-    </tr>           */     echo "<TABLE CELLSPACING=0><TR><TD WIDTH=200>Course ID: $courseid<TD WIDTH=110>Section: $sect<TD>Course Name: $course[0] &nbsp; &nbsp;&nbsp;</TR><TR><TD COLSPAN=3>$filled out of $klass[3] students evaluated this class.</TR></TABLE>\n";
-    echo "<P><TABLE CELLSPACING=0><TD WIDTH=20>&nbsp;<TD><TD>\n";
-    echo "<TABLE CELLSPACING=0 BORDER=1><TR><TD><TD>excellent<TD>very good<TD>satisfactory<TD>poor<TD>disastrous</TR>\n";
-    echo "<TR><TD>$generic[01]<TD>$response[02]<TD>$response[03]<TD>$response[04]<TD>$response[05]<TD>$response[06]</TR>\n";
-    echo "<TR><TD>$generic[02]<TD>$response[07]<TD>$response[08]<TD>$response[09]<TD>$response[10]<TD>$response[11]</TR>\n";
-    echo "<TR><TD>$generic[03]<TD>$response[12]<TD>$response[13]<TD>$response[14]<TD>$response[15]<TD>$response[16]</TR>\n";
-    echo "<TR><TD>$generic[04]<TD>$response[17]<TD>$response[18]<TD>$response[19]<TD>$response[20]<TD>$response[21]</TR>\n";
-    echo "<TR><TD>$generic[05]<TD>$response[22]<TD>$response[23]<TD>$response[24]<TD>$response[25]<TD>$response[26]</TR>\n";
-    echo "<TR><TD>$generic[06]<TD>$response[27]<TD>$response[28]<TD>$response[29]<TD>$response[30]<TD>$response[31]</TR>\n";
-    echo "<TR><TD>$generic[07]<TD>$response[32]<TD>$response[33]<TD>$response[34]<TD>$response[35]<TD>$response[36]</TR>\n";
-    echo "<TR><TD>$generic[08]<TD>$response[37]<TD>$response[38]<TD>$response[39]<TD>$response[40]<TD>$response[41]</TR>\n";
-    echo "<TR><TD>$generic[09]<TD>$response[42]<TD>$response[43]<TD>$response[44]<TD>$response[45]<TD>$response[46]</TR>\n";
-    echo "<TR><TD>$generic[10]<TD>$response[47]<TD>$response[48]<TD>$response[49]<TD>$response[50]<TD>$response[51]</TR></TABLE><BR>\n";
-    echo "</TABLE>\n";
-  
-  }
-  
-  
-  function showit($str,$classwaq,$semyear)
-  {                $professors = mysql_query("SELECT * FROM profinfo WHERE profdept LIKE \"$str\" ORDER BY proflname, proffname");
-          if(mysql_num_rows($professors)>0)
-          {
-                         $professor=mysql_fetch_row($professors);
-              $printcount=0;
-              do              {    do{
-                          $printmore=0;
-                          $k=0;
-                          for($i=0;$i<sizeof(&$classwaq);$i++){
-                              if($classwaq[$i][0]==$klass[0]){
-                                  $printmore=1;
-                                  $k=$i;
-                                  break;
-                              }
-                          }
-                          if($printmore){
-                              if($classwaq[$k][1]!=''){
-                                  echo "<TABLE><TD WIDTH=20>&nbsp;</TD><TD>";           
-                                  $q1 = $classwaq[$k][1];
-                                  echo "$q1<BR>\n";
-                                  echo "<li>excellent: $response[52] &nbsp; very good: $response[53] &nbsp; satisfactory: $response[54] &nbsp; poor: $response[55] &nbsp; disastrous: $response[56]</TD></TR></TABLE><BR>\n";
-                              }
-                              if($classwaq[$k][2]!=''){
-                                  echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";           
-                                  $q2 = $classwaq[$k][2];
-                                  echo "$q2<BR>\n";
-                                  echo "<li>excellent: $response[57] &nbsp; very good: $response[58] &nbsp; satisfactory: $response[59] &nbsp; poor: $response[60] &nbsp; disastrous: $response[61]</TD></TR></TABLE><BR>\n";
-                              }
-                              if($classwaq[$k][3]!=''){
-                                  echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";           
-                                  $q3 = $classwaq[$k][3];
-                                  echo "$q3<BR>\n";
-                                  echo "<li>excellent: $response[62] &nbsp; very good: $response[63] &nbsp; satisfactory: $response[64] &nbsp; poor: $response[65] &nbsp; disastrous: $response[66]</TD></TR></TABLE><BR>\n";
-                              }
-                              if($classwaq[$k][4]!=''){
-                                  echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";           
-                                  $q4 = $classwaq[$k][4];
-                                  echo "$q4<BR>\n";
-                                  echo "<li>excellent: $response[67] &nbsp; very good: $response[68] &nbsp; satisfactory: $response[69] &nbsp; poor: $response[70] &nbsp; disastrous: $response[71]</TD></TR></TABLE><BR>\n";
-                              }
-                              if($classwaq[$k][5]!=''){
-                              echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";           
-                              $q5 = $classwaq[$k][5];
-                              echo "$q5<BR>\n";
-                              echo "<li>excellent: $response[72] &nbsp; very good: $response[73] &nbsp; satisfactory: $response[74] &nbsp; poor: $response[75] &nbsp; disastrous: $response[76]</TD></TR></TABLE><BR>\n";
-                              }
-                          }
-                          echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";
-                          echo "Comments:<BR>\n";
-                          if(file_exists("../comments/$klass[0].txt"))
-                          {
-                              $file = file("../comments/$klass[0].txt");
-                              for($i=0; $i<sizeof(&$file); $i++){
-                                 $oneans = explode("\n",$file[$i]);
-                                 for($j=0; $j<sizeof(&$oneans)-1; $j++)
-                                    echo "<li>$oneans[$j]<BR>\n";
-                              }
-                              echo "<BR>\n";
-                          } 
-                          else
-                              echo "(None given.)<BR><BR>\n";
-                          echo "</TD></TR></TABLE>";
-                          if($printmore){
-                              if($classwaq[$k][6]!=""){
-                                  echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";          
-                                  $q1 = $classwaq[$k][6];
-                                  echo "$q1<BR>\n";
-                                  if(file_exists("../text_quest/A1_$klass[0].txt"))
-                                  {
-                                      $file = file("../text_quest/A1_$klass[0].txt");
-                                      for($i=0; $i<sizeof(&$file); $i++){
-                                         $oneans = explode("\n",$file[$i]);
-                                         for($j=0; $j<sizeof(&$oneans)-1; $j++)
-                                            echo "<li>$oneans[$j]<BR>\n";
-                                      }
-                                      echo "<BR>\n";
-                                  }
-                                  else
-                                      echo "(None given.)<BR><BR>\n";
-                                  echo "</TD></TR></TABLE>";
-                              }
-                              if($classwaq[$k][7]!=""){
-                                  echo "<TABLE><TR><TD WIDTH=20>&nbsp;</TD><TD>";
-                                  $q2 = $classwaq[$k][7];
-                                  echo "$q2<BR>\n";
-                                  if(file_exists("../text_quest/A2_$klass[0].txt"))
-                                  {
-                                      $file = file("../text_quest/A2_$klass[0].txt");
-                                      for($i=0; $i<sizeof(&$file); $i++){
-                                         $oneans = explode("\n",$file[$i]);
-                                         for($j=0; $j<sizeof(&$oneans)-1; $j++)
-                                            echo "<li>$oneans[$j]<BR>\n";
-                                      }
-                                      echo "<BR>\n";
-                                  }
-                                  else
-                                      echo "(None given.)<BR><BR>\n";
-                                  echo "</TD></TR></TABLE>";
-                              }
-                          }
-                          $printcount++;
-                      } while($klass=mysql_fetch_row($classes));
-                      echo "<HR>\n";
-                  }
-              } while($professor=mysql_fetch_row($professors));
-              if($printcount==0)
-                  echo "Professors associated with this department not teaching this semester.<HR>";
-          }
-          else
-              echo "No professors associated with this department.<HR>";}
-  
-?><html>
-<head>
-<title>Report Evaluation Responses</title>
-<body>
-<?php
-
-echo "<h3>Report Evaluation Responses</h3>";
-/*
-$semyear = "2000_1";      $questions = mysql_query("SELECT * FROM evalquest WHERE evalQ1 NOT LIKE '' OR evalQ6 NOT LIKE ''");
-      if(mysql_num_rows($questions)>0)  // if there are custom evaluations      {
-          $question=mysql_fetch_row($questions);
-          $classwaq[0][0]='';
-          $classwaq[0][1]='';
-          $classwaq[0][2]='';
-          $classwaq[0][3]='';
-          $classwaq[0][4]='';
-          $classwaq[0][5]='';
-          $classwaq[0][6]='';
-          $classwaq[0][7]='';
-          $cwaq=0;
-          do          {
-              $answers = mysql_query("SELECT classid from classevalresponse WHERE evalid LIKE \"$question[0]\" AND classid LIKE '%$semyear'");
-              $answer = mysql_fetch_row($answers);
-              do              {
-                  $classwaq[$cwaq][0] = $answer[0];
-                  $classwaq[$cwaq][1] = $question[2];
-                  $classwaq[$cwaq][2] = $question[3];
-                  $classwaq[$cwaq][3] = $question[4];
-                  $classwaq[$cwaq][4] = $question[5];
-                  $classwaq[$cwaq][5] = $question[6];
-                  $classwaq[$cwaq][6] = $question[7];
-                  $classwaq[$cwaq][7] = $question[8];
-                  $cwaq++;
-              } while($answer=mysql_fetch_row($answers));          } while ($question = mysql_fetch_row($questions));      }
-                     echo "<B>$semyear</B><P><HR>\n";
-
-      $departments = mysql_query("SELECT * FROM deptinfo ORDER BY deptname");
-      $department = mysql_fetch_row($departments);
-      do      {
-          echo "<B>$department[1]</B><HR>";
-          showit($department[0], $classwaq, $semyear);
-      } while($department=mysql_fetch_row($departments));
-            echo "<B>Professors not associated with a department</B><HR>";      showit("",$classwaq,$semyear);
-?>
-
-
-</body></html>

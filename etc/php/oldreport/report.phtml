@@ -1,96 +1,0 @@
-<?php
-  include_once("D:\server\db_connect.inc");
-
-  $semester = 'Spring 2000';
-
-  function printtable($classid)
-  {
-        global $semester;
-        $classes = mysql_query("SELECT * FROM classinfo WHERE classid = '$classid'");
-    $klass=mysql_fetch_row($classes);
-
-    $courseid = substr($klass[0],0,9);
-    $sect = substr($klass[0],10,3);
-        $courses = mysql_query("SELECT coursename FROM courseinfo WHERE courseid = \"$courseid\"");
-    $course = mysql_fetch_row($courses);
-    $responses = mysql_query("SELECT * FROM classevalresponse WHERE classid LIKE \"$klass[0]\"");
-    $response = mysql_fetch_row($responses);
-    $questions = mysql_query("SELECT genID FROM evalquest WHERE evalid LIKE \"$response[1]\"");
-    $question = mysql_fetch_row($questions);
-    $generics = mysql_query("SELECT * FROM generic WHERE genname = '$semester'");
-    $generic = mysql_fetch_row($generics);    
-    $filled=$response[2]+$response[3]+$response[4]+$response[5]+$response[6];
-       echo "<tr><td class=heading>$courseid - $course[0] (Section $sect)</td></tr>";    echo "<tr><td class=section>";       echo "<p>Professor: $klass[1] $klass[2]</p>";
-    echo "<p>$filled out of $klass[3] students evaluated this class</p>";
-?>
-       <table width=100% border=1 cellspacing=0 cellpadding=0>
-       <tr>
-          <td width=40%>&nbsp;<td width=5% valign=bottom><img src=images/excellent.gif width=25 height=78></td>
-          <td width=5% valign=bottom><img src=images/verygood.gif width=25 height=86></td>
-          <td width=5% valign=bottom><img src=images/satisfactory.gif width=25 height=97></td>
-          <td width=5% valign=bottom><img src=images/poor.gif width=25 height=47></td>
-          <td width=5% valign=bottom><img src=images/disastrous.gif width=25 height=88></td>
-          <td width=5% valign=bottom><img src=images/NA.gif width=25 height=40></td>
-          <td width=5% valign=bottom><img src=images/average.gif width=25 height=75></td>
-          <td width=5% valign=bottom><img src=images/mode.gif width=25 height=56></td>
-          <td valign=bottom width=5%><img src=images/SD.gif width=25 height=49></td>
-          <td valign=bottom>Average (Graphic)</font></td>
-       </tr>
-<?php    echo "<TR><td>$generic[1] </td><td>$response[2] </td><td>$response[3] </td><td>$response[4] </td><td>$response[05]</td><td>$response[6] </td></TR>\n";
-    echo "<TR><td>$generic[2] </td><td>$response[7] </td><td>$response[8] </td><td>$response[9] </td><td>$response[10]</td><td>$response[11]</td></TR>\n";
-    echo "<TR><td>$generic[3] </td><td>$response[12]</td><td>$response[13]</td><td>$response[14]</td><td>$response[15]</td><td>$response[16]</td></TR>\n";
-    echo "<TR><td>$generic[4] </td><td>$response[17]</td><td>$response[18]</td><td>$response[19]</td><td>$response[20]</td><td>$response[21]</td></TR>\n";
-    echo "<TR><td>$generic[5] </td><td>$response[22]</td><td>$response[23]</td><td>$response[24]</td><td>$response[25]</td><td>$response[26]</td></TR>\n";
-    echo "<TR><td>$generic[6] </td><td>$response[27]</td><td>$response[28]</td><td>$response[29]</td><td>$response[30]</td><td>$response[31]</td></TR>\n";
-    echo "<TR><td>$generic[7] </td><td>$response[32]</td><td>$response[33]</td><td>$response[34]</td><td>$response[35]</td><td>$response[36]</td></TR>\n";
-    echo "<TR><td>$generic[8] </td><td>$response[37]</td><td>$response[38]</td><td>$response[39]</td><td>$response[40]</td><td>$response[41]</td></TR>\n";
-    echo "<TR><td>$generic[9] </td><td>$response[42]</td><td>$response[43]</td><td>$response[44]</td><td>$response[45]</td><td>$response[46]</td></TR>\n";
-    echo "<TR><td>$generic[10]</td><td>$response[47]</td><td>$response[48]</td><td>$response[49]</td><td>$response[50]</td><td>$response[51]</td></TR>\n";
-    
-    echo "</TABLE></td></tr>\n";
-  }
-?>
- 
-
-<html>
-<head>
-<title>Untitled Document</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
-
-<style>
-<!--
-
-body { font-family: "Arial, Helvetica, sans-serif" }
-.heading { font-weight: bold; background-color: #999999 }
-.section { padding-left: 25px; padding-top: 12px; padding-bottom: 12px }
-
--->
-</style>
-
-</head>
-
-<body bgcolor="#FFFFFF">
-
-<table width="600" border="0" cellspacing="0" cellpadding="2">
-  <tr><td class="heading">WCES - Class Evaluation Report (Administrator)</td></tr>
-  <tr><td class="section"> 
-    <table width="100%" border="0" cellspacing="0" cellpadding="0">
-      <tr> 
-        <td width="150"><?php echo $semester ?></td>
-        </td><td><?php echo date("F j, Y") ?></td>
-      </tr>
-      <tr> 
-        <td width="150">Semester:</td>
-        </td><td>Spring 2000</td>
-      </tr>
-    </table>
-  </td></tr>
-
-<?php
- foreach($classes as $value) {   printtable($value); }  
-   ?>    
-
-</table>
-
-</body>
-</html>
