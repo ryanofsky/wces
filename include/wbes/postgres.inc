@@ -14,18 +14,18 @@ function pg_go($sql, $db, $file = __FILE__, $line = __LINE__)
   
   if ($db_debug || !$result)
   {
-    taskwindow_cprint("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
-    taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
-    taskwindow_cprint($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
+    print("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
+    print('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
+    print($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
     if ($result)
     {
       $rows = max(pg_cmdtuples($result), pg_numrows($result));
-      taskwindow_cprint("<br>Time: $time seconds<br>Affected Rows: $rows");
+      print("<br>Time: $time seconds<br>Affected Rows: $rows");
     }
     else
-      taskwindow_cprint("<br>Error: " . pg_errormessage($db));
-    taskwindow_cprint("</p>\n");
-    taskwindow_flush();
+      print("<br>Error: " . pg_errormessage($db));
+    print("</p>\n");
+    ob_flush(); flush();
     if ($server_isproduction && !$result)
       sendwarning("Query failed.\nError message: " . pg_errormessage() . "\nQuery: $sql",$file,$line);
   }
