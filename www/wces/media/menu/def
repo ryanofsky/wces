@@ -1,0 +1,193 @@
+<?
+require_once("wces/login.inc");
+require_once("wces/server.inc");
+
+function page_top($title,$foldingmenustatus = "1000")
+{
+  global $server_wcespath;
+?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"> 
+<!-- This page was created by the WCES development team for Columbia University, 2000 -->
+<html>
+<head>
+<title><?=$title?></title>
+
+<style type="text/css">
+<!--
+
+body                    { font-family: Arial, Helvetica, sans-serif; }
+p                       { font-family: Arial, Helvetica, sans-serif; }
+a                       { text-decoration:none; }
+a:hover                 { text-decoration:underline; color:#FF4033; }
+h3                      { font-family: Arial, Helvetica, sans-serif; }
+h4                      { font-family: Arial, Helvetica, sans-serif; background-color:#CCCCFF; padding: 2px; font-weight:bold; }
+
+.pagebody               { padding:10px; font-family: Arial, Helvetica, sans-serif; }
+
+.foldingmenuheading            { background-color:#0033E5; color:#FFFB18; cursor:hand; font-weight:bold; font-family:Arial, Helvetica, sans-serif; font-size:12pt; }
+.foldingmenuheadinghover       { background-color:#00BE18; color:#FFFB18; cursor:hand; font-weight:bold; font-family:Arial, Helvetica, sans-serif; font-size:12pt; }
+.foldingmenuheadinghover:hover { text-decoration:underline; color:#FFFB18;  }
+
+.foldingmenubody               { padding:3px; background-color:#000000; color:#FFFFFF; font-family:Arial, Helvetica, sans-serif; font-size:9pt; }
+
+.foldingmenulink               { color:#FFFFFF; text-decoration:none; font-weight:bold; font-family: Arial, Helvetica, sans-serif; font-size:9pt; }
+.foldingmenulink:visited       { color:#DDDDDD; text-decoration:none; font-weight:bold; font-family: Arial, Helvetica, sans-serif; font-size:9pt; }                    
+.foldingmenulink:hover         { color:#FFFFFF; text-decoration:underline; }
+
+.tinybutton             { FONT-WEIGHT: bold; FONT-SIZE: x-small; CURSOR: hand;  FONT-FAMILY: Verdana, Geneva, Arial, Helvetica, sans-serif; TEXT-DECORATION: none; }
+
+-->
+</style>
+
+<script language="javascript">
+<!--
+
+  var happyrollover = document.images && window.Image ? true : false;
+  var happyfoldingmenu = happyrollover && RegExp && (document.all || document.getElementById) ? true : false;
+  var detect = navigator.userAgent.toLowerCase();
+  var refreshbug =  (detect.indexOf('compatible') < 0 && detect.charAt(8) == '5') ? true : false; // check for mozilla
+
+  // fix for Netscape 3 string object
+  if (happyrollover && !String.prototype.slice) String.prototype.slice = new Function("start","len","if(len<0 || len>this.length) len = this.length; var ret = new String(); for(var i = start; i < len; i++) ret += this.charAt(i); return ret");
+
+  function getImage(oldimage,filename)
+  {
+    var p = oldimage.src.lastIndexOf("/");
+    var q = oldimage.src.lastIndexOf("\\");
+    var i = new Image();
+    i.src = oldimage.src.slice(0,(p>q && p>0) ? p+1 : (q>0)?q+1 : 0) + filename;;
+    return i;
+  }; 
+
+  function AttachImage(img, filename)
+  {
+    if(happyrollover)
+    {
+      var i = document.images[img];
+      i.flipimage = getImage(i,filename);
+    };
+  };
+  
+  function image_swap(img)
+  {
+    if(happyrollover)
+    {
+      var i = document.images[img];
+      var temp = i.src;
+      i.src = i.flipimage.src;
+      i.flipimage.src = temp;
+    };
+  };
+
+
+
+//-->
+</script>
+</head>
+
+<body background="<?=$server_wcespath?>media/0x0030E7.gif" bgcolor="#e9e9fd" text="#000000" link="#000090" vlink="#000090" alink="#000000" leftmargin="0" topmargin="0" rightmargin="0" marginwidth="0" marginheight="0">
+<table width="100%" height="100%" border=0 cellpadding=0 cellspacing=0>
+<tr>
+  <td height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" target=_top href="/index.html"><img name="i1" border="0" src="<?=$server_wcespath?>media/wces1.gif" width="115" height="65"></a></td>
+  <td height=65><a href="<?=$server_wcespath?>" target="_top" onmouseover="image_swap('i2')" onmouseout="image_swap('i2')"><img name="i2" border="0" src="<?=$server_wcespath?>media/wcestitle.gif" width="600" height="57"></a>
+    <script language="JavaScript">
+    <!--
+      AttachImage("i1","wces2.gif");
+      AttachImage("i2","wcestitle2.gif");
+    // -->
+    </script>
+  </td>
+</tr>  
+<tr>
+  <td valign="top" width="130">  
+    <table id="thefoldingmenu" border=0 cellpadding=1 cellspacing=0>
+
+<? if (login_isloggedin()) { ?>
+    <tr id="logout" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/solid.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap><a href="<?=$server_wcespath?>login/logout.php" class="foldingmenuheading">Log Off <?=login_getuni()?></a></td>
+    </tr>
+    <tr><td><script>foldingmenuhead_init("logout")</script>&nbsp;</td></tr>     
+<? } ?> 
+
+    <tr id="section1h" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/minus.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap>General</td>
+    </tr>
+    <tr id="section1">
+      <td>&nbsp;</td>
+       <td class="foldingmenubody" bgcolor="#000000">
+        <p><a href="<?=$server_wcespath?>index.php" class="foldingmenulink">Home</a></p>
+        <p><a href="<?=$server_wcespath?>about/confidentiality.php" class="foldingmenulink">Confidentiality</a></p>
+        <p><a href="<?=$server_wcespath?>about/feedback.php" class="foldingmenulink">Feedback</a></p>
+        <p><a href="<?=$server_wcespath?>about/credits.php" class="foldingmenulink">Credits</a></p>
+      </td>
+    </tr>
+    <tr><td><script>foldingmenuhead_init("section1h","section1")</script>&nbsp;</td></tr>
+
+    <tr id="section2h" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/minus.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap>Students</td>
+    </tr>
+    <tr class="foldingmenuheading" id="section2">
+      <td>&nbsp;</td>
+      <td class="foldingmenubody">
+        <p><a href="<?=$server_wcespath?>students/survey.php" class="foldingmenulink">Complete a Survey</a></p>
+        <p><a href="http://oracle.seas.columbia.edu/oracle/" class="foldingmenulink">View Survey Results</a></p>
+      </td>
+    </tr>    
+    <tr><td><script>foldingmenuhead_init("section2h","section2")</script>&nbsp;</td></tr>
+
+    <tr id="section3h" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/minus.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap>Professors</td>
+    </tr>
+    <tr id="section3">
+      <td>&nbsp;</td>
+      <td class="foldingmenubody">
+        <p><a href="<?=$server_wcespath?>professors/index.php" class="foldingmenulink">Home</a></p>
+        <p><a href="<?=$server_wcespath?>professors/previewsurveys.php" class="foldingmenulink">Preview surveys</a></p>
+        <p><a href="<?=$server_wcespath?>professors/editsurveys.php" class="foldingmenulink">Edit your surveys</a></p>
+        <p><a href="<?=$server_wcespath?>professors/seeresults.php" class="foldingmenulink">See Survey Results</a></p>
+        <p><a href="<?=$server_wcespath?>login/profsearch.php" class="foldingmenulink">Update CUNIX Association</a></p>
+      </td>
+    </tr>
+    <tr><td><script>foldingmenuhead_init("section3h","section3")</script>&nbsp;</td></tr>
+
+    <tr id="section4h" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/minus.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap>Administrators</td>
+    </tr>
+    <tr id="section4">
+      <td>&nbsp;</td>
+      <td class="foldingmenubody">
+        <p><a href="<?=$server_wcespath?>administrators/semester.php" class="foldingmenulink">New Semester Initialiation</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/pusage.php" class="foldingmenulink">Professor Usage</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/susage.php" class="foldingmenulink">Student Usage</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/report.php" class="foldingmenulink">Reporting Wizard</a></p>                                
+        <p><a href="<?=$server_wcespath?>administrators/import.php" class="foldingmenulink">Import Data</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/fakelogin.php" class="foldingmenulink">Fake Login</a></p>
+        <p><a href="<?=$server_wcespath?>administrators/enrollment.php" class="foldingmenulink">Enrollment Viewer</a></p>
+      </td>
+    </tr>
+    <tr><td><script>foldingmenuhead_init("section4h","section4")</script>&nbsp;</td></tr>    
+    </table>
+  </td>
+  <td bgcolor="#e5e6fa" background="<?=$server_wcespath?>media/paper2.jpg" valign="top">
+  <div class="pagebody">
+  
+<?  
+};
+
+function page_bottom()
+{
+?>
+
+  </div>
+  </td>
+</tr>
+<tr><td colspan=2 height=10>&nbsp;</td></tr>
+</table>
+<?
+};
+?>

@@ -1,0 +1,232 @@
+<?
+
+require_once("widgets/widget.inc");
+
+class FoldingMenu extends Widget
+{
+  var $contents; // 2d array containing menu contents
+  var $iconpath; // path containing the neccessary icons
+  var $cookie; // name of the cookie that preserves menu state between pages
+  
+  function FoldingMenu($contents,$iconpath,$cookiename)
+  {
+    $this->contents = $contents;
+    $this->iconpath = $iconpath;
+    $this->cookiename = $cookiename;
+  }
+  
+  function dumpscript()
+  {
+    global $FoldingMenu_dumped;
+    if (!$FoldingMenu_dumped)
+    {
+      $FoldingMenu_dumped = true;
+?>
+<!-- begin FoldingMenu widget script -->  
+<script>
+<!--
+  function childhunt(target,element)
+  {
+    if (element.name == target)
+      return element;
+    else if (element.childNodes)
+    {
+      var l = element.childNodes.length;
+      var t = null;
+      for(var i = 0; i < l; ++i)
+      {
+        t = childhunt(target,element.childNodes.item(i));
+        if (t) return t;
+      };  
+    }
+    return null;
+  };
+  
+  function setclass(element,classname)
+  {
+    if (element.childNodes)
+    {
+      if (element && element.style)
+      {
+        element.className = classname;
+        var l = element.childNodes.length;
+        for(var i = 0; i < l; ++i)
+          setclass(element.childNodes.item(i),classname);  
+      };  
+    }
+    else if(element.all)
+    {
+      element.className = classname;
+      var l = element.all.length;
+      for(var i = 0; i < l; ++i)
+      {
+        var o = element.all.item(i);
+        if (o.style) o.className = classname;
+      };  
+    };
+  };
+
+  function FoldingMenuHead_init(FoldingMenuheadid,FoldingMenubodyid)
+  {
+    if (happyFoldingMenu)
+    {
+      var FoldingMenuhead = document.getElementById ? document.getElementById(FoldingMenuheadid) : document.all(FoldingMenuheadid);
+      FoldingMenuhead.onmouseover = FoldingMenuhead_onmouseover;
+      FoldingMenuhead.onmouseout = FoldingMenuhead_onmouseout;
+
+      if (FoldingMenubodyid)
+      {
+        var FoldingMenucount = FoldingMenubranches.length;
+        FoldingMenubranches[FoldingMenucount] = FoldingMenuhead;
+        FoldingMenuhead.onclick = FoldingMenuhead_onclick;
+        FoldingMenuhead.isopen = (FoldingMenustatus.length > FoldingMenucount) && (FoldingMenustatus.charAt(FoldingMenucount) == "1");
+        FoldingMenuhead.FoldingMenubody = document.getElementById ? document.getElementById(FoldingMenubodyid) : document.all(FoldingMenubodyid);
+        FoldingMenuhead.icon = FoldingMenuhead.childNodes ? childhunt("headimage",FoldingMenuhead) : FoldingMenuhead.all.item("headimage");
+        FoldingMenuhead.plus = getImage(FoldingMenuhead.icon,"plus_m.gif");
+        FoldingMenuhead.minus = getImage(FoldingMenuhead.icon,"minus_m.gif");
+        if (!FoldingMenuhead.isopen)
+        {
+          FoldingMenuhead.FoldingMenubody.style.display = "none";  
+          FoldingMenuhead.icon.src = getImage(FoldingMenuhead.icon,"plus.gif").src;
+        };
+      };  
+    };
+  };  
+  
+  function FoldingMenuHead_onmouseover()
+  {
+    setclass(this,'FoldingMenuheadinghover');
+  };
+ 
+  function FoldingMenuhead_onmouseout()
+  {
+    setclass(this,'FoldingMenuheading');
+  };
+  
+  function FoldingMenuHead_onclick()
+  {
+    if (this.FoldingMenubody)
+    {
+      this.isopen = !this.isopen;
+      var display = this.isopen ? "block" : "none";
+      var iconsrc = this.isopen ? this.minus.src : this.plus.src;
+
+      if (document.all)
+      { 
+        this.FoldingMenubody.style.display = display;
+        this.icon.src = iconsrc;
+      }
+      else if (document.getElementById)
+      { 
+        var table = document.getElementById("theFoldingMenu");
+        if (refreshbug) table.style.visibility = "hidden"; // workaround for mozilla refresh bug
+        this.FoldingMenubody.style.display = display;
+        this.icon.src = iconsrc;
+        if (refreshbug) table.style.visibility = "visible";
+      }
+      var ts = "";
+      for(var i in FoldingMenubranches)
+        ts += (FoldingMenubranches[i].isopen == true) ? "1" : FoldingMenubranches[i].isopen == false ? "0" : "";
+      document.cookie = 'FoldingMenustatus=' + ts + '; path=/';
+    };  
+  };
+      
+  if (happyFoldingMenu)
+  {
+    //var re = /.*(?:^|;)[ ]*FoldingMenustatus=([^;]*)(?:$|;).*/;      < - - doesn't work on IE5 for mac
+    var re = new RegExp(".*(^|;)[ ]*FoldingMenustatus=([^;]*)($|;).*");
+    window.FoldingMenustatus = (re.test(document.cookie)) ? document.cookie.replace(re,"$2") : "<?=$FoldingMenustatus?>";
+    window.FoldingMenubranches = new Array();
+  };    
+// -->
+</script>
+<!-- end FoldingMenu widget script -->  
+<?  
+    }
+  }
+
+  function showitem(&$item,$classname)
+  {
+    if (get_class($item) == "FoldingMenuLink");
+      print('<a href="' . $item->href . '" title="' . $item->title . '" class="' . $classname . '">' . $item->text . '</a>');
+    else
+      print($item);
+  }
+  
+  function display()
+  {
+    print("<!-- begin widget " . $this->prefix . " -->\n");
+    print("<table border=0 cellpadding=1 cellspacing=0>\n");
+
+    foreach($this->contents as $number => $row)
+    {
+      $first = true;
+      foreach($row as $item)
+      {
+        if ($first)
+        {
+          $first = false;
+          print("  <tr class=\"foldingmenuheading\" nowrap>\n");
+          print("    <td>");
+          showitem($item);
+          print("</td>\n");
+         
+        }
+        else
+        {
+          
+        
+        } 
+      }
+      if (!$first) print("  </tr>\n  <tr><td><script>FoldingMenuHead_init('" . $this->prefix . "_" . $number . "')</script>&nbsp;</td></tr>\n");
+    }
+    print("</table>\n");
+
+
+<? if (login_isloggedin()) { ?>
+    <tr id="logout" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/solid.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap><a href="<?=$server_wcespath?>login/logout.php" class="foldingmenuheading">Log Off <?=login_getuni()?></a></td>
+    </tr>
+    <tr><td><script>foldingmenuhead_init("logout")</script>&nbsp;</td></tr>     
+<? } ?> 
+
+    <tr id="section1h" class="foldingmenuheading">
+      <td><img name="headimage" src="<?=$server_wcespath?>media/minus.gif" width="15" height="15" align="middle"></td>
+      <td class="foldingmenuheading" nowrap>General</td>
+    </tr>
+    <tr id="section1">
+      <td>&nbsp;</td>
+       <td class="foldingmenubody" bgcolor="#000000">
+        <p><a href="<?=$server_wcespath?>index.php" class="foldingmenulink">Home</a></p>
+        <p><a href="<?=$server_wcespath?>about/confidentiality.php" class="foldingmenulink">Confidentiality</a></p>
+        <p><a href="<?=$server_wcespath?>about/feedback.php" class="foldingmenulink">Feedback</a></p>
+        <p><a href="<?=$server_wcespath?>about/credits.php" class="foldingmenulink">Credits</a></p>
+      </td>
+    </tr>
+    <tr><td><script>foldingmenuhead_init("section1h","section1")</script>&nbsp;</td></tr>
+
+
+
+
+  
+  print("<!-- end widget " . $this->prefix . " -->\n");
+  
+}
+
+class FoldingMenuLink
+{
+  var $text;
+  var $href;
+  var $title;
+  
+  function FoldingMenuLink($text,$href,$title)
+  {
+    $this->text = & $text;
+    $this->href = & $href;
+    $this->title = & $title;
+  }
+}
+
+
+?>
