@@ -144,10 +144,9 @@ CREATE INDEX class_idx ON enrollments (class_id);
 CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
 CREATE INDEX user_idx ON enrollments (user_id);
 CREATE INDEX ta_ratings_parent_idx ON ta_ratings (parent);
-
-CREATE INDEX enrollment_p_class ON enrollments (class_id);
-CREATE INDEX enrollment_p_user ON enrollments (user_id);
-CREATE UNIQUE INDEX enrollment_p_idx ON enrollments (user_id, class_id);
+CREATE INDEX enrollment_p_class ON enrollments_p (class_id);
+CREATE INDEX enrollment_p_user ON enrollments_p (user_id);
+CREATE UNIQUE INDEX enrollment_p_idx ON enrollments_p (user_id, class_id);
 
 CREATE TABLE professor_data
 (
