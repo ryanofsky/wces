@@ -178,7 +178,7 @@ class Report extends FormWidget
     {
        if (!$this->email_form->isstale)
        {
-         $html = false; $text = true;
+         $html = false; $text = "";
          makereport($this->wizard,false,$html,$text);
          $this->email_text->text = $text;
        }
