@@ -35,6 +35,7 @@ class MassEmail extends FormWidget
     $this->form = new Form("${prefix}_form", $form, $formmethod);
     $this->from = new TextBox(0,60,"", "${prefix}_from", $form, $formmethod);
     $this->replyto = new TextBox(0,60,"", "${prefix}_replyto", $form, $formmethod);
+    $this->cc = new TextBox(0,60,"", "${prefix}_cc", $form, $formmethod);
     $this->subject = new TextBox(0,60,"", "${prefix}_subject", $form, $formmethod);
     $this->text = new TextBox(15,60,"", "${prefix}_text", $form, $formmethod);
     $this->action = new ActionButton("${prefix}_action", $form, $formmethod);
@@ -52,6 +53,7 @@ class MassEmail extends FormWidget
     {
       $this->from->loadvalues();
       $this->replyto->loadvalues();
+      $this->cc->loadvalues();
       $this->subject->loadvalues();
       $this->text->loadvalues();
       $this->action->loadvalues();
@@ -73,7 +75,7 @@ class MassEmail extends FormWidget
       $this->to = "";
       $this->replyto->text = "wces@columbia.edu";
       $this->subject->text = "WCES Reminder";
-      $this->text->text = "Dear %studentname%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
+      $this->text->text = "Dear %studentname%,\n\nCome to http://www.esurveys.columbia.edu/wces/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
     }  
 
     if (!emailvalid($this->from->text))
@@ -177,6 +179,10 @@ class MassEmail extends FormWidget
     ?></td>
   </tr>
   <tr>
+    <td valign=top align=right><STRONG>CC:</STRONG></td>
+    <td><? $this->cc->display(); ?></td>
+  </tr>  
+  <tr>
     <td valign=top align=right><STRONG>Subject:</STRONG></td>
     <td><? $this->subject->display(); ?></td>
   </tr>
@@ -197,21 +203,33 @@ class MassEmail extends FormWidget
   {
     $db = $this->db;
    
-    $questionperiodid = wces_Findquestionsetsta($db, "qsets", 0, $this->topicid);        
+//    $questionperiodid = wces_Findquestionsetsta($db, "qsets", 0, $this->topicid);        
 
     db_exec("CREATE TEMPORARY TABLE studclasses( userid INTEGER NOT NULL, classid INTEGER NOT NULL, surveyed INTEGER, PRIMARY KEY(userid, classid) )", $db, __FILE__, __LINE__);
+//    db_exec("
+//      REPLACE INTO studclasses(userid, classid, surveyed)
+//      SELECT e.userid, e.classid, IF(cs.userid IS NULL,0,1)
+//      FROM qsets AS qs
+//      INNER JOIN enrollments AS e ON e.classid = qs.classid
+//      INNER JOIN users AS u ON e.userid = u.userid AND u.isprofessor = 'false'
+//      INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
+//      LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
+//      LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
+//      
+//      GROUP BY e.userid, e.classid
+//      ", $db, __FILE__, __LINE__);
+
     db_exec("
-      REPLACE INTO studclasses(userid, classid, surveyed)
-      SELECT e.userid, e.classid, IF(cs.userid IS NULL,0,1)
-      FROM qsets AS qs
-      INNER JOIN enrollments AS e ON e.classid = qs.classid
-      INNER JOIN users AS u ON e.userid = u.userid AND u.isprofessor = 'false'
-      INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
-      LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
-      LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
-      
-      GROUP BY e.userid, e.classid
-      ", $db, __FILE__, __LINE__);
+      REPLACE INTO studclasses (userid, classid, surveyed)
+      SELECT e.userid, e.classid, IF(cr.userid IS NULL, 0, 1)
+      FROM groupings AS g
+      INNER JOIN enrollments AS e ON e.classid = g.linkid
+      INNER JOIN classes AS cl ON g.linkid = cl.classid
+      LEFT JOIN professors AS p ON p.professorid = cl.professorid      
+      LEFT JOIN cheesyresponses AS cr ON cr.classid = e.classid AND cr.userid = e.userid 
+      WHERE g.linktype = 'classes' AND (p.userid IS NULL OR p.userid <> e.userid)
+      " . ($this->topicid ? " AND g.topicid = $this->topicid " : "") . "
+    ", $db, __FILE__, __LINE__);
 
     db_exec("CREATE TEMPORARY TABLE recipients( userid INTEGER NOT NULL, bob INTEGER, PRIMARY KEY(userid) )", $db, __FILE__, __LINE__);
     
@@ -258,8 +276,13 @@ class MassEmail extends FormWidget
     {
       taskwindow_start("Progress Window", false);
       print("<h3>Sending...</h3>");
-    }  
+    }
+    else
+    {
+      print("<h5>Previewing $total messages.</h5>");
+    }
     
+    $cc = $this->cc->text ? "Cc: {$this->cc->text}\r\n" : "";
     while($user = mysql_fetch_assoc($users))
     {
       $studentname = ucwords(strtolower($user["name"]));
@@ -292,7 +315,6 @@ class MassEmail extends FormWidget
       
       ++$sofar;
       $email = $user["email"];
-      //$email = "rey4@columbia.edu";
       
       $address = $email ? ($studentname ? "$studentname <$email>" : $email) : "";
       $from = $this->from->text;
@@ -303,7 +325,8 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
+          //$address = "rey4@columbia.edu";
+          mail($address, $this->subject->text, $text, "From: $from\r\nReply-To: $replyto\r\n{$cc}X-Mailer: PHP/" . phpversion());
         }  
         else
         {
@@ -318,7 +341,8 @@ class MassEmail extends FormWidget
         print("<b>Subject:</b> " . htmlspecialchars($this->subject->text) . "\n");  
         print("<b>From:</b> " . htmlspecialchars($from) . "\n");  
         print("<b>Reply To:</b> " . htmlspecialchars($replyto) . "\n");  
-        print("<b>To:</b> " . htmlspecialchars($address) . "\n\n");  
+        print("<b>To:</b> " . htmlspecialchars($address) . "\n");  
+        print("<b>CC:</b> " . htmlspecialchars($this->cc->text) . "\n\n");  
         print(htmlspecialchars($text));
         print("</pre>\n<hr>\n");
       }  
@@ -341,7 +365,7 @@ $db = wces_connect();
 $mm = new MassEmail($db,"mm","f",WIDGET_POST);
 $mm->loadvalues();
 
-print("<form name=f method=post action=massmail.php>\n");
+print("<form name=f method=post action=massmail.php>\n$ISID");
 $mm->display();
 print("</form>\n");
 
