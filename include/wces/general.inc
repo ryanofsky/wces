@@ -2,6 +2,7 @@
 
 require_once("wces/login.inc");
 
+$null = false;
 
 /**
 * Puts a warning into the database and sends an obnoxious email to rey4@columbia.edu
@@ -16,41 +17,9 @@ function sendwarning($dump, $file, $line)
 {
   $db = wces_connect();
   $uni = login_getuni();
+  if ($uni) $uni = "'$uni' was logged in at the time\n";
   $errorid = db_addrow($db, "warninglog", array("file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
-  mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\nThe SEAS Oracle would like you to know about an error it recently encountered in $file, line $line.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n'$uni' was logged in at the time\n"));
-}
-
-/**
-* Constructs an absolute URL. If any of the parameters is false, then the
-* function uses information from the current page.
-* 
-* @param string  Protocol, normally "http://" or "https://" 
-* @param string  Server name.
-* @param string  Port, if 0 then the port is omitted.
-* @param string  Request string such as "/folder/file?name1=value1"
-* @return string An absolute URL constructed from the parameters
-*/	
-
-function absurl($protocol = false, $server = false, $port = false, $request = false)
-{
-  global $HTTP_ENV_VARS;
-  
-  if ($protocol === false)
-  {
-    if ($HTTP_ENV_VARS["HTTPS"] == "on")
-    {
-      $protocol = "https://";
-      if ($port === false) $port = 0;
-    }  
-    else
-    {
-      $protocol = "http://";
-      if ($port == false) $port = 0;
-    }  
-  }
-  if ($server === false) $server = $HTTP_ENV_VARS["SERVER_NAME"];
-  if ($port === false) $port = $HTTP_ENV_VARS["SERVER_PORT"];
-  if ($request === false) $request = server_getrequest(); 
+  mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\nThe SEAS Oracle would like you to know about an error it recently encountered in $file, line $line while loading " . server_getrequest(true) . ".\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni"));
 }
 
 /**
@@ -119,26 +88,21 @@ function array_clean($arr)
   return $arr;
 }
 
-function getAbsUrl($relurl)
+function MakeAbsoluteURL($https,$name,$port,$request)
 {
-  global $HTTP_ENV_VARS;
-  $base = ($HTTP_ENV_VARS["SERVER_PORT_SECURE"] == "1" ? "https://" : "http://") .
-           $HTTP_ENV_VARS["SERVER_NAME"] . ":" . $HTTP_ENV_VARS["SERVER_PORT"];
-  $current = goup($HTTP_ENV_VARS["SCRIPT_NAME"]);
-  $oldpos = 0;
-  $pos = strpos($relurl,"/");
-  while ($pos != 0)
+  if($https)
   {
-    if (substr($relurl,$oldpos,$pos-$oldpos) == "..")
-    {
-      $current = goup($current);
-      $oldpos = $pos + 1;
-      $pos = strpos($relurl, "/",$oldpos);  
-    }  
-    else
-      $pos = false;
+    $prefix = "https://";
+    $dport = 443;
   }
-  return ($pos === false) ? $base . $current . "/" .  substr($relurl,$oldpos) : $base . $relurl;
+  else
+  {
+    $prefix = "http://";
+    $dport = 80;
+  }
+  $prefix .= $name;
+  if($dport != $port) $prefix .= ":$port";
+  return $prefix . $request;
 }
 
 function gettime($microtime)
