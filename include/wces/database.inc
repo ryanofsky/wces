@@ -27,7 +27,7 @@ function db_exec($sql, $db, $file = __FILE__, $line = __LINE__)
   $result = mysql_query($sql,$db);
   if ($db_debug) $time = gettime(microtime()) - gettime($t);
   
-  if ($db_debug || !$result)
+  if ($db_debug || (!$result && !$server_isproduction))
   {
     taskwindow_cprint("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
     taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
@@ -40,9 +40,9 @@ function db_exec($sql, $db, $file = __FILE__, $line = __LINE__)
     else
       taskwindow_cprint("<br>Error " . mysql_errno() . ": " . mysql_error());
     taskwindow_cprint("</p>\n");
-    if ($server_isproduction && !$result)
-      sendwarning("Query failed.\nError Code: " . mysql_errno() . "\nError message: " . mysql_error() . "\nQuery: $sql",$file,$line);
-  }
+  }  
+  else if (!$result)
+    sendwarning("Query failed.\nError Code: " . mysql_errno() . "\nError message: " . mysql_error() . "\nQuery: $sql",$file,$line);
   return $result;
 }
 
