@@ -5,6 +5,9 @@ require_once("wces/page.inc");
 
 login_protect(login_administrator);
 
+param($uni);
+param($adduser);
+
 $db = wces_connect();
 if ($uni)
 {

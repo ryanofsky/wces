@@ -19,7 +19,7 @@ if (isset($HTTP_COOKIE_VARS[session_name()]) || (isset($SESSION_TRANSFER_ID) && 
   session_start();
 
   //workaround. copy obnoxious globals into HTTP_SESSION_VARS
-  $a = array("login_userid","login_cunixid","login_isstudent","login_isprofessor","login_isadministrator","login_profid");
+  $a = array("login_userid","login_cunixid","login_isstudent","login_isprofessor","login_isadministrator","login_profid","login_depts");
   foreach($a as $b)
     $HTTP_SESSION_VARS[$b] = isset(${$b}) ? ${$b} : false;
   unset($a,$b);
@@ -39,6 +39,15 @@ function login_protect($requiredstatus)
 function login_setup($db, $userid, $uni, $isstudent, $isprofessor, $isadministrator)
 {
   global $HTTP_SESSION_VARS, $login_sessionstarted;
+  
+  $result = db_exec("SELECT departmentid FROM admins WHERE userid = '$userid'", $db, __FILE__, __LINE__);
+  $depts = array();
+  while($row = mysql_fetch_assoc($result))
+  {
+    $depts[] = $row["departmentid"];
+  }
+  if (count($depts) == 0) $depts = false;
+  
   $login_sessionstarted = true;
   session_start();
   session_register("login_userid");
@@ -47,13 +56,14 @@ function login_setup($db, $userid, $uni, $isstudent, $isprofessor, $isadministra
   session_register("login_isprofessor");
   session_register("login_isadministrator");
   session_register("login_profid");
+  session_register("login_depts");
   $HTTP_SESSION_VARS["login_userid"] = $userid;
   $HTTP_SESSION_VARS["login_cunixid"] = $uni;
   $HTTP_SESSION_VARS["login_isstudent"] = $isstudent ? true : false;
   $HTTP_SESSION_VARS["login_isprofessor"] = $isprofessor ? true : false;
   $HTTP_SESSION_VARS["login_isadministrator"] = $isadministrator ? true : false;
   $HTTP_SESSION_VARS["login_profid"] = $isprofessor ? db_getvalue($db,"professors",Array("userid" => $userid),"professorid") : false;
-  
+  $HTTP_SESSION_VARS["login_depts"] = $depts;
   //WORKAROUND. Copy HTTP_SESSION_VARS into obnoxious globals
   foreach($HTTP_SESSION_VARS as $k => $v) {  global ${$k}; ${$k} = $HTTP_SESSION_VARS[$k]; }
 };
@@ -92,6 +102,13 @@ function login_getuni()
   global $HTTP_SESSION_VARS, $login_sessionstarted;
   if (!$login_sessionstarted) return false;
   return $HTTP_SESSION_VARS["login_cunixid"];
+};
+
+function login_getdepts()
+{
+  global $HTTP_SESSION_VARS, $login_sessionstarted;
+  if (!$login_sessionstarted || $HTTP_SESSION_VARS["login_isadministrator"]) return false;
+  return $HTTP_SESSION_VARS["login_depts"];
 };
 
 function login_getuserid()
@@ -196,14 +213,14 @@ function login_validate($uni,$password,$requiredstatus)
     {
       if (isset($badenrollments[$classid])) unset($badenrollments[$classid]);
       db_replacenoid($db,"enrollments",Array("userid" => $userid, "classid" => $classid),0);
-      $pos = strpos($dump,"CUcourse_",$pos+1);
     }
     else
       $insertfailed = true;
+    $pos = strpos($dump,"CUcourse_",$pos+1);  
   };
   
   if ($insertfailed)
-    sendwarning("Login parser warning: class insertions failed.\n\n----------\n\n$dump");
+    sendwarning("Login parser warning: class insertions failed.\n\n----------\n\n$dump", __FILE__, __LINE__);
   
   if (count($badenrollments) > 0)
     db_exec("DELETE FROM enrollments WHERE userid = '$userid' AND classid IN (" . implode(",",array_keys($badenrollments)) . ")", $db, __FILE__, __LINE__);
@@ -225,7 +242,6 @@ function login_validate($uni,$password,$requiredstatus)
 
   if (db_getvalue($db,"users",Array("userid" => $userid),"isadmin") == "true")
     $isadministrator = 1;
-
   login_setup($db,$userid,$cunix,$isstudent,$isprofessor,$isadministrator);
   return true;
 };
@@ -272,13 +288,18 @@ function acisget($uni,$pw)
 //
 // TODO: INTEGRATE PROFESSOR LOOKUP WITH LOGON PROCESS, eliminate double redirects
 
-function login_getprofid()
+function login_getprofid($enforce = true)
 {
   global $server_wcespath, $login_profid;
   if (session_is_registered("login_profid") && $login_profid) return $login_profid;
-  $destination = $server_wcespath . "login/profsearch.php?destination=" . urlencode(server_getrequest());
-  if (!redirect($destination)) sloppyredirect($destination);
-  exit();
+  if ($enforce)
+  {
+    $destination = $server_wcespath . "login/profsearch.php?destination=" . urlencode(server_getrequest());
+    if (!redirect($destination)) sloppyredirect($destination);
+    exit();
+  }
+  else
+    return false;  
 }
 
 function login_saveprofid($profid)
