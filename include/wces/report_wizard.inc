@@ -49,7 +49,7 @@ class ReportOutput extends ParentWidget
   
   function printVisible()
   {
-    $wwwo = $this->fullName('wwwoptions');
+    $wwwo = $this->name('wwwoptions');
 ?>
 <div><b>Choose a report format:</b></div>
 <table>
@@ -112,7 +112,7 @@ class ReportWizard extends Wizard
     $steps = array("Start","Output","Question Periods","Departments","Professors","Courses","Aggregation","Order","Finish"); 
     $this->Wizard($steps, $wces_path, $name, $parent);
 
-    if (!(login_getstatus() & login_administrator))
+    if (!(LoginValue('status') & LOGIN_ADMIN))
       $this->depts = login_getdepts();
 
     $this->output               =& new ReportOutput("output", $this);
@@ -157,19 +157,20 @@ class ReportWizard extends Wizard
       "
     );
   }
-
-  function loadInitialState()
+ 
+  function loadState($new)
   {
-    Wizard::loadInitialState();
-    $this->groupClasses->checked = true;
-    $this->groupQuestionPeriods->checked = true;
-    $this->groupDepartments->checked = true;
-    $this->makeCriteria(false, false, $this->depts, false, false);
-  }
-  
-  function loadState()
-  {
-    Wizard::loadState(false);
+    assert(isset($new));
+    if ($new)
+    {
+      Wizard::loadState($new);
+      $this->groupClasses->checked = true;
+      $this->groupQuestionPeriods->checked = true;
+      $this->groupDepartments->checked = true;
+      $this->makeCriteria(false, false, $this->depts, false, false);      
+    }
+    
+    Wizard::loadState($new, false);
 
     //////////////////////////////// WIZARD SETUP ////////////////////////////////////////
 
@@ -240,7 +241,7 @@ class ReportWizard extends Wizard
     if (!$criteria) $criteria = array("all");
     $hash = array_bflip($criteria);
 
-    $full = $this->fullName($name) . '[]';
+    $full = $this->name($name) . '[]';
 
     print("<select name=\"$full\" size=5 multiple>\n");
     print("<option value=all" . (isset($hash["all"]) ? " selected" : "") . ">$all</option>\n");
