@@ -62,13 +62,16 @@ class ProfessorResults extends ParentWidget
 
     print("<h3>" . LoginValue('name') . " - Survey Responses</h3>\n");
 
+    $prof_date = LoginValue('status') & LOGIN_ADMIN ? '' 
+      : 'AND q.profdate < (SELECT NOW())';
+    
     $result = pg_go("
       SELECT t.topic_id, t.class_id, get_class(t.class_id) AS class_info, q.question_period_id, q.displayname,
         (SELECT COUNT(DISTINCT user_id) FROM responses_survey AS sr WHERE sr.topic_id = t.topic_id) AS responses
       FROM enrollments_p AS e
       INNER JOIN wces_topics AS t USING (class_id)
       INNER JOIN question_periods AS q USING (question_period_id)
-      WHERE e.user_id = $user_id AND q.profdate < (SELECT NOW())
+      WHERE e.user_id = $user_id $prof_date
       ORDER BY q.enddate DESC, q.question_period_id DESC, class_info
     ", $wces, __FILE__, __LINE__);
 
@@ -256,6 +259,29 @@ class ResultPage extends ParentWidget
     }
     else if ($this->era == ERA_POSTGRES)
     {
+      global $wces;
+      wces_connect();
+
+      if (LoginValue('status') & LOGIN_ADMIN == 0)
+      {
+        $r = pg_go("
+	  SELECT q.profdate < (SELECT NOW()) AS good, q.profdate
+	  FROM question_periods AS q
+	  WHERE q.question_period_id = $this->question_period_id
+	", $wces, __FILE__, __LINE__);
+
+	if ($r)
+	{
+          $row = pg_fetch_row($r, 0, PGSQL_ASSOC);
+	  if ($row['good'] != 't')
+	  {
+	    print("<p>Results for question period $this->question_period_id won't "
+	      . "be visible to professors until $row[profdate]</p>");
+	    return;
+	  }
+	}
+      }
+
       $sqloptions = array ("standard" => true, "custom" => true);
 
       $criteria = array
@@ -269,9 +295,6 @@ class ResultPage extends ParentWidget
       );
 
       $groups = array(QUESTION_PERIODS => 1, CLASSES => 1, COURSES => 1, DEPARTMENTS => 1, PROFESSORS => 1, CATEGORIES => 0);
-
-      global $wces;
-      wces_connect();
 
       report_findtopics("rwtopics", $criteria, true);
 
