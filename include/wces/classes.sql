@@ -269,7 +269,8 @@ CREATE SEQUENCE survey_category_ids INCREMENT 1 START 100;
 CREATE TABLE semester_question_periods
 (
   semester INTEGER,
-  year INTEGER
+  year INTEGER,
+  profdate TIMESTAMP
 ) INHERITS (question_periods);
 
 CREATE TABLE dartmouth_question_periods
@@ -1216,6 +1217,7 @@ CREATE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
   WHERE c.course_id = $1
 ' LANGUAGE 'sql' WITH (ISCACHABLE);
 
+DROP FUNCTION get_question_period();
 CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
   DECLARE
     curtime DATETIME;
@@ -1225,11 +1227,12 @@ CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
     SELECT INTO i question_period_id
     FROM question_periods
     WHERE begindate < curtime
-    ORDER BY enddate;
+    ORDER BY begindate DESC;
     RETURN i;
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION get_next_question_period();
 CREATE FUNCTION get_next_question_period() RETURNS INTEGER AS '
   DECLARE
     curtime DATETIME;
