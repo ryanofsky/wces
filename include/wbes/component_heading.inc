@@ -69,8 +69,11 @@ class HeadingWidget extends ComponentWidget
   
   function display()
   {
-    $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
-    print("<h4>$text</h4>");
+    if (!$hidden)
+    {
+      $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
+      print("<h4>$text</h4>");
+    }
   } 
 }
 
