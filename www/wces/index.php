@@ -1,6 +1,9 @@
 <?
+
+ini_set("include_path", ini_get("include_path") . ";:.:/afs/thayer/web/eval/include");
+
   require_once("wces/login.inc");
-  login_protect(login_any);
+  login_protect(0);
   
   require_once("wces/page.inc");
   page_top("The WCES");
@@ -9,6 +12,11 @@
   $status = login_getstatus();
 
   $onemenu = true;
+
+  if ($status == 0)
+  {
+    print("<p>You are not a known student, professor, or administrator. To get access to this site, please <a href=\"{$wces_path}about/feedback.php\">contact us</a>.</p>");
+  }
 
   if ($status & login_administrator)
   {

@@ -1,4 +1,5 @@
 <?
+ini_set("include_path", ini_get("include_path") . ";:.:/afs/thayer/web/eval/include");
 
 require_once("wbes/general.inc");
 require_once("wces/page.inc");

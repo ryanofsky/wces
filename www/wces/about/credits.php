@@ -3,8 +3,6 @@ require_once("wces/page.inc");
 page_top("Credits");
 ?>
 
-<p><img src="<?=$wces_path?>media/oracle_logo.gif" border=0></p>
-
 <p><b><i>Faculty Advisors</i></b>
 <p>Dean Morton Friedman
 <br>Dean Jack McGourty
