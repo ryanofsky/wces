@@ -19,8 +19,16 @@ param($save);
 
 wces_connect();
 
+$server_isproduction = false; 
+
 if ($class_id)
 {
+if (login_getfake())
+{
+  
+  //$db_debug = true;
+}
+
   $question_period_id = (int) pg_result(pg_query("SELECT get_question_period()", $wces, __FILE__, __LINE__),0,0);
   $user_id = login_getuserid();
   $class_id = (int)$class_id;
@@ -31,9 +39,13 @@ if ($class_id)
       WHERE e.class_id = $class_id
   ", $wces, __FILE__, __LINE__);
 
+
   if(pg_numrows($result) == 1 && pg_result($result,0,1) == 'f')
   {
     $topic_id = (int)pg_result($result,0,0);
+//if (login_getfake()) debugout($parent, "parent = ");
+
+
     $factories = array
     (
       new ChoiceFactory(),
@@ -43,7 +55,7 @@ if ($class_id)
       new PageBreakFactory(),
       new AbetFactory()
     );
-    $q = new SurveyWidget($topic_id, 1, $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
+    $q = new SurveyWidget($topic_id, get_base($topic_id), $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
     $q->loadvalues();
   }
   else

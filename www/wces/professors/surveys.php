@@ -30,7 +30,7 @@ $factories = array
 
 if($topic_id)
 {
-  $q = new SurveyEditor($topic_id, 1, login_getuserid(), $factories, "prefix","f",WIDGET_POST);
+  $q = new SurveyEditor($topic_id, get_base($topic_id), login_getuserid(), $factories, "prefix","f",WIDGET_POST);
   $q->loadvalues();
 }
 else 
