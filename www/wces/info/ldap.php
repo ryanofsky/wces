@@ -1,5 +1,7 @@
 <%
 
+require_once("wces/server.inc");
+
 if (function_exists('ldap_connect'))
 {
   require_once("wces/taskwindow.inc");
