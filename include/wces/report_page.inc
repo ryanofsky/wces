@@ -645,7 +645,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
         $sectiontext .= TextTable($textrows, $columnFormats, 76, $columnWidths);
         $sectiontext .= "\n\n";
       }
-      $sections->addSection($item_id, $sectiontext, $sectionhtml);
+      $sections->addSection($citem_id, $sectiontext, $sectionhtml);
       $choiceComponents->advance();
     }
   } // while($choices->row ...)
@@ -661,7 +661,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
     {
       if ($report_debug)
       {
-        $ctext = "<font color=red><i>revision_id = $revision_id</i></font> $ctext";
+        $ctext = "<font color=red><i>item_id = $item_id, revision_id = $revision_id</i></font> $ctext";
       }
       $sectionhtml = $sectiontext = "";
       if ($outhtml) $sectionhtml .= "<h5>$ctext</h5>\n<ul>\n";

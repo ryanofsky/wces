@@ -88,6 +88,8 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //   choiceResponses: string, default 'choice_responses'
 //     table to select choice responses from
 //     $makeall_choice_responses
+//   choiceCache: boolean, default true
+//     make use of cached_choice_responses table
 //   skipLines: boolean, default false
 //      skip horizontal lines between report pages
 //      $report_skip_lines
@@ -95,7 +97,8 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //      always show graphical distributions even 
 //      for multiple questionsin a single choice components
 //      $report_always_graph
-
+//
+//   uglyHackTa, uglyHackText
 
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
@@ -207,66 +210,88 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   else
     $departments = $questionperiods = $professors = $classes = NULL;
 
+  $taresponses = $textresponses = NULL;
+
   if (!isset($options['textResponses']) || $options['textResponses'])
   {
-    $result = pg_go("
-      SELECT DISTINCT t.ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext
-      FROM rwtopics AS t
-      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
-      INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
-      INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
-      INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
-      ORDER BY t.ordinal, tr.item_id, tr.revision_id
-    ", $wces, __FILE__, __LINE__);
+    if (isset($options['uglyHackText']))
+      $result = $options['uglyHackText'];
+    else    
+    {
+      $result = pg_go("
+        SELECT t.ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext
+        FROM rwtopics AS t
+        INNER JOIN $options[surveyResponses] AS r USING (topic_id)
+        INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
+        INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
+        INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
+        ORDER BY t.ordinal, tr.item_id, tr.revision_id
+      ", $wces, __FILE__, __LINE__);
+    }
 
     $textresponses =& new pg_segmented_wrapper($result, array("ordinal", "item_id", "revision_id"));
   }
-  else
-    $textresponses = NULL;
 
   if (!isset($options['taResponses']) || $options['taResponses'])
   {
-    $result = pg_go("
-      SELECT t.ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
-        tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
-      FROM rwtopics AS t
-      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
-      INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
-      LEFT JOIN users AS u ON u.user_id = tr.user_id
-      ORDER BY t.ordinal, u.lastname, u.firstname, u.user_id, name, tr.response_id
-    ", $wces, __FILE__, __LINE__);
+    if (isset($options['uglyHackTa']))
+      $result = $options['uglyHackTa'];
+    else
+      $result = pg_go("
+        SELECT t.ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
+          tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
+        FROM rwtopics AS t
+        INNER JOIN $options[surveyResponses] AS r USING (topic_id)
+        INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
+        LEFT JOIN users AS u ON u.user_id = tr.user_id
+        ORDER BY t.ordinal, u.lastname, u.firstname, u.user_id, name, tr.response_id
+      ", $wces, __FILE__, __LINE__);
 
     $taresponses =& new pg_segmented_wrapper($result, array('ordinal', 'user_id'));  
   }
-  else
-    $taresponses = NULL;
 
   if (!isset($options['multipleChoice']) || $options['multipleChoice'])
   {
     // this is the most expensive query made during reporting. It could be
     // vastly sped up with a cache table (materialized view) that contained:
-    //
-    //  SELECT t.topic_id, cr.item_id, cr.revision_id, qr.item_id,
-    //    qr.revision_id, choice_dist(qr.answer) AS dist
-    //  FROM rwtopics AS t
-    //  INNER JOIN survey_responses AS r USING (topic_id)
-    //  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
-    //  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-    //  GROUP BY t.topic_id, cr.revision_id, cr.item_id, qr.revision_id, qr.item_id
+    //  CREATE TABLE cached_choice_responses AS                                    
+    //  SELECT t.topic_id, cr.item_id AS citem_id,                                 
+    //    cr.revision_id AS crevision_id, qr.item_id AS qitem_id,                  
+    //    qr.revision_id AS qrevision_id, choice_dist(qr.answer) AS dist           
+    //  FROM report_topics AS t                                                    
+    //  INNER JOIN survey_responses AS r USING (topic_id)                          
+    //  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id             
+    //  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id   
+    //  GROUP BY t.topic_id, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id, 
     
     $tabname = substr(uniqid('tab'),0,31);
-    
-    pg_go("
-      CREATE TEMPORARY TABLE $tabname AS
-      SELECT t.ordinal, cr.item_id AS citem_id, cr.revision_id AS crevision_id,
-        qr.item_id AS qitem_id, qr.revision_id AS qrevision_id,
-        choice_dist(qr.answer) AS dist
-      FROM rwtopics AS t
-      INNER JOIN $options[surveyResponses] AS r USING (topic_id)
-      INNER JOIN $options[choiceResponses] AS cr ON cr.parent = r.response_id
-      INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-      GROUP BY t.ordinal, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id;
-    ", $wces, __FILE__, __LINE__);
+
+    //$options['choiceCache'] = false;    
+    if (isset($options['choiceCache']) && !$options['choiceCache'])
+    {
+      pg_go("
+        CREATE TEMPORARY TABLE $tabname AS
+        SELECT t.ordinal, cr.item_id AS citem_id, cr.revision_id AS crevision_id,
+          qr.item_id AS qitem_id, qr.revision_id AS qrevision_id,
+          choice_dist(qr.answer) AS dist
+        FROM rwtopics AS t
+        INNER JOIN $options[surveyResponses] AS r USING (topic_id)
+        INNER JOIN $options[choiceResponses] AS cr ON cr.parent = r.response_id
+        INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+        GROUP BY t.ordinal, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id;
+      ", $wces, __FILE__, __LINE__);
+    }
+    else
+    {
+      pg_go("
+        CREATE TEMPORARY TABLE $tabname AS
+        SELECT t.ordinal, r.citem_id, r.crevision_id, r.qrevision_id, r.qitem_id,
+          dist_sum(r.dist) AS dist
+        FROM rwtopics AS t
+        INNER JOIN cached_choice_responses AS r USING (topic_id)
+        GROUP BY t.ordinal, r.citem_id, r.crevision_id, r.qrevision_id, r.qitem_id
+      ", $wces, __FILE__, __LINE__);
+    }
     
     $result = pg_go("
       SELECT DISTINCT ON (t.ordinal, t.citem_id, t.crevision_id) t.ordinal, 
@@ -275,7 +300,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       FROM $tabname AS t
       INNER JOIN revisions AS r ON r.revision_id = t.crevision_id
       INNER JOIN choice_components AS c USING (component_id)
-      ORDER BY t.ordinal, t.citem_id, t.crevision_id;
+      ORDER BY t.ordinal, t.citem_id, t.crevision_id, t.qitem_id, t.qrevision_id;
     ", $wces, __FILE__, __LINE__);
 
     $choiceComponents = new pg_wrapper($result);
@@ -321,6 +346,9 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     ORDER BY tp.ordinal;
   ", $wces, __FILE__, __LINE__);
   
+//$GLOBALS['report_debug'] = true;
+//pg_show($result);
+
   $ords =& new pg_segmented_wrapper($result, array("ordinal"));
   
   $pages = pg_result(pg_go("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
@@ -404,7 +432,7 @@ function report_profemail($db,&$wizard,$subject,$message,$debug)
       if ($professorid != $listprofessors->row["professorid"])
       {
         printarray($listprofessors->row,"listprofessors");
-        debugout("<b>SYNCHRONIZATION ERROR (" . $professor["professorid"] . " != ". $listprofessors->row["professorid"] . ")</b>");
+        print("<b>SYNCHRONIZATION ERROR (" . $professor["professorid"] . " != ". $listprofessors->row["professorid"] . ")</b>");
         exit();
       }
       $email .= "\n${line}Page $page of $pages\n\n";

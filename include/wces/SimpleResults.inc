@@ -188,7 +188,11 @@ class SimpleResults
 
   function addBase($class_id, $qtext, $dist)
   {
-    if ($qtext == "Quality of Text") $qtext = "Course: Quality of Text";
+    if ($qtext == "Quality of Text")
+    {
+      $qtext = "Course: Quality of Text";
+      $dist = array_slice($dist, 0, 5);
+    }
     if (isset($this->base_questions_map[$qtext]))
       $index = $this->base_questions_map[$qtext];
     else

@@ -20,7 +20,7 @@ class ProfessorResults extends ParentWidget
   var $csv = false;
   var $printable;
   var $results;
-  
+
   function ProfessorResults($name, &$parent)
   {
     $this->ParentWidget($name, $parent);
@@ -33,17 +33,17 @@ class ProfessorResults extends ParentWidget
   function & loadState()
   {
     $mode = WIDGET_FORM | WIDGET_URL;
-    
+
     $this->question_period_id = (int)$this->readValue('question_period_id', $mode);
 
     $cid = (int)$this->readValue('class_id', $mode);
     $this->class_id = $cid ? $cid : false;
-    
+
     $era = $this->readValue('era', $mode);
     $this->era = isset($era) ? (int)$era : ERA_POSTGRES;
-    
+
     $this->printable = (bool)$this->readValue('printable', $mode);
-    
+
     if ($this->question_period_id)
     {
       $this->results =& new ResultPage($this->class_id, $this->question_period_id, $this->era, 'results', $this);
@@ -51,26 +51,26 @@ class ProfessorResults extends ParentWidget
       $this->loadChild($this->results, true);
     }
   }
-  
+
   function printVisible()
   {
     global $wces;
-  
+
     $user_id = login_getuserid();
     wces_connect();
-  
+
     print("<h3>" . login_getname() . " - Survey Responses</h3>\n");
-  
+
     $result = pg_go("
       SELECT t.topic_id, t.class_id, get_class(t.class_id) AS class_info, q.question_period_id, q.displayname,
-        (SELECT COUNT(DISTINCT user_id) FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id) AS responses   
+        (SELECT COUNT(DISTINCT user_id) FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id) AS responses
       FROM enrollments AS e
       INNER JOIN wces_topics AS t USING (class_id)
       INNER JOIN semester_question_periods AS q USING (question_period_id)
       WHERE e.user_id = $user_id AND e.status = 3 AND q.profdate < (SELECT NOW())
       ORDER BY q.enddate DESC, q.question_period_id DESC, class_info
     ", $wces, __FILE__, __LINE__);
-  
+
     $q = new pg_segmented_wrapper($result, 'question_period_id');
     while($q->row)
     {
@@ -87,7 +87,7 @@ class ProfessorResults extends ParentWidget
     }
 
     // display links to fall 2001 data (stored in cheesyresponses mysql tables)
-    
+
     list($db, $professor_id) = legacy_info();
 
     $questionperiods = db_exec("
@@ -103,10 +103,10 @@ class ProfessorResults extends ParentWidget
       GROUP BY qp.questionperiodid, cl.classid
       ORDER BY qp.year DESC, qp.semester DESC, qp.questionperiodid DESC, hasanswers DESC, s.code, c.code, cl.section
     ", $db, __FILE__, __LINE__);
-  
+
     $sg = new legacy_SegmentedQuery($questionperiods, 'questionperiodid');
     $sg->advance();
-    
+
     while ($sg->row)
     {
       $questionperiodid = $divisioncode = $semester = $year = $description = "";
@@ -114,12 +114,12 @@ class ProfessorResults extends ParentWidget
 
       print("<h4>" . ucfirst($semester) . " $year $description</h4>\n");
       print("<ul>\n");
-      
+
       do
       {
         $classid = $divisioncode = $scode = $code = $section = $name = $clname = $hasanswers = "";
         extract($sg->row);
-        
+
         if ($clname) $name .= " - $clname";
         if ($hasanswers)
           print("  <li><a href=\"" . $this->getUrl(array('class_id' => $classid,
@@ -130,9 +130,9 @@ class ProfessorResults extends ParentWidget
       }
       while ($sg->advance());
 
-      print("</ul>");      
+      print("</ul>");
     }
-  
+
     // display links to pre-fall 2001 data (stored in original mysql tables)
     $questionperiods = db_exec("
       SELECT qp.questionperiodid, qp.semester, qp.year, qp.description,
@@ -146,10 +146,10 @@ class ProfessorResults extends ParentWidget
       GROUP BY qp.questionperiodid, cl.classid
       ORDER BY qp.year DESC, qp.semester DESC, qp.questionperiodid DESC, hasanswers DESC, s.code, c.code, cl.section
     ", $db, __FILE__, __LINE__);
-  
+
     $sg = new legacy_SegmentedQuery($questionperiods, 'questionperiodid');
     $sg->advance();
-    
+
     while ($sg->row)
     {
       $questionperiodid = $divisioncode = $semester = $year = $description = "";
@@ -157,14 +157,14 @@ class ProfessorResults extends ParentWidget
 
       print("<h4>" . ucfirst($semester) . " $year $description</h4>\n");
       print("<ul>\n");
-      
+
       $count = 0;
-      
+
       do
       {
         $classid = $divisioncode = $scode = $code = $section = $name = $clname = $hasanswers = "";
         extract($sg->row);
-        
+
         if ($clname) $name .= " - $clname";
         if ($hasanswers)
         {
@@ -180,20 +180,20 @@ class ProfessorResults extends ParentWidget
 
      if ($count > 1)
        print("  <li><a href=\"" . $this->getUrl(array('question_period_id' =>
-         $questionperiodid, 'era' => ERA_LEGACY)) 
+         $questionperiodid, 'era' => ERA_LEGACY))
          . "\">All Classes Combined</a></li>\n</ul>");
 
-      print("</ul>");      
+      print("</ul>");
     }
   }
-  
+
   function printModalChildren()
   {
     $this->printValue('question_period_id', $this->question_period_id, WIDGET_URL);
     $this->printValue('class_id', $this->class_id, WIDGET_URL);
     $this->printValue('era', $this->era, WIDGET_URL);
     print("<h3><a href=\"" . $this->getUrl(array('question_period_id' => false,
-      'class_id' => false, 'era' => false, 'printable' => false)) 
+      'class_id' => false, 'era' => false, 'printable' => false))
       . "\">Back</a>");
 
     if (!$this->printable)
@@ -208,7 +208,7 @@ class ProfessorResults extends ParentWidget
 class ResultPage extends ParentWidget
 {
   var $done = false;
-  
+
   function ResultPage($class_id, $question_period_id, $era, $name, &$parent)
   {
     $this->ParentWidget($name, $parent);
@@ -216,32 +216,34 @@ class ResultPage extends ParentWidget
     $this->question_period_id = $question_period_id;
     $this->era = $era;
   }
-  
+
   function printVisible()
   {
     $user_id = login_getuserid();
 
+    ob_flush(); flush();
+
     if ($this->era == ERA_LEGACY)
     {
-      list($db, $professor_id) = legacy_info();      
-    
+      list($db, $professor_id) = legacy_info();
+
       $sqloptions = array ("standard" => true, "custom" => true);
       $groups = Array("classes" => $this->class_id ? true : false, "courses" => false, "professors" => true, "departments" => true, "questionperiods" => true);
       $header = $ratings = $listclasses = $listprofessors = $abet = $responses = $tas = true;
       $sort = array("classes","questionperiods","professors","courses","departments");
       $criteria = array("professors" => array($professor_id), "classes" => $this->class_id ? array($this->class_id) : false, "topics" => false, "questionperiods" => array($this->question_period_id), "departments" => false, "courses" => false);
-    
+
       legacy_report_makequeries($db, $sqloptions, $criteria, $groups,
         $sort, $header, $listclasses, $listprofessors, $ratings, $abet,
         $responses, $tas);
-    
+
       $displayoptions = array("pies" => true);
-    
+
       $outhtml = "<br>"; $text = false;
-    
+
       legacy_report_makepage($text, $outhtml, $displayoptions, $groups, $header, $listclasses,
         $listprofessors, $ratings, $abet, $responses, $tas);
-      
+
       print($outhtml);
 
     }
@@ -254,7 +256,7 @@ class ResultPage extends ParentWidget
     else if ($this->era == ERA_POSTGRES)
     {
       $sqloptions = array ("standard" => true, "custom" => true);
-    
+
       $criteria = array
       (
         PROFESSORS => array($user_id),
@@ -264,19 +266,50 @@ class ResultPage extends ParentWidget
         QUESTION_PERIODS => array($this->question_period_id),
         CATEGORIES => false
       );
-    
+
       $sort = array(QUESTION_PERIODS, COURSES, DEPARTMENTS, PROFESSORS, CATEGORIES);
       $groups = array(QUESTION_PERIODS => 1, CLASSES => 1, COURSES => 1, DEPARTMENTS => 1, PROFESSORS => 1, CATEGORIES => 0);
-    
+
+      global $wces;
       wces_connect();
+
       report_findtopics("rwtopics", $criteria);
       report_findgroups("rwtopics", $groups, $sort);
-    
+
       $html = $text = false;
-    
       $options = array('skipLines' => true);
-      makeall(true, $html, $text, $groups, $options);      
- 
+
+      $result = pg_go("SELECT DISTINCT ordinal, topic_id FROM rwtopics", $wces, __FILE__, __LINE__);
+      if (pg_numrows($result) == 1)
+      {
+        $row = pg_fetch_row($result, 0, PGSQL_ASSOC);
+        $options['uglyHackText'] = pg_go("
+          SELECT $row[ordinal] AS ordinal, tr.item_id, tr.revision_id, c.ctext, c.flags, tr.rtext
+          FROM survey_responses AS r
+          INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
+          INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
+          INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
+          WHERE r.topic_id = $row[topic_id]
+          ORDER BY tr.item_id, tr.revision_id
+        ", $wces, __FILE__, __LINE__);
+
+        $options['uglyHackTa'] = pg_go("
+          SELECT $row[ordinal] AS ordinal, tr.parent, tr.response_id, tr.user_id, tr.name, tr.overall, tr. knowledgeability,
+            tr.approachability, tr.availability, tr.communication, tr.comments, u.firstname, u.lastname
+          FROM survey_responses AS r
+          INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
+          LEFT JOIN users AS u ON u.user_id = tr.user_id
+          WHERE r.topic_id = $row[topic_id]
+          ORDER BY u.lastname, u.firstname, u.user_id, name
+        ", $wces, __FILE__, __LINE__);
+      }
+
+
+
+
+
+      makeall(true, $html, $text, $groups, $options);
+
       /*
       global $wces_path;
       print("<h4>Results Download</h4>\n");
