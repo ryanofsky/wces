@@ -143,22 +143,22 @@ function showquestions(&$qsets,$badfields,$classid)
 
 function validatequestions(&$qsets)
 {
-	global $db,	$HTTP_POST_VARS;
-	$errors = array();
-	foreach($qsets as	$k => $qset)
-	{
-		$qset->validate();
-	  array_splice($errors, count($errors), 0, array_values($qset->errors));
-	}
-  return count($errors) ==	0	?	0	:	$errors;
+  global $db, $HTTP_POST_VARS;
+  $errors = array();
+  foreach($qsets as $k => $qset)
+  {
+    $qset->validate();
+    array_splice($errors, count($errors), 0, array_values($qset->errors));
+  }
+  return count($errors) ==  0 ? 0 : $errors;
 }
 
 function savequestions($qsets,$classid)  //todo make this work then test it
 {
-	foreach($qsets as	$k => $qset)
-	{
-		//$qset->save();
-	}
+  foreach($qsets as $k => $qset)
+  {
+    //$qset->save();
+  }
 };
 
 //-----------------------------------------------------------------------------
