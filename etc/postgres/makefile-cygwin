@@ -1,0 +1,13 @@
+OPT=
+INC=/usr/src/postgresql-7.1.3-2/src/include
+LIB=/lib/libpostgres.a
+OUTPUT=distribution.dll
+
+$(OUTPUT) : distribution.o
+	g++ -shared -o $(OUTPUT) distribution.o $(LIB)
+
+distribution.o : distribution.cpp
+	g++ $(OPT) -o distribution.o -c -I$(INC) distribution.cpp
+
+clean :
+	rm distribution.o $(OUTPUT)
