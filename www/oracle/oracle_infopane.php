@@ -65,7 +65,7 @@ function ShowClass($class_id)
 
   $class_id = (int)$class_id;
 
-  $sections = pg_query("
+  $sections = pg_go("
     SELECT cl2.class_id AS section_id, get_class(cl2.class_id) AS section_info
     FROM classes AS cl1
     INNER JOIN courses AS c USING (course_id)
@@ -78,7 +78,7 @@ function ShowClass($class_id)
   // after this test it is safe to assume that this class is in $selected_classes
   if (pg_numrows($sections) == 0) return false;
 
-  $infoq = pg_query("SELECT get_class($class_id) AS class_info, get_profs($class_id) AS profs_info", $wces, __FILE__, __LINE__);
+  $infoq = pg_go("SELECT get_class($class_id) AS class_info, get_profs($class_id) AS profs_info", $wces, __FILE__, __LINE__);
   extract(pg_fetch_array($infoq,0,PGSQL_ASSOC));
   
   print("<h3>" . format_class($class_info, "%N") . "</h3>\n");
@@ -111,7 +111,7 @@ function ShowClass($class_id)
 </tr>
 </table>    
 <?    
-  $results = pg_query("
+  $results = pg_go("
     SELECT c.revision_id AS crevision_id, first(c.choices) AS cchoices,
       c.flags, c.first_number, c.last_number, c.other_choice,
       q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist
@@ -128,7 +128,7 @@ function ShowClass($class_id)
     ORDER BY q.revision_id
   ", $wces, __FILE__, __LINE__);
   
-  $rs = pg_query("
+  $rs = pg_go("
     SELECT cl.students, COUNT(DISTINCT r.user_id) AS responses
     FROM classes AS cl
     INNER JOIN wces_topics AS t USING (class_id)
@@ -142,7 +142,7 @@ function ShowClass($class_id)
   $db = NULL;
   if ($n == 0)
   {
-    $abc = pg_query("SELECT oldid FROM temp_class WHERE newid = $class_id", $wces, __FILE__, __LINE__);
+    $abc = pg_go("SELECT oldid FROM temp_class WHERE newid = $class_id", $wces, __FILE__, __LINE__);
     $classid = pg_numrows($abc) == 1 ? (int)pg_result($abc,0,0) : 0;
     
     if ($classid)
@@ -253,7 +253,7 @@ function ShowClass($class_id)
   else
     print("<p><strong><i>No Survey Responses Available</i></strong></p>\n");
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT cl.name AS clname, cl.section, cl.year, cl.semester, cl.students, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname, c.course_id, d.department_id, s.subject_id, sc.school_id, dv.code AS dvcode, dv.division_id, cl.time, cl.location, cl.callnumber
     FROM classes as cl
     INNER JOIN courses as c USING (course_id)
@@ -283,7 +283,7 @@ function ShowProfessor($user_id)
   
   $user_id = (int)$user_id;
   
-  $result = pg_query("SELECT uni, firstname, lastname, email FROM users WHERE user_id = $user_id AND flags & 4 = 4", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT uni, firstname, lastname, email FROM users WHERE user_id = $user_id AND flags & 4 = 4", $wces, __FILE__, __LINE__);
   if (pg_numrows($result) != 1)
   {
     print("<h1>User not found</h1>\n");
@@ -294,7 +294,7 @@ function ShowProfessor($user_id)
   
   print("<h3>$firstname $lastname</h3>\n");
   
-  $result = pg_query("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   if (!pg_numrows($result) != 1)
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   else
@@ -302,7 +302,7 @@ function ShowProfessor($user_id)
 
   if ($picture_id) print("<p><img src=\"" . picture_src($picture_id) . "\"></p>\n");
   
-  $classes = pg_query("
+  $classes = pg_go("
     SELECT e.class_id, get_class(e.class_id) AS class_info
     FROM enrollments AS e
     INNER JOIN ($select_classes) AS l USING (class_id)
@@ -352,7 +352,7 @@ if ($class_id || $course_id)
   
   if (!$class_id)
   {
-    $r = pg_query("
+    $r = pg_go("
       SELECT cl.class_id
       FROM classes AS cl
       INNER JOIN ($select_classes) AS l USING (class_id)
