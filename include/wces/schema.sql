@@ -249,6 +249,14 @@ CREATE TABLE groupings (
   PRIMARY KEY (linkid,linktype,questionsetid)
 );
 
+CREATE TABLE ldapcache (
+  userid int(11) NOT NULL default '0',
+  cn tinytext,
+  title tinytext,
+  ou tinytext,
+  PRIMARY KEY (userid)
+);
+
 CREATE TABLE professordupedata (
   professorid int(11) default NULL,
   first tinytext,
@@ -317,6 +325,16 @@ CREATE TABLE schools (
   name tinytext NOT NULL,
   PRIMARY KEY (schoolid),
   UNIQUE KEY name(name(255))
+);
+
+CREATE TABLE sentmails (
+  sentmailid int(11) NOT NULL auto_increment,
+  sfrom tinytext,
+  replyto tinytext,
+  sto tinytext,
+  title tinytext,
+  body text,
+  PRIMARY KEY (sentmailid)
 );
 
 CREATE TABLE subjects (
