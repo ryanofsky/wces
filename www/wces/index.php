@@ -91,7 +91,8 @@ and make the rest of the site accessible to you.
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
 <?
-    if ($wces_closed)
+    $survey_listing = get_surveys();
+    if (!$survey_listing)
     {
       print("<p>The evaluation period has closed.</p>");	
     }
@@ -99,8 +100,7 @@ and make the rest of the site accessible to you.
     {
       if (!isset($db)) $db = wces_connect();
       $userid = login_getuserid();
-
-      $survey_listing = get_surveys();
+      
       $n = pg_numrows($survey_listing);
 
       if ($n == 0)
