@@ -99,8 +99,6 @@ class ComponentFactory
 
       $r = pg_go($sql, $wbes, __FILE__, __LINE__);
       
-      pg_show($r);
-      
       $result =& new pg_segmented_wrapper($r, 'load');
 
       unset($load);
