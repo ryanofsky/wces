@@ -1,0 +1,355 @@
+Development notes:
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Idea
+
+ - list_* functions and tables make something like a version control system for non repeating sequences of integers. In WBES, this system is used to store which components appear on which survey, and in what order they appear. Lists are also used inside individual components. For example the "Choice" component uses a list to store its list of questions.
+ 
+ - lists are identified by revision and branch values similarly to the way they are in CVS. Each list version is also given a unique integer identifier. To map from an integer identifier to a version number, or the other way around, the "lists" table is used.
+ 
+   Example:
+ 
+   list_id   parent   branch   revision   modified   merge
+   
+   1         NULL     3        2          Jun 11     NULL
+   2         NULL     6        8          Jun 11     NULL
+   3         2        3        1          Jun 12     NULL
+   4         1        4        9          Jun 12     NULL
+   5         4        5        2          Jun 12     NULL
+   
+   list_id 1 corresponds to version 3.2
+   list_id 2 corresponds to version 6.8
+   list_id 3 corresponds to version 6.8.3.1
+   list_id 4 corresponds to version 3.2.4.9
+   list_id 5 corresponds to version 3.2.4.9.5.2
+   
+- Version numbers mean almost the same thing here as in CVS, with three differences.
+
+The first is that CVS reserves odd branch values to refer to so-called "vendor branches" created by the cvs import command. There is no use for vendor branches in this system and no differences between branches with even and odd branch values.
+
+The second difference is that CVS treats the first value in a version number like a (redundant) revision value rather than an actual branch number. For example, in CVS versions 1.2 and 4.5 would be considered to be different revisions of a file on the same branch. In the lists system, however, the first value in a revision number is actually treated like a branch value. Lists 1.2 and 4.5 do *not* refer to earlier and later versions of the same list, but are separate branches off of an an empty head list, basically seperate lists.
+
+The third difference is a restriction on branch numbering. It makes version numbers more expressive, but at the cost of flexibility. CVS allows branches to be created and merged at any time. This feature is vital for a general purpose revision control system, but adds unneccessary complexity for the simple task of survey building. Normally in a version control system, branches are temporary offshoots to the some base version, and changes on a branch can either be abandoned, or merged at any time into future revisions on the base. In this system branches represent not temporary offshoots but permanent (unless they are manually deleted) alterations to the underlying base. Since branches are not temporary, the branch numbers are preserved across subsequent revisions of the base. Merges happen automatically (no manual intervention is neccessary or possible) from the base to the branches. 
+
+For example if these surveys exist in the system:
+
+  1.5    
+  1.5.7.1
+  1.6
+  1.6.7.1
+
+By looking at these numbers you know that branch 1.* stores the survey components that are in some base survey, that 1.5.7.1 stores the components on some custom survey, originally based on the base. 1.6 is an updated revision of 1.5, maybe with some components added or deleted. And you know that 1.6.7.1 is sn updated version of 1.5.7.1, with the changes of 1.6 merged into it. That last fact is the difference between this system and CVS. In CVS there would be no implied relation between versions 1.5.7.1 and 1.6.7.1, nut in this system you would know that they are implied to be different revsions on the same branch, 1.*.7.* .
+
+The gist of all of these changes is to trade off the generality and flexibility of a system like CVS for greater simplicity. In this system, all the bookeeping information is contained in revision numbers, with no other mechanisms have to be designed to play the role that tag names and file names do in CVS.
+
+- CVS only stores one versions of a file (the "head" revision) and stores all of the other versions as relative "diffs". This system stores versions of list in their entirety because lists to not take up lot of space and need to be able to be retrieved quickly (although my initial idea was to use diffs). To get retrieve the items on the list, just find the list_id corresponding to the revision you need and execute
+
+  SELECT item_id FROM list_items WHERE list_id = whatever ORDER BY ordinal;
+  
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+Implementation Details
+
+- When a modification is made to a base revision that has branches. All of the branches must eventually be brought up to date with the channges made on the base. But to save time and space, the contents of a bramnhes is not actually brought up to date until they are actually needed. 
+
+For example if these version are in the system
+
+  2.3
+  2.3.1.1
+  2.3.2.1
+
+and a modification is saved to the base as version 2.4, then versions 2.4.1.1 and 2.4.2.1 will not be created until they are actually needed. This might happen if the latest versions on branch 2.*.1.* or branch branch 2.*.2.* are requested, respectively. 
+
+- Dummy version numbers ending in 0, such as 1.0 or 1.2.3.0, are used as locks (in transactions to guarantee proper concurrent behavior) in all functions that add new list versions. 
+
+Examples:
+
+  If a function was saving version 1.3 it would SELECT FOR UPDATE the row in the lists table corresponding to version 1.0.
+  
+  If a function was saving version 1.3.2.5, it would lock the row for version 1.3.2.0.
+  
+  The latest version of list 3.*.4.* is requested. The latest revision that currently exists in 3.2.4.3, but there also exists a new base revision 3.3. The way to obtain the latest 3.*.4.* is to merge these two revisions into a new one one, version 3.3.4.1. The appropriate row to lock would be 3.2.4.0. During the merge, dummy row 3.3.4.0 is inserted.
+  
+- If there are no changes on a branch version relative its to its base version, then the branch does not need to have any version entries in the the list table. The branch still *would* still need to have a dummy entry in the list table, otherwise an attempt to retrieve from the branch, would trigger a search for a previous revision on that branch to merge from, and with none found, an exception would be thrown. 
+
+Example. If these entries are in the list table:
+
+  2.2
+  2.2.1.0
+  
+The latest version on branch 2.2.1.* is identical to version 2.2. To save space a branch this latest version does not have to be stored separately. When the retrieval code attempts to find it, it only finds the dummy row, and takes this as a cue to simply return the contents of the parent, 2.2. 
+
+- Ordinarily, two versions with different first branch numbers (example 1.3 and 2.3) have no relation at all. They are separate branches off of an empty base, two separate list with nothing in common. However, sometimes it is useful to use the same numbering scheme across different branches. The function definitions that have to deal with "sublists" deal with this simple example in the case where a "sublist" with all of its revision and branch numbers taken from the parent except for the very first branch number. Sublists are used in surveys to keep to store the lists of questions in a choice component, or lists of survey components in embedded surveys. It makes sense that the different versions of these components in the surveys should use the same branch values and revision values as the survey itself because this eliminates a need to set up a mapping between the two sets of numbers. It also makes storage less complicated because the components only have to store the first branch value of the lists they reference.
+
+Example:
+
+  1.3     - base survey version number
+  1.3.1.2 - custom survey version number
+  5.3     - list of questions in a choice component on the base survey
+  5.3.1.2 - customized version of the above list of questions
+  
+In this example, the choice component only has to store the value 5, because that is the first branch number of its list of questions. 
+
+As a space saving optimization, a list does not have to be saved if has not changed since its last revision. So, in the above example, if a new custom survey was saved as 1.3.1.3 and no changes were made to the choice component, then it would not be neccessary to save the list of the choice's questions as 5.3.1.3.
+
+- The system does not prevent surveys from being edited concurrently. So if two people begin editing a survey 1.3 at the same time, the set of changes saved by the first person will be saved as version 1.4. When the second person saves their changes, the system can do one of three things: overwrite the changes made by the first person, give an error message to the second person telling them that they have been editing an outdated survey, or keep both sets of changes by doing a merge. This system opts for the third alternative. Inside a transaction, it save the changes made by the second person as 1.5 and saves then merges the changes 1.4 and 1.5 into 1.6.
+
+- Sublists and concurrent editing creates a need to store merge history. More on this ... Later.
+
+function Survey::save($branch)
+{
+  $list_id = $this->list_id;
+
+  $revision = list_getlist($list_id);
+  
+  if ($revision, $branch have differing branch numbers or different depths)
+    return false, security breach;
+
+  //////////////////////////////////////// RETRIEVE AND LOCK LATEST REVISION    
+
+  $latest = list_getbranch($branch, true);
+  
+  temp = list_maxrevision(latest[-7], latest[-3], NULL, true);
+  $latest[-4] := temp[1];
+  $latest[-2] := temp[2];
+  
+  if (rec.revision != 0)
+    $latest[-1] := rec.list_id;
+
+  $nrevision = $latest;
+  ++$nrevision[-2];
+
+  INSERT INTO lists (parent, branch, revision)
+  VALUES ($nrevision[-7], $nrevision[-3], $nrevision[-2]);
+  
+  $nrevision[-1] = $nrevision[-4] = currval(list_ids);
+  
+  $changed = false;
+  reset($this->components)
+  while(list($k) = each($this->components))
+    $changed = $changed | $this->components[$k]->save($this->revision);
+  if (!$changed) ROLLBACK;
+  
+  compare(latest,revision);
+  if (latest < revision)
+  {
+    sendwarning();
+    return false; // Just a sanity check, this condition should be impossible
+  }
+  else if (latest > revision)
+  {
+    $mrevision = $nrevision;
+    ++$mrevision[-2];  
+    
+    INSERT INTO lists (parent, branch, revision, merged)
+    VALUES ($mrevision[-7], $mrevision[-3], $mrevision[-2], $revision[-2]);
+    
+    $nrevision[-1] = $nrevision[-4] = currval(list_ids);
+ 
+    array_merge($revision[-1], $nrevision[-1], $latest[-1], $mrevision[-1]);
+  }
+}
+
+function Survey::load($branch, $types)
+{
+  $revision = list_getbranch($branch);
+  SELECT into rec li.ordinal, c.component_id, c.type
+  FROM list_items AS li
+  INNER JOIN components AS c ON c.component_id = li.item_id
+  WHERE li.list_id = $revision[-1] order by c.type, li.ordinal;
+  
+  $this->components = array();
+  
+  foreach(rec.type)
+  {
+    $list_ids = array();
+    foreach($rec.list_ids AS $list_id)
+    {
+      $list_ids[rec.ordinal] = $list_id;
+    }
+    $factory = $types[rec.type] . "_Factory";
+    $factory($this->components, $list_ids, $revision);
+  }  
+}
+
+function 
+
+function Choice::save($revision, $nrevision)
+{
+  $component_id = $this->component_id;
+  
+  select into rec * from choices WHERE component_id = $this->component_id;
+  if (anything besides the list of questions has changed)
+  {
+    $b1 = rec.branch1;
+    insert into choices () values();
+    $nid = currval(choice_ids);
+    
+    component_group_insert($component_id, $nid);
+  }
+  
+  $qids = array();
+  foreach($this->questions AS $qid => $v)
+  {
+    select * from choice_questions where component_id = $qid;
+    if (changed)
+    {
+      insert into choice_questions () values();
+      $qids[] = $nqid = currval(choice_question_ids);
+      component_group_insert($qid, $nqid);      
+    }
+  }
+  
+  $revision = list_getsublist($b1, $revision, true);
+  $result = select item_id from 
+  list_items AS li
+  INNER JOIN choice_questions AS cq ON cq.component_id = li.item_id
+  ORDER BY li.ordinal;
+  
+  foreach($result as $row)
+  {
+    if ($row[item_id] != $qids[$row[ordinal]])
+    {
+      $haschanged = true;
+      break;
+    }
+  }
+    
+  if ($haschanged)
+  {
+    $qlist = list_createsublist(branch1, nrevision[]);
+    $ordinal = 1;
+    foreach($qids as $qid)
+    {
+      INSERT INTO list_items(list_id, ordinal, item_id) VALUES ($qlist[-1], $ordinal, 1);
+      ++$ordinal;
+    }
+  }
+}
+
+function Choice_Factory(&$components, $list_ids, $revision)
+{
+  $sqlt = "SELECT %i AS ordinal, branch1, first_number, last_number, ... FROM choice WHERE component_id = %i";
+  $sql = "";
+  foreach($list_ids as $ordinal => $choice_id)
+  {
+    if ($sql) $sql .= "\nUNION ALL\n";
+    $sql .= sprintf($sqlt, $ordinal, $choice_id);
+  }
+  
+  $result = pq_query($sql);
+  $n = pg_numrows($result);
+  
+  for($i = 0; $i < $n; ++$i)
+  {
+    $row = pg_fetch_array($result, $i, PG_ASSOC);
+    $n = new Choice();
+    $n->first_number = $row['first_number'];
+    $n->last_number = $row['last_number'];
+    ...
+    $rev = list_getsublist($row[branch1],$revision);
+    
+    $n->$qids, $n->questions = 
+      SELECT q.component_id, q.qtext
+      FROM list_items AS li
+      INNER JOIN choice_questions AS q ON q.component_id = li.item_id
+      WHERE li.list_id = $rev[-1]
+  }
+}
+
+function list_merge(common,primary,secondary,newid)
+{
+  No need to write pseudocode when the actual function's already written...
+}
+
+halfway there. hoping that there are not any more snags left to run into.
+
+
+
+
+
+
+-- The following functions accept and return arguments that refer to revisions and branches as postgres arrays. Postgres arrays are a little cheesy. There are indexed from 1 and returned to php in string format. Also, there is no way in postgres
+
+
+
+
+function list_getbranch(branch[], readonly = false)
+  revision INTEGER[]; 
+  t1 INTEGER[];
+  t2 INTEGER[];
+{
+  if readonly then
+    d := 1; lastr := 0;
+
+    loop
+      exit when branch[d] IS NULL;
+      temp2 := list_maxrevision(revision[d*3-5],branch[d],temp1[d],false);
+      IF temp2 IS NULL THEN
+        temp1[d] := NULL;
+        d        := d - 1;
+        IF d < 1 THEN revision := NULL; EXIT; END IF;
+        temp1[d] := temp1[d] - 1;
+      ELSE
+        temp1[d]        := temp2[2];
+        revision[d*3-2] := temp2[1];
+        revision[d*3-1] := branch[d];
+        revision[d*3  ] := temp2[2];
+        
+        IF temp2[2] <> 0 THEN
+          lastr := temp2[1];
+        END IF;
+        
+        
+        d = d + 1;
+      END IF;
+    end loop
+    
+    revision[d*3-2] := lastr;
+  else not readonly
+  
+      d := 1; lastr := 0;
+
+    loop
+      exit when branch[d] IS NULL;
+      temp2 := list_maxrevision(revision[d*3-5],branch[d],NULL,false);
+      IF temp2 IS NULL THEN
+        INSERT INTO lists(parent, branch, revision, merged)
+        VALUES(revision[d*3-5], branch[d], 
+        primary := findlast();
+        common := primary.parent;
+        secondary = this.parent;
+      ELSE
+        temp1[d]        := temp2[2];
+        revision[d*3-2] := temp2[1];
+        revision[d*3-1] := branch[d];
+        revision[d*3  ] := temp2[2];
+
+        IF temp2[2] <> 0 THEN
+          lastr := temp2[1];
+        END IF;
+
+        d = d + 1;
+      END IF;
+    end loop
+    revision[d*3-2] := lastr;
+        
+  
+  endif
+}
+
+function list_getlist(list_id)
+{
+}
+
+function list_getsublist(branch1, revision[], readonly = true)
+{
+}
+
+function list_createsublist(branch1, revision[])
+{
+  -- doesn't neccessarily need to be locked since it is a sublist
+}
+
+

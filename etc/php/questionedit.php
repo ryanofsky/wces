@@ -1,37 +1,18 @@
 <?
 
-require_once("wbes/surveyeditor.inc");
 require_once("wces/page.inc");
-require_once("wces/wces.inc");
+require_once("wces/questions.inc");
+require_once("wces/questioneditor.inc");
 
-$q = new SurveyEditor(0,1,"prefix","f",WIDGET_POST);
-$q->loadvalues();
-
-if ($q->barepage) 
-{
-?>
-<head>
-<title>Preview Window</title>
-<LINK REL="stylesheet" type="text/css" href="<?=$server_media?>/style.css">
-</head>
-<?
-}
-else
-{
-  page_top("Survey Builder");
-  $q->dumpscript();
-}  
-
+page_top("hello joe");
 print("<form name=f method=post>");
+
+$q = new QuestionSetEditor(0,0,"prefix","f",WIDGET_POST);
+$q->loadvalues();
 $q->display();
+
 print("</form>");
 
-if ($q->state == SurveyEditor_done)
-{
-  print($q->message);
-  print("Return to the <a href=\"{$topic_path}index.php\">Home Page</a> or the <a href=\"{$topic_path}builder.php\">Survey Builder</a>");
-}
-
-if (!$q->barepage) page_bottom();
+page_bottom();
 
 ?>
