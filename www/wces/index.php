@@ -58,6 +58,7 @@ and make the rest of the site accessible to you.
 ?>
 <p><?=$pimg?>Here is a list of the options currently available for professors:</p>
 <ul>
+  <li><a href="<?=$wces_path?>professors/instructions.php<?=$QSID?>">Instructions</a> - Description of how (and when) to use WCES.</li>
   <li><a href="<?=$wces_path?>professors/surveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
   <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys</li>
 <? /*
@@ -75,6 +76,7 @@ and make the rest of the site accessible to you.
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
+<p><b>New!</b> <a href="<?=$wces_path?>students/instructions.php<?=$QSID?>">Instructions</a> on how to use WCES</p>
 <?
 
     if ($wces_closed)
