@@ -69,6 +69,7 @@ if ($question_period_id)
     INNER JOIN subjects AS s USING (subject_id)
     LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND status = 3
     LEFT JOIN users AS u USING (user_id)
+    WHERE t.category_id IS NOT NULL
     ORDER BY s.code, c.code
   ", $wces, __FILE__, __LINE__);
 
