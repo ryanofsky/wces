@@ -19,6 +19,46 @@ function db_set($items)
   return $list;
 }
 
+
+function db_show($result,$name = "Result", $showtypes = false)
+{
+  if ($result)
+  {
+    $rows = mysql_num_rows($result);
+    $cols = mysql_num_fields($result);
+    if ($cols)
+    {
+      print ("<table border=1>\n");
+      print("<tr><td colspan=$cols>$name</td></tr>\n");
+      print("<tr>\n");
+      for($c=0; $c < $cols; ++$c)
+        print("  <td><b>" . htmlspecialchars(mysql_field_name($result,$c)) . " (" . htmlspecialchars(mysql_field_type($result,$c)) . ")</b></td>\n");
+      print("</tr>\n");
+      
+      while($row = mysql_fetch_row($result))
+      {
+        print("<tr>\n"); 
+        for($c = 0; $c < $cols; ++$c)
+        {
+          if (!isset($row[$c]))
+            $str = "<i><small><small>null</small></small></i>";
+          else if (!$showtypes)
+            $str = htmlspecialchars($row[$c]);
+          else
+            $str = htmlspecialchars($row[$c]) . " <small><small><i>" . gettype($row[$c]) . "</i></small></small>";  
+          print("  <td>$str</td>\n");
+        }
+        print("</tr>\n");  
+      }  
+      print ("</table>\n");
+      mysql_data_seek($result, 0);
+      return;
+    }
+  }  
+  print("<p><b>No Result</b></p>\n");
+}
+
+
 function db_exec($sql, $db, $file = __FILE__, $line = __LINE__)
 {
   global $db_debug, $server_isproduction;
