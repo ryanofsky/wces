@@ -31,7 +31,7 @@ function & WcesPageInstance()
 function page_top($title, $hidden = false)
 {
   $page =& WcesPageInstance();
-  if ($hidden) $page->mode = PAGE_PRINTABLE;
+  if ($hidden) $page->mode = WCES_PAGE_PRINTABLE;
   $page->printTop($title);
 }
 
