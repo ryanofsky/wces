@@ -240,6 +240,8 @@ class SurveyWidget extends ParentWidget
       else
         $q->displayHidden();
     }
+    
+    $this->printNavigation();
   }
 
   function printNavigation()
@@ -249,6 +251,7 @@ class SurveyWidget extends ParentWidget
     $prev = $this->page > 0;
     $next = $this->page < $this->pages && $this->pages > 0;
     if (!$next) $this->sawLastPage = true;
+
     $save = !empty($this->survey->top) && $this->user_id && $this->sawLastPage;
 
     if ($save || $prev || $next)
