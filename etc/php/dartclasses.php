@@ -26,7 +26,21 @@ Beyond that, the only other information I think is probably relevant about the c
 INSERT INTO subjects (code, name) VALUES ('ENGG','Engineering');
 INSERT INTO subjects (code, name) VALUES ('ENGS','Engineering Science');
 INSERT INTO subjects (code, name) VALUES ('ENGM','Engineering Management');
-INSERT INTO semester_question_periods (displayname, begindate, enddate, semester, year) VALUES ('Spring 2002', '2002-02-01', '2002-06-01', 2002, 0);
+INSERT INTO semester_question_periods (displayname, begindate, enddate, year, semester) VALUES ('Spring 2002', '2002-02-01', '2002-06-01', 2002, 0);
+
+INSERT INTO survey_categories (survey_category_id,name) VALUES (1, 'Base Questions Only');
+INSERT INTO survey_categories (survey_category_id,name) VALUES (2, 'Objective 1');
+INSERT INTO survey_categories (survey_category_id,name) VALUES (3, 'Objective 2');
+
+INSERT INTO wces_topics(topic_id, parent, category_id, class_id) VALUES (1, NULL, NULL, NULL);
+INSERT INTO wces_topics(topic_id, parent, category_id, class_id) VALUES (2, 1, 1, NULL);
+INSERT INTO wces_topics(topic_id, parent, category_id, class_id) VALUES (3, 1, 2, NULL);
+INSERT INTO wces_topics(topic_id, parent, category_id, class_id) VALUES (4, 1, 3, NULL);
+update wces_topics set category_id = 1, parent = 2 WHERE class_id IS NOT NULL;
+update classes set students = (select count(*) from enrollments as e where e.class_id = classes.class_id and e.status = 1);
+update users set flags = flags | case when exists (select * from enrollments AS e where e.user_id = users.user_id and status = 1) then 8 else 0 end;
+update users set flags = flags | case when exists (select * from enrollments AS e where e.user_id = users.user_id and status = 3) then 4 else 0 end;
+
 */
 function getClass($code, $year, $semester, $coursename = false)
 {
