@@ -100,7 +100,7 @@ if (!$q || $q->state == SurveyEditor_done)
     SELECT t.topic_id, get_class(t.class_id) AS name
     FROM wces_topics AS t
     INNER JOIN classes AS cl USING (class_id)
-    WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
+    WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND category_id <> 103
     ORDER BY name
   ", $wces, __FILE__, __LINE__);
   topics_link($result, true);
