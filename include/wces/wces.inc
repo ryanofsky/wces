@@ -146,7 +146,7 @@ function wces_GetQuestionPeriod($db)
   return mysql_result($result,0);
 }
 
-function wces_GetCurrentQuestionPeriod($db, $id = false, $description = false, $year = false, $semester = false)
+function wces_GetCurrentQuestionPeriod($db, &$id, &$description, &$year, &$semester)
 {
   $result = db_exec("SELECT questionperiodid, description, year, semester FROM questionperiods ORDER BY year desc, semester desc, questionperiodid desc LIMIT 1", $db,__FILE__, __LINE__);
   $row = mysql_fetch_assoc($result);
@@ -170,7 +170,7 @@ function course_update($db,$code)
   return $courseid;
 }
 
-function class_update($db,$code,$courseid = false)
+function class_update($db,$code,&$courseid)
 {
   if(strlen($code) != 20 || $code[9] != '_' || $code[13] != '_' || $code[18] != '_')
   {

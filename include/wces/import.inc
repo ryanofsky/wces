@@ -59,7 +59,7 @@ function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursec
           }  
           else
           {
-            $classid = class_update($db, $classcode, &$courseid);
+            $classid = class_update($db, $classcode, $courseid);
             $classcache[$classcode] = $classid;
             db_exec("DELETE FROM enrollments WHERE classid = '$classid'", $db, __FILE__, __LINE__);
             prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);

@@ -81,7 +81,7 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
   }
 }
 
-function report_profemail($db,$wizard,$subject,$message,$debug)
+function report_profemail($db,&$wizard,$subject,$message,$debug)
 {
   $sqloptions = array
   (

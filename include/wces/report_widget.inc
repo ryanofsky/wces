@@ -224,7 +224,7 @@ class Report extends FormWidget
       $this->profemail_subject->display(true); // true means hidden
       $this->profemail_message->display(true); 
       $this->profemail_debug->display(true);
-      report_profemail($db,&$this->wizard, $this->profemail_subject->text, $this->profemail_message->text, $this->profemail_debug->checked);
+      report_profemail($db,$this->wizard, $this->profemail_subject->text, $this->profemail_message->text, $this->profemail_debug->checked);
     }  
     else
     {
