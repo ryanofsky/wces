@@ -44,8 +44,7 @@
     function server_getrequest($absolute = false)
     {
       global $HTTP_ENV_VARS, $PHP_SELF;
-      $req = $HTTP_ENV_VARS["QUERY_STRING"];
-      $req = $req ? "$PHP_SELF?$req" : $PHP_SELF;
+      $req = isset($HTTP_ENV_VARS["QUERY_STRING"]) ? "$PHP_SELF?" . $HTTP_ENV_VARS["QUERY_STRING"] : $PHP_SELF;
       return $absolute ? ($HTTP_ENV_VARS["HTTPS"] == "on" ? "https://" : "http://") . $HTTP_ENV_VARS["SERVER_NAME"] . ":" . $HTTP_ENV_VARS["SERVER_PORT"] . $req : $req;
     };
     
