@@ -188,6 +188,7 @@ function get_question_period()
     $result = pg_go("
       SELECT question_period_id, begindate, enddate
       FROM question_periods
+      WHERE begindate IS NOT NULL AND enddate IS NOT NULL
       ORDER BY 
         CASE WHEN enddate < (SELECT NOW()) THEN 3   -- past
              WHEN begindate > (SELECT NOW()) THEN 2 -- future
