@@ -70,7 +70,7 @@ function PrintUser(&$uni, &$user_id)
   $access = array();
   if ($flags & 8) $access[] = "student";
   if ($flags & 4) $access[] = "professor";
-  if ($flags & 2) $access[] = "$row[code] department administrator";
+  if ($flags & 2) $access[] = "read-only administrator";
   if ($flags & 1) $access[] = "administrator";
   if (count($access) == 0) $access[] = "none";
 
@@ -151,9 +151,8 @@ function PrintEnrollments($user_id)
       $delete = "<a href=\"$PHP_SELF?user_id=$user_id&delete_enrollment=$c[class_id]\" " 
         . "onclick=\"return confirm('Click OK to drop this enrollment:\\n\\n   " 
         . addslashes(format_class($c, "%c Section %s $c[className]")) 
-        . "\\n\\nClick Cancel to return without saving changes.')\">Drop</a>"
+        . "\\n\\nClick Cancel to return without saving changes.')\">Drop</a>";
 
-;
       print("<td>" . ($row['survey'] != 't' ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
       print("<td>" . ($row['status'] != 1 ? "&nbsp;" : $delete) . "</td>");
     }
