@@ -52,7 +52,7 @@ method bodies:
   - different columns
   - same joins, conditions, where clauses
   - child grouping is superset of parent grouping
-  - grouped columns are neccessarily ordered columns for the parent
+  - parent's grouped columns are also ordered columns
   - the child's order by list is nearly identical to the parent's order by list,
     the only exception is that the child list can have some ordered columns
      of it's own FOLLOWING the parent's order by list.
@@ -100,7 +100,7 @@ class db_SelectMonster
     $this->row = array();
     $this->size = 0;
     
-    $this->children = 0;
+    $this->children = array();
     $this->childid = 0;
   }
 
@@ -177,10 +177,28 @@ class db_SelectMonster
     $this->roottable = $table;
   }
 
+  function fixchild(&$child, &$parent)
+  {
+    foreach($parent->groupby as $grouping)
+    {
+      if (!in_array($grouping,$child->groupby)) // jackie's curse
+        $child->groupby[] = $grouping;
+     
+      if (!in_array($grouping,$parent->orderby))
+      {
+        $parent->orderby[] = $grouping; // jackie's curse
+        $parent->orderbydesc[] = false; // jackie's curse
+      }  
+    }
+    
+    array_splice($child->orderby,0,0,$parent->orderby);
+    array_splice($child->orderbydesc,0,0,$parent->orderbydesc); 
+  }
+
   function bond(&$child, &$parent) // PRIVATE STATIC
   {
-    ++$parent->children;
-    $child->childid = $parent->children;
+    $parent->children[] = &$child;
+    $child->childid = count($parent->children);
     
     if ($parent->columns) $parent->columns .= ", "; else $parent->columns = "";
     $parent->columns .= "COUNT(";
@@ -200,23 +218,14 @@ class db_SelectMonster
     
     $parent->columns .= ") AS " . db_SelectMonster_prefix . $child->childid;
       
-    foreach($parent->groupby as $grouping)
-    {
-      if (in_array($grouping,$child->groupby)) 
-        $child->groupby[] = $grouping;
-     
-      if (!in_array($grouping,$parent->orderby))
-      {
-        $this->orderby[] = $grouping;
-        $this->orderbydesc[] = false;
-      }  
-    }
+    db_SelectMonster::fixchild($child,$parent);
     
-    array_splice($child->orderby,0,0,$parent->orderby);
-    array_splice($child->orderbydesc,0,0,$parent->orderbydesc); 
+    foreach($child->children as $key => $value);
+      if ($value)
+        db_SelectMonster::fixchild($child->children[$key],$parent);
   }
 
-  function makeparent(&$parent)
+  function makeparent(&$parent) // turn argument into a fully fledged parent
   {
     $parent->where = $this->where;
     $parent->having = $this->having;
@@ -300,7 +309,7 @@ class db_SelectMonster
 
     $sql = "SELECT $sql_columns FROM $sql_from $sql_joins $sql_where $sql_groupby $sql_orderby $sql_having";
     $this->result = mysql_query($sql,$db);
-    if (!$this->result) taskwindow_cprint("<textarea rows=20 cols=80 id=textarea1 name=textarea1>SQL ERROR\n---------\n\n$sql</textarea><br>");
+    if (!$this->result || $db_debug) taskwindow_cprint("<textarea rows=20 cols=80 id=textarea1 name=textarea1>SQL ERROR\n---------\n\n$sql</textarea><br>");
     $this->size = mysql_num_rows($this->result);
   }
 };
