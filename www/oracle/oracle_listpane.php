@@ -2,7 +2,10 @@
 
 require_once("wces/oracle.inc");
 require_once("wces/wces.inc");
+require_once("wbes/postgres.inc");
 require_once("wbes/general.inc");
+
+wces_connect();
 
 param($mode);
 param($searchfor);
@@ -71,53 +74,13 @@ function db_makesearch($text,$fields)
   foreach($arr as $t)
   foreach($fields as $f)
   {
-    if ($str) $str .= " || ";
-    $str .= "$f LIKE '%" . addslashes($t) . "%'";
+    if ($str) $str .= " OR ";
+    $str .= "$f ILIKE '%" . addslashes($t) . "%'";
   }
   return $str;
 }
 
-$db = wces_oldconnect();
-
-if ($mode == "professors")
-{
-
-  ?>
-  <p align=center>
-  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracle_root?>media/courseraised.jpg" name=courses border=0></a>
-  <img src="<?=$oracle_root?>media/profsunk.jpg">
-  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracle_root?>media/searchraised.jpg" name=search border=0></a>
-  </p>
-
-  <script>AttachImage('courses','courselit.jpg'); AttachImage('search','searchlit.jpg');</script>
-  <? 
-
-  $y = db_exec("
-  SELECT p.professorid, p.name,
-  SUBSTRING_INDEX(p.name,' ',-1) AS last,
-  SUBSTRING(p.name,1,LENGTH(p.name)-LOCATE(' ',REVERSE(p.name))) AS first
-  FROM answersets AS a
-  INNER JOIN classes as cl USING (classid)
-  INNER JOIN professors AS p USING (professorid)
-  WHERE $answer_criteria
-  GROUP BY p.professorid
-  ORDER BY last, first
-  ",$db, __FILE__, __LINE__);
-
-  print("<font size=-1>\n");
-  print('<ul>');
-
-  while($r = mysql_fetch_array($y))
-  {
-    $professorid=0; $last=""; $first="";
-    extract($r);
-    print("  <li><a href=\"oracle_infopane.php?professorid=$professorid\">$last, $first</a></li>\n");
-  }
-print('</ul>');  
-print('</font>');
-  
-}
-else if ($mode == "search")
+if ($mode == "search")
 {
   ?>
   <p align=center>
@@ -144,49 +107,92 @@ else if ($mode == "search")
 <?
   if ($searchfor)
   {
-		if ($searchin == 2)
-		{
-	    $search = db_makesearch($searchfor,array("p.name"));
-		  $result = db_exec("
-		  SELECT CONCAT('professorid=',p.professorid) AS link,
-		  p.name AS name
-		  FROM answersets AS a
-		  INNER JOIN classes AS cl USING (classid)
-		  INNER JOIN professors AS p USING (professorid)
-		  WHERE $answer_criteria AND ($search)
-      GROUP BY p.professorid
-		  LIMIT 100",$db,__FILE__,__LINE__);
-		}  
-		else // $searchin == 1
-		{
-		  $search = db_makesearch($searchfor,array("cl.name","c.name"));
-		  $result = db_exec("
-		  SELECT CONCAT('courseid=',c.courseid) as link,
-		  CONCAT(s.code, c.code, ' ', c.name) as name
-		  FROM answersets AS a
-		  INNER JOIN classes AS cl USING (classid)
-		  INNER JOIN courses AS c USING (courseid)
-		  INNER JOIN subjects AS s USING (subjectid)
-		  WHERE (a.questionperiodid < 6) AND ($search)
-		  GROUP BY c.courseid
-		  LIMIT 100", $db, __FILE__, __LINE__);
-		}
-  
-    if (mysql_num_rows($result) == 0)
+    if ($searchin == 2)
+    {
+      $search = db_makesearch($searchfor, array("u.firstname", "u.lastname"));
+      $result = pg_query("
+        SELECT u.user_id AS id, (u.lastname || ', ' || u.firstname) AS name
+        FROM ($select_classes) AS l
+        INNER JOIN enrollments AS e ON e.class_id = l.class_id AND e.status = 3
+        INNER JOIN users AS u USING (user_id)
+        WHERE $search
+        GROUP BY u.user_id, u.lastname, u.firstname
+        ORDER BY lastname, firstname
+      ",$wces,__FILE__,__LINE__);
+    }  
+    else // $searchin == 1
+    {
+      $search = db_makesearch($searchfor, array("cl.name","c.name"));
+      $result = pg_query("
+        SELECT cl.course_id AS id, get_course(cl.course_id) AS course_info
+        FROM ($select_classes) AS l
+        INNER JOIN classes AS cl USING (class_id)
+        INNER JOIN courses AS c USING (course_id)
+        WHERE $search
+        GROUP BY cl.course_id
+      ", $wces, __FILE__, __LINE__);
+    }
+
+    $n = pg_numrows($result);
+    if ($n == 0)
       print("<p><b>No matches found</b></p>");
-		else
-		{
-      print("<p><b>Results:</b></p>");
-      print("</ul>");
-      while($row = mysql_fetch_assoc($result))
-	    {
-  	    $n = htmlspecialchars($row["name"]);
-	      $l = htmlspecialchars($row["link"]);
-	      print("<li><a href=\"oracle_infopane.php?$l\">$n</a>\n</li>");
-		  }
-		  print("</ul>");
-		}  
-	}
+    else
+    {
+      if ($searchin == 2)
+      {
+        for ($i = 0; $i < $n; ++$i)
+        {
+          extract(pg_fetch_array($result, $i, PGSQL_ASSOC));
+          print("<li><a href=\"oracle_infopane.php?user_id=$id\">$name</a></li>\n");
+        } 
+      }
+      else // $searchin == 1 
+      {
+        for ($i = 0; $i < $n; ++$i)
+        {
+          extract(pg_fetch_array($result, $i, PGSQL_ASSOC));
+          print("<li><a href=\"oracle_infopane.php?course_id=$id\">" . format_course($course_info) . "</a></li>\n");
+          
+        }
+      }
+      
+    }
+  }
+}
+else if ($mode == "professors")
+{
+  ?>
+  <p align=center>
+  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracle_root?>media/courseraised.jpg" name=courses border=0></a>
+  <img src="<?=$oracle_root?>media/profsunk.jpg">
+  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracle_root?>media/searchraised.jpg" name=search border=0></a>
+  </p>
+
+  <script>AttachImage('courses','courselit.jpg'); AttachImage('search','searchlit.jpg');</script>
+  <? 
+
+  $result = pg_query("
+    SELECT DISTINCT u.user_id, u.firstname, u.lastname, d.department_id, d.code, d.name
+    FROM ($select_classes) AS l
+    INNER JOIN enrollments AS e ON e.class_id = l.class_id AND e.status = 3
+    INNER JOIN users AS u ON u.user_id = e.user_id
+    LEFT JOIN departments AS d USING (department_id)
+    ORDER BY d.code, d.department_id, u.lastname
+  ", $wces, __FILE__, __LINE__);
+
+  $users = new pg_segmented_wrapper($result, "department_id");
+  while($users->row)
+  {
+    extract($users->row);
+    if ($users->split)
+    {
+      $dept = $department_id ? "$name ($code)" : "<i>Unknown</i>"; 
+      print("<h5>$dept</h5>\n<font size=-1>\n<ul>\n");
+    }
+    print("  <li><a href=\"oracle_infopane.php?user_id=$user_id\">$lastname, $firstname</a></li>\n");
+    $users->advance();
+    if ($users->split) print("</ul>\n</font>\n");
+  }
 }
 else // $mode == "courses"
 {
@@ -199,33 +205,29 @@ else // $mode == "courses"
   <script>AttachImage('profs','proflit.jpg'); AttachImage('search','searchlit.jpg')</script>
   <?  
 
-  $y = db_exec("
-
-  SELECT c.courseid, c.name, c.code, s.code AS scode, d.name AS dname, d.departmentid FROM answersets AS a
-  INNER JOIN classes as cl USING (classid)
-  INNER JOIN courses AS c USING (courseid)
-  INNER JOIN departments AS d USING (departmentid)
-  LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
-  WHERE $answer_criteria
-  GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db,__FILE__,__LINE__);
-
-  $departmentidprev = -1;
-
-  $first = true;
-  while($row = mysql_fetch_array($y))
+  $result = pg_query("
+    SELECT DISTINCT d.department_id, d.code, d.name, c.course_id, get_course(c.course_id) AS course_info
+    FROM ($select_classes) AS l
+    INNER JOIN classes AS cl USING (class_id)
+    INNER JOIN courses AS c USING (course_id)
+    LEFT JOIN departments AS d ON d.department_id = c.guess_department_id
+    ORDER BY d.name, course_info
+  ", $wces, __FILE__, __LINE__);
+  
+  $classes = new pg_segmented_wrapper($result, "department_id");
+  while($classes->row)
   {
-    $departmentid = 0; $courseid = 0; $scode = ""; $code = ""; $name = ""; $dname = "";
-    extract($row);
-    if ($departmentidprev != $departmentid)
+    
+    extract($classes->row);
+    if ($classes->split)
     {
-      if ($first) $first = false; else print("</ul></font>");
-      print("<h5>$dname</h5>\n<font size=-1><ul>\n");
-    };  
-    $departmentidprev = $departmentid;  
-    print("<li><a href=\"oracle_infopane.php?courseid=$courseid\">($scode$code) $name </a></li>\n");
+      $dept = $department_id ? "$name ($code)" : "<i>Unknown</i>"; 
+      print("<h5>$dept</h5>\n<ul>\n");
+    }
+    print("  <li><a href=\"oracle_infopane.php?course_id=$course_id\">" . format_course($course_info) . "</a></li>\n");
+    $classes->advance();
+    if ($classes->split) print("</ul>\n");
   }
-  print("</ul></font>");
-
 }
 
 ?>

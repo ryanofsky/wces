@@ -1,8 +1,13 @@
 <?
 require_once("wbes/server.inc");
 
+$wces_path = "/wces/";
 $oracle_root = "/oracle/";
-$answer_criteria = "a.questionperiodid IN (1,2,4,5,7,9) AND a.topicid IN (1,2,4) AND a.questionsetid = '1'";
+
+$select_classes = "SELECT class_id FROM wces_topics WHERE category_id IN (100, 102, 104) AND make_public = 't'";
+$set_question_periods = "(2)";
+$base_base_branch_id = 14;
+$oracle_branch_id = 13;
 
 function oracle_top($title,$headimage)
 {
