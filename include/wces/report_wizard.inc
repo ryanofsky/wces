@@ -19,6 +19,7 @@ define("ReportWizard_order",7);
 define("ReportWizard_finish",8);
 define("ReportWizard_output_www",0);
 define("ReportWizard_output_email",1);
+define("ReportWizard_output_pemail",1);
 
 class ReportWizard extends Wizard
 {
@@ -54,7 +55,7 @@ class ReportWizard extends Wizard
 
     $this->depts = login_getdepts();
 
-    $this->output = new RadioButton(array("Display Report on Web Page","Email reports to professors"),$this->prefix . "_output",$this->form,$this->formmethod);
+    $this->output = new RadioButton(true, $this->prefix . "_output",$this->form,$this->formmethod);
     $this->includestandard = new CheckBox("{$prefix}_includestandard", $this->form, $this->formmethod);
     $this->includecustom = new CheckBox("{$prefix}_includecustom", $this->form, $this->formmethod);
     $this->includeabet = new CheckBox("{$prefix}_includeabet", $this->form, $this->formmethod);
@@ -262,8 +263,9 @@ class ReportWizard extends Wizard
         {
 ?>
 <p><b>Choose a report format:</b><br>
-<? $this->output->display(ReportWizard_output_www,   "onclick=\"show('" . $this->prefix . "_wwwoptions" . "')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www); ?><br>
-<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('" . $this->prefix . "_wwwoptions" . "')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email); ?>
+<? $this->output->display(ReportWizard_output_www,   "onclick=\"show('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www, "Display Report on Web Page"); ?><br>
+<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email, "Email Report to one or people"); ?><br>
+<? $this->output->display(ReportWizard_output_pemail, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_pemail, "Email professor reports"); ?>
 </p>
 
 <p><b>Include these sections:</b><br>
