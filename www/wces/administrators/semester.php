@@ -1,5 +1,5 @@
 <?
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");

@@ -7,7 +7,7 @@ login_protect(login_administrator);
 $db = wces_connect();
 $pi = new ProfessorInfo($db,"info","f",WIDGET_POST);
 $pi->loadvalues();
-page_top("Professor Information","0001",$pi->printable ? true : false);
+page_top("Professor Information",$pi->printable ? true : false);
 print('<form name=f method=post>');
 $pi->display();
 print('</form>');

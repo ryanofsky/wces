@@ -1,6 +1,6 @@
 <?
 
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("wces/database.inc");
 require_once("wces/wces.inc");
 require_once("wces/taskwindow.inc");
@@ -539,8 +539,8 @@ function importregpid($filename)
 // This code was used to populate the wces database with data from the old
 // seaseval database.
 
-$import_commentspath = $server_cgiroot . "comments/";
-$import_questionpath = $server_cgiroot . "text_quest/";
+$import_commentspath = ":::::::::::::cgi-bin/comments/";
+$import_questionpath = ":::::::::::::cgi-bin/text_quest/";
 
 function readresponses($filename)
 {
