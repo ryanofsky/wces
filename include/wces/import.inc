@@ -5,6 +5,147 @@ require_once("wces/database.inc");
 require_once("wces/wces.inc");
 require_once("wces/taskwindow.inc");
 
+/**
+* Import one of the dean's excel spreadsheets after they've been exported to csv and uploaded.
+* 
+* @param string  Path to uploaded file
+* @param string  4 digit year
+* @param string  1 digit semester (1 = spring, 2 = summer, 3 = summer)
+* @param array   Associative array which has integer column numbers at these values:
+*                  "coursecode" - column number of 9 digit course code (eg 'COMSW3203')
+*                  "section" - column number of 3 digit section number (eg '001', '002', 'R01')
+*                  "professor" - column number of professor name in Last, First format
+*                  "students" - column number containing number of students per class
+*                  "cunix" - optional column number containing a student's cunix id
+* @param integer If this parameter is not 0, the courses in this file will be
+*                associated with the specified question set during upcoming 
+*                question periods.
+* @access public
+*/	
+
+function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3), $questionsetid = 0)
+{
+  if (strlen($year) == 4 && strlen($semester) && ($semester == 1 || $semester == 2 || $semester == 3) && is_array($fieldorder) && isset($fieldorder["coursecode"]) && isset($fieldorder["section"]) && isset($fieldorder["professor"]) && isset($fieldorder["students"]))
+  {
+    taskwindow_start("Progress Window");
+    taskwindow_cprint("<h2>Importing classes</h2>\n");
+    taskwindow_flush();
+
+    $fp = fopen($userfile,"r");
+    $db = wces_connect();
+  
+    $i = 0;
+    $row = 0;
+  
+    while ($data = fgetcsv ($fp, 8192, ","))
+    {
+      ++$row;
+      if (count($data) != count($fieldorder))
+        taskwindow_cprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (" . count($fieldorder) . "expected, " . count($data) . " found)<br>\n");
+      else
+      {
+        $coursecode = $data[$fieldorder["coursecode"]];
+        $section = $data[$fieldorder["section"]];
+        if (strlen($coursecode) == 9 && strlen($section) == 3)
+        {
+          $classid = class_update($db, $coursecode . "_" . $section . "_" . $year . "_" . $semester, &$courseid);
+          prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);
+          $pids = prof_findwithfirstlast($db, $first, $last);
+          $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
+          $i = Array("professorid" => $pid);
+          if ($data[$fieldorder["students"]]) $i["students"] = $data[$fieldorder["students"]];
+          db_updatevalues($db, "classes", Array("classid" => $classid), $i);
+          if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+          $cunix = $data[$fieldorder["cunix"]];
+          if ($cunix)
+          {
+            $userid = db_replace($db,"users", Array("cunix" => $cunix), false, "userid");
+            if ($userid) db_exec("REPLACE INTO enrollments(classid, userid) VALUES ('$classid','$userid')",$db,__FILE__,__LINE__);
+          }  
+          taskwindow_cprint("$coursecode Section $section added (courseid = $courseid, classid = $classid, professorid = $pid)<br>\n");
+        }
+        else
+          taskwindow_cprint("<b>Warning:</b> Invalid course or section code (course = '$coursecode' && section = '$section')<br>\n");  
+      };
+      if (((++$i) % 10) == 1) taskwindow_flush();  
+    }
+    fclose ($fp); 
+    taskwindow_end();  
+  }  
+};
+
+/**
+* Import a tab-separated registrar file. This function is currently disabled
+* because the database structure has been slightly changed since it was 
+* written. It is unclear whether or not this type of file will need to 
+* be parsed again in the future...
+* 
+* @param string  Path to uploaded file
+* @access public
+* @depreciated
+*/
+function importdeandata($userfile)
+{
+/*
+  original format. will it ever be used again?
+  note: db structure has changed since this was written
+
+  taskwindow_start("Progress Window");
+  taskwindow_cprint("<h2>Importing classes</h2>\n");
+  taskwindow_flush();
+
+  $fp = fopen($userfile,"r");
+  $db = wces_connect();
+  $i = 0;
+
+  while (!feof ($fp))
+  {
+    $buffer = fgets($fp, 4096);
+    
+    $data = explode("\t",$buffer);
+    
+    if (count($data) != 9)
+    {
+      print ("<b>Skipping Malformed Row '$buffer'<br></b>");
+    }
+    else
+    {
+      $subj = $data[0];
+      $course = $data[1] . $data[2];
+      $section = $data[3];
+      $year = $data[4];
+      $s = $data[5];
+      $semester = ($s == "1") ? "spring" : (($s == "2") ? "summer" : "fall");
+      $name = $data[6];
+      if (strlen($name) > 31 && ($name[31] == "Y" || $name[31] =="N"))
+        $name = trim(substr($comment,0,31));
+      else
+        $name = "";
+      
+      $first = substr($data[7],0,16);
+      $last = substr($data[7],16);
+      prof_fixname($first,$last);
+      $full = prof_makefull($first,"",$last);
+      $students = $data[8];       
+      $subjectid = db_replace($db,"subjects", Array("code" => $subj), 0, "subjectid");
+      $courseid = db_replace($db, "courses", Array("subjectid" => $subjectid, "code" => $course), $name ? Array("name" => $name) : 0, "courseid");
+      $classid = db_replace($db, "classes", Array("courseid" => $courseid, "section" => $section, "year" => $year, "semester" => $semester), 0, "classid");
+      $pids = prof_findwithfirstlast($db,$first,$last);
+      $pids = array_merge($pids,prof_findwithclassid($db,$classid));
+      $pid = prof_merge($db, $pids, Array("name" => $full), Array("first" => $first, "last" => $last, "fullname" => $full, "source" => "oldclasses"));
+      db_updatevalues($db,"classes",Array("classid" => $classid),Array("students" => $students, "professorid" => $pid));
+      db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+      taskwindow_cprint(" - Added " . $data[4] . $data[5] . $data[0] . $data[2] . $data[1] . $data[3] . " as class #$classid with professor #$pid<br>\n");
+      if ((++$i) % 10 == 1) taskwindow_flush();
+    }
+  }
+  fclose ($fp); 
+  taskwindow_end();  
+*/  
+};
+
+
+
 // CSV Columns
 define ("COURSE",0);             // course name
 define ("COURSECODE",1);         // 4 digit course number
@@ -25,13 +166,6 @@ define ("SCHOOL",15);            // school name
 define ("TIME",16);              // class time
 define ("LOCATION",17);          // class location
 define ("CALLNUMBER",18);        // 5 digit call number
-
-function array_clean($arr)
-{
-  foreach($arr as $key => $value)
-    if (!$value) unset($arr[$key]);
-  return $arr;
-}
 
 function importregcsv($filename)
 {
@@ -76,7 +210,6 @@ function importregcsv($filename)
   fclose ($fp); 
   taskwindow_end("Progress Window");   
 };
-
 
 function arrayagrees($base,$newbie)
 {
@@ -615,16 +748,3 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
 };
 
 %>
-
-
-
-
-
-
-
-
-
-
-
-
-
