@@ -49,19 +49,20 @@ function pg_show($result,$name = "Result", $showtypes = false)
       print("</tr>\n");
       for($r = 0; $r < $rows; ++$r)
       {
+        print("<tr>\n"); 
         $row = pg_fetch_row($result, $r);
-        for($c=-; $c < $cols; ++$c)
+        for($c = 0; $c < $cols; ++$c)
         {
           if (!isset($row[$c]))
-            $str = "<i>Not Set</i>";
+            $str = "<i><small><small>null</small></small></i>";
           else if (!$showtypes)
             $str = htmlspecialchars($row[$c]);
           else
-            $str = htmlspecialchars($row[$c]) . " <i>" . gettype($row[$c]) . "</i>";  
+            $str = htmlspecialchars($row[$c]) . " <small><small><i>" . gettype($row[$c]) . "</i></small></small>";  
+          print("  <td>$str</td>\n");
         }
-        print("  <td>$str</td>\n");
+        print("</tr>\n");  
       }  
-      print("</tr>\n");
       print ("</table>\n");
       return;
     }
