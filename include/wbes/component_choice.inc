@@ -1,27 +1,36 @@
 <?
 
 require_once("wbes/component.inc");
+require_once("Numbers/Roman.php");
+
+
+
+
 
 class ChoiceFactory extends ComponentFactory
 {
   function code() { return 2; }
   function name() { return "Multiple Choice Question Set"; }
-  
+
   function create()
   {
     return new Choice();
   }
-  
+
   function load(&$components, $ids, $ordinals, $topic_id)
   {
+    //must add database bindings for N/A choice. [tyler] (done)
+    //must add database bindings for intro text. [tyler] (done)
+    //must add database bindings for numbering options. [tyler] (done)
+
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = new Choice(); 
+      $c = new Choice();
       $c->revision_id   = (int)$wr->row['revision_id'];
       $c->is_html       = $wr->row['is_html'] == 't';
       $c->text          = $wr->row['ctext'];
@@ -29,32 +38,66 @@ class ChoiceFactory extends ComponentFactory
       $c->other_choice  = $wr->row['other_choice'];
       $c->first_number  = (int)$wr->row['first_number'];
       $c->last_number   = (int)$wr->row['last_number'];
+
+	/*
       $c->is_numeric    = $wr->row['is_numeric'] == 't';
       $c->select_many   = $wr->row['select_many'] == 't';
       $c->stacked       = $wr->row['stacked'] == 't';
       $c->vertical      = $wr->row['vertical'] == 't';
+	*/
+    
+    //added to support intro text.
+	$c->intro_text = $wr->row['ctext'];
+
+
+	$flagGroup 	= $wr->row['flags'];
+
+	//new system for storing booleans.
+      $c->is_numeric    = ($flagGroup & $c->FLAG_ISNUMERIC) > 0;
+      $c->select_many   = ($flagGroup & $c->FLAG_SELECTMANY) > 0;
+      $c->stacked       = ($flagGroup & $c->FLAG_STACKED) > 0;
+      $c->vertical      = ($flagGroup & $c->FLAG_VERTICAL) > 0;
+      $c->na_choice 	= ($flagGroup & $c->FLAG_NACHOICE) > 0;
+
+    /*
+	Be careful, FLAG_ALPHA is the composite of FLAG_ARABIC and FLAG_ROMAN.
+	therefore it must be checked first, and since it's two bits it must be
+	checked for equality, not just existence to ensure that both bits are
+	set.
+    */
+
+	if(($flagGroup & $c->FLAG_ALPHA) == $c->FLAG_ALPHA)
+	    {$c->numbering_scheme = "alpha";}
+	else if(($flagGroup & $c->FLAG_ARABIC) > 0)
+	    {$c->numbering_scheme = "arabic";}
+	else if(($flagGroup & $c->FLAG_ROMAN) > 0)
+	    {$c->numbering_scheme = "roman";}
+	else
+	    {$c->numbering_scheme = "none";}
+
+
       $c->rows          = $wr->row['rows'];
-      
+
       // todo: optimize. these queries can be performed once outside of the for loop
-      
+
       $result = pg_query("
-      
+
         CREATE TEMPORARY TABLE tmp$c->revision_id AS
         SELECT branch_latest(li.item_id) AS revision_id, ordinal
-        FROM list_items AS li, branch_topics_cache AS bt 
+        FROM list_items AS li, branch_topics_cache AS bt
         WHERE li.revision_id = (SELECT revision_contents($c->revision_id))
           AND bt.base_branch_id = li.item_id AND bt.topic_id = $topic_id;
-        
+
         SELECT t.ordinal, q.revision_id, q.qtext
         FROM tmp$c->revision_id AS t INNER JOIN choice_questions AS q USING (revision_id)
         ORDER BY ordinal
-         
+
       ", $wbes, __FILE__, __LINE__);
-       
+
       pg_query("DROP TABLE tmp$c->revision_id", $wbes, __FILE__, __LINE__);
 
       $n = pg_numrows($result);
-      
+
       $c->questions = $c->question_ids = array();
       for($i = 0; $i < $n; ++$i)
       {
@@ -62,7 +105,7 @@ class ChoiceFactory extends ComponentFactory
         $c->questions[] = $a['qtext'];
         $c->question_ids[] = $a['revision_id'];
       }
-      
+
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
@@ -70,42 +113,74 @@ class ChoiceFactory extends ComponentFactory
 
 class Choice extends Component
 {
+    var $FLAG_ISHTML = 1;
+    var $FLAG_ISNUMERIC = 2;
+    var $FLAG_SELECTMANY = 4;
+    var $FLAG_STACKED = 8;
+    var $FLAG_VERTICAL = 16;
+
+//numbering options.
+    var $FLAG_ROMAN = 32;
+    var $FLAG_ARABIC = 64;
+    var $FLAG_ALPHA = 96;
+
+    var $FLAG_NACHOICE = 128;
+
+
+
+
+
   // array of stringed items to rate
   var $questions = array();
   var $question_ids = array();
-  
+
   // array of stringed choices
   var $choices = array();
   var $first_number = 0;
   var $last_number = 0;
-  
+
   var $is_numeric = false;
   var $select_many = false;
   var $other_choice = "";
+
+  //added N/A choice [tyler]
+  var $na_choice = false;
+
+  //added intro text [tyler]
+  var $intro_text = "";
+
+  //added numbering options [tyler]
+  var $numbering_scheme = "none";
+
   var $stacked = false;
   var $vertical = false;
   var $rows = 0;
-  
+
   function Choice()
   {
     $this->Component();
   }
-  
+
   function geteditor($prefix,$form,$formmethod)
   {
     return new ChoiceEditor($this,$prefix,$form,$formmethod);
-  }  
-  
+  }
+
   function getwidget($prefix,$form,$formmethod)
   {
     return new ChoiceWidget($this,$prefix,$form,$formmethod);
   }
-  
+
   function save($topic_id, $save_id)
   {
+    //must add database bindings for N/A choice [tyler] (done)
+    //must add database bindings for intro text. [tyler] (done)
+    //must add database bindings for numbering schemes. [tyler] (done)
+
+
     global $wbes;
     $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
-    $ctext        = addslashes('');
+    $ctext        = addslashes($this->intro_text);
     $is_html      = $this->is_html ? "'t'" : "'f'";
     $questions    = pg_implode($this->questions);
     $question_ids = pg_implode($this->question_ids);
@@ -113,18 +188,37 @@ class Choice extends Component
     $other_choice = addslashes($this->other_choice);
     $first_number = $this->first_number;
     $last_number  = $this->last_number;
+    $rows         = $this->rows;
+
+    /*
+    //replaced by the new flags system.
+
     $is_numeric   = $this->is_numeric ? "'t'" : "'f'";
     $select_many  = $this->select_many ? "'t'" : "'f'";
     $stacked      = $this->stacked ? "'t'" : "'f'";
     $vertical     = $this->vertical ? "'t'" : "'f'";
-    $rows         = $this->rows;
-    
+    */
+
+    $flagGroup = $this->is_numeric ? $this->FLAG_ISNUMERIC : 0;
+    $flagGroup += $this->select_many ? $this->FLAG_SELECTMANY : 0;
+    $flagGroup += $this->stacked ? $this->FLAG_STACKED : 0;
+    $flagGroup += $this->vertical ? $this->FLAG_VERTICAL : 0;
+    $flagGroup += $this->na_choice ? $this->FLAG_NACHOICE : 0;
+
+
+    if($this->numbering_scheme == "alpha")
+	{$flagGroup += $this->FLAG_ALPHA;}
+    else if($this->numbering_scheme == "arabic")
+	{$flagGroup += $this->FLAG_ARABIC;}
+    else if($this->numbering_scheme == "roman")
+	{$flagGroup += $this->FLAG_ROMAN;}
+
+
     $result = pg_query("
       SELECT choice_component_save($topic_id, $revision_id, $save_id, '$ctext',
         $is_html, $questions::text[], $question_ids::integer[],
         $choices::text[], '$other_choice'::text, $first_number, $last_number,
-        $is_numeric::boolean, $select_many::boolean, $stacked::boolean, 
-        $vertical::boolean, $rows)
+        $flagGroup, $rows)
     ", $wbes, __FILE__, __LINE__);
     return pg_result($result, 0, 0);
   }
@@ -133,7 +227,7 @@ class Choice extends Component
 class ChoiceEditor extends ComponentEditor
 {
   //widgets
-  
+
   var $qtype;
   var $question;
   var $question_id;
@@ -142,6 +236,16 @@ class ChoiceEditor extends ComponentEditor
   var $choices;
   var $select_many;
   var $other;
+
+  //added N/A choice. [tyler]
+  var $na;
+
+  //added intro text. [tyler]
+  var $intro;
+
+  //added support for numbering. [tyler]
+  var $numbering_scheme;
+
   var $other_label;
   var $first_number;
   var $last_number;
@@ -151,36 +255,51 @@ class ChoiceEditor extends ComponentEditor
   var $controls;
   var $rows;
   var $orientation;
- 
+
   function ChoiceEditor(&$component,$prefix,$form,$formmethod)
   {
     $this->ComponentEditor($component,$prefix,$form,$formmethod);
-    
+
     $this->qtype = new DropBox(array(
       ""         => "-- Select One --",
       "single"   => "Single Question",
       "multiple" => "Multiple Questions"
     ), $this->prefix."_qtype", $this->form, $this->formmethod);
-    
+
     $this->question = new TextBox(4,40,"wrap=virtual", $this->prefix."_question", $this->form, $this->formmethod);
     $this->questions = new DynamicList(30,7,false,$this->prefix."_questions",$this->form,$this->formmethod);
     $this->question_id = "";
-        
+
     $this->ctype = new DropBox(array(
       ""         => "-- Select One --",
       "text"     => "Text Choices",
       "ntext"    => "Quantitative Text Choices",
       "num"      => "Numeric Choices"
     ), $this->prefix."_ctype", $this->form, $this->formmethod);
-    
+
     $this->choices = new DynamicList(30,7,false,$this->prefix."_choices",$this->form,$this->formmethod);
     $this->select_many = new CheckBox($this->prefix."_selectmany", $this->form, $this->formmethod);
     $this->other = new CheckBox($this->prefix."_other", $this->form, $this->formmethod);
+
+    //Added to support N/A option. [tyler]
+    $this->na = new CheckBox($this->prefix."_na", $this->form, $this->formmethod);
+
+    //Added to support intro text. [tyler]
+    $this->intro = new TextBox(0,40,"",$this->prefix."_intro",$this->form,$this->formmethod);
+
     $this->other_label = new TextBox(0,25,"",$this->prefix."_otherlabel",$this->form,$this->formmethod);
     $this->first_number = new TextBox(0,5,"",$this->prefix."_firstnumber",$this->form,$this->formmethod);
     $this->last_number = new TextBox(0,5,"",$this->prefix."_lastnumber",$this->form,$this->formmethod);
     $this->first_label = new TextBox(0,20,"",$this->prefix."_firstlabel",$this->form,$this->formmethod);
     $this->last_label = new TextBox(0,20,"",$this->prefix."_lastlabel",$this->form,$this->formmethod);
+
+    //added numbering support. [tyler]
+    $this->numbering_scheme = new DropBox(array(
+      "none" => "None",
+      "arabic" => "Arabic numbers",
+      "alpha" => "Letters",
+      "roman" => "Roman Numerals"
+    ),$this->prefix."_numbering", $this->form, $this->formmethod);
 
     $this->layout = new DropBox(array(
       "under" => "Put choices underneath the question text",
@@ -202,43 +321,52 @@ class ChoiceEditor extends ComponentEditor
       "7"  => "7",
       "8"  => "8",
       "9"  => "9",
-      "10" => "10"     
+      "10" => "10"
     ), $this->prefix."_rows", $this->form, $this->formmethod);
-    
+
     $this->orientation = new DropBox(array(
       "vertical"  => "vertically",
       "horiz"  => "horizontally"
     ), $this->prefix . "_orientation", $this->form, $this->formmethod);
   }
-  
+
   function loadvalues()
   {
     ComponentEditor::loadvalues();
-    
     if ($this->loadprevious)
     {
-      $this->qtype->loadvalues();       
-      $this->question->loadvalues();    
-      $this->questions->loadvalues(); 
-      $this->ctype->loadvalues();       
-      $this->choices->loadvalues();     
-      $this->select_many->loadvalues(); 
-      $this->other->loadvalues();       
-      $this->other_label->loadvalues(); 
+      $this->qtype->loadvalues();
+      $this->question->loadvalues();
+      $this->questions->loadvalues();
+      $this->ctype->loadvalues();
+      $this->choices->loadvalues();
+      $this->select_many->loadvalues();
+      $this->other->loadvalues();
+
+      //added to support N/A values. [tyler]
+      $this->na->loadvalues();
+
+      //added to support intro text. [tyler]
+      $this->intro->loadvalues();
+
+      //added to support numbering. [tyler]
+      $this->numbering_scheme->loadvalues();
+
+      $this->other_label->loadvalues();
       $this->first_number->loadvalues();
-      $this->last_number->loadvalues(); 
-      $this->first_label->loadvalues(); 
-      $this->last_label->loadvalues();  
-      $this->layout->loadvalues();      
-      $this->controls->loadvalues();    
+      $this->last_number->loadvalues();
+      $this->first_label->loadvalues();
+      $this->last_label->loadvalues();
+      $this->layout->loadvalues();
+      $this->controls->loadvalues();
       $this->rows->loadvalues();
       $this->orientation->loadvalues();
       $this->question_id = (int)$this->loadattribute("question_id");
-    }  
+    }
     else
     {
       $c = count($this->component->questions);
-      
+
       if ($c >= 1)
       {
         $this->question->text = $this->component->questions[0];
@@ -264,6 +392,15 @@ class ChoiceEditor extends ComponentEditor
       $this->first_number->text = $this->component->first_number;
       $this->last_number->text = $this->component->last_number;
 
+      //added to support N/A values. [tyler]
+      $this->na->checked = $this->component->na_choice;
+
+      //added to support intro text. [tyler]
+      $this->intro->text = $this->component->intro_text;
+
+      //added to support numbering. [tyler]
+      $this->numbering_scheme->selected = $this->component->numbering_scheme;
+
       if ($this->component->is_numeric)
       {
         $this->ctype->selected = "num";
@@ -283,7 +420,7 @@ class ChoiceEditor extends ComponentEditor
           $this->ctype->selected = "text";
           $this->first_number->text = 5;
           $this->last_number->text = 1;
-        }  
+        }
       }
       else
       {
@@ -291,24 +428,24 @@ class ChoiceEditor extends ComponentEditor
         $this->first_number->text = 5;
         $this->last_number->text = 1;
       }
-      
+
       $this->select_many->checked = $this->component->select_many;
       $this->layout->selected = $this->component->stacked ? "right" : "under";
       $r = $this->component->rows;
-      
+
       if ($r == 0)
         $this->controls->selected = "buttons";
       else if ($r == 1)
         $this->controls->selected = "drop";
       else
         $this->controls->selected = "select";
-      
-      $this->rows->selected = $r;     
-      
+
+      $this->rows->selected = $r;
+
       $this->orientation->selected = $this->component->vertical ? "vertical" : "horiz";
     }
   }
-  
+
   function checkvalues()
   {
     if ($this->qtype->selected == "single")
@@ -317,22 +454,22 @@ class ChoiceEditor extends ComponentEditor
       {
         $this->errors[] = "You did not enter any question text.";
         $this->qtype->broken = true;
-      }  
-    }  
+      }
+    }
     else if ($this->qtype->selected == "multiple")
     {
       if (count($this->questions->items) == 0)
       {
         $this->errors[] = "You did not add any questions.";
         $this->qtype->broken = true;
-      }  
+      }
     }
     else
     {
       $this->errors[] = "You did not choose a question type.";
       $this->qtype->broken = true;
     }
-      
+
     if ($this->ctype->selected == "text" || $this->ctype->selected == "ntext")
     {
       if (count($this->choices->items) < 2)
@@ -346,12 +483,12 @@ class ChoiceEditor extends ComponentEditor
       $this->errors[] = "You did not choose a choice type.";
       $this->ctype->broken = true;
     }
-    
+
     if($this->ctype->selected == "ntext" || $this->ctype->selected == "num")
     {
       $f = $this->first_number->text;
       $l = $this->last_number->text;
-      
+
       if (!is_numeric($f))
       {
         $this->errors[] = "You must specify a numeric first value";
@@ -383,7 +520,7 @@ class ChoiceEditor extends ComponentEditor
           $this->errors[] = "The last value must be an integer";
           $this->last_number->broken = true;
         }
-        
+
         if (abs($l-$f) > 15)
         {
           $this->errors[] = "The difference between the first and last values should not exceed 15.";
@@ -392,16 +529,16 @@ class ChoiceEditor extends ComponentEditor
         }
       }
     }
-    
+
     if ($this->ctype->selected == "text" && $this->other->checked)
     {
       if (!$this->other_label->text)
         $this->errors[] = 'You did not specify a label for the "other" choice.';
     }
-    
+
     return count($this->errors) == 0;
   }
-  
+
   function savevalues()
   {
     $c = &$this->component;
@@ -439,28 +576,37 @@ class ChoiceEditor extends ComponentEditor
 
     $c->is_numeric = $this->ctype->selected == "num";
     $c->stacked = $this->layout->selected == "right";
-    
+
+    //added to support N/A option. [tyler]
+    $c->na_choice = $this->na->checked;
+
+    //added to support intro text. [tyler]
+    $c->intro_text = $this->intro->text;
+
+    //added to support numbering. [tyler]
+    $c->numbering_scheme = $this->numbering_scheme->selected;
+
     if ($this->controls->selected == "buttons")
       $c->rows = 0;
     else if ($this->controls->selected == "drop")
       $c->rows = 1;
     else if ($this->controls->selected == "select")
-      $c->rows = (int) $this->rows->selected;  
+      $c->rows = (int) $this->rows->selected;
 
-    $this->component->vertical = $this->layout->selected == "under" && $this->controls->selected == "buttons" && $this->orientation->selected == "vertical";
+    $this->component->vertical = $this->controls->selected == "buttons" && $this->orientation->selected == "vertical";
 
     ComponentEditor::savevalues();
   }
-  
+
   function display()
   {
     global $SurveyEditor_ns4, $server_media;
-    
+
     ComponentEditor::display();
     $p = $this->prefix;
-    
+
     DynamicList::dumpscript();
-    
+
     $show_sing = $this->qtype->selected == "single";
     $show_mult = $this->qtype->selected == "multiple";
     $show_clst = $this->ctype->selected == "text" || $this->ctype->selected == "ntext";
@@ -469,28 +615,36 @@ class ChoiceEditor extends ComponentEditor
     $show_numr = $this->ctype->selected == "ntext" || $this->ctype->selected == "num";
     $show_nlab = $this->ctype->selected == "num";
     $show_rows = $this->controls->selected == "select";
-    $show_ornt = $this->layout->selected == "under" && $this->controls->selected == "buttons";
-?>    
+
+    //modified [tyler]
+    $show_ornt = $this->controls->selected == "buttons";
+
+?>
 <table>
+<? /* added to support intro text. [tyler] */ ?>
+<tr>
+    <td colspan><strong>Introduction: </strong></td>
+    <td><?= $this->intro->display(); ?> (optional)</td>
+</tr>
 <tr>
   <td valign=top><strong>Questions:</strong></td>
   <td>
     <? $this->qtype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
     <a href="javascript:showhelp('choice_mult')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
     <br>
-    
+
     <? if (!$SurveyEditor_ns4 || $show_sing) { ?>
     <div id=<?=$p?>_single style="display: <?= $show_sing ? "block" : "none" ?>">
     <?$this->question->display(false); $this->printattribute("question_id", $this->question_id); ?><br>
     </div>
     <? } else $this->question->display(true); ?>
-    
+
     <? if (!$SurveyEditor_ns4 || $show_mult) { ?>
     <div id=<?=$p?>_multiple style="display: <?= $show_mult ? "block" : "none" ?>">
     <?$this->questions->display(false);?>
     </div>
     <? } else $this->questions->display(true); ?>
-    
+
   </td>
 </tr>
 <tr>
@@ -507,7 +661,7 @@ class ChoiceEditor extends ComponentEditor
     <? if (!$SurveyEditor_ns4 || $show_txto) { ?>
     <table id=<?=$p?>_textoptions style="display: <?= $show_txto ? "block" : "none" ?>">
     <tr>
-      <td><? $this->select_many->display(); ?></td> 
+      <td><? $this->select_many->display(); ?></td>
       <td>
         <? $this->select_many->displaylabel("Allow users to select more than one choice"); ?>
         <a href="javascript:showhelp('choice_more')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
@@ -528,7 +682,7 @@ class ChoiceEditor extends ComponentEditor
     <? } else $this->other_label->display(true); ?>
     </table>
     <? } else { $this->select_many->display(true); $this->other->display(true); $this->other_label->display(true); } ?>
-  
+
     <? if (!$SurveyEditor_ns4 || $show_numr) { ?>
     <table id=<?=$p?>_numchoice style="display: <?= $show_numr ? "block" : "none" ?>">
     <tr>
@@ -548,18 +702,22 @@ class ChoiceEditor extends ComponentEditor
       <td>First Label:</td>
       <td><? $this->first_label->display(); ?></td>
     </tr>
-    <tr>  
+    <tr>
       <td>Last Label:</td>
       <td><? $this->last_label->display(); ?></td>
     </tr>
     </table>
     <? } else { $this->first_label->display(true); $this->last_label->display(true); } ?>
-    
-  </td> 
+
+
+    <? /* added to support N/A option */ ?>
+    <?= $this->na->display(); ?> Allow N/A choice <br>
+
+  </td>
 </tr>
 <tr>
   <td valign=top><strong>Appearance:</strong></td>
-  <td>&nbsp;
+  <td>Question Numbering: <? $this->numbering_scheme->display(); ?><br>
     <table>
     <tr>
       <td>Layout:</td>
@@ -572,7 +730,7 @@ class ChoiceEditor extends ComponentEditor
       <td>Controls:</td>
       <td>
         <? $this->controls->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
-        
+
         <? if (!$SurveyEditor_ns4 || $show_rows) { ?>
         <span id=<?=$p?>_selrows style="display: <?= $show_rows ? "inline" : "none" ?>">
         with
@@ -580,23 +738,23 @@ class ChoiceEditor extends ComponentEditor
         rows
         </span>
         <? } else $this->rows->display(true); ?>
-        
+
         <? if (!$SurveyEditor_ns4 || $show_ornt) { ?>
         <span id=<?=$p?>_borient style="display: <?= $show_ornt ? "inline" : "none" ?>">
         oriented
         <? $this->orientation->display(); ?>
         </span>
         <? } else $this->orientation->display(true); ?>
-        
+
         <a href="javascript:showhelp('choice_comp')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
-        
-      </td>  
+
+      </td>
     </tr>
     </table>
 
   <? $this->is_html->display(false); $this->is_html->displaylabel("HTML Tags in Question Text");?>
   </td>
-</tr>  
+</tr>
 </table>
 <script>
 <!--
@@ -617,7 +775,7 @@ function <?=$p?>_refresh(form)
     elem("<?=$p?>_numchoice").style.display = ctype == "ntext" || ctype == "num" ? "block" : "none";
     elem("<?=$p?>_sparsechoice").style.display = ctype == "num" ? "block" : "none";
     elem("<?=$p?>_selrows").style.display = cntrl == "select" ? "inline" : "none";
-    elem("<?=$p?>_borient").style.display = lyout == "under" && cntrl == "buttons" ? "inline" : "none";
+    elem("<?=$p?>_borient").style.display = cntrl == "buttons" ? "inline" : "none";
     elem("<?=$p?>_olabel").style.display = other ? "block" : "none";
   }
   else
@@ -643,56 +801,59 @@ class ChoiceWidget extends ComponentWidget
   var $answers = array();
   var $others = array();
   var $errors = array();
-  
+
   function ChoiceWidget(&$c,$prefix,$form,$formmethod)
   {
     $this->ComponentWidget($c,$prefix,$form,$formmethod);
-    
-    // abstract away the differences between different survey types 
+
+    // abstract away the differences between different survey types
     // for the purpose of displaying
-    
+
     $this->legend = "";
     if ($c->is_numeric)
     {
-    	if ($c->choices[0] || $c->choices[1])
-    	  $this->legend = $c->first_number . " = " . $c->choices[0] . ", " . $c->last_number . " = " . $c->choices[1];
-    	
-    	if ($c->first_number < $c->last_number)
-    	  $this->choices = range($c->first_number, $c->last_number);
-    	else
-    	  $this->choices = array_reverse(range($c->last_number, $c->first_number));	
+      if ($c->choices[0] || $c->choices[1])
+        $this->legend = $c->first_number . " = " . $c->choices[0] . ", " . $c->last_number . " = " . $c->choices[1];
+
+      if ($c->first_number < $c->last_number)
+        $this->choices = range($c->first_number, $c->last_number);
+      else
+        $this->choices = array_reverse(range($c->last_number, $c->first_number));
     }
     else
       $this->choices = $c->choices;
-    
+
+    if($c->na_choice)
+      $this->na = array_push($this->choices, "N/A") - 1;
+
     if ($c->other_choice)
       $this->other = array_push($this->choices, $c->other_choice) - 1;
     else
       $this->other = -1;
-      
+
     $this->questions = $c->questions;
-      
+
     if (!$c->is_html)
     {
       $this->legend = nl2br(htmlspecialchars($this->legend));
       foreach($this->choices as $k => $v)
-      	$this->choices[$k] = nl2br(htmlspecialchars($v));
-      
+        $this->choices[$k] = nl2br(htmlspecialchars($v));
+
       foreach($this->questions as $k => $v)
-      	$this->questions[$k] = nl2br(htmlspecialchars($v));
+        $this->questions[$k] = nl2br(htmlspecialchars($v));
     }
   }
-  
+
   function loadvalues()
   {
     foreach ($this->questions as $i => $text)
     {
-  	  $c = &$this->component;
-  	  $name = "q$i";
-  	  if ($c->select_many) $name .= "[]";
-  	  $a = $this->loadattribute($name);
-  	  if ($c->select_many)
-  	    $this->answers[$i] = is_array($a) ? $a : array();
+      $c = &$this->component;
+      $name = "q$i";
+      if ($c->select_many) $name .= "[]";
+      $a = $this->loadattribute($name);
+      if ($c->select_many)
+        $this->answers[$i] = is_array($a) ? $a : array();
       else if (isset($a))
         $this->answers[$i] = (int)$a;
       else
@@ -703,14 +864,14 @@ class ChoiceWidget extends ComponentWidget
       $this->others[$i] = (string)$this->loadattribute("q{$i}_{$this->other}");
     }
   }
-  
+
   function save($completion_id)
   {
     global $wbes;
     $c = &$this->component;
-    
+
     $table = $c->select_many ? "mchoice_response" : "choice_response";
-    
+
     foreach(array_keys($this->questions) as $i)
     {
       if ($c->select_many)
@@ -723,64 +884,84 @@ class ChoiceWidget extends ComponentWidget
         VALUES ({$this->component->revision_id}, $completion_id, '$answer', '$other');
       ", $wbes, __FILE__, __LINE__);
     }
-  }  
-  
+  }
+
   function showchoices($questionno, $tdparams = "")
   {
-  	$c = &$this->component;
-  	$name = $this->prefix . "_q" . $questionno;
-  	if ($c->select_many) $name .= "[]";
-  	
-  	if ($c->stacked) print("<td $tdparams>");
-  	if ($c->rows > 0)
-  	{
+    $c = &$this->component;
+    $name = $this->prefix . "_q" . $questionno;
+    if ($c->select_many) $name .= "[]";
+
+    if ($c->stacked && !$c->vertical) print("<td $tdparams>");
+    if ($c->rows > 0)
+    {
       print("<select name=$name" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
       foreach($this->choices as $i => $choice)
       {
         $selected = (!$c->select_many && $i === $this->answers[$questionno]) && ($c->select_many && is_array($this->answers) && in_array($i, $this->answers[$questionno])) ? " selected" : "";
         print("  <option value=$i$selected>$choice\n");
-      }  
+      }
       print("</select>\n");
-  	}
-  	else
-  	{
-      if ($c->stacked)
-        $sep = "</td>\n<td $tdparams>";
-      else if ($c->vertical)
+    }
+    else
+    {
+      if ($c->vertical)
         $sep = "<br>\n";
+      else if ($c->stacked)
+        $sep = "</td>\n<td $tdparams>";
       else
-        $sep = "\n";    
-      
+        $sep = "\n";
+
       $first = true;
       foreach($this->choices as $i => $choice)
       {
         if ($first) $first = false; else print($sep);
-        
+
         $id = $this->prefix . '_q' . $questionno . '_' . $i;
-        
+
         if ($c->select_many)
         {
-        	$checked = in_array($i, $this->answers[$questionno]) ? " checked" : "";
-        	print("<input type=checkbox name=$name value=$i id=$id$checked>");
-        }	
+          $checked = in_array($i, $this->answers[$questionno]) ? " checked" : "";
+          print("<input type=checkbox name=$name value=$i id=$id$checked>");
+        }
         else
         {
-        	$checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
-        	print("<input type=radio name=$name value=$i id=$id$checked>");
+          $checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
+          print("<input type=radio name=$name value=$i id=$id$checked>");
         }
-       	
-        if (!$c->stacked)
+
+        if (!$c->stacked || $c->vertical)
           print(" <label for=$id>$choice</label>");
-        
+
         if ($i == $this->other)
         {
           print(" <input type=textbox size=20 name=$id value=\"" . htmlspecialchars($this->others[$questionno]) . "\">");
-        } 
-      }  
+        }
+      }
     }
-    if ($c->stacked) print("</td>\n");
+    if ($c->stacked && !$c->vertical) print("</td>\n");
   }
-  
+
+  function print_number($i)
+  {
+    if($this->component->numbering_scheme == "arabic")
+      print(($i+1) . ".  ");
+    else if($this->component->numbering_scheme == "alpha")
+    {
+      $numLetters = $i / 26;
+      $letter = $i % 26;
+
+      $letters = "abcdefghijklmnopqrstuvwxyz";
+
+      for($z = 0; $z <= $numLetters; $z++)
+          {print(substr($letters, $letter, 1));}
+
+      print(".  ");
+    }
+    else if($this->component->numbering_scheme == "roman")
+      print(Numbers_Roman::toRoman($i+1) . ".  ");
+  }
+
   function display($hidden = false, $showerrors = false)
   {
     global $server_media;
@@ -797,17 +978,20 @@ class ChoiceWidget extends ComponentWidget
       }
 
       foreach($this->others as $i => $v)
-      {
         $this->printattribute("q{$i}_{$this->other}", $v);
-      }
       return;
     }
 
     $c = &$this->component;
     $n = count($this->choices);
-    if ($c->stacked)
+
+    //added to display intro text. [tyler]
+    ?><h3><?= $c->intro_text; ?></h3><?
+
+    if ($c->stacked && !$c->vertical)
     {
-?>    	
+?>
+
 <table bordercolor=black cellspacing=0 cellpadding=3 border=0 RULES="groups" FRAME=box STYLE="border: none">
 <? if ($this->legend) { ?>
 <thead>
@@ -824,7 +1008,7 @@ class ChoiceWidget extends ComponentWidget
 <? } else { ?>
 <? foreach($this->choices as $choice) { ?>
   <td bgcolor=black background="<?=$server_media?>/0x000000.gif" align=center><font color=white><STRONG><?=$choice?></STRONG></font></td>
-<? } } ?>  
+<? } } ?>
 </tr>
 <?
       $row = true;
@@ -832,23 +1016,49 @@ class ChoiceWidget extends ComponentWidget
       {
         $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $server_media . '/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $server_media . '/0xEEEEEE.gif"';
         if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
-        print("<tr>\n<td $color>$text</td>\n");
+        print("<tr>\n<td $color>");
+
+        //added support for numbering. [tyler]
+        $this->print_number($i);
+
+        print($text . "</td>\n");
         $this->showchoices($i, "$color align=center");
         print("</tr>");
       }
       print("\n</tbody>\n</table>\n");
-    } // if ($c->stacked)
+    } // if ($c->stacked && !$c->vertical)	
+    else if($c->stacked && $c->vertical) // another addition [tyler]
+    {
+      if ($this->legend) print("<p><strong>" . $this->legend . "</strong></p>\n");
+      print("<table border=1 cellspacing=3 cellpadding=3 width=100%>");
+      foreach ($this->questions as $i => $text)
+      {
+        print("<tr>");
+        print("<td valign=top>");
+
+        //added support for numbering. [tyler]
+        $this->print_number($i);
+
+        print($text . "</td>\n<td>");
+        $this->showchoices($i);
+        print("</td>\n");
+        print("</tr>");
+      }
+      print("</table>");
+    }
     else
     {
       if ($this->legend) print("<p><strong>" . $this->legend . "</strong></p>\n");
       foreach ($this->questions as $i => $text)
       {
+        //added support for numbering. [tyler]
+        $this->print_number($i);
         if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
         print("$text<br>\n");
         $this->showchoices($i);
         print("<br><br>\n");
       }
-    }    
+    }
   }
 }
 

@@ -249,6 +249,10 @@ class SurveyEditor extends FormWidget
 rearrange survey components by moving your mouse over the blue orbs at the left
 and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
+
+<HR NOSHADE WIDTH="400" SIZE="5">
+
+
 <?            
             print("<table border=0 cellpadding=0 cellspacing=0>\n");
             print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id={$this->prefix}_insertmarker name={$this->prefix}_insertmarker>\n");
@@ -259,7 +263,12 @@ by clicking above and below existing components.</p>
 <?
               if ($i >= $ncomponents) break;
               $component = &$this->survey->components[$i];
+
+
+
               $w = $component->getwidget("{$this->prefix}_main_qwidget_$i", $this->form, $this->formmethod);
+
+
               $w->loadvalues();
 ?>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
@@ -625,7 +634,7 @@ by clicking above and below existing components.</p>
 
   function SurveyEditor_Menu_timeout()
   {
-    window.setTimeout("window.SurveyEditor_menu.hide()",100);
+    window.setTimeout("window.SurveyEditor_menu.hide()",2000);
   }
 
   function SurveyEditor_Menu_show(activenode,actionobject)
@@ -634,6 +643,19 @@ by clicking above and below existing components.</p>
     this.actionobject = actionobject;
 <? if (!$SurveyEditor_ns4) { ?>
     var offset = getoffset(activenode);
+
+    if(window.event && window.event.clientX && navigator.userAgent.indexOf("mac") != -1)
+	{
+	xDiff = Math.abs(window.event.clientX + window.screenLeft - offset.x);
+	yDiff = Math.abs(window.event.clientY + window.screenTop - offset.y);
+
+	if(xDiff > 5)
+	    {offset.x = window.event.clientX;}
+    
+	if(yDiff > 5)
+	    {offset.y = window.event.clientY;}
+	}
+
     this.style.left = (offset.x + 9) + "px";
     this.style.top  = (offset.y + 9) + "px";
     this.style.visibility = "visible";

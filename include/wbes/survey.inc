@@ -4,7 +4,7 @@ $wbes = false;
 function wbes_connect()
 {
   global $wbes;
-  if (!$wbes) $wbes = server_pginit("russwbes");
+  if (!$wbes) $wbes = server_pginit("wbes");
 }
 
 class Survey
