@@ -64,8 +64,8 @@ class ProfessorInfo extends FormWidget
 
     if (!$this->professorid || ($this->editor->action->action == ProfessorEditor_cancel || $this->editor->action->action == ProfessorEditor_save))
     {
-      wces_FindClasses($this->db,"cc");
-      db_exec("REPLACE INTO cc(classid) SELECT classid FROM AnswerSets GROUP BY classid",$this->db,__FILE__,__LINE__);
+      wces_Findclasses($this->db,"cc");
+      db_exec("REPLACE INTO cc(classid) SELECT classid FROM answersets GROUP BY classid",$this->db,__FILE__,__LINE__);
       $result = db_exec("
         SELECT p.professorid,
         SUBSTRING_INDEX(p.name,' ',-1) AS last,
@@ -79,10 +79,10 @@ class ProfessorInfo extends FormWidget
         IF(LENGTH(p.profile) > 0, 'yes', 'no') AS profile,
         IF(LENGTH(p.education) > 0, 'yes', 'no') AS education
         FROM cc
-        INNER JOIN Classes AS cl USING (classid)
-        INNER JOIN Professors AS p USING (professorid)
-        LEFT JOIN Users AS u USING (userid)
-        LEFT JOIN Departments AS d ON d.departmentid = p.departmentid
+        INNER JOIN classes AS cl USING (classid)
+        INNER JOIN professors AS p USING (professorid)
+        LEFT JOIN users AS u USING (userid)
+        LEFT JOIN departments AS d ON d.departmentid = p.departmentid
         GROUP BY p.professorid
         ORDER BY last, first
       ",$this->db,__FILE__,__LINE__);
@@ -183,7 +183,7 @@ class ProfessorEditor extends FormWidget
     }
     else
     {
-      $r = db_getrow($this->db,"Professors",Array("professorid" => $this->professorid),Array("name","url","email","education","statement","profile","userid"));
+      $r = db_getrow($this->db,"professors",Array("professorid" => $this->professorid),Array("name","url","email","education","statement","profile","userid"));
       $this->name->text = $r["name"];
       $this->email->text = $r["email"];
       $this->url->text = $r["url"];
@@ -192,7 +192,7 @@ class ProfessorEditor extends FormWidget
       $this->education->text = $r["education"];
       if ($this->isadmin && $r["userid"])
       {
-        $cunix = db_getvalue($this->db,"Users",Array("userid" => $r["userid"]),"cunix");
+        $cunix = db_getvalue($this->db,"users",Array("userid" => $r["userid"]),"cunix");
         if ($cunix) $this->cunix->text = $cunix;
       }    
     }  
@@ -216,14 +216,14 @@ class ProfessorEditor extends FormWidget
       {
         if ($this->cunix->text)
         {
-          $save["userid"] = db_replace($this->db,"Users",array("cunix" => $this->cunix->text),array("isprofessor" => "true"),"userid");
-          db_updatevalues($this->db,"Professors", array("userid" => $save["userid"]),array("userid" => false));
+          $save["userid"] = db_replace($this->db,"users",array("cunix" => $this->cunix->text),array("isprofessor" => "true"),"userid");
+          db_updatevalues($this->db,"professors", array("userid" => $save["userid"]),array("userid" => false));
         }  
         else
           $save["userid"] = false;
       }
 
-      db_updatevalues($this->db, "Professors", array("professorid" => $this->professorid), $save);
+      db_updatevalues($this->db, "professors", array("professorid" => $this->professorid), $save);
       
       print("<p><strong>This data was saved:</strong></p>");
       print("<p><pre>");
@@ -253,3 +253,9 @@ class ProfessorEditor extends FormWidget
 }
 
 %>
+
+
+
+
+
+

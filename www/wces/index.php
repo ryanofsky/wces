@@ -25,7 +25,7 @@ page_top("WCES Mission");
       <p><b>Students. </b>Choose "Complete a survey" under the students section at the left
       to evaluate your classes for this semester. Choose "View Survey Results" to see the results
       of past surveys and to learn more about Columbia's classes and professors.</p>
-      <p><b>Professors. </b>Choose "Home" under the professors section at the left to log in
+      <p><b>professors. </b>Choose "Home" under the professors section at the left to log in
       to wces. Once you have logged in you will be able to add custom questions to upcoming surveys
       and see results of already completed ones.</p>
       </td>
@@ -34,3 +34,5 @@ page_top("WCES Mission");
 <%
 page_bottom();
 %>
+
+

@@ -46,7 +46,7 @@ oracle_top("SEAS Oracle Homepage - Background","background.gif");
       <P></P><B><A name=included><I>What’s included this year?</I></A></B> 
       <BR>1. More numbers.<BR>
       <UL>
-        <LI>Professors 
+        <LI>professors 
         <UL>
           <LI>Approachability 
           <LI>Classroom Delivery 
@@ -97,7 +97,7 @@ oracle_top("SEAS Oracle Homepage - Background","background.gif");
       absolutely to heart; no system is perfect after all.</P>And excerpt from 
       last year’s prologue to further the point: <I>
       <P align=left>"Although the intended purpose of evaluations is to improve 
-      the quality of education, their actual value is debatable. Professors who 
+      the quality of education, their actual value is debatable. professors who 
       grade easier tend to receive higher ratings, however, this observation 
       does not necessarily reflec t upon the true quality of teaching. Student 
       evaluations can even have a negative impact on education. There have been 
@@ -147,7 +147,7 @@ oracle_top("SEAS Oracle Homepage - Background","background.gif");
       name=cinformation><I>Where did you get the course information?</I></A></B> 
 
       <P align=left>Course descriptions were pulled from the web and the 
-      bulleting. Professors were also allowed to talk about their own courses in 
+      bulleting. professors were also allowed to talk about their own courses in 
       their own words. We also tracked down as many course syllabi and homepages 
       as possible by asking professors and looking through the web. Although 
       course homepages and syllabi may change every year, it still does give the 
@@ -164,3 +164,5 @@ oracle_top("SEAS Oracle Homepage - Background","background.gif");
 <%
 oracle_bottom();
 %>
+
+

@@ -144,26 +144,26 @@ function report_makecriteria(&$query,&$criteria)
   if ($criteria["questionperiods"])
   {
     $query->addwhere("qp.questionperiodid IN " . db_set($criteria["questionperiods"]));
-    $query->addjoin("QuestionPeriods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
+    $query->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
   }; 
   
   if ($criteria["departments"])
   {
     $query->addwhere("d.departmentid IN " . db_set($criteria["departments"]));
-    $query->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-    $query->addjoin("Departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");    
+    $query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+    $query->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");    
   };
   
   if ($criteria["professors"])
   {
     $query->addwhere("p.professorid IN " . db_set($criteria["professors"]));
-    $query->addjoin("Professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+    $query->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
   };
   
   if ($criteria["courses"])
   {
     $query->addwhere("c.courseid IN " . db_set($criteria["courses"]));
-    $query->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+    $query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
   }; 
   
   if ($criteria["classes"])
@@ -189,10 +189,10 @@ function report_makequery(
   
   if (!$main) $main = new db_SelectMonster();
   
-  $main->settable("AnswerSets AS a");
+  $main->settable("answersets AS a");
   $main->addcolumn("SUM(a.responses) AS responses, SUM(cl.students) AS students, qs.displayname as qsname");
-  $main->addjoin("QuestionSets AS qs",db_SelectMonster_inner,"qs.questionsetid","a.questionsetid");
-  $main->addjoin("Classes AS cl",db_SelectMonster_inner,"cl.classid","a.classid");
+  $main->addjoin("questionsets AS qs",db_SelectMonster_inner,"qs.questionsetid","a.questionsetid");
+  $main->addjoin("classes AS cl",db_SelectMonster_inner,"cl.classid","a.classid");
   $main->addgroup("qs.questionsetid");
 
   if (!$options["custom"])
@@ -205,38 +205,38 @@ function report_makequery(
   if($groups["classes"])
   {
     $main->addcolumn("CONCAT('<a href=\"${server_wcespath}students/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
-    $main->addjoin("Courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
-    $main->addjoin("Subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
+    $main->addjoin("courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
+    $main->addjoin("subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
     $main->addgroup("cl.classid");
   }; 
   
   if($groups["courses"])
   {
     $main->addcolumn("CONCAT(s.code, c.code, ' <i>', c.name, '</i>') AS coursename");
-    $main->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-    $main->addjoin("Subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
+    $main->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+    $main->addjoin("subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
     $main->addgroup("c.courseid");
   };
   
   if($groups["professors"])
   {
     $main->addcolumn("CONCAT('<a href=\"${server_wcespath}students/profinfo.php?professorid=', p.professorid, '\">', p.name, '</a>') AS professorname");
-    $main->addjoin("Professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+    $main->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
     $main->addgroup("p.professorid");
   };
 
   if($groups["departments"])
   {
     $main->addcolumn("CONCAT(d.name, ' (', d.code, ')') AS departmentname");
-    $main->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-    $main->addjoin("Departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");    
+    $main->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+    $main->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");    
     $main->addgroup("d.departmentid");
   };
   
   if ($groups["questionperiods"])
   {
     $main->addcolumn("CONCAT(qp.semester, ' ',qp.year, ' ', qp.description) AS qpname");
-    $main->addjoin("QuestionPeriods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
+    $main->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
     $main->addgroup("a.questionperiodid");
   };
   
@@ -256,23 +256,23 @@ function report_makequery(
     switch($item)
     {
       case "questionperiods":
-        $main->addjoin("QuestionPeriods AS qp",db_SelectMonster_left,"qp.questionperiodid","a.questionperiodid");
+        $main->addjoin("questionperiods AS qp",db_SelectMonster_left,"qp.questionperiodid","a.questionperiodid");
         $main->addordering("qp.year",false,true);
         $main->addordering("qp.semester",false,true);
         $main->addordering("qp.questionperiodid",false,true);
       break;
       case "departments":
-        $main->addjoin("Courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
-        $main->addjoin("Departments AS d",db_SelectMonster_left,"d.departmentid","c.departmentid");    
+        $main->addjoin("courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
+        $main->addjoin("departments AS d",db_SelectMonster_left,"d.departmentid","c.departmentid");    
         $main->addordering("d.code",false,true);
       break;
       case "professors":
-        $main->addjoin("Professors AS p",db_SelectMonster_left,"p.professorid","cl.professorid");
+        $main->addjoin("professors AS p",db_SelectMonster_left,"p.professorid","cl.professorid");
         $main->addordering("p.name",false,true);
       break;
       case "courses":
-        $main->addjoin("Courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
-        $main->addjoin("Subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
+        $main->addjoin("courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
+        $main->addjoin("subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
         $main->addordering("s.code",false,true);
         $main->addordering("c.code",false,true);
       break;
@@ -284,16 +284,16 @@ function report_makequery(
 
   if ($options["listclasses"] && !$groups["classes"])
   {
-    $main->addjoin("Courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
-    $main->addjoin("Subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
+    $main->addjoin("courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
+    $main->addjoin("subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
   }
   
   if ($options["textresponses"])
   {  
-    $main->addjoin("Professors AS p",db_SelectMonster_left,"p.professorid","cl.professorid");
-    $main->addjoin("Courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
-    $main->addjoin("Subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid"); 
-    $main->addjoin("QuestionPeriods AS qp",db_SelectMonster_left,"qp.questionperiodid","a.questionperiodid");
+    $main->addjoin("professors AS p",db_SelectMonster_left,"p.professorid","cl.professorid");
+    $main->addjoin("courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
+    $main->addjoin("subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid"); 
+    $main->addjoin("questionperiods AS qp",db_SelectMonster_left,"qp.questionperiodid","a.questionperiodid");
   }  
 
   if ($options["listclasses"] && !$groups["classes"])
@@ -835,9 +835,9 @@ class Report extends FormWidget
       $profs = $list = $textresponses = false;
       
       $main = new db_SelectMonster();
-      $main->addjoin("QuestionPeriods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
-      $main->addjoin("Professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
-      $main->addjoin("Users AS u",db_SelectMonster_left,"u.userid","p.userid");
+      $main->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
+      $main->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+      $main->addjoin("users AS u",db_SelectMonster_left,"u.userid","p.userid");
       report_makequery($criteria, $groups, $sqloptions, $sort, $main, $list, $textresponses);
 
       $profs = new db_SelectMonster();
@@ -894,12 +894,12 @@ class Report extends FormWidget
     else
     {
       print("<h3>Email Report</h3>\n");
-      print("<h4>Professors Included</h4>\n");
+      print("<h4>professors Included</h4>\n");
       $q = $this->wizard->query;
       $q->addcolumn("p.professorid, p.name AS pname, IFNULL(p.email,u.email) AS email, COUNT(DISTINCT cl.classid, qp.questionperiodid) AS pages");
-      $q->addjoin("QuestionPeriods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
-      $q->addjoin("Professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
-      $q->addjoin("Users AS u",db_SelectMonster_left,"u.userid","p.userid");
+      $q->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
+      $q->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+      $q->addjoin("users AS u",db_SelectMonster_left,"u.userid","p.userid");
       $q->addgroup("p.professorid");
       $q->execute($db);
       print("<ul>\n");
@@ -1042,7 +1042,7 @@ class ReportWizard extends Wizard
     if (!is_array($q) || !(count($q) > 0)) 
     {
       if (!$db) $db = wces_connect();
-      $q = array(mysql_result(mysql_query("SELECT questionperiodid FROM QuestionPeriods ORDER BY year DESC, semester DESC, questionperiodid DESC LIMIT 1", $db),0));
+      $q = array(mysql_result(mysql_query("SELECT questionperiodid FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC LIMIT 1", $db),0));
     }
     else if (in_array("all",$q)) $q = false;
     
@@ -1064,8 +1064,8 @@ class ReportWizard extends Wizard
     //////////////////////////// SELECTMONSTER SETUP /////////////////////////////////////
     
     $this->query = new db_SelectMonster();
-    $this->query->settable("AnswerSets AS a");
-    $this->query->addjoin("Classes AS cl",db_SelectMonster_inner,"cl.classid","a.classid");
+    $this->query->settable("answersets AS a");
+    $this->query->addjoin("classes AS cl",db_SelectMonster_inner,"cl.classid","a.classid");
 
     $c = $this->criteria;
     if ($this->showstep == ReportWizard_qperiods) $c["questionperiods"] = false;
@@ -1107,7 +1107,7 @@ class ReportWizard extends Wizard
 <p>For web reports only, choose from these options:</p>
 <p>
 <% $this->includetext->display(); %> <% $this->includetext->displaylabel("Include Text Responses"); %><br>
-<% $this->includecustom->display(); %> <% $this->includecustom->displaylabel("Include Professors' Custom Questions"); %><br>
+<% $this->includecustom->display(); %> <% $this->includecustom->displaylabel("Include professors' Custom Questions"); %><br>
 <% $this->includepies->display(); %> <% $this->includepies->displaylabel("Include Pie Graphs in Usage Statistics"); %><br>
 <% $this->printable->display(); %> <% $this->printable->displaylabel("Produce a printable report"); %>
 </p>
@@ -1121,7 +1121,7 @@ class ReportWizard extends Wizard
         else
         {
           if (!$db) $db = wces_connect();
-          $result = mysql_query("SELECT questionperiodid, year, semester, description FROM QuestionPeriods ORDER BY year DESC, semester DESC, questionperiodid DESC",$db);
+          $result = mysql_query("SELECT questionperiodid, year, semester, description FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC",$db);
           $criteria = $this->criteria["questionperiods"];
           if (!$criteria) $criteria = array("all");
           $hash = array();
@@ -1148,8 +1148,8 @@ class ReportWizard extends Wizard
         {
           if (!$db) $db = wces_connect();
           $this->query->addcolumn("d.departmentid, d.name, d.code");
-          $this->query->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-          $this->query->addjoin("Departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");
+          $this->query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+          $this->query->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");
           $this->query->addgroup("d.departmentid");
           $this->query->addordering("d.code");
           $this->query->execute($db);
@@ -1179,8 +1179,8 @@ class ReportWizard extends Wizard
         {
           if (!$db) $db = wces_connect();
           $this->query->addcolumn("c.courseid, concat(s.code, c.code, ' ', IFNULL(c.name,'')) AS coursename");
-          $this->query->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-          $this->query->addjoin("Subjects AS s",db_SelectMonster_inner,"s.subjectid","c.subjectid");
+          $this->query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+          $this->query->addjoin("subjects AS s",db_SelectMonster_inner,"s.subjectid","c.subjectid");
           $this->query->addgroup("c.courseid");
           $this->query->addordering("coursename");
           $this->query->execute($db);
@@ -1210,7 +1210,7 @@ class ReportWizard extends Wizard
         {
           if (!$db) $db = wces_connect();
           $this->query->addcolumn("p.professorid, p.name");
-          $this->query->addjoin("Professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+          $this->query->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
           $this->query->addgroup("p.professorid");
           $this->query->execute($db);
           $criteria = $this->criteria["professors"];
@@ -1254,12 +1254,12 @@ class ReportWizard extends Wizard
           else
           {
 %>
-<p><font size="-1">Check the survey properties below to determine how results are to be aggregated. Surveys that have the checked properties in common will have their scores added up and averaged together. For example, checking 'Departments' and 'Question Periods' will aggregate all surveys the come from the same department AND question period. To prevent any aggregation, select 'Classes' and 'Question Periods.' To aggregate all surveys together, leave all properties unchecked.</font></p>
+<p><font size="-1">Check the survey properties below to determine how results are to be aggregated. Surveys that have the checked properties in common will have their scores added up and averaged together. For example, checking 'departments' and 'Question Periods' will aggregate all surveys the come from the same department AND question period. To prevent any aggregation, select 'classes' and 'Question Periods.' To aggregate all surveys together, leave all properties unchecked.</font></p>
 <p>
-<% $this->groupclasses->display(); %> <% $this->groupclasses->displaylabel("Classes"); %><br>
-<% $this->groupcourses->display(); %> <% $this->groupcourses->displaylabel("Courses"); %><br>
-<% $this->groupprofessors->display(); %> <% $this->groupprofessors->displaylabel("Professors"); %><br>
-<% $this->groupdepartments->display(); %> <% $this->groupdepartments->displaylabel("Departments"); %><br>
+<% $this->groupclasses->display(); %> <% $this->groupclasses->displaylabel("classes"); %><br>
+<% $this->groupcourses->display(); %> <% $this->groupcourses->displaylabel("courses"); %><br>
+<% $this->groupprofessors->display(); %> <% $this->groupprofessors->displaylabel("professors"); %><br>
+<% $this->groupdepartments->display(); %> <% $this->groupdepartments->displaylabel("departments"); %><br>
 <% $this->groupquestionperiods->display(); %> <% $this->groupquestionperiods->displaylabel("Question Periods"); %><br>
 </p> 
 <%
@@ -1303,10 +1303,10 @@ class ReportWizard extends Wizard
       
       $first = true;
       $report .= "Group by: ";
-      if ($this->groupclasses->checked) { if ($first) $first = false; else $report.=", "; $report.="Classes"; }
-      if ($this->groupcourses->checked)  { if ($first) $first = false; else $report.=", "; $report.="Courses"; }
-      if ($this->groupprofessors->checked)  { if ($first) $first = false; else $report.=", "; $report.="Professors"; }
-      if ($this->groupdepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="Departments"; }
+      if ($this->groupclasses->checked) { if ($first) $first = false; else $report.=", "; $report.="classes"; }
+      if ($this->groupcourses->checked)  { if ($first) $first = false; else $report.=", "; $report.="courses"; }
+      if ($this->groupprofessors->checked)  { if ($first) $first = false; else $report.=", "; $report.="professors"; }
+      if ($this->groupdepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="departments"; }
       if ($this->groupquestionperiods->checked) { if ($first) $first = false; else $report.=", "; $report.="Question Periods"; }
       if ($first) $report .= "None";
       $report .= "\n";       
@@ -1327,7 +1327,7 @@ class ReportWizard extends Wizard
     if ($list)
     {
       $group = db_set($list);
-      $y = mysql_query("SELECT questionperiodid, year, semester, description FROM QuestionPeriods WHERE questionperiodid IN $group ORDER BY year DESC, semester DESC, questionperiodid DESC",$db);
+      $y = mysql_query("SELECT questionperiodid, year, semester, description FROM questionperiods WHERE questionperiodid IN $group ORDER BY year DESC, semester DESC, questionperiodid DESC",$db);
       while($row = mysql_fetch_array($y))
       {
         extract($row);
@@ -1341,8 +1341,8 @@ class ReportWizard extends Wizard
     if ($this->criteria["departments"])
     {
       $q->addcolumn("d.departmentid, d.name, d.code");
-      $q->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-      $q->addjoin("Departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");
+      $q->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+      $q->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");
       $q->addgroup("d.departmentid");
       $q->addordering("d.code");
       $q->execute($db);
@@ -1359,7 +1359,7 @@ class ReportWizard extends Wizard
     if ($this->criteria["professors"])
     {
       $q->addcolumn("p.professorid, p.name");
-      $q->addjoin("Professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+      $q->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
       $q->addgroup("p.professorid");
       $q->execute($db);
       while($q->advance())
@@ -1375,8 +1375,8 @@ class ReportWizard extends Wizard
     if ($this->criteria["courses"])
     {
       $q->addcolumn("c.courseid, concat(s.code, c.code, ' ', IFNULL(c.name,'')) AS coursename");
-      $q->addjoin("Courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-      $q->addjoin("Subjects AS s",db_SelectMonster_inner,"s.subjectid","c.subjectid");
+      $q->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
+      $q->addjoin("subjects AS s",db_SelectMonster_inner,"s.subjectid","c.subjectid");
       $q->addgroup("c.courseid");
       $q->addordering("coursename");
       $q->execute($db);
@@ -1399,3 +1399,13 @@ function pcmp($a, $b)
 } 
 
 %>
+
+
+
+
+
+
+
+
+
+

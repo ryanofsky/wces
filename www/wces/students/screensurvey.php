@@ -1,8 +1,11 @@
 <%
   require_once("wces/page.inc");
-  require_once("wces/login.inc");  require_once("wces/wces.inc");  
-  page_top("List Classes","0100");
-  $db = wces_connect();
+  require_once("wces/login.inc");
+  require_once("wces/wces.inc");
+  
+  page_top("List classes","0100");
+  
+$db = wces_connect();
 $userid = login_getuserid();
 
 function listclasses()
@@ -10,27 +13,40 @@ function listclasses()
   global $db, $userid, $server_wcespath;
 
   $y = mysql_query("CREATE TEMPORARY TABLE currentclasses (classid INTEGER NOT NULL, PRIMARY KEY(classid))",$db);
-  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.classid
+  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.classid
     WHERE g.linktype = 'classes' && cl.year = 2000 && cl.semester = 'fall'",$db);
-  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes as cl ON g.linkid = cl.courseid
+  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.courseid
     WHERE g.linktype = 'courses' && cl.year = 2000 && cl.semester = 'fall'",$db);
-  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Classes AS cl ON g.linkid = cl.professorid
+  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM groupings AS g INNER JOIN classes AS cl ON g.linkid = cl.professorid
     WHERE g.linktype = 'professors'  && cl.year = 2000 && cl.semester = 'fall'",$db);
-  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.subjectid INNER JOIN Classes as cl ON c.courseid = cl.courseid
+  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.subjectid INNER JOIN classes as cl ON c.courseid = cl.courseid
     WHERE g.linktype = 'subjects' && cl.year = 2000 && cl.semester = 'fall'",$db);
-  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM Groupings AS g INNER JOIN Courses AS c  ON g.linkid = c.departmentid INNER JOIN Classes as cl ON c.courseid = cl.courseid 
+  $y = mysql_query("REPLACE INTO currentclasses (classid) SELECT cl.classid FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.departmentid INNER JOIN classes as cl ON c.courseid = cl.courseid 
     WHERE g.linktype = 'departments' && cl.year = 2000 && cl.semester = 'fall'",$db);
 
   $classes = mysql_query(
   "SELECT e.surveyed, cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code AS scode 
-  FROM Enrollments AS e 
+  FROM enrollments AS e 
   INNER JOIN currentclasses AS cc ON e.classid = cc.classid
-  LEFT JOIN Classes AS cl ON cc.classid = cl.classid  LEFT JOIN Courses AS c ON cl.courseid = c.courseid  LEFT JOIN Subjects AS s ON c.subjectid = s.subjectid  WHERE e.userid = '$userid'  ORDER BY e.surveyed  LIMIT 50",$db);
-  print ("<p>Choose a class link from this list below.</p>");  print ("<UL>\n");  $found = false;  while ($class = mysql_fetch_array($classes))
+  LEFT JOIN classes AS cl ON cc.classid = cl.classid
+  LEFT JOIN courses AS c ON cl.courseid = c.courseid
+  LEFT JOIN subjects AS s ON c.subjectid = s.subjectid
+  WHERE e.userid = '$userid'
+  ORDER BY e.surveyed
+  LIMIT 50",$db);
+
+  print ("<p>Choose a class link from this list below.</p>");
+  print ("<UL>\n");
+  $found = false;
+  while ($class = mysql_fetch_array($classes))
   {
-    $found = true;    extract($class);
+    $found = true;
+    extract($class);
     if ($surveyed == "no")  
-      print ("  <LI><A HREF=\"screensurvey.php?classid=$classid\">" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</a></LI>\n");    else      print ("  <LI>" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>\n");      }
+      print ("  <LI><A HREF=\"screensurvey.php?classid=$classid\">" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</a></LI>\n");
+    else
+      print ("  <LI>" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>\n");    
+  }
   if (!$found) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, check our <a href=\"evaluations.php\">class evaluation listing</a> and email <a href=\"mailto:wces@columbia.edu\">wces@columbia.edu</a> so we can update our database with your information.</LI>");
   print ("</UL>");
   print("<p>Remember to <a href=\"${server_wcespath}login/logout.php\">log out</a> when you are done.</p>");
@@ -40,28 +56,44 @@ function getquestionsets($classid)
 {
   global $db, $userid, $db_debug;
 
-  if (!(db_getvalue($db,"Enrollments",Array("userid" => $userid, "classid" => $classid),"surveyed") === "no"))
+  if (!(db_getvalue($db,"enrollments",Array("userid" => $userid, "classid" => $classid),"surveyed") === "no"))
     return false;
 
-  $sql = "SELECT p.professorid, c.courseid, c.subjectid, c.departmentid FROM Classes as cl LEFT JOIN Professors as p USING (professorid) LEFT JOIN Courses as c ON cl.courseid = c.courseid WHERE cl.classid = '$classid'";  if ($db_debug) print ("$sql<br>");
+  $sql = "SELECT p.professorid, c.courseid, c.subjectid, c.departmentid FROM classes as cl LEFT JOIN professors as p USING (professorid) LEFT JOIN courses as c ON cl.courseid = c.courseid WHERE cl.classid = '$classid'";
+  if ($db_debug) print ("$sql<br>");
   
-  $y = mysql_query($sql,$db);  extract(mysql_fetch_array($y));  $qsetids =             db_getcolumn($db,"Groupings",Array("linkid" => $classid, "linktype" => "classes"), "questionsetid");
-  $qsetids = array_merge(db_getcolumn($db,"Groupings",Array("linkid" => $courseid, "linktype" => "courses"), "questionsetid")         ,$qsetids);    $qsetids = array_merge(db_getcolumn($db,"Groupings",Array("linkid" => $professorid, "linktype" => "professors"), "questionsetid")   ,$qsetids);
-  $qsetids = array_merge(db_getcolumn($db,"Groupings",Array("linkid" => $departmentid, "linktype" => "departments"), "questionsetid") ,$qsetids);
-  $qsetids = array_merge(db_getcolumn($db,"Groupings",Array("linkid" => $subjectid, "linktype" => "subjects"), "questionsetid")       ,$qsetids);  $qsetids = array_values(array_unique($qsetids));   if (is_array($qsetids) && count($qsetids) > 0)
-    return $qsetids;  else    return false;  
+  $y = mysql_query($sql,$db);
+  extract(mysql_fetch_array($y));
+
+  $qsetids =             db_getcolumn($db,"groupings",Array("linkid" => $classid, "linktype" => "classes"), "questionsetid");
+  $qsetids = array_merge(db_getcolumn($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses"), "questionsetid")         ,$qsetids);  
+  $qsetids = array_merge(db_getcolumn($db,"groupings",Array("linkid" => $professorid, "linktype" => "professors"), "questionsetid")   ,$qsetids);
+  $qsetids = array_merge(db_getcolumn($db,"groupings",Array("linkid" => $departmentid, "linktype" => "departments"), "questionsetid") ,$qsetids);
+  $qsetids = array_merge(db_getcolumn($db,"groupings",Array("linkid" => $subjectid, "linktype" => "subjects"), "questionsetid")       ,$qsetids);
+
+  $qsetids = array_values(array_unique($qsetids));
+ 
+  if (is_array($qsetids) && count($qsetids) > 0)
+    return $qsetids;
+  else
+    return false;  
 };
-function showqset($questionsetid,$badfields)
+
+function showqset($questionsetid,$badfields)
 {
   global $db,$HTTP_POST_VARS;
-  $questionset = db_getrow($db,"QuestionSets",Array("questionsetid" => $questionsetid), 0);  extract($questionset);
+  $questionset = db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid), 0);
+  extract($questionset);
   print("<h4>$displayname</h4>\n");
   for($i = 1; $i <= 10; ++$i)
   {
-    $fieldname = "Q" . $questionsetid . "MC" . $i;    $index = "MC" . $i;
-    $text = $questionset[$index];    if ($badfields[$fieldname]) $text = "<font color=red>$text</font>";
+    $fieldname = "Q" . $questionsetid . "MC" . $i;
+    $index = "MC" . $i;
+    $text = $questionset[$index];
+    if ($badfields[$fieldname]) $text = "<font color=red>$text</font>";
    
-        if ($text)
+    
+    if ($text)
     {
 %>
 <p><b><%=$text%></b></p>
@@ -77,7 +109,9 @@ function getquestionsets($classid)
   };  
   for($i = 1; $i <= 2; ++$i)
   {
-    $fieldname = "Q" . $questionsetid . "FR" . $i;        $index = "FR" . $i;
+    $fieldname = "Q" . $questionsetid . "FR" . $i;
+    
+    $index = "FR" . $i;
     $text = $questionset[$index];
     if ($text)
     {
@@ -102,24 +136,36 @@ function showquestions($qsets,$badfields)
   };
   print ('<center><input type=submit name=submit value="Submit Responses">');
   print (' <input type=reset name=reset value="Reset"></center>');
-  print ('</form>');  }
+  print ('</form>');  
+}
 
-function validatequestions($qsets){
-  global $db, $HTTP_POST_VARS;  $badfields = Array();
+function validatequestions($qsets)
+{
+  global $db, $HTTP_POST_VARS;
+  $badfields = Array();
   foreach($qsets as $questionsetid)
   {
-    $questionset = db_getrow($db,"QuestionSets",Array("questionsetid" => $questionsetid), 0);    extract($questionset);
+    $questionset = db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid), 0);
+    extract($questionset);
     for($i = 1; $i <= 10; ++$i)
     {
-      $fieldname = "Q" . $questionsetid . "MC" . $i;      if ($questionset["MC" . $i])
+      $fieldname = "Q" . $questionsetid . "MC" . $i;
+      if ($questionset["MC" . $i])
       {
         $result = $HTTP_POST_VARS[$fieldname];
-        if (!($result == "a" || $result == "b" || $result == "c" || $result == "d" || $result == "e"))        {
+        if (!($result == "a" || $result == "b" || $result == "c" || $result == "d" || $result == "e"))
+        {
           $badfields[$fieldname] = 1;
-        }        };    };  };  
+        }  
+      };
+    };
+  };  
   return count($badfields) == 0 ? 0 : $badfields;
 }
-function savequestions($qsets){  return false;
+
+function savequestions($qsets)
+{
+  return false;
 };
 
 if ($classid)
@@ -161,3 +207,11 @@ else
 
   page_bottom();
 %>
+
+
+
+
+
+
+
+

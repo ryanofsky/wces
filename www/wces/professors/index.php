@@ -3,10 +3,10 @@
   login_protect(login_professor);
   $profid = login_getprofid();
   
-  page_top("Professors Page","0010");
+  page_top("professors Page","0010");
 
   $db = wces_connect();
-  $profname = db_getvalue($db,"Professors",Array("professorid" => $profid),"name");
+  $profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
 %>
 <h3><%=$profname%></h3>
 <p>Welcome to the professors page.</p>
@@ -20,3 +20,5 @@
 <%
   page_bottom();
 %>
+
+

@@ -35,7 +35,7 @@ class QuestionSetEditor extends FormWidget
   {
     $this->questionsetid = $questionsetid;
     if ($questionsetid)
-      $this->questionset = unserialize(db_getvalue($db,"NewQuestionSets", Array("questionsetid" => $questionsetid), "data"));
+      $this->questionset = unserialize(db_getvalue($db,"Newquestionsets", Array("questionsetid" => $questionsetid), "data"));
     if (get_class($this->questionset) != "questionset")
     {
       $this->questionset = unserialize($this->loadattribute("questionset"));
@@ -222,3 +222,5 @@ class QuestionSetEditor extends FormWidget
   }        
 }
 %>
+
+

@@ -55,17 +55,17 @@ function importregcsv($filename)
     else
     {
       $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "" : $data[CLASSNAME];
-      $schoolid     = db_replace($db, "Schools",     Array("name" => $data[SCHOOL]),0,"schoolid");
-      $subjectid    = db_replace($db, "Subjects",    Array("code" => $data[SUBJECTCODE]), Array("name" => $data[SUBJECT]),"subjectid");
-      $divisionid   = db_replace($db, "Divisions",   Array("name" => $data[DIVISION]), array_clean(Array("code" => $data[DIVISIONCODE], "shortcode" => $data[DIVISIONSCODE])), "divisionid");
-      $departmentid = db_replace($db, "Departments", Array("code" => $data[DEPARTMENTCODE]), array_clean(Array("name" => $data[DEPARTMENT])), "departmentid");
-      $courseid     = db_replace($db, "Courses",     Array("subjectid" => $subjectid, "code" => $data[COURSECODE]), Array("departmentid" => $departmentid, "schoolid" => $schoolid, "name" => $data[COURSE]),"courseid");
-      $classid      = db_replace($db, "Classes",     Array("courseid" => $courseid, "section" => $data[CLASSSECTION], "divisioncode" => $data[DIVISIONSCODE], "year" => $data[YEAR], "semester" => $data[SEMESTER]), Array("name" => $cname, "students" => $data[STUDENTS], "time" => $data[TIME], "location" => $data[LOCATION], "callnumber" => $data[CALLNUMBER], "departmentid" => $departmentid, "divisionid" => $divisionid), "classid");
+      $schoolid     = db_replace($db, "schools",     Array("name" => $data[SCHOOL]),0,"schoolid");
+      $subjectid    = db_replace($db, "subjects",    Array("code" => $data[SUBJECTCODE]), Array("name" => $data[SUBJECT]),"subjectid");
+      $divisionid   = db_replace($db, "divisions",   Array("name" => $data[DIVISION]), array_clean(Array("code" => $data[DIVISIONCODE], "shortcode" => $data[DIVISIONSCODE])), "divisionid");
+      $departmentid = db_replace($db, "departments", Array("code" => $data[DEPARTMENTCODE]), array_clean(Array("name" => $data[DEPARTMENT])), "departmentid");
+      $courseid     = db_replace($db, "courses",     Array("subjectid" => $subjectid, "code" => $data[COURSECODE]), Array("departmentid" => $departmentid, "schoolid" => $schoolid, "name" => $data[COURSE]),"courseid");
+      $classid      = db_replace($db, "classes",     Array("courseid" => $courseid, "section" => $data[CLASSSECTION], "divisioncode" => $data[DIVISIONSCODE], "year" => $data[YEAR], "semester" => $data[SEMESTER]), Array("name" => $cname, "students" => $data[STUDENTS], "time" => $data[TIME], "location" => $data[LOCATION], "callnumber" => $data[CALLNUMBER], "departmentid" => $departmentid, "divisionid" => $divisionid), "classid");
       prof_parserrname($data[INSTRUCTOR],$full,$email,$url);
       $pids = prof_findwithfull($db,$full);
       //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
       $pid = prof_merge($db, $pids,Array("name" => $full, "email" => $email, "url" => $url),Array("fullname" => $full, "source" => "regweb"));
-      db_updatevalues($db, "Classes", Array("classid" => $classid), Array("professorid" => $pid));
+      db_updatevalues($db, "classes", Array("classid" => $classid), Array("professorid" => $pid));
       taskwindow_cprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (classid = $classid, courseid = $courseid,professorid = $pid)<br>\n");
       if (!$data[COURSE]) taskwindow_cprint("<b>Warning:</b> Coursename not specified in row $row<br>\n");
       if (!$subjectid || !$classid || !$courseid) taskwindow_cprint("<b>Warning:</b> Insertion error in row $row<br>\n");
@@ -100,7 +100,7 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
     if (is_array($newdupedata)) $sources[$newdupedata["source"]] = $newdupedata;
     foreach($professorids as $professorid)
     {
-      $result = db_exec("SELECT source, first, middle, last, fullname, pid FROM ProfessorDupeData WHERE professorid = '$professorid' AND source IS NOT NULL GROUP BY source",$db,__FILE__,__LINE__);
+      $result = db_exec("SELECT source, first, middle, last, fullname, pid FROM professordupedata WHERE professorid = '$professorid' AND source IS NOT NULL GROUP BY source",$db,__FILE__,__LINE__);
       while($row = mysql_fetch_assoc($result))
       {
         $s = $row["source"];
@@ -118,9 +118,9 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
   {
     if (is_array($newprofessordata) && is_array($newdupedata) && $newprofessordata["name"])
     {
-      $professorid = db_addrow($db,"Professors",$newprofessordata);
+      $professorid = db_addrow($db,"professors",$newprofessordata);
       $newdupedata["professorid"] = $professorid;
-      db_addrow($db,"ProfessorDupeData",$newdupedata);
+      db_addrow($db,"professordupedata",$newdupedata);
       return $professorid;
     }
     else  
@@ -134,7 +134,7 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
   // then that entry's information is chosen so it will not be overwritten
   // otherwise the first professorid is chosen
   
-  $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE source = 'oracle' AND $profcondition GROUP BY professorid",$db,__FILE__,__LINE__);
+  $result = db_exec("SELECT professorid FROM professordupedata WHERE source = 'oracle' AND $profcondition GROUP BY professorid",$db,__FILE__,__LINE__);
   $rows = mysql_num_rows($result);
   if ($rows == 1)
   { 
@@ -146,20 +146,20 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
   mysql_free_result($result);  
   
   // get chosen row data 
-  $chosenrow = db_getrow($db,"Professors",Array("professorid" => $chosen),0);
+  $chosenrow = db_getrow($db,"professors",Array("professorid" => $chosen),0);
   $chosenchanged = false;
     
   // get the other rows, copy their data, clean up and delete
-  $result = db_exec("SELECT * FROM Professors as p WHERE $profcondition",$db,__FILE__,__LINE__);
+  $result = db_exec("SELECT * FROM professors as p WHERE $profcondition",$db,__FILE__,__LINE__);
   while ($professor = mysql_fetch_assoc($result))
     if ($professor["professorid"] != $chosen)
     {
       foreach($professor as $key => $value)
         if ($value && !$chosenrow[$key]) { $chosenrow[$key] = $value; $chosenchanged = true;  };
-      db_updatevalues($db,"Classes",           Array("professorid" => $professor["professorid"]), Array("professorid" => $chosen));
-      db_updatevalues($db,"ProfessorDupeData", Array("professorid" => $professor["professorid"]), Array("professorid" => $chosen));
-      db_updatevalues($db,"Groupings",         Array("linkid" => $professor['professorid'], "linktype" => "professors"), Array("linkid" => $chosen));
-      db_delete($db,"Professors", Array("professorid" => $professor["professorid"]));
+      db_updatevalues($db,"classes",           Array("professorid" => $professor["professorid"]), Array("professorid" => $chosen));
+      db_updatevalues($db,"professordupedata", Array("professorid" => $professor["professorid"]), Array("professorid" => $chosen));
+      db_updatevalues($db,"groupings",         Array("linkid" => $professor['professorid'], "linktype" => "professors"), Array("linkid" => $chosen));
+      db_delete($db,"professors", Array("professorid" => $professor["professorid"]));
     };    
   mysql_free_result($result);
 
@@ -171,16 +171,16 @@ function prof_merge($db,$professorids,$newprofessordata,$newdupedata,$forcemerge
   if ($chosenchanged)
   {
     if (!$chosenrow["userid"]) $chosenrow["userid"] = false;
-    db_updatevalues($db,"Professors",Array("professorid" => $chosen),$chosenrow);  
+    db_updatevalues($db,"professors",Array("professorid" => $chosen),$chosenrow);  
   }  
 
   // add newdupedata if it is actually new
   if (is_array($newdupedata))
   {
     $newdupedata["professorid"] = $chosen;
-    $result = db_select($db,"ProfessorDupeData",$newdupedata,0," LIMIT 1");
+    $result = db_select($db,"professordupedata",$newdupedata,0," LIMIT 1");
     if (mysql_num_rows($result) == 0)
-      db_addrow($db,"ProfessorDupeData",$newdupedata);
+      db_addrow($db,"professordupedata",$newdupedata);
     mysql_free_result($result);  
   }   
   
@@ -264,7 +264,7 @@ function prof_findwithfull($db, $name)
   
   if ($name)
   {
-    $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE fullname = '" . addslashes($name) . "' GROUP BY professorid",$db,__FILE__,__LINE__);
+    $result = db_exec("SELECT professorid FROM professordupedata WHERE fullname = '" . addslashes($name) . "' GROUP BY professorid",$db,__FILE__,__LINE__);
     while($row = mysql_fetch_assoc($result))
       array_push($professorids,$row['professorid']);
   }    
@@ -285,7 +285,7 @@ function prof_findwithfirstlast($db, $first, $last)
   $pids = Array();
   if ($last)
   {
-    $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE first = '" . addslashes($first) . "' AND last = '" . addslashes($last) . "' GROUP by professorid",$db,__FILE__,__LINE__);
+    $result = db_exec("SELECT professorid FROM professordupedata WHERE first = '" . addslashes($first) . "' AND last = '" . addslashes($last) . "' GROUP by professorid",$db,__FILE__,__LINE__);
     while($row = mysql_fetch_assoc($result))
       array_push($pids,$row['professorid']);
   }    
@@ -304,7 +304,7 @@ function prof_findwithfirstlast($db, $first, $last)
 // to be merged. It causes problems when the professor for a class changes
 function prof_findwithclassid($db, $classid)
 {
-  $pid = db_getvalue($db, "Classes", Array("classid" => $classid),"professorid");
+  $pid = db_getvalue($db, "classes", Array("classid" => $classid),"professorid");
   
   if ($wces_verbose)
   {
@@ -322,7 +322,7 @@ function prof_findwithpid($db, $pid)
   
   if (!$pid || $pid == "C000000000" || $pid == "C000000001") return array();
   
-  $result = db_exec("SELECT professorid FROM ProfessorDupeData WHERE pid = '" . addslashes($pid) . "' GROUP BY professorid",$db,__FILE__,__LINE__);
+  $result = db_exec("SELECT professorid FROM professordupedata WHERE pid = '" . addslashes($pid) . "' GROUP BY professorid",$db,__FILE__,__LINE__);
   $professorids = array();
   while($row = mysql_fetch_assoc($result))
     array_push($professorids,$row['professorid']);
@@ -427,7 +427,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
 
   if ($doclasses)
   {
-    taskwindow_cprint("Transferring Classes...<br>\n");
+    taskwindow_cprint("Transferring classes...<br>\n");
     mysql_select_db("seaseval",$db);
     $result = mysql_query("SELECT * FROM classinfo",$db);
     mysql_select_db("wces",$db);
@@ -442,7 +442,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
       $pids = prof_findwithfirstlast($db,$firstname,$lastname);
       //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
       $pid = prof_merge($db, $pids, Array("name" => $full), Array("first" => $firstname, "middle" => $middlei, "last" => $lastname, "fullname" => $full, "source" => "oldclasses"));
-      db_updatevalues($db,"Classes",Array("classid" => $classid),Array("students" => $row["classenrollment"], "professorid" => $pid));
+      db_updatevalues($db,"classes",Array("classid" => $classid),Array("students" => $row["classenrollment"], "professorid" => $pid));
       taskwindow_cprint(" - Added " . $row["classid"] . " as class #$classid with professor #$pid<br>\n");
       if ((++$i) % 10 == 1) taskwindow_flush();
     };
@@ -450,7 +450,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
   
   if ($doprofessors)
   {
-    taskwindow_cprint("Transferring Professors...<br>\n");
+    taskwindow_cprint("Transferring professors...<br>\n");
   
     mysql_select_db("seaseval",$db);
     $result = mysql_query("SELECT * FROM profinfo",$db);
@@ -465,7 +465,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
       $pid = prof_merge($db, $pids,
         Array(
           "name" => $full,
-          "departmentid" => db_getvalue($db,"Departments",Array("code" => $row["profdept"]),"departmentid"),
+          "departmentid" => db_getvalue($db,"departments",Array("code" => $row["profdept"]),"departmentid"),
           "education" => $row["profeducation"],
           "profile" => $row["profprofile"],
           "statement" => $row["profstatement"],
@@ -487,7 +487,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
   
   if ($docourses)
   {
-    taskwindow_cprint("Transferring Courses...<br>\n");
+    taskwindow_cprint("Transferring courses...<br>\n");
     mysql_select_db("seaseval",$db);
     $result = mysql_query("SELECT * FROM courseinfo",$db);
     mysql_select_db("wces",$db);
@@ -497,7 +497,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
       $update = Array();
       addelement($update,"name",$row["coursename"]);
       addelement($update,"information",$row["coursedesc"]);
-      db_updatevalues($db,"Courses",Array("courseid" => $id),$update);
+      db_updatevalues($db,"courses",Array("courseid" => $id),$update);
       taskwindow_cprint(" - " . $row["courseid"] . " as #$id<br>\n");
       if ((++$i) % 10 == 1) taskwindow_flush();
     };
@@ -519,10 +519,10 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
           mysql_select_db("wces",$db);
           
           $classid = class_update($db,$response["classid"]);
-          $classinfo = db_getrow($db,"Classes",Array("classid" => $classid),Array("year","semester"));
+          $classinfo = db_getrow($db,"classes",Array("classid" => $classid),Array("year","semester"));
           extract($classinfo);
 
-          $periodid = db_replace($db,"QuestionPeriods",Array
+          $periodid = db_replace($db,"questionperiods",Array
           (
             "description" => "SEASEVAL Imported Question Period",
             "year" => $year,
@@ -533,7 +533,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
 
           if ($generic)
           {
-            $genericid = db_replace($db,"QuestionSets",Array
+            $genericid = db_replace($db,"questionsets",Array
             (
               "displayname" => "General SEAS Questions",
               "MC1" => $generic["Q1Text"],
@@ -556,7 +556,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
           {
             if ($custom["evalQ1"] || $custom["evalQ2"] || $custom["evalQ3"] || $custom["evalQ4"] || $custom["evalQ5"] || $custom["evalQ6"] || $custom["evalQ7"])
             {
-              $customid = db_replace($db,"QuestionSets",Array
+              $customid = db_replace($db,"questionsets",Array
               (
                 "displayname" => "Custom Question Set",
                 "MC1" => $custom["evalQ1"],
@@ -574,7 +574,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
             $custom = 0;
           };
 
-          $genericaid = db_replace($db,"AnswerSets", Array("questionsetid" => $genericid,"classid" => $classid, "questionperiodid" => $periodid), Array(
+          $genericaid = db_replace($db,"answersets", Array("questionsetid" => $genericid,"classid" => $classid, "questionperiodid" => $periodid), Array(
             "responses" => $response["Q1A"] + $response["Q1B"] + $response["Q1C"] + $response["Q1D"] + $response["Q1E"],
             "MC1a" => $response["Q1A"], "MC1b" => $response["Q1B"], "MC1c" => $response["Q1C"], "MC1d" => $response["Q1D"], "MC1e" => $response["Q1E"],
             "MC2a" => $response["Q2A"], "MC2b" => $response["Q2B"], "MC2c" => $response["Q2C"], "MC2d" => $response["Q2D"], "MC2e" => $response["Q2E"],
@@ -591,7 +591,7 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
         
           if ($customid)
           {
-            $customaid = db_replace($db,"AnswerSets",Array("questionsetid" => $customid, "classid" => $classid, "questionperiodid" => $periodid), Array(
+            $customaid = db_replace($db,"answersets",Array("questionsetid" => $customid, "classid" => $classid, "questionperiodid" => $periodid), Array(
               "responses" => $response["Q11A"] + $response["Q11B"] + $response["Q11C"] + $response["Q11D"] + $response["Q11E"],
               "MC1a" => $response["Q11A"], "MC1b" => $response["Q11B"], "MC1c" => $response["Q11C"], "MC1d" => $response["Q11D"], "MC1e" => $response["Q11E"],
               "MC2a" => $response["Q12A"], "MC2b" => $response["Q12B"], "MC2c" => $response["Q12C"], "MC2d" => $response["Q12D"], "MC2e" => $response["Q12E"],
@@ -615,3 +615,16 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
 };
 
 %>
+
+
+
+
+
+
+
+
+
+
+
+
+

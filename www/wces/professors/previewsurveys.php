@@ -4,9 +4,9 @@
   login_protect(login_professor);
   $profid = login_getprofid();
 
-  page_top("Professors Page","0010");
+  page_top("professors Page","0010");
   $db = wces_connect();
-  $profname = db_getvalue($db,"Professors",Array("professorid" => $profid),"name");
+  $profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
   
   function mydie($str)
   {
@@ -20,7 +20,7 @@
     global $db, $profid,$profname;
     print("<h3>Preview Surveys</h3>\n");
     print("<p>Choose a class from the list below to preview its custom survey questions</p><UL>\n");
-    $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM Classes as cl LEFT JOIN Courses AS c USING (courseid) LEFT JOIN Subjects AS s USING (subjectid) WHERE cl.professorid = '$profid' AND cl.year = '2001' AND cl.semester='spring'",$db);
+    $classes = mysql_query("SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM classes as cl LEFT JOIN courses AS c USING (courseid) LEFT JOIN subjects AS s USING (subjectid) WHERE cl.professorid = '$profid' AND cl.year = '2001' AND cl.semester='spring'",$db);
     if (mysql_num_rows($classes) <= 0) print("  <LI><I>No classes found</I></LI>");
     while ($class = mysql_fetch_array($classes))
     {
@@ -76,20 +76,20 @@
     global $db,$count;
     print("\n<hr>\n");
     
-    $test = db_getvalue($db,"Classes",Array("classid" => $classid),"classid");
+    $test = db_getvalue($db,"classes",Array("classid" => $classid),"classid");
     if (!$test) { print ("<p><i>Invalid Class Number ($classid)</i></p>"); return; };
     
-    $profid = db_getvalue($db,"Classes",Array("classid" => $classid),"professorid");
+    $profid = db_getvalue($db,"classes",Array("classid" => $classid),"professorid");
     if ($profid)
     {
-      $qsetids = db_getcolumn($db,"Groupings",Array("linkid" => $profid, "linktype" => "professors"), "questionsetid");
+      $qsetids = db_getcolumn($db,"groupings",Array("linkid" => $profid, "linktype" => "professors"), "questionsetid");
       foreach($qsetids as $qsetid)
-        showquestionset(db_getrow($db,"QuestionSets",Array("questionsetid" => $qsetid),0));
+        showquestionset(db_getrow($db,"questionsets",Array("questionsetid" => $qsetid),0));
     };
     
-    $qsetids = db_getcolumn($db,"Groupings",Array("linkid" => $classid, "linktype" => "classes"), "questionsetid");
+    $qsetids = db_getcolumn($db,"groupings",Array("linkid" => $classid, "linktype" => "classes"), "questionsetid");
       foreach($qsetids as $qsetid)
-        showquestionset(db_getrow($db,"QuestionSets",Array("questionsetid" => $qsetid),0));
+        showquestionset(db_getrow($db,"questionsets",Array("questionsetid" => $qsetid),0));
         
     if ($count == 0) print ("<p><i>No Custom Questions Found</i></p>");  
   };  
@@ -98,3 +98,10 @@
   if ($previewclass) showclass($previewclass);
   page_bottom();
 %>
+
+
+
+
+
+
+

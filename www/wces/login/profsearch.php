@@ -10,7 +10,7 @@ if (!$lastname)
 {
 %>
 <p>WCES needs to associate your CUNIX id, '<b><%=login_getuni()%></b>' with a professor listing from our database.</p>
-<p>After this has been done once, WCES will remember the association for future logins. Associations can be updated at any time by choosing '<b>Update CUNIX Association</b>' from the Professors menu on the left side of WCES pages.</p>
+<p>After this has been done once, WCES will remember the association for future logins. Associations can be updated at any time by choosing '<b>Update CUNIX Association</b>' from the professors menu on the left side of WCES pages.</p>
 <p>Type in your last name in the form below to search for your listing.</p>
 <%
 }
@@ -30,7 +30,7 @@ if ($lastname)
   <%
 
   $db = wces_connect();
-  $professors = mysql_query("SELECT professorid, name FROM Professors WHERE name LIKE '%" . addslashes($lastname) . "%' LIMIT 500",$db);
+  $professors = mysql_query("SELECT professorid, name FROM professors WHERE name LIKE '%" . addslashes($lastname) . "%' LIMIT 500",$db);
   if (mysql_num_rows($professors) > 0)
   {
     print("<TABLE cellSpacing=0 cellPadding=2 border=1>\n");
@@ -38,7 +38,7 @@ if ($lastname)
     {
       extract($professor);
       print("<TR><TD>$name [<a href=\"profbounce.php?profid=$professorid&destination=$destination\">Use This Listing</a>]<UL>");
-      $classes = mysql_query("SELECT cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM Classes as cl LEFT JOIN Courses AS c USING (courseid) LEFT JOIN Subjects AS s USING (subjectid) WHERE cl.professorid = '$professorid' ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
+      $classes = mysql_query("SELECT cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM classes as cl LEFT JOIN courses AS c USING (courseid) LEFT JOIN subjects AS s USING (subjectid) WHERE cl.professorid = '$professorid' ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
       while ($class = mysql_fetch_array($classes))
       {
         extract($class);
@@ -62,3 +62,8 @@ if ($lastname)
 page_bottom();
 
 %>
+
+
+
+
+

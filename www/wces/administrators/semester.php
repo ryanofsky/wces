@@ -9,14 +9,17 @@ login_protect(login_administrator);
 page_top("New Semester Initialization");
 
 $i = 0;
-if (is_uploaded_file($userfile))
-{  if (!$questionsetid)
+
+if (is_uploaded_file($userfile))
+{
+  if (!$questionsetid)
   {
     print("<font color=red>Please go back and select a Question Set</font>");
   }
   else
-  {    taskwindow_start("Progress Window");
-    taskwindow_cprint("<h2>Importing Classes</h2>\n");
+  {
+    taskwindow_start("Progress Window");
+    taskwindow_cprint("<h2>Importing classes</h2>\n");
     taskwindow_flush();
     
     $fp = fopen($userfile,"r");
@@ -39,8 +42,8 @@ $i = 0;
         $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
         $i = Array("professorid" => $pid);
         if ($data[3]) $i["students"] = $data[3];
-        db_updatevalues($db, "Classes", Array("classid" => $classid), $i);
-        if ($questionsetid) db_replace($db,"Groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+        db_updatevalues($db, "classes", Array("classid" => $classid), $i);
+        if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
         taskwindow_cprint($data[0] . " Section ". $data[1]." added (courseid = $courseid, classid = $classid, professorid = $pid)<br>\n");
       };
       if (((++$i) % 10) == 1) taskwindow_flush();  
@@ -52,7 +55,8 @@ $i = 0;
   
     while (!feof ($fp))
     {
-      $buffer = fgets($fp, 4096);      
+      $buffer = fgets($fp, 4096);
+      
       $data = explode("\t",$buffer);
       
       if (count($data) != 9)
@@ -78,14 +82,14 @@ $i = 0;
         prof_fixname($first,$last);
         $full = prof_makefull($first,"",$last);
         $students = $data[8];       
-        $subjectid = db_replace($db,"Subjects", Array("code" => $subj), 0, "subjectid");
-        $courseid = db_replace($db, "Courses", Array("subjectid" => $subjectid, "code" => $course), $name ? Array("name" => $name) : 0, "courseid");
-        $classid = db_replace($db, "Classes", Array("courseid" => $courseid, "section" => $section, "year" => $year, "semester" => $semester), 0, "classid");
+        $subjectid = db_replace($db,"subjects", Array("code" => $subj), 0, "subjectid");
+        $courseid = db_replace($db, "courses", Array("subjectid" => $subjectid, "code" => $course), $name ? Array("name" => $name) : 0, "courseid");
+        $classid = db_replace($db, "classes", Array("courseid" => $courseid, "section" => $section, "year" => $year, "semester" => $semester), 0, "classid");
         $pids = prof_findwithfirstlast($db,$first,$last);
         $pids = array_merge($pids,prof_findwithclassid($db,$classid));
         $pid = prof_merge($db, $pids, Array("name" => $full), Array("first" => $first, "last" => $last, "fullname" => $full, "source" => "oldclasses"));
-        db_updatevalues($db,"Classes",Array("classid" => $classid),Array("students" => $students, "professorid" => $pid));
-        db_replace($db,"Groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+        db_updatevalues($db,"classes",Array("classid" => $classid),Array("students" => $students, "professorid" => $pid));
+        db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
         taskwindow_cprint(" - Added " . $data[4] . $data[5] . $data[0] . $data[2] . $data[1] . $data[3] . " as class #$classid with professor #$pid<br>\n");
         if ((++$i) % 10 == 1) taskwindow_flush();
       }
@@ -105,14 +109,27 @@ else
   <LEGEND align="top">New Semester Initialization</LEGEND>
   <table>
   <tr><td>Tabbed registrar file:</td><td><INPUT NAME="userfile" TYPE="file"> <INPUT TYPE="submit" VALUE="Send" name="upload"></td></tr>
-  <tr><td valign=top>Choose a Question Set:</td><td><%
-  print ('  <SELECT NAME="questionsetid" size="5">');  $db = wces_connect();  $results = db_getrows($db,"QuestionSets",Array("type" => "public"),Array("questionsetid","displayname"));
+  <tr><td valign=top>Choose a Question Set:</td><td>
+<%
+  print ('  <SELECT NAME="questionsetid" size="5">');
+  $db = wces_connect();
+  $results = db_getrows($db,"questionsets",Array("type" => "public"),Array("questionsetid","displayname"));
   foreach($results as $result)
     print('<option value="' . $result["questionsetid"] . '">' . $result["displayname"] . '</option>');
-  print('</SELECT><BR>');%>  <INPUT type=button value="Preview..." id=button1 name=button1><INPUT type=button value="New..." id=button2 name=button2></td></tr>
+  print('</SELECT><BR>');
+%>
+  <INPUT type=button value="Preview..." id=button1 name=button1><INPUT type=button value="New..." id=button2 name=button2></td></tr>
   <tr><td>&nbsp;</td><td><INPUT type=submit value="Submit" id=submit1 name=submit1></td></tr>
   </table>
-  </FIELDSET>  </FORM>
+  </FIELDSET>
+  </FORM>
 <%
-};page_bottom();
+};
+page_bottom();
 %>
+
+
+
+
+
+
