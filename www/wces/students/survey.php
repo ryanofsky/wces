@@ -67,7 +67,7 @@ if ($class_id)
     $prof = format_profs(pg_result($r,0,1), false, "<br>Professor ");
 
     print("<h3>$class$prof</h3>");
-    
+
     print("<form name=f method=post>");
     print($ISID);
     $q->display();

@@ -32,8 +32,8 @@ page_top("Credits");
 
 <p><b><i>Best seen in</i></b></p>
 <blockquote>
-<a href="http://www.mozilla.org"><img src="<?=$wces_path?>media/logo_mozilla.gif" width=64 height=64 border=0></a>
-<a href="http://www.microsoft.com/windows/ie/"><img src="<?=$wces_path?>media/logo_ie5.gif" width=88 height=31 border=0></a>
+<a href="http://www.mozilla.org"><img src="<?=$wces_path?>media/logo_mozilla.gif" width=64 height=64 border=0 alt=Mozilla></a>
+<a href="http://www.microsoft.com/windows/ie/"><img src="<?=$wces_path?>media/logo_ie5.gif" width=88 height=31 border=0 alt="Internet Explorer"></a>
 </blockquote>
 
 <?

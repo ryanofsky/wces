@@ -1,6 +1,6 @@
 <?
   require_once("wces/login.inc");
-  login_protect(login_any);
+  login_protect(0);
   
   require_once("wces/page.inc");
   page_top("The WCES");
@@ -9,6 +9,11 @@
   $status = login_getstatus();
 
   $onemenu = true;
+
+  if ($status == 0)
+  {
+    print("<p>You are not a known student, professor, or administrator. To get access to this site, please <a href=\"{$wces_path}about/feedback.php\">contact us</a>.</p>");
+  }
 
   if ($status & login_administrator)
   {
@@ -80,12 +85,12 @@ and make the rest of the site accessible to you.
     {
       if (!isset($db)) $db = wces_connect();
       $userid = login_getuserid();
-  
+
       print ("Choose a class to evaluate from the list below.</p>");
       print ("<UL>\n");
-      
+
       $n = pg_numrows($survey_listing);
-      
+
       $found = false;
       for($i = 0; $i < $n; ++$i)
       {
@@ -102,10 +107,10 @@ and make the rest of the site accessible to you.
       }
       if ($n == 0) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, please <a href=\"{$wces_path}about/feedback.php{$QSID}\">contact us</a>.</LI>");
       print ("</UL>");
-      
+    
       print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
     }
-  }  
+  }
   
   page_bottom();
 ?>

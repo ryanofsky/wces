@@ -4,7 +4,7 @@ require_once("wbes/general_url.inc");
 require_once("wces/database.inc");
 
 /**
-* Puts a warning into the database and sends an obnoxious email to rey4@columbia.edu
+* Puts a warning into the database and sends an obnoxious email to an administrator
 * It should be used like an assert, to ensure that unexpected conditions do
 * not go unnoticed.
 *
