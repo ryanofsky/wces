@@ -21,33 +21,33 @@ class Report extends FormWidget
   var $hidemenus;
   var $state;
   var $action;
-  
+
   var $email_form;
   var $email_to;
   var $email_from;
   var $email_subject;
   var $email_text;
   var $email_action;
-  
+
   var $profemail_form;
   var $profemail_subject;
   var $profemail_message;
   var $profemail_debug;
-  var $profemail_action; 
-  
+  var $profemail_action;
+
   function Report($prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
   }
-  
+
   function loadvalues()
   {
     $this->action = new ActionButton($this->prefix . "_action",$this->form,$this->formmethod);
     $this->action->loadvalues();
-    
+
     $this->wizard = new ReportWizard($this->prefix . "_wizard",$this->form,$this->formmethod);
     $this->wizard->loadvalues();
-    
+
     if (!$this->wizard->isfinished() || $this->action->action == Report_revivewizard)
       $this->state = Report_wizard;
     else
@@ -59,16 +59,16 @@ class Report extends FormWidget
         if ($this->action->action == Report_email && $this->email_action->action != Report_email_cancel && $this->email_action->action != Report_email_topcancel)
           $this->state = Report_email;
         else
-          $this->state = Report_results;  
-      }  
+          $this->state = Report_results;
+      }
       else
-        $this->state = Report_profemail;  
+        $this->state = Report_profemail;
     }
 
     if ($this->action->action == Report_print) $this->wizard->printable->checked = true;
 
     $this->hidemenus = ($this->state == Report_results && ($this->wizard->printable->checked || $this->action->action == Report_print));
-    
+
     if ($this->state == Report_email)
     {
       $this->email_form = new Form($this->prefix . "_email_form", $this->form, $this->formmethod);
@@ -105,20 +105,20 @@ class Report extends FormWidget
       }
     }
   }
-  
+
   function display()
   {
     global $wces_path,$db;
-  
+
     if ($this->state == Report_wizard)
       $this->wizard->display(false);
     else
       $this->wizard->display(true);
-  
+
     if ($this->state == Report_email || $this->state == Report_profemail || $this->state == Report_results)
     {
       ActionButton::dumpscript();
-      
+
       print("<table><tr><td height=50>\n");
       $this->action->display(false,"","");
       ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->action->gethref(Report_revivewizard,0)?>"><img src="<?=$wces_path?>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a></span> <?
@@ -143,9 +143,8 @@ class Report extends FormWidget
     switch($this->state)
     {
       case Report_results:
-        if (!$db) $db = wces_connect();
         $html = $text = false;
-        makereport($db,$this->wizard,true,$html,$text);
+        makereport($this->wizard,true,$html,$text);
         break;
       case Report_email:
         $this->emailreport();
@@ -155,7 +154,7 @@ class Report extends FormWidget
       break;
     }
   }
-  
+
   function emailreport()
   {
     global $db;
@@ -173,17 +172,16 @@ class Report extends FormWidget
        print($email);
        print("</pre>");
        mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion());
-       print("<h3>Done.</h3>"); 
+       print("<h3>Done.</h3>");
     }
     else
     {
        if (!$this->email_form->isstale)
        {
-         if (!$db) $db = wces_connect();
          $html = false; $text = true;
-         makereport($db,$this->wizard,false,$html,$text);
+         makereport($this->wizard,false,$html,$text);
          $this->email_text->text = $text;
-       }  
+       }
 ?>
 <table>
   <tr>
@@ -191,7 +189,7 @@ class Report extends FormWidget
     <td><? $this->email_to->display(); ?></td>
   </tr>
   <tr>
-    <td valign=top align=right><STRONG>From:</STRONG></td>  
+    <td valign=top align=right><STRONG>From:</STRONG></td>
     <td><? $this->email_from->display(); ?></td>
   </tr>
   <tr>
@@ -210,21 +208,21 @@ class Report extends FormWidget
 <?
     }
   }
-  
+
   function profemail()
   {
     global $wces_path,$db;
     if (!$db) $db = wces_connect();
 
     $this->profemail_form->display();
-    
+
     if ($this->profemail_action->action)
     {
       $this->profemail_subject->display(true); // true means hidden
-      $this->profemail_message->display(true); 
+      $this->profemail_message->display(true);
       $this->profemail_debug->display(true);
       report_profemail($db,$this->wizard, $this->profemail_subject->text, $this->profemail_message->text, $this->profemail_debug->checked);
-    }  
+    }
     else
     {
       print("<h3>Email Report</h3>\n");
@@ -243,26 +241,26 @@ class Report extends FormWidget
         extract($q->row);
         if (!$email) $email = "Unknown";
         print("Professor <a href=\"{$wces_path}administrators/info.php?professorid=$professorid\">$pname</a> - email <a href=\"mailto:$email\">$email</a> - $pages classes<br>");
-      };  
+      };
       print("</ul>\n");
 ?>
 <h4>Message</h4>
 <table>
 <tr>
   <td valign=top align=right><strong>Subject:</strong></td><td valign=top><? $this->profemail_subject->display(); ?></td>
-</tr>  
+</tr>
 <tr>
   <td valign=top align=right><STRONG>Custom Message:</STRONG></td><td valign=top><? $this->profemail_message->display(); ?></td>
 </tr>
 <tr>
   <td>&nbsp;</td><td><? $this->profemail_debug->display(); ?> <? $this->profemail_debug->displaylabel("Debug Mode (doesn't actually send emails)"); ?></td>
 </tr>
-<tr>  
+<tr>
   <td>&nbsp;</td><td><? $this->profemail_action->display("Submit",1,0); ?></td>
 </tr>
-</table>  
-<?      
+</table>
+<?
     };
   }
-};  
+};
 ?>

@@ -20,7 +20,7 @@ function report_mode($distribution)
 {
   $max = $maxv = false;
   foreach($distribution as $score => $people)
-  if ($max === false || $people >= $maxv) 
+  if ($max === false || $people >= $maxv)
   {
     $max = $score;
     $maxv = $people;
@@ -48,59 +48,6 @@ function report_sd($distribution, $avg)
     $wsum += $people * pow(($score - $avg),2);
   }
   return $sum == 0 ? 0 : sqrt($wsum/$sum);
-}
-
-class SegmentedQuery
-{
-  var $result;
-  var $column;
-  var $last;
-  
-  function SegmentedQuery($result, $column)
-  {
-    $this->result = $result;
-    $this->column = $column;
-    $this->last = false;
-  }
-  
-  function advance()
-  {
-    $this->row = mysql_fetch_assoc($this->result);
-    if ($this->row && $this->last == $this->row[$this->column])
-    {
-      $this->last = $this->row[$this->column];
-      return true;
-    }
-    else
-    {
-      $this->last = $this->row[$this->column];
-      return false;    
-    }
-  }
-}
-
-function addwhere(&$where, $clause)
-{
-  $where .= $where ? " AND " : "WHERE ";
-  $where .= $clause;
-}
-
-function addorder(&$order, $clause)
-{
-  $order .= $order ? ", " : "ORDER BY ";
-  $order .= $clause;
-}
-
-function addgroup(&$group, $clause)
-{
-  $group .= $group ? ", " : "GROUP BY ";
-  $group .= $clause;
-}
-
-function addcolumn(&$columns, $clause)
-{
-  $columns .= $columns ? ", " : "";
-  $columns .= $clause;
 }
 
 ?>
