@@ -14,7 +14,7 @@ class TextResponseFactory extends ComponentFactory
     return new TextResponse;
   }
 
-  function load(&$components, $ids, $ordinals)
+  function loadComponents(&$components)
   {
     global $wbes;
     $cids = implode(',', array_keys($components));

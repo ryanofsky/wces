@@ -250,6 +250,10 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER) RETURNS INTEGER AS '
   SELECT save_id FROM revisions WHERE revision_id = $1;
 ' LANGUAGE 'sql';
 
+CREATE OR REPLACE FUNCTION branch_parent(INTEGER) RETURNS INTEGER AS '
+  SELECT parent FROM branches WHERE branch_id = $1;
+' LANGUAGE 'sql';
+
 -- in lieu of foreign keys, use these functions to quickly see if a branch,
 -- specialization, or revision is being referenced from some table
 -- XXX: actually with the rewrite, the use of inheritance is confined to 
@@ -395,9 +399,7 @@ CREATE OR REPLACE FUNCTION branch_find(INTEGER, INTEGER) RETURNS INTEGER AS '
         RETURN branch_id_;
       ELSE
         SELECT INTO s parent FROM specializations WHERE specialization_id = s;
-        IF NOT FOUND THEN
-          RAISE EXCEPTION ''branch_find(%,%) failed. % is not a valid specialization for item %'', $1, $2, specialization_id_, item_id_;
-        END IF;
+        IF NOT FOUND THEN RETURN NULL; END IF;
       END IF;
     END LOOP;
   END;
@@ -406,165 +408,7 @@ CREATE OR REPLACE FUNCTION branch_find(INTEGER, INTEGER) RETURNS INTEGER AS '
 -- given a branch id this function returns the latest revision on the branch.
 -- If the latest existing revision is out of date, a new revision will be
 -- generated and returned
-CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
-  DECLARE
-    branch_id_ ALIAS FOR $1;
-    branch_info RECORD;
-    arrays RECORD;
-    array_length INTEGER;
-    parent RECORD;
-    bid INTEGER;
-    type_ INTEGER;
-  BEGIN
-    -- get information about the branch
-    SELECT INTO branch_info outdated, latest_id
-    FROM branches AS b WHERE branch_id = branch_id_;
-    IF NOT FOUND THEN
-      RAISE EXCEPTION ''branch_latest(%) called with invalid branch_id'', $1;
-    END IF;
 
-    IF NOT branch_info.outdated THEN RETURN branch_info.latest_id; END IF;
-
-    -- loop to lock and gather information about ancestor branches
-    array_length := 0;
-    bid := branch_id_;
-
-    DECLARE
-      branch RECORD;
-      latest RECORD;
-
-      -- current version of plpgsql (7.2) allows only read access to arrays,
-      -- it is not possible to declare array variables or make assignments
-      -- into arrays. this code gets around that restriction by putting
-      -- numbers into strings, then casting those strings into array
-      -- fields in a RECORD variable.
-      --
-      -- alternately, this code could be rewritten to use recursion instead of loops
-      -- and array storage, since the arrays are really only used as stacks. The reason
-      -- I didn''t do this is that it would require the recursive functions to return
-      -- two integer values and currently there isn''t a clean way of returning
-      -- multiple values from postgres functions.
-
-      s_bids  TEXT := '''';  -- stringed array of branch_ids for each branch level
-      s_rids  TEXT := '''';  -- stringed array of latest revision ids for each branch
-      s_prids TEXT := '''';  -- stringed array of latest revisions'' parents for each branch
-      s_cids  TEXT := '''';  -- stringed array of component ids for each branch
-      s_types TEXT := '''';  -- stringed array of component revision''s type for each branch level
-      sep     TEXT := '''';
-    BEGIN
-      -- loop through branch_id_''s ancestors accumulating information
-      -- about latest revisions. stop loop when an ancestor is found
-      -- which is not outdated.
-      LOOP
-        SELECT INTO branch latest_id, parent
-        FROM branches WHERE branch_id = bid AND outdated FOR UPDATE;
-
-        IF NOT FOUND THEN EXIT; END IF;
-
-        SELECT INTO latest r.parent, r.revision, r.component_id, c.type
-        FROM revisions AS r
-        INNER JOIN components AS c USING (component_id)
-        WHERE revision_id = branch.latest_id;
-
-        s_bids  := s_bids  || sep || bid::TEXT;
-        s_rids  := s_rids  || sep || branch.latest_id::TEXT;
-        s_prids := s_prids || sep || latest.parent::TEXT;
-        s_cids  := s_cids  || sep || latest.component_id::TEXT;
-        s_types := s_types || sep || latest.type::TEXT;
-
-        array_length := array_length + 1;
-        bid := branch.parent;
-        sep := '','';
-      END LOOP;
-
-      -- assemble arrays
-      SELECT INTO arrays
-        array_integer_cast(''{'' || s_bids  || ''}'') AS bids,
-        array_integer_cast(''{'' || s_rids  || ''}'') AS rids,
-        array_integer_cast(''{'' || s_prids || ''}'') AS prids,
-        array_integer_cast(''{'' || s_cids  || ''}'') AS cids,
-        array_integer_cast(''{'' || s_types || ''}'') AS types;
-
-      SELECT INTO parent latest_id, revision_component(latest_id) AS component_id
-      FROM branches WHERE branch_id = bid;
-
-      IF NOT FOUND THEN
-        -- this could occur if a root branch is marked as outdated.
-        -- this would not make any sense and indicates a corrupt database
-        RAISE EXCEPTION ''branch_latest(%) fails. impossible condition reached, branch % not found'', $1, bid;
-      END IF;
-    END;
-
-    -- next is a loop to bring ancestral branches up to date
-
-    -- Example of merge:
-    -- Say these revisions exist in the database:
-    --
-    --   1.4
-    --   1.4.2.3.3.2
-    --   1.4.2.17
-    --   1.5
-    --
-    -- And branch_latest is called for branch 1.*.2.*.3.*, then the following
-    -- merges need to occur:
-    --
-    -- merge(1.4,     1.4.2.17,    1.5,     1.5.2.1)
-    -- merge(1.4.2.3, 1.4.2.3.3.2, 1.5.2.1, 1.5.2.1.3.1)
-    --
-    -- during this process two new revisions are created:
-    --
-    --   1.5.2.1 with a merge field pointing to 1.4.2.17
-    --   1.5.2.1.3.1 with a merge field pointing to 1.4.2.3.3.2
-    --
-    -- at this point in the code, the arrays variable will hold information about
-    -- these revisions:
-    --
-    --   1.4.2.17
-    --   1.4.2.3.3.2
-    --
-    -- and the record variable parent will start out with information about revision 1.5
-
-    DECLARE
-      i INTEGER;
-      j INTEGER;
-      revision_ INTEGER;
-    BEGIN
-      FOR j IN REVERSE array_length..1 LOOP
-        bid := arrays.bids[j];
-        type_ := arrays.types[j];
-        common_id := arrays.prids[j];
-        primary_id := arrays.rids[j];
-        secondary_id := parent.latest_id;
-        common_component_id := revision_component(common_id);
-        primary_component_id = arrays.crids[j];
-        secondary_component_id := parent.component_id;
-
-        -- If common, primary, or secondary ids are equivalent, the new revision can
-        -- be a just link to a preexisting component instead of a merge.
-
-        parent.component_id := component_merge(common_component_id,
-          primary_component_id, secondary_component_id, type_);
-
-        -- helpful revision numbering convention, not at all neccessary
-        IF parent.component_id = second_component_id THEN
-          revision_ := 0;
-        ELSE
-          revision_ := 1;
-        END IF;
-
-        INSERT INTO revisions (parent, branch_id, revision, save_id, merged, component_id)
-        VALUES (secondary_id, bid, revision_, revision_save(secondary_id), primary_id, parent.component_id);
-        parent.latest_id := currval(''revision_ids'');
-
-        UPDATE branches SET
-          outdated = false, latest_id = parent.latest_id, component_id = parent.component_id
-        WHERE branch_id = bid;
-      END LOOP;
-    END;
-
-    RETURN parent.latest_id;
-  END;
-' LANGUAGE 'plpgsql';
 
 -- when save_id_ is null, does the same as branch_latest(INTEGER). otherwise
 -- save_id_ is used to intentionally retrieve out of date revisions with
@@ -576,7 +420,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     i INTEGER;
     j INTEGER;
   BEGIN
-    RAISE NOTICE ''branch_latest(%,%) called.'', $1, $2;
+    --RAISE NOTICE ''branch_latest(%,%) called.'', $1, $2;
     IF save_id_ IS NULL THEN
       RETURN branch_latest(branch_id_);
     END IF;
@@ -611,6 +455,14 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER, INTEGER) RETURNS INTE
 -- find or create a branch for the given specialization and item_id
 -- returns NULL if item is not specialized for for specialization_id_ or
 -- any of it's ancestors.
+
+-- XXX: Postgres 7.2 does not allow SELECT .. FOR UPDATE on specializations
+-- table because it is inherited from. This completely breaks the locking
+-- done in this function and others. If this feature isn't added in 7.3, then 
+-- I'll have to come up with some workaround (such as doing trivial updates
+-- on rows which need to be locked. For now, though, the FOR UPDATE clauses
+-- are commented out and denoted by ILB (inheritance locking bug)
+
 CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     item_id_ ALIAS FOR $1;
@@ -618,7 +470,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
     save_id_ ALIAS FOR $3;
     bid INTEGER;
     sid INTEGER;
-    pbid INTEGER;
+    cbid INTEGER;
     sibling RECORD;
   BEGIN
     -- this preliminary check is not neccessary for correctness, but
@@ -630,15 +482,19 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
     IF FOUND THEN RETURN bid; END IF;
 
     sid := specialization_id_;
-    SELECT * FROM specializations WHERE specialization_id = sid FOR UPDATE;
+    
+    --ILB
+    --SELECT * FROM specializations WHERE specialization_id = sid FOR UPDATE;
 
     LOOP
       SELECT INTO bid branch_id FROM item_specializations
-      WHERE specialization_id = specialization_id_
-        AND item_id = item_id_;
+      WHERE specialization_id = sid AND item_id = item_id_;
       EXIT WHEN FOUND;
 
-      SELECT INTO sid parent FROM specializations WHERE specialization_id = sid FOR UPDATE;
+      SELECT INTO sid parent FROM specializations WHERE specialization_id = sid
+      --ILB 
+      --FOR UPDATE
+      ;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''associated_revision(%,%,%) fails. specialization % or one of its ancestors has no row in the database'', $1, $2, $3;
       END IF;
@@ -665,6 +521,7 @@ CREATE OR REPLACE FUNCTION branch_make_parent_speclzn(INTEGER, INTEGER, INTEGER,
     save_id_ ALIAS FOR $4;
     sid INTEGER;
     bid INTEGER;
+    cbid INTEGER;
   BEGIN
     SELECT INTO sid specialization_id FROM item_specializations
     WHERE branch_id = orig_branch_id AND item_id = item_id_;
@@ -684,7 +541,7 @@ CREATE OR REPLACE FUNCTION branch_make_parent_speclzn(INTEGER, INTEGER, INTEGER,
 
       EXIT WHEN sid = specialization_id_;
 
-      SELECT INTO cbid branch_id FROM item_specializations WHERE specialiazation_id = sid AND item_id = item_id_;
+      SELECT INTO cbid branch_id FROM item_specializations WHERE specialization_id = sid AND item_id = item_id_;
       IF FOUND AND cbid IS NOT NULL THEN
         bid := cbid;
       END IF;
@@ -716,7 +573,7 @@ CREATE OR REPLACE FUNCTION branch_create_child(INTEGER) RETURNS INTEGER AS '
       VALUES (branch_id_, bid);
 
       INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
-      SELECT ancestor_id, bid
+      SELECT ancestor_id, bid FROM branch_ancestor_cache
       WHERE descendant_id = branch_id_;
     END IF;
 
@@ -752,7 +609,7 @@ CREATE OR REPLACE FUNCTION branch_create_parent(INTEGER, INTEGER) RETURNS INTEGE
 -- associates an existing branch with an item's specialization
 -- this function should be used with caution because it will
 -- make the branch's siblings into children if they are
--- sub-specialzations of the same item. This may not
+-- sub-specializations of the same item. This may not
 -- be desireable in all cases
 CREATE OR REPLACE FUNCTION branch_add_specialization(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
@@ -804,7 +661,7 @@ CREATE OR REPLACE FUNCTION branch_contains_child_specialzn(INTEGER, INTEGER, INT
       INNER JOIN item_specializations AS i USING (branch_id)
       WHERE i.item_id = item_id
     LOOP
-      sid := s.specialization_id_;
+      sid := s.specialization_id;
       LOOP
         IF s.specialization_id = specialization_id_ THEN RETURN ''t''; END IF;
         SELECT INTO sid parent FROM specializations WHERE specialization_id = sid;
@@ -1027,7 +884,7 @@ CREATE OR REPLACE FUNCTION revision_make_parent_clone_i(INTEGER, INTEGER, INTEGE
 -- implementation of revision_make_ancestor_clone, takes redundant parameters
 CREATE OR REPLACE FUNCTION revision_make_ancestor_clone_i(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
-    base_revision_id $1;
+    base_revision_id ALIAS FOR $1;
     branch_id_ ALIAS FOR $2;
     save_id_ ALIAS FOR $3;
     base_component_id ALIAS FOR $4;
@@ -1040,7 +897,7 @@ CREATE OR REPLACE FUNCTION revision_make_ancestor_clone_i(INTEGER, INTEGER, INTE
     ELSE
       SELECT INTO p parent FROM branches WHERE branch_id = branch_id_;
       IF NOT FOUND THEN
-        RAISE ERROR ''mak(%,%,%,%) fails. branch % doesn''''t exist'', $1, $2, $3, $4, branch_id_;
+        RAISE EXCEPTION ''mak(%,%,%,%) fails. branch % doesn''''t exist'', $1, $2, $3, $4, branch_id_;
       END IF;
       r := revision_make_ancestor_clone_i(base_revision_id, p, save_id_, base_component_id, base_branch_id);
       RETURN revision_make_parent_clone_i(r, branch_id_, save_id_, base_component_id);
@@ -1152,7 +1009,12 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
     INNER JOIN components AS c USING (component_id)
     WHERE r.revision_id = orig_revision_id;
 
-    bid := branch_make_specialization(orig_item_id, specialization_id_, save_id_);
+    IF component_id_ = orig.component_id THEN
+      bid := branch_find(orig_item_id, specialization_id_);
+    ELSE
+      bid := branch_make_specialization(orig_item_id, specialization_id_, save_id_);  
+    END IF;
+
     IF bid IS NULL THEN
       -- component was saved for a descendant of specialization_id_
       orig_desc := ''t'';
@@ -1199,7 +1061,7 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
           cid := component_merge(orig.component_id, component_id_, latest.component_id, orig.type);
           rid := nextval(''revision_ids'');
           INSERT INTO revisions (revision_id, parent, branch_id, revision, save_id, merged, component_id)
-          VALUES (rid, i.latest_parent, bid, i.latest_revision + 2, save_id_, orig_revision_id, component_id_);
+          VALUES (rid, latest.parent, bid, latest.revision + 2, save_id_, orig_revision_id, component_id_);
         END;
       END IF;
 
@@ -1301,7 +1163,7 @@ CREATE OR REPLACE FUNCTION component_merge(INTEGER, INTEGER, INTEGER, INTEGER) R
     common_id    ALIAS FOR $1;
     primary_id   ALIAS FOR $2;
     secondary_id ALIAS FOR $3;
-    type         ALIAS FOR $4;
+    type_        ALIAS FOR $4;
   BEGIN
     IF eq(common_id, primary_id) THEN
       RETURN secondary_id;
@@ -1311,24 +1173,24 @@ CREATE OR REPLACE FUNCTION component_merge(INTEGER, INTEGER, INTEGER, INTEGER) R
       RETURN primary_id;
     END IF;
 
-    IF type = 1 THEN
-      RETURN list_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 2 THEN
+    IF type_ = 1 THEN
+      RETURN survey_merge(common_id, primary_id, secondary_id);
+    ELSIF type_ = 2 THEN
       RETURN choice_component_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 3 THEN
+    ELSIF type_ = 3 THEN
       RETURN textresponse_component_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 4 OR type = 5 THEN
+    ELSIF type_ = 4 OR type_ = 5 THEN
       RETURN text_component_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 6 THEN
+    ELSIF type_ = 6 THEN
       RETURN choice_question_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 8 THEN
+    ELSIF type_ = 8 THEN
       RETURN subsurvey_component_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 9 THEN
+    ELSIF type_ = 9 THEN
       RETURN pagebreak_merge(common_id, primary_id, secondary_id);
-    ELSIF type = 10 THEN
+    ELSIF type_ = 10 THEN
       RETURN abet_component_merge(common_id, primary_id, secondary_id);
     ELSE
-      RAISE EXCEPTION ''revision_merge(%,%,%,%,%) failed. unknown revision type.'', $1, $2, $3, $4, $5;
+      RAISE EXCEPTION ''component_merge(%,%,%,%) failed. unknown revision type.'', $1, $2, $3, $4;
     END IF;
   END;
 ' LANGUAGE 'plpgsql';
@@ -1384,7 +1246,7 @@ CREATE OR REPLACE FUNCTION survey_save(INTEGER, INTEGER[]) RETURNS INTEGER AS '
     item_ids      ALIAS FOR $2;
   BEGIN
     IF list_changed(component_id_, item_ids) THEN
-      INSERT INTO components (type) VALUES (1);
+      INSERT INTO survey_components (type) VALUES (1);
       RETURN list_insert(currval(''component_ids''), item_ids);
     ELSE
       RETURN component_id_;
@@ -1452,7 +1314,7 @@ CREATE OR REPLACE FUNCTION text_component_save(INTEGER, INTEGER, TEXT, INTEGER) 
   BEGIN
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec branch_id, ctext, flags FROM text_components WHERE component_id = component_id_;
+      SELECT INTO rec ctext, flags FROM text_components WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''text_component_save(%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4;
       END IF;
@@ -1480,7 +1342,7 @@ CREATE OR REPLACE FUNCTION textresponse_component_save(INTEGER, TEXT, INTEGER, I
   BEGIN
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec branch_id, ctext, flags, rows, cols FROM textresponse_components WHERE component_id = component_id_;
+      SELECT INTO rec ctext, flags, rows, cols FROM textresponse_components WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''textresponse_component_save(%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5;
       END IF;
@@ -1492,7 +1354,7 @@ CREATE OR REPLACE FUNCTION textresponse_component_save(INTEGER, TEXT, INTEGER, I
     INSERT INTO choice_components(type, ctext, flags, rows, cols)
     VALUES (3, ctext_, flags_, rows_, cols_);
 
-    RETURN currval(''component_ids'');;
+    RETURN currval(''component_ids'');
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1505,7 +1367,7 @@ CREATE OR REPLACE FUNCTION pagebreak_component_save(INTEGER, BOOLEAN) RETURNS IN
   BEGIN
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec branch_id, renumber FROM pagebreak_components WHERE component_id = component_id_;
+      SELECT INTO rec renumber FROM pagebreak_components WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''pagebreak_component_save(%,%) fails. bad orig_id'', $1, $2;
       END IF;
@@ -1517,7 +1379,7 @@ CREATE OR REPLACE FUNCTION pagebreak_component_save(INTEGER, BOOLEAN) RETURNS IN
     INSERT INTO pagebreak_components(type, renumber)
     VALUES (9, renumber_);
 
-    RETURN currval(''component_ids'');;
+    RETURN currval(''component_ids'');
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1543,7 +1405,7 @@ CREATE OR REPLACE FUNCTION choice_question_save(INTEGER, TEXT) RETURNS INTEGER A
     INSERT INTO choice_questions(type, qtext)
     VALUES (6, qtext_);
 
-    RETURN currval(''component_ids'');;
+    RETURN currval(''component_ids'');
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1569,7 +1431,7 @@ CREATE OR REPLACE FUNCTION abet_component_save(INTEGER, INTEGER) RETURNS INTEGER
     INSERT INTO abet_components(type, which)
     VALUES (10, which_);
 
-    RETURN currval(''component_ids'');;
+    RETURN currval(''component_ids'');
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1610,6 +1472,32 @@ CREATE OR REPLACE FUNCTION abet_component_merge(INTEGER, INTEGER, INTEGER) RETUR
       bitmask_merge(orig_row.which, primary_row.which, secondary_row.which)
     );
     RETURN currval(''component_ids'');
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION survey_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    orig_id       ALIAS FOR $1;
+    primary_id    ALIAS FOR $2;
+    secondary_id  ALIAS FOR $3;
+    orig_row      RECORD;
+    primary_row   RECORD;
+    secondary_row RECORD;
+    new_id        INTEGER;
+  BEGIN
+    SELECT INTO orig_row      ctext, flags FROM survey_components WHERE component_id = orig_id;
+    SELECT INTO primary_row   ctext, flags FROM survey_components WHERE component_id = primary_id;
+    SELECT INTO secondary_row ctext, flags FROM survey_components WHERE component_id = secondary_id;
+
+    INSERT INTO survey_components (type, ctext, flags) VALUES
+    ( 1,
+      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
+    );
+
+    new_id := currval(''component_ids'');
+    PERFORM list_merge(orig_id, primary_id, secondary_id, new_id);
+    RETURN new_id;
   END;
 ' LANGUAGE 'plpgsql';
 

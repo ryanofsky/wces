@@ -99,6 +99,8 @@ class ComponentFactory
 
       $r = pg_go($sql, $wbes, __FILE__, __LINE__);
       
+      pg_show($r);
+      
       $result =& new pg_segmented_wrapper($r, 'load');
 
       unset($load);
@@ -184,10 +186,12 @@ class Component
     $children =& $this->getChildren();
     if (!is_array($children)) return null;
 
+    $first = true;
     $list = "array_integer_cast('{'";
     foreach (array_keys($children) as $key)
     {
       $c =& $children[$key];
+      if ($first) $first = false; else $list .= "||','";
       $list .= "||";
       $list .= $c->save($specialization_id, $save_id);
       $list .= "::text";

@@ -15,6 +15,25 @@ define("SurveyEditor_save",6);
 define("SurveyEditor_cancel",7);
 define("SurveyEditor_preview",8);
 
+function cell($width = false, $height = false, $color = false, $tdattr = '', $imgattr = '')
+{
+  global $SurveyEditor_ns4, $server_media;
+  $cell = '<td';
+  if ($width !== false) $cell .= " width=$width";
+  if ($height !== false) $cell .= " height=$height";
+  if ($color !== false) $cell .= " bgcolor=\"#$color\"";
+  if ($SurveyEditor_ns4) $cell .= " background=\"$server_media/$color.gif\"";
+  $cell .= "$tdattr>";
+  if ($SurveyEditor_ns4)
+  {
+    if ($width === false) $width = 1;
+    if ($height === false) $height = 1;
+    $cell .= "<img src=\"$server_media/$color.gif\" width=$width height=$height alt=\"\">";
+  }
+  $cell .= '</td>';
+  return $cell;
+}
+
 $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
 
 class SurveyEditor extends StatefullWidget
@@ -106,6 +125,7 @@ class SurveyEditor extends StatefullWidget
       break;
 
       case SurveyEditor_save:
+        $GLOBALS['db_debug'] = true;
         if (SaveSurvey($this->survey, $this->specialization_id, $this->user_id))
         {
           $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
@@ -156,59 +176,64 @@ class SurveyEditor extends StatefullWidget
       $this->event->displayButton("Cancel",SurveyEditor_cancel,"", 'class="tinybutton" style="BACKGROUND: #CE3031; COLOR: white;"');
     }
     else // $ncomponents != 1
-    {
+    { 
+      $insertMarker = $this->fullname("insertMarker");
+      $horizontalBorder = '<tr>' . cell(false, 1) . cell(false, 1, '000000', ' colspan=2') . "</tr>\n";
 ?>
 <p>This page shows a WYSIWYG view of your survey. You can modify, delete, and
 rearrange survey components by moving your mouse over the blue orbs at the left
 and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
+
+<table border=0 cellpadding=0 cellspacing=0>
+<tr>
+  <td colspan=2></td>
+  <td align=center>
+    <? $this->event->displayButton("Add new component",SurveyEditor_inserte,$ncomponents,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"'); ?>
+  </td>
+</tr>
+<tr><td colspan=3></td><td width=1><img src="<?=$server_media?>/nada.gif" width=1 height=1 id=<?=$insertMarker?> name=<?=$insertMarker?> alt=""></td></tr>
 <?
-      print("<table border=0 cellpadding=0 cellspacing=0>\n");
-      print("<tr><td colspan=6 align=center>");
-      $this->event->displayButton("Add new component",SurveyEditor_inserte,$ncomponents,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
-      print("</td></tr>");
-      $insertMarker = $this->fullname("insertMarker");
-      print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id=$insertMarker name=$insertMarker>\n");
       for($i=0;;++$i)
       {
-?>
-<tr><td colspan=1><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->fullName("insert$i")?>" class=insertmenu><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]" name=<?=$this->fullName("ns4marker$i")?>></td></tr>
-<?
+        $id = $this->fullName("insert$i");
+        $ns4name = $this->fullName("ns4marker$i");
+        print('<tr>');
+        print(cell(false, 10));
+        print(cell(false, 10, false, " colspan=2 id=$id class=insertmenu", "name=$ns4name"));
+        print("</tr>\n");
+
         if ($i >= $ncomponents) break;
         $component =& $this->survey->components[$i];
         $w = $component->getWidget("main_qwidget_$i", $this);
         $this->loadChild($w, true);
 
         $readOnly = false;
-        if($component->locked && $component->revision_id)
+        if($component->locked && $component->item_id)
         {
           wbes_connect();
           $r = pg_go("
-            SELECT specialization_id FROM branches AS a, revisions AS b
-            WHERE a.branch_id = b.branch_id
-              AND b.revision_id = '$component->revision_id'
+            SELECT EXISTS (SELECT * FROM item_specializations WHERE
+            item_id = $component->item_id AND specialization_id = $this->specialization_id)
           ", $wbes, __FILE__, __LINE__);
-          $wr = & new pg_wrapper($r);
-          $readOnly = (bool)$wr->row['specialization_id'] != $this->specialization_id;
+          
+          $readOnly = pg_result($r, 0, 0) != 't';
         }
         $name = $this->fullName($readOnly ? "lockedNode$i" : "node$i");
         $image = $readOnly ? "grey_node.gif" : "node.gif";
-?>
-<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
-<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td rowspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
-<tr>
-  <td width=40><img src="<?=$server_media?>/editor/<?=$image?>" width=40 height=18 border=0 id=<?=$name?> name=<?=$name?> align=absmiddle alt=Orb></td>
-  <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
-  <td><? $w->preview = true; $w->display(); ?></td>
-</tr>
-<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
-<tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
-<?
-      } // for i
+        
+        print($horizontalBorder);
+        print("<tr>\n");
+        print("  <td width=40><img src=\"$server_media/editor/$image\" width=40 height=18 border=0 id=$name name=$name align=absmiddle alt=Node></td>\n");
+        print("  " . cell(1, false, '000000') . "\n");
+        print("  <td>"); $w->preview = true; $w->display(); print("</td>\n");
+        print("</tr>\n");
+        print($horizontalBorder);
+      }
 ?>
 <tr>
-  <td>&nbsp;</td>
-  <td colspan=3 align=center>
+  <td colspan=2></td>
+  <td align=center>
     <? $this->event->displayButton("Save Survey", SurveyEditor_save, null, 'class="tinybutton"'); ?>
     <? $this->event->displayButton("Cancel", SurveyEditor_cancel, null, 'class="tinybutton"'); ?>
     <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->event->name?>',<?=SurveyEditor_preview?>)">

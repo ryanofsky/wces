@@ -20,7 +20,7 @@ class PageBreakFactory extends ComponentFactory
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c &= new PageBreak;
+      $c =& new PageBreak;
       $c->renumber = $wr->row['renumber'] == 't';
       $components[$wr->row['component_id']] =& $c;
     }

@@ -29,8 +29,8 @@ class ChoiceQuestionFactory extends ComponentFactory
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c &= new ChoiceQuestion;
-      $c->text = $wr->row['qtext'] == 't';
+      $c =& new ChoiceQuestion;
+      $c->text = $wr->row['qtext'];
       $components[$wr->row['component_id']] =& $c;
     }
   }
@@ -50,11 +50,11 @@ class ChoiceFactory extends ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT revision_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c &= new Choice;
+      $c =& new Choice;
       $c->text          = $wr->row['ctext'];
       $c->choices       = pg_explode($wr->row['choices']);
       $c->other_choice  = $wr->row['other_choice'];
@@ -62,15 +62,15 @@ class ChoiceFactory extends ComponentFactory
       $c->last_number   = (int)$wr->row['last_number'];
       $c->rows          = $wr->row['rows'];
       $c->intro_text    = $wr->row['ctext'];
-      $flagGroup        = $wr->row['flags'];
-      $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
-      $c->is_html       = (bool)($flagGroup & FLAG_ISHTML);
-      $c->is_numeric    = (bool)($flagGroup & FLAG_ISNUMERIC);
-      $c->select_many   = (bool)($flagGroup & FLAG_SELECTMANY);
-      $c->stacked       = (bool)($flagGroup & FLAG_STACKED);
-      $c->vertical      = (bool)($flagGroup & FLAG_VERTICAL);
-      $c->na_choice     = (bool)($flagGroup & FLAG_NACHOICE);
-      $c->numbering_scheme = $flagGroup & MASK_NUMBERING;
+      $flags        = $wr->row['flags'];
+      $c->locked        = (bool)($flags & FLAG_LOCKED);
+      $c->is_html       = (bool)($flags & FLAG_ISHTML);
+      $c->is_numeric    = (bool)($flags & FLAG_ISNUMERIC);
+      $c->select_many   = (bool)($flags & FLAG_SELECTMANY);
+      $c->stacked       = (bool)($flags & FLAG_STACKED);
+      $c->vertical      = (bool)($flags & FLAG_VERTICAL);
+      $c->na_choice     = (bool)($flags & FLAG_NACHOICE);
+      $c->numbering_scheme = $flags & MASK_NUMBERING;
       $components[$wr->row['component_id']] =& $c;
     }
   }
@@ -132,14 +132,14 @@ class Choice extends Component
     $last_number  = $this->last_number;
     $rows         = $this->rows;
 
-    $flagGroup = (int) $this->numbering_scheme;
-    if ($this->is_numeric)  $flagGroup |= FLAG_ISNUMERIC;
-    if ($this->select_many) $flagGroup |= FLAG_SELECTMANY;
-    if ($this->stacked)     $flagGroup |= FLAG_STACKED;
-    if ($this->vertical)    $flagGroup |= FLAG_VERTICAL;
-    if ($this->na_choice)   $flagGroup |= FLAG_NACHOICE;
-    if ($this->locked)      $flagGroup |= FLAG_LOCKED;
-    if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
+    $flags = (int) $this->numbering_scheme;
+    if ($this->is_numeric)  $flags |= FLAG_ISNUMERIC;
+    if ($this->select_many) $flags |= FLAG_SELECTMANY;
+    if ($this->stacked)     $flags |= FLAG_STACKED;
+    if ($this->vertical)    $flags |= FLAG_VERTICAL;
+    if ($this->na_choice)   $flags |= FLAG_NACHOICE;
+    if ($this->locked)      $flags |= FLAG_LOCKED;
+    if ($this->is_html)     $flags |= FLAG_ISHTML;
 
     return "choice_component_save($component_id,'$ctext',$children,$choices,'$other_choice',$first_number,$last_number,$flags,$rows)";
   }
@@ -445,7 +445,7 @@ class ChoiceEditor extends ComponentEditor
       $questions = array();
       foreach ($this->questions->keys as $li => $qi)
       {
-        $q = isset($c->questions[qi]) ? $c->questions[$qi] : new ChoiceQuestion;
+        $q = isset($c->questions[$qi]) ? $c->questions[$qi] : new ChoiceQuestion;
         $q->text = $this->questions->items[$li];
         $questions[] = $q;
       }
@@ -739,8 +739,10 @@ class ChoiceWidget extends ComponentWidget
     else
       $this->other = -1;
 
-    $this->questions = $c->questions;
-
+    $this->questions = array();
+    foreach($c->questions as $k => $v)
+      $this->questions[$k] = nl2br(htmlspecialchars($v->text));
+    
     if (!$c->is_html)
     {
       $this->legend = nl2br(htmlspecialchars($this->legend));
@@ -1008,7 +1010,7 @@ class ChoiceQuestion extends Component
 
   function saveComponent($component_id, $children)
   {
-    $text = addslashes($text);
+    $text = addslashes($this->text);
     return "choice_question_save($component_id, '$text')";
   }
 
