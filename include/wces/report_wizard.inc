@@ -168,7 +168,7 @@ class ReportWizard extends Wizard
 
     /////////////////////////////// ORDERING SETUP ///////////////////////////////////////
 
-    $labels = array(QUESTION_PERIODS => "Question Period", DEPARTMENTS => "Department", PROFESSORS => "Professor", COURSES => "Course");
+    $labels = array(QUESTION_PERIODS => "Question Period", COURSES => "Courses", PROFESSORS => "Professor", DEPARTMENTS => "Department");
     $this->order = new DynamicList(25,4,$labels, $this->prefix . "_order", $this->form, $this->formmethod);
     $this->order->loadvalues();
 
