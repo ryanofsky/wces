@@ -141,11 +141,15 @@ class AbetEditor extends ComponentEditor
       $this->boxen[$k] = & new CheckBox("abet$k", $this);
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    ComponentEditor::loadInitialState();
-    foreach(array_keys($this->boxen) as $k)
-      $this->boxen[$k]->checked = (bool)($this->component->which & (1 << $k));
+    assert(isset($new));
+    ComponentEditor::loadState($new);
+    if ($new)
+    {
+      foreach(array_keys($this->boxen) as $k)
+        $this->boxen[$k]->checked = (bool)($this->component->which & (1 << $k));
+    }
   }
 
   function save()

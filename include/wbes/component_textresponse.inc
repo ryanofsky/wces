@@ -86,12 +86,16 @@ class TextResponseEditor extends ComponentEditor
     $this->labelAlign = & new DropBox(array("above","left"), "labelAlign", $this);
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    ComponentEditor::loadInitialState();
-    $this->rows->text = $this->component->rows;
-    $this->cols->text = $this->component->cols;
-    $this->labelAlign->selected = $this->component->labelAlign;
+    assert(isset($new));
+    ComponentEditor::loadState($new);
+    if ($new)
+    {
+      $this->rows->text = $this->component->rows;
+      $this->cols->text = $this->component->cols;
+      $this->labelAlign->selected = $this->component->labelAlign;
+    }
   }
 
   function validate()

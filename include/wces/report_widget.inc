@@ -145,11 +145,16 @@ class ProfessorEmail extends ParentWidget
     $this->profemail_event = new EventButton($this->prefix . "_profemail_event", $this->form, $this->formmethod);
   }
   
-  function loadInitialState()
+  function loadState($new)
   {
-    $this->profemail_subject->text = "WCES Evaluation Results";
-    $this->profemail_message->text = "Dear %profname%,\n\nThis automated email contains the results of the WCES evaluations for your classes. Send questions or comments to wces@columbia.edu";
-    $this->profemail_debug->checked = false;
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new)
+    {
+      $this->profemail_subject->text = "WCES Evaluation Results";
+      $this->profemail_message->text = "Dear %profname%,\n\nThis automated email contains the results of the WCES evaluations for your classes. Send questions or comments to wces@columbia.edu";
+      $this->profemail_debug->checked = false;
+    }
   }
   
   function displayNavigation(&$widget)

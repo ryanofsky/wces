@@ -60,10 +60,11 @@ class PageBreakEditor extends ComponentEditor
     $this->renumber->checked = $component->renumber;
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    ComponentEditor::loadInitialState();
-    $this->renumber->checked = $this->component->renumber;
+    assert(isset($new));
+    ComponentEditor::loadState($new);
+    if ($new) $this->renumber->checked = $this->component->renumber;
   }
 
   function save()

@@ -243,12 +243,16 @@ class ComponentEditor extends ParentWidget
     $this->text->broken = false;
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    ParentWidget::loadInitialState();
-    $this->text->text = $this->component->text;
-    $this->is_html->checked = (bool)$this->component->is_html;
-    $this->locking->checked = $this->component->locked;
+    assert(isset($new)); 
+    ParentWidget::loadState($new);
+    if ($new)
+    {
+      $this->text->text = $this->component->text;
+      $this->is_html->checked = (bool)$this->component->is_html;
+      $this->locking->checked = $this->component->locked;
+    }
   }
 
   function validate()
