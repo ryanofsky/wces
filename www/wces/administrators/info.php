@@ -77,6 +77,8 @@ function PrintUser(&$uni, &$user_id)
   print("<tr><td><strong>Access:</strong></td><td>" . implode(", ", $access) . "</td></tr>\n");  
   print("</table>\n");
   
+  print("<p><a href=\"users.php?user_id=$user_id\">Edit this user's information...</a></p>");
+  
   print("<hr>\n");
   
   PrintAffils($user_id);
@@ -235,7 +237,7 @@ function PrintLDAP($uni)
 function PrintProfessorInfo($user_id)
 {
   global $wces;
-  $result = pg_query("SELECT url, picname, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+  $result = pg_query("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   if (!pg_numrows($result)) return false;
   
   $info = pg_fetch_array($result,0,PGSQL_ASSOC);
@@ -244,10 +246,10 @@ function PrintProfessorInfo($user_id)
   
   print("<h3>Professor Information</h3>\n");
   $found = false;
-  if ($picname)
+  if ($picture_id)
   {
     $found = true;
-    print("<p><img src=\"/oracle/prof_images/$picname\"></p>");
+    print("<p><img src=\"" . picture_src($picture_id) . "\"></p>");
   }  
   if ($statement)
   {
