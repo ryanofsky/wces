@@ -235,9 +235,11 @@ CREATE TABLE divisions (
 );
 
 CREATE TABLE enrollments (
-  userid int(11) NOT NULL default '0',
-  classid int(11) NOT NULL default '0',
-  PRIMARY KEY (userid,classid)
+  enrollmentid int(11) NOT NULL auto_increment,
+  classid int(11) default NULL,
+  userid int(11) default NULL,
+  PRIMARY KEY (enrollmentid),
+  UNIQUE KEY classid(classid,userid)
 );
 
 CREATE TABLE groupings (
