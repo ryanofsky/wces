@@ -959,7 +959,7 @@ class ChoiceWidget extends ComponentWidget
     $n = count($this->choices);
 
     //added to display intro text. [tyler]
-    ?><h3><?= $c->intro_text; ?></h3><?
+    if ($c->intro_text) print("<h3>{$c->intro_text}</h3>");
 
     if ($c->stacked && !$c->vertical)
     {
