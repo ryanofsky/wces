@@ -182,12 +182,12 @@ function listclasses()
       if ($hasanswers)
       {
         ++$count;
-        print("  <li><a href=\"?questionperiodid=$questionperiodid&classid=$classid\">$scode$code$section <i>$name</i></a></li>");  
+        print("  <li><a href=\"seeresults.php?questionperiodid=$questionperiodid&classid=$classid\">$scode$code$section <i>$name</i></a></li>");  
       }
       else
         print("  <li>$scode$code$section <i>$name</i> (No Responses Available)</li>");
     }
-    if ($count > 1) print("  <li><a href=\"?questionperiodid=$questionperiodid\">All classes Combined</a></li>\n</ul>");      
+    if ($count > 1) print("  <li><a href=\"?questionperiodid=$questionperiodid\">All Classes Combined</a></li>\n</ul>");      
     print("</ul>\n");
   }
 };  
