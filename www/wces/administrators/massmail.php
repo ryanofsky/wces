@@ -15,8 +15,9 @@ $MassEmail_students = array
 
 define("MassEmail_send",1);
 define("MassEmail_preview",2);
+define("MassEmail_back",3);
 
-class MassEmail extends FormWidget
+class MassEmail extends ParentWidget
 {
   var $from;
   var $replyto;
@@ -24,61 +25,54 @@ class MassEmail extends FormWidget
   var $text;
   var $survey_category_id;
 
-  var $action;
+  var $event;
   var $errors;
   var $form;
 
-  function MassEmail($prefix, $form, $formmethod)
+  function MassEmail($name, &$parent)
   {
-    $this->FormWidget($prefix, $form, $formmethod);
-
-    $this->form = new Form("${prefix}_form", $form, $formmethod);
-    $this->from = new TextBox(0,60,"", "${prefix}_from", $form, $formmethod);
-    $this->replyto = new TextBox(0,60,"", "${prefix}_replyto", $form, $formmethod);
-    $this->subject = new TextBox(0,60,"", "${prefix}_subject", $form, $formmethod);
-    $this->text = new TextBox(15,60,"", "${prefix}_text", $form, $formmethod);
-    $this->action = new ActionButton("${prefix}_action", $form, $formmethod);
+    $this->ParentWidget($name, $parent);
+    $this->from =& new TextBox(0,60,"", "from", $parent);
+    $this->replyto =& new TextBox(0,60,"", "replyto", $parent);
+    $this->subject =& new TextBox(0,60,"", "subject", $parent);
+    $this->text =& new TextBox(15,60,"", "text", $parent);
+    $this->event =& new EventWidget("event", $parent);
     $this->errors = array();
     $this->survey_category_id = 0;
   }
 
-  function loadvalues()
+  function loadInitialState()
   {
     global $MassEmail_students, $wces, $server_massreply;
+    ParentWidget::loadInitialState();
+    wces_connect();
 
-    $this->form->loadvalues();
-
-    if ($this->form->isstale)
+    $user_id = login_getuserid();
+    $name = login_getname();
+    $name = ucwords(strtolower($name));
+    $email = pg_result(pg_query("SELECT email FROM users WHERE user_id = $user_id", $wces, __FILE__, __LINE__),0,0);
+    if ($email)
     {
-      $this->from->loadvalues();
-      $this->replyto->loadvalues();
-      $this->subject->loadvalues();
-      $this->text->loadvalues();
-      $this->action->loadvalues();
-      $this->to = $this->loadattribute("to");
-      $this->survey_category_id = $this->loadattribute("survey_category_id");
+      if ($name)
+        $this->from->text = "$name <$email>";
+      else
+        $this->from->text = $email;
     }
-    else
-    {
-      wces_connect();
+    $this->to = "";
+    $this->replyto->text = $server_massreply;
+    $this->subject->text = "WCES Reminder";
+    $this->text->text = "Dear %name%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
+  }
 
-      $user_id = login_getuserid();
-      $name = login_getname();
-      $name = ucwords(strtolower($name));
-      $email = pg_result(pg_query("SELECT email FROM users WHERE user_id = $user_id", $wces, __FILE__, __LINE__),0,0);
-      if ($email)
-      {
-        if ($name)
-          $this->from->text = "$name <$email>";
-        else
-          $this->from->text = $email;
-      }
-      $this->to = "";
-      $this->replyto->text = $server_massreply;
-      $this->subject->text = "WCES Reminder";
-      $this->text->text = "Dear %name%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
-    }
+  function loadState()
+  {
+    ParentWidget::loadState();
+    $this->to = $this->readValue("to");
+    $this->survey_category_id = $this->readValue("survey_category_id");
+  }
 
+  function checkErrors()
+  {
     if (!emailvalid($this->from->text))
       $this->errors[] = "Invalid FROM address";
 
@@ -92,33 +86,34 @@ class MassEmail extends FormWidget
       $this->errors[] = "You must enter text to send";
 
     if (!$this->subject->text)
-      $this->errors[] = "Subject is blank.";
+      $this->errors[] = "Subject is blank.";    
+  }
 
-    $this->action->loadvalues();
+  function printHidden()
+  {
   }
 
   function display()
   {
     global $MassEmail_students, $wces;
-    $prefix = $this->prefix;
-    $this->form->display();
+    $prefix = $this->name;
 
-    $go = $this->action->action == MassEmail_preview || $this->action->action == MassEmail_send;
+    $go = $this->event->event == MassEmail_preview || $this->event->event == MassEmail_send;
 
     if ($go && count($this->errors) == 0)
     {
-      $this->action->display("Back");
+      $this->event->displayButton("Back", MassEmail_back);
       print("<hr>");
-      $this->domail($this->action->action == MassEmail_send);
+      $this->domail($this->event->event == MassEmail_send);
       print("<hr>");
-      $this->action->display("Back");
+      $this->event->displayButton("Back", MassEmail_back);
 
-      $this->from->display(true);
-      $this->replyto->display(true);
-      $this->subject->display(true);
-      $this->text->display(true);
-      $this->preserveattribute("to");
-      $this->preserveattribute("survey_category_id");
+      $this->from->displayHidden();
+      $this->replyto->displayHidden();
+      $this->subject->displayHidden();
+      $this->text->displayHidden();
+      $this->printValue("to", $this->to);
+      $this->printValue("survey_category_id", $this->survey_category_id);
     }
     else
     {
@@ -175,12 +170,12 @@ class MassEmail extends FormWidget
       $n = pg_numrows($survey_categories);
 
       print("<select name=\"${prefix}_survey_category_id\">");
-      print("<option value=\"0\"$selected>All Class Categories</option>");
+      print("<option value=0$selected>All Class Categories</option>");
       for($i=0; $i<$n; ++$i)
       {
         extract(pg_fetch_array($survey_categories,$i,PGSQL_ASSOC));
         $selected = $survey_category_id == $this->survey_category_id ? " selected" : "";
-        print("<option value=\"$survey_category_id\"$selected>$name Students</option>");
+        print("<option value=$survey_category_id$selected>$name Students</option>");
       }
       print("</select>\n");
     ?></td>
@@ -195,7 +190,7 @@ class MassEmail extends FormWidget
   </tr>
   <tr>
     <td>&nbsp;</td>
-    <td><? $this->action->display("Send", MassEmail_send); ?> <? $this->action->display("Preview", MassEmail_preview); ?>  </td>
+    <td><? $this->event->displayButton("Send", MassEmail_send); ?> <? $this->event->displayButton("Preview", MassEmail_preview); ?>  </td>
   </tr>
 </table>
 <?
@@ -203,8 +198,7 @@ class MassEmail extends FormWidget
   }
 
   // TODO: domail() is a very quick and dirty port to postgres, needs to be optimized and tested for bugs
-
-  function domail($send = false)
+  function doMail($send = false)
   {
     global $wces;
     
@@ -352,7 +346,7 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          //$email = "rey4@columbia.edu"; // debug
+          $email = $address = "rey4@columbia.edu"; // debug
           mail($email, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nTo: $address\nX-Mailer: PHP/" . phpversion());
         }
         else
@@ -382,11 +376,12 @@ class MassEmail extends FormWidget
 }
 
 page_top("Mass Emailer");
+$f =& new Form('f');
+$mm =& new MassEmail("mm",$f);
+$f->loadState();
 
-$mm = new MassEmail("mm","f",WIDGET_POST);
-$mm->loadvalues();
-
-print("<form name=f method=post action=massmail.php>$ISID\n");
+print("<form name=f method=post event=massmail.php>$ISID\n");
+$f->display();
 $mm->display();
 print("</form>\n");
 

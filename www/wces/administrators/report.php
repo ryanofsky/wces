@@ -4,13 +4,17 @@
  require_once("wces/report_widget.inc");
  login_protect(login_administrator | login_deptadmin);
  
- $report = new Report("report","wiz",WIDGET_POST);
- $report->loadvalues();
- page_top("Administrative Report",$report->hidemenus);
+ $f =& new Form('wiz');
+ $report =& new Report('report', $f);
+ //DebugBreak();
+ $f->loadState();
+ page_top("Administrative Report",$report->hideMenus);
+ 
+ print("<form name={$f->formName} action=\"{$f->pageName}\" method=post>\n");
+ print($ISID);
+ $f->display();
+ $report->display();
+ print("</form>");
+
+ page_bottom($report->hideMenus);
 ?>
-
-<form name="wiz" method="post">
-<? $report->display(); ?>
-</form>
-
-<? page_bottom($report->hidemenus); ?>
