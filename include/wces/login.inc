@@ -11,10 +11,11 @@ require_once("wbes/postgres.inc");
 // LOGIN GLOBALS
 
 define("login_student",        0x00000001);
-define("login_knownprofessor", 0x00000002);
+define("login_deptadmin",      0x00000002);
 define("login_professor",      0x00000004);
 define("login_administrator",  0x00000008);
 define("login_any",            0x0000000F);
+define("login_knownprofessor", 0x10000000);
 
 $LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts", "fake", "fakeuni");
 $LOGIN_SESSION = session_restore($LOGIN_SESSION_VARS, "login/");
@@ -58,6 +59,9 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
   if ($row['flags'] & 4)
     $status |= login_professor;
   
+  if ($row['flags'] & 2)
+    $status |= login_deptadmin;
+
   if ($row['known'])
     $status |= login_knownprofessor;
     
@@ -173,7 +177,7 @@ $login_fail = false;
 
 function login_validate($uni,$password)
 {
-  global $wces, $LOGIN_SESSION, $login_fail, $HTTP_SERVER_VARS;
+  global $wces, $LOGIN_SESSION, $login_fail;
   
   $uni = trim($uni);
   
