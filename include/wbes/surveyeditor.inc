@@ -198,7 +198,7 @@ class SurveyEditor extends FormWidget
 
   function display($hidden = false)
   {
-    global $server_media;
+    global $server_media, $wbes;
     
     $this->printattribute("survey", serialize($this->survey));
     $q = unserialize(serialize($this->survey));
@@ -285,7 +285,35 @@ by clicking above and below existing components.</p>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td rowspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr>
+<?
+
+$needNode = true;
+
+if($component->locked && $component->revision_id)
+{
+  wbes_connect();
+  $sql = "SELECT topic_id FROM branches AS a, revisions AS b WHERE a.branch_id = b.branch_id AND b.revision_id = '$component->revision_id'";
+  $r = pg_query($sql, $wbes, __FILE__, __LINE__);
+  $wr = new pg_wrapper($r);
+    
+  if($wr->row['topic_id'] != $this->topic_id)
+	{
+	  $needNode = false;
+?>
+	<td width=40 valign=center><img src="<?=$server_media?>/editor/grey_node.gif" width=40 height=18 border=0 align=absmiddle alt=locked_node></td>
+<?
+	}
+}
+
+if($needNode)
+    {
+?>
   <td width=40 valign=center><img src="<?=$server_media?>/editor/node.gif" width=40 height=18 border=0 align=absmiddle alt=node id=<?=$this->prefix?>_node<?=$i?> name=<?=$this->prefix?>_node<?=$i?>></td>
+<?
+    }?>
+
+  
+
   <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
   <td><? $w->displaypreview(); ?></td>
 </tr>
@@ -406,6 +434,10 @@ by clicking above and below existing components.</p>
       if (i >= nodes) break;
 
       var node = elem(prefix + "_node" + i);
+
+      if(node == null)
+	{continue;}
+      
       node.onmouseover = SurveyEditor_node_onmouseover;
       node.onmouseout = SurveyEditor_node_onmouseout;
       node.key = i;
