@@ -12,7 +12,7 @@ param('user_id');
 
 login_protect(login_administrator | login_deptadmin);
 
-page_top("Question Periods");
+page_top("User Edit");
 
 print("<p><a href=\"info.php?user_id=$user_id\">Back</a></p>");
 
