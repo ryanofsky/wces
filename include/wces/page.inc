@@ -15,6 +15,7 @@ function page_top($title, $minimal = false)
 <html>
 <head>
 <title><?=$title?></title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <LINK REL="stylesheet" type="text/css" href="<?=$wces_path?>media/style.css">
 <script>
 <!--
@@ -28,27 +29,42 @@ function showhelp(topic)
 // -->
 </script>
 </head>
-<body background="<?=$wces_path?>media/0x<?=$bgcolor?>.gif" topmargin="0" leftmargin="0" rightmargin="0" marginwidth="0" marginheight="0" link="black" alink="#000000" vlink="#003256">
-<table width="100%"<? if (!$minimal) { ?> height="100%"<? } ?> border=0 cellpadding=0 cellspacing=0>
-<tr><td colspan=2 height=15 bgcolor="#0065AD"><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt="[ spacer ]"></td></tr>
-<tr>
-  <td colspan=2 bgcolor="#FFE051" background="<?=$wces_path?>media/0xFFE051.gif" height=54>
-    <a href="<?=$wces_path?>index.php"><img src="<?=$wces_path?>media/orangecrown.gif" width=50 height=54 border=0 align="absmiddle" alt="SEAS"></a>
-    <font face="Trebuchet MS, Arial, Helvetica, sans-serif" size=6 why="netscape4sucks">
-    <span class="title">Course Evaluations</span>
-    </font>
+<body>
+<table width="100%" border=0 cellspacing=0 cellpadding=0>
+<tr> 
+  <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
+</tr>
+<tr> 
+  <td colspan=2 bgcolor="#68ACFF"><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt=spacer></td>
+</tr>
+<tr> 
+  <td colspan=2> 
+    <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr bgcolor="#FFFDEC"> 
+      <td><a href="<?=$wces_path?>index.php"><img src="<?=$wces_path?>media/page/Left_Logo.gif" width=164 height=72 border=0 alt=Home></a></td>
+      <td><img src="<?=$wces_path?>media/page/Middle_Header.gif" width=396 height=72 alt="Columbia University Web Based Course Evaluation System"></td>
+      <td bgcolor="#FFFDEC" align=right><img src="<?=$wces_path?>media/page/Right_Logo.gif" width=113 height=72 alt=Crown></td>
+    </tr>
+    </table>
   </td>
 </tr>
-<tr>
-  <td bgcolor="#C0C0C0" background="<?=$wces_path?>media/0xC0C0C0.gif"><img src="<?=$wces_path?>media/nada.gif" width=150 height=15 alt="[ spacer ]"></td>
-  <td width="100%" height=15 bgcolor="#0065AD"><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt="[ spacer ]"></td>
+</table><table width="100%" border=0 cellspacing=0 cellpadding=0>
+<tr> 
+  <td bgcolor="#68ACFF">&nbsp;</td>
+  <td bgcolor="#68ACFF" align=right class=extlinks>
+    <a href="http://www.columbia.edu/">Columbia University</a> |
+    <a href="http://www.engineering.columbia.edu/">SEAS</a> |
+    <a href="<?=$wces_path?>about/feedback.php">Feedback</a>
+  </td>
+</tr>
+<tr> 
+  <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
 </tr>
 <? if ($minimal) { ?>
 </table>
 <? } else { ?>
-<tr>
-  <td bgcolor="#C0C0C0" background="<?=$wces_path?>media/0xC0C0C0.gif" valign=top>
-  <div class=spaced>
+<tr> 
+  <td valign=top bgcolor="#DEDEDE" class=sidelinks nowrap>
 <?
   $uni = login_getuni();
   $status = login_getstatus();
@@ -66,15 +82,15 @@ function showhelp(topic)
   if ($status & login_administrator)
   {
     if ($nospace) $nospace = false; else page_spacer();
-    page_link("Student Usage",               "administrators/susage.php");
-    page_link("Professor Usage",             "administrators/pusage.php");
-    page_link("Mass Mailing",                "administrators/massmail.php");
-    page_link("Reporting Wizard",            "administrators/report.php");
-    page_link("Fake Login",                  "administrators/fakelogin.php");
-    page_link("Enrollment Viewer",           "administrators/enrollment.php");
-    page_link("Professor Listing",           "administrators/pstats.php");
-    page_link("New Semester Initialization", "administrators/semester.php");
-    page_link("Data Upload",                 "administrators/import.php");
+    page_link("Student Usage",           "administrators/susage.php");
+    page_link("Professor Usage",         "administrators/pusage.php");
+    page_link("Mass Mailing",            "administrators/massmail.php");
+    page_link("Reporting Wizard",        "administrators/report.php");
+    page_link("Fake Login",              "administrators/fakelogin.php");
+    page_link("Enrollment Viewer",       "administrators/enrollment.php");
+    page_link("Professor Listing",       "administrators/pstats.php");
+    page_link("Semester Initialization", "administrators/semester.php");
+    page_link("Data Upload",             "administrators/import.php");
   }
 
   if ($status & login_professor)
@@ -106,14 +122,14 @@ function showhelp(topic)
 
   
 ?>
-  </div>
   </td>
-  <td width="100%" height="100%" bgcolor="#FFFFFF" background="<?=$wces_path?>media/0xFFFFFF.gif" valign=top rowspan=2><?
-} // if minimal ?>
-  <div class=spaced>
-
+  <td valign="top" width="99%" background="<?=$wces_path?>media/page/Background_Logo.gif"> 
+    <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr>
+      <td valign="top"> 
+<? } // if minimal ?>
+<div class=pagecontents>
 <!-- BEGIN PAGE CONTENT -->
-
 <?
 }
 
@@ -121,22 +137,22 @@ function page_bottom($minimal = false)
 {
   global $wces_path, $oracle_root;
 ?>
-
 <!-- END PAGE CONTENT -->
-
-  </div>
+</div>
 <? if ($minimal) { ?>
 <table width="100%" border=0 cellpadding=0 cellspacing=0>
 <? } else { ?>
+      </td>
+      <td background="<?=$wces_path?>media/page/Right_LengthBanner.gif"><img src="<?=$wces_path?>media/nada.gif" width="44" height="8"></td>
+    </tr>
+    </table>
   </td>
 </tr>
-<tr>
-  <td bgcolor="#C0C0C0" background="<?=$wces_path?>media/0xC0C0C0.gif" align=center valign=bottom height=70><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt="[ spacer ]"><br><a href="<?= $oracle_root ?>"><img src="<?=$wces_path?>media/oraclebutton.jpg" width=130 height=40 border=0 alt="Oracle"></a><br><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt="[ spacer ]"></td>
-</tr>
 <? } // if minimal ?>
-<tr><td colspan=2 height=15 bgcolor="#0065AD"><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt="[ spacer ]"></td></tr>
+  <tr>
+    <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width="1" height="3"></td>
+  </tr>
 </table>
-
 </body>
 </html>
 <?
