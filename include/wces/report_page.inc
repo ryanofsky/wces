@@ -667,7 +667,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
       }
       $sections->addSection($citem_id, $sectiontext, $sectionhtml);
       $choiceComponents->advance();
-      
+/*      
       // delete loop after I fix abet
       while ($choiceResponses->row
         && ($choiceResponses->row['citem_id'] != $choiceComponents->row['citem_id']
@@ -676,6 +676,7 @@ function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$
         $choiceResponses->advance();
         $choiceQuestions->advance();
       }       
+*/
     }
   } // while($choices->row ...)
 
@@ -765,11 +766,15 @@ $TAVALUES = array
         foreach($TAQUESTIONS as $question)
           $pagehtml .= "  <td><div style=\"writing-mode:tb-rl\"><b>" . str_replace(" ","&nbsp;",$question) . "</b></div></td>\n";
         $pagehtml .= "<td><b>Comments</b></td><td><b>Student #</b></td></tr></thead>\n";
-        $avg = array();
-        $num = array();
       }
       if ($outtext)
         $pagetext .= "TA Ratings\n\n";
+    }
+    
+    if ($taresponses->split[1])
+    {
+      $avg = array();
+      $num = array();
     }
 
     if ($outhtml)
@@ -803,18 +808,27 @@ $TAVALUES = array
 
     $taresponses->advance();
 
-    if ($taresponses->split[0])
+    if ($taresponses->split[1])
     {
       if ($outhtml)
       {
         $pagehtml .= "<tr>\n  <td><b>AVERAGE</b></td>\n";
         foreach($TAQUESTIONS as $field => $question)
           if (isset($avg[$field]) && isset($num[$field]))
-            $pagehtml .= "  <td>" . round($avg[$field]/$num[$field], 2). "</td>\n";
+            $pagehtml .= "  <td>" . sprintf("%.2f", $avg[$field]/$num[$field]) . "</td>\n";
           else
             $pagehtml .= "<td>0</td>";
 
-        $pagehtml .= "  <td>&nbsp;</td>\n  <td>---</td>\n  </tr>\n</table>\n";
+        $pagehtml .= "  <td>&nbsp;</td>\n  <td>---</td>\n  </tr>\n";
+      }
+    }
+
+
+    if ($taresponses->split[0])
+    {
+      if ($outhtml)
+      {
+        $pagehtml .= "</table>\n";
       }
       if ($outtext) $pagetext .= "\n\n";
     }
