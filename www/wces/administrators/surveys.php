@@ -17,6 +17,8 @@ login_protect(login_administrator);
 $pagename = $server_url->toString(false, true, false);
 
 param($topic_id);
+param($bbid);
+if ($bbid) $bbid = (int)$bbid; else $bbid = 1;
 
 $factories = array
 (
@@ -30,7 +32,7 @@ $factories = array
 
 if($topic_id)
 {
-  $q = new SurveyEditor($topic_id, 1, login_getuserid(), $factories, "prefix","f",WIDGET_POST);
+  $q = new SurveyEditor($topic_id, $bbid, login_getuserid(), $factories, "prefix","f",WIDGET_POST);
   $q->loadvalues();
 }
 else 
