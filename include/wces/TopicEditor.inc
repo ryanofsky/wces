@@ -11,8 +11,6 @@ require_once('config/topics.inc');
 
 define("TopicEditor_choose", 1);
 
-$survey_debug = false;
-
 class TopicEditor extends StatefullWidget
 {
   // output
@@ -31,6 +29,7 @@ class TopicEditor extends StatefullWidget
       $this->question_period =& new QuestionPeriodSelector("Display surveys for", "qps", $this);
     $this->shortName('item_id'); 
     $this->shortName('specialization_id');
+    $this->shortName('topic_id');
     $this->professor_mode = (bool)$professor_mode;
   }
 
@@ -40,6 +39,7 @@ class TopicEditor extends StatefullWidget
     {
       $item_id = (int)$param[0];
       $specialization_id = (int)$param[1];
+      $topic_id = (int)$param[2];
       SurveyEditor::DumpScript();
       if ($this->professor_mode)
       {
@@ -62,7 +62,7 @@ class TopicEditor extends StatefullWidget
         } 
       }
       $login =& LoginInstance();
-      $this->editor =& new SurveyEditor($item_id, $specialization_id, $login->get('user_id'), 'editor', $this);
+      $this->editor =& new SurveyEditor($item_id, $specialization_id, $login->get('user_id'), $topic_id, 'editor', $this);
       $this->loadChild($this->editor, $new);
       $this->barePage = $this->editor->barePage;
       return $this->editor;
@@ -76,8 +76,9 @@ class TopicEditor extends StatefullWidget
     
     $item_id = $this->readValue('item_id');
     $specialization_id = $this->readValue('specialization_id');
+    $topic_id = $this->readValue('topic_id');
     if ($item_id && $specialization_id)
-      $this->eventLoop(TopicEditor_choose, array($item_id, $specialization_id), true);
+      $this->eventLoop(TopicEditor_choose, array($item_id, $specialization_id, $topic_id), true);
   }
 
   function printTopics($result, $nameFormat)
@@ -96,9 +97,9 @@ class TopicEditor extends StatefullWidget
       else if ($nameFormat == TOPICS_COURSE)
         $name = format_course($name);
 
-      $no = $survey_debug ? (" ($specialization_id" . ($parent ? ", $parent" : '') . ")") : '';
+      $no = $survey_debug ? (" ($specialization_id" . (isset($parent) ? ", $parent" : '') . ")") : '';
       print("  <li $style><a href=\""
-        . $this->getUrl(array('item_id' => $item_id, 'specialization_id' => $specialization_id))
+        . $this->getUrl(array('item_id' => $item_id, 'specialization_id' => $specialization_id, 'topic_id' => $topic_id))
         . "$ASID\">$name</a>$no</li>\n");
     }
     print("</ul>\n");
