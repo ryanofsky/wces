@@ -27,7 +27,7 @@ page_top("Credits");
 <blockquote>
 <a href="http://www.gnu.org/"><img src="<?=$wces_path?>media/logo_linux.gif" width=88 height=31 border=0></a>
 <a href="http://www.php.net/"><img src="<?=$wces_path?>media/logo_php.gif" width=88 height=31 border=0></a>
-<a href="http://www.mysql.com/"><img src="<?=$wces_path?>media/logo_mysql.gif" width=88 height=31 border=0></a>
+<a href="http://www.postgresql.org/"><img src="<?=$wces_path?>media/logo_postgres.gif" width=50 height=54 border=0></a>
 </blockquote>
 
 <p><b><i>Best seen in</i></b></p>
