@@ -604,9 +604,11 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     rec2 RECORD;
     i INTEGER;
     j INTEGER;
+    k INTEGER;
     bid INTEGER;
     par INTEGER;
     oldpar INTEGER;
+    rec3 RECORD;
 
     -- current version of plpgsql (7.1.3) allows only read access to arrays,
     -- it is not possible to declare array variables or make assignments
@@ -641,9 +643,27 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
 
       i := branch_id_;
       LOOP
-        SELECT INTO j revision_id FROM revisions
+        
+        j := NULL;
+        k := NULL;
+
+        -- this loop is needed to get the last save_id because for some reason
+        -- the ORDER BY clause is getting ignored in plpgsql queries
+        FOR rec3 IN SELECT revision_id, revision FROM revisions
         WHERE branch_id = branch_id_ AND save_id <= save_id_
-        ORDER BY save_id_ DESC;
+        ORDER BY save_id_ 
+        LOOP
+          IF k IS NULL OR k < rec3.revision THEN
+            k := rec3.revision;
+            j := rec3.revision_id;  
+          END IF;
+        END LOOP;
+
+        -- SELECT INTO j revision_id FROM revisions
+        -- WHERE branch_id = branch_id_ AND save_id <= save_id_
+        -- ORDER BY save_id_ DESC LIMIT 1;
+
+        --RAISE NOTICE ''j = %'', j;
 
         IF j IS NOT NULL THEN RETURN j; END IF;
 
@@ -767,9 +787,15 @@ CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INT
     ELSE IF type_ = 10 THEN
       INSERT INTO abet_components(type, parent, branch_id, revision, save_id, merged)
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 100 THEN
+      INSERT INTO abet_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 101 THEN
+      INSERT INTO abet_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
     ELSE
       RAISE EXCEPTION ''revision_create(%,%,%,%,%,%) called with unknown type number'', $1, $2, $3, $4, $5, $6;
-    END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF;
+    END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF;
     RETURN currval(''revision_ids'');
   END;
 ' LANGUAGE 'plpgsql';
@@ -1470,6 +1496,7 @@ CREATE FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS 
     orig_id_     ALIAS FOR $2;
     save_id_     ALIAS FOR $3;
     which_       ALIAS FOR $4;
+    typecode_    ALIAS FOR $5;
     branch_id_   INTEGER := NULL;
     changed      BOOLEAN := ''t'';
     saveto       INTEGER;
@@ -1487,7 +1514,7 @@ CREATE FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS 
 
     IF changed THEN
       branch_id_ := branch_save(topic_id_, branch_id_);
-      saveto := revision_save_start(branch_id_, orig_id_, 10, save_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, typecode_, save_id_);
       UPDATE abet_components SET which = which_ WHERE revision_id = saveto;
       RETURN revision_save_end(branch_id_, saveto);
     ELSE
