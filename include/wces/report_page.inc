@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/database.inc");
 require_once("wces/oldquestions.inc");
@@ -681,4 +681,4 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
   $outtext .= $pagetext;
 };
 
-%>
+?>
