@@ -40,13 +40,15 @@ class SurveyEditor extends FormWidget
   var $barepage = false;
   var $message = "";
   var $factories;
-  var $branch_id;
+  var $topic_id;
+  var $base_branch_id;
   
-  function SurveyEditor($branch_id, $factories, $prefix,$form,$formmethod)
+  function SurveyEditor($topic_id, $base_branch_id, $factories, $prefix,$form,$formmethod)
   {
     global $server_url;
     $this->FormWidget($prefix,$form,$formmethod);
-    $this->branch_id = (int)$branch_id;
+    $this->topic_id = (int)$topic_id;
+    $this->base_branch_id = (int)$base_branch_id;
     $this->factories = $factories;
   }
  
@@ -64,12 +66,12 @@ class SurveyEditor extends FormWidget
   function load()
   {
     $this->survey = new Survey();
-    $this->survey->load($this->branch_id,$this->factories);
+    $this->survey->load($this->topic_id,$this->base_branch_id,$this->factories);
   }
   
   function save()
   {
-    if ($this->survey->save($this->branch_id,0))
+    if ($this->survey->save($this->topic_id,$this->base_branch_id,0))
       $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
     else
       $this->message = "<h1>Save Error</h1>";

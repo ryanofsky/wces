@@ -4,7 +4,7 @@ $wbes = false;
 function wbes_connect()
 {
   global $wbes;
-  if (!$wbes) $wbes = server_pginit("wbes");
+  if (!$wbes) $wbes = server_pginit("russwbes");
 }
 
 class Survey
@@ -40,7 +40,7 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
 
-  function load($branch_id, &$cfactories)
+  function load($topic_id, $base_branch_id, &$cfactories)
   {
     global $wbes;
     wbes_connect();
@@ -49,14 +49,29 @@ class Survey
     for(reset($cfactories); list($k) = each($cfactories); )
       $factories[$cfactories[$k]->code()] = &$cfactories[$k];
 
-    $result = pg_query("SELECT branch_update($branch_id)", $wbes, __FILE__, __LINE__);
-    $this->orig_id = (int)pg_result($result, 0, 0);
+    $topic_id = (int)$topic_id;
+    $result = pg_query("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
+    $existing_topic = (int)pg_result($result,0,0);
 
+    $result = pg_query("SELECT branch_latest(
+      (SELECT branch_id FROM branch_topics_cache WHERE topic_id = $existing_topic
+        AND base_branch_id = $base_branch_id)
+    )", $wbes, __FILE__, __LINE__);
+    
+    $this->orig_id = (int)pg_result($result,0,0);
+   
+    // store the results of branch updates in a temporary table. the temporary
+    // table is needed because the first and second queries can't be combined.
+    // in postgres a select statement will never return rows that are inserted
+    // in the course of the query's execution.
+    
     $result = pg_query("
+ 
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
-      SELECT branch_update(li.item_id) AS revision_id, ordinal
-      FROM list_items AS li
-      WHERE li.revision_id = (SELECT revision_contents($this->orig_id));
+      SELECT branch_latest(li.item_id) AS revision_id, ordinal
+      FROM list_items AS li, branch_topics_cache AS bt 
+      WHERE li.revision_id = (SELECT revision_contents($this->orig_id))
+        AND bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic;
       
       SELECT t.ordinal, t.revision_id, r.type
       FROM tmp$this->orig_id AS t
@@ -64,13 +79,13 @@ class Survey
       ORDER BY type, ordinal;
        
     ", $wbes, __FILE__, __LINE__);
-     
+    
     pg_query("DROP TABLE tmp$this->orig_id", $wbes, __FILE__, __LINE__);
 
     $n = pg_numrows($result);
-    $type = $lasttype = false;
-    $ordinals = $branches = array();
     $this->components = array_pad(array(), $n, false);
+    
+    $lasttype = false;
     for($i = 0; ; ++$i)
     {
       if($i < $n)
@@ -79,28 +94,25 @@ class Survey
         $type = -1;
 
       if ($type !== $lasttype && $lasttype !== false)
-      {
-        $factory = &$factories[$lasttype];
-        $factory->load($this->components, $components, $ordinals);
-      }
+        $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic);
 
       if ($i >= $n) break;
 
       if ($type === $lasttype)
       {
-        $ordinals[] = (int)$ordinal - 1;
-        $components[] = (int)$revision_id;
+        $ids[] = (int)$revision_id;
+        $ordinals[] = $ordinal - 1;
       }
       else
       {
-        $components = array((int)$revision_id);
-        $ordinals = array((int)$ordinal - 1);
+        $ids = array((int)$revision_id);
+        $ordinals = array($ordinal - 1);
       }
       $lasttype = $type;
     }
   }
 
-  function save($branch_id, $user_id)
+  function save($topic_id, $base_branch_id, $user_id)
   {
     global $wbes;
     wbes_connect();
@@ -108,17 +120,14 @@ class Survey
     $this->orig_id = (int)$this->orig_id;
 
     $result = pg_query("SELECT branch_id FROM revisions WHERE revision_id = $this->orig_id", $wbes, __FILE__, __LINE__);
-    if (pg_numrows($result) <> 1 || (int) pg_result($result,0,0) <> $branch_id) // obscurity
-      return false;
+    $branch_id = pg_numrows($result) == 1 ? (int)pg_result($result,0,0) : "NULL";
 
     $components = pg_query("SELECT item_id FROM list_items WHERE revision_id = $this->orig_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
     $components_num = pg_numrows($components);
 
-    $result = pg_query("BEGIN WORK", $wbes, __FILE__, __LINE__);
-      if (!$result) return false;
-
     $result = pg_query("
-      INSERT INTO saves (user_id, revision_id) VALUES ($user_id, $this->orig_id);
+      BEGIN WORK;
+      INSERT INTO saves (user_id) VALUES ($user_id);
       SELECT currval('save_ids')
     ", $wbes, __FILE__, __LINE__);
     $save_id = (int)pg_result($result,0,0);
@@ -126,7 +135,7 @@ class Survey
     $list_changed = $i = 0; $ncomponents = array();
     foreach(array_keys($this->components) as $k)
     {
-      $cbranch_id = $this->components[$k]->save($save_id);
+      $cbranch_id = $this->components[$k]->save($topic_id, $save_id);
       $ncomponents[] = $cbranch_id;
       if (!$list_changed && $components)
         if($i >= $components_num)
@@ -141,6 +150,9 @@ class Survey
 
     if ($list_changed)
     {
+      $result = pg_query("SELECT branch_save($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
+      $branch_id = (int)pg_result($result,0,0);
+      
       $result = pg_query("SELECT revision_save_start($branch_id, $this->orig_id, 1, $save_id)", $wbes, __FILE__, __LINE__);
       $saved_id = (int)pg_result($result,0,0);
       $sql = "";
@@ -152,6 +164,8 @@ class Survey
       $sql .= "SELECT revision_save_end($branch_id, $saved_id)";
       pg_query($sql, $wbes, __FILE__, __LINE__);
     }
+    else
+      pg_query("SELECT branch_topics_add($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
     
     pg_query("COMMIT", $wbes, __FILE__, __LINE__);
 

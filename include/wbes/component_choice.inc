@@ -12,41 +12,47 @@ class ChoiceFactory extends ComponentFactory
     return new Choice();
   }
   
-  function load(&$components, $ids, $ordinals)
+  function load(&$components, $ids, $ordinals, $topic_id)
   {
     global $wbes;
-    $sids = implode($ids, ", ");
+    $sids = implode($ids, ",");
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $id = (int) $wr->row['revision_id'];
-      $ord = $ordinals[$rids[$id]];
-      $components[$ord] = new Choice(); $c = &$components[$ord];
+      $c = new Choice(); 
       $c->revision_id   = (int)$wr->row['revision_id'];
       $c->is_html       = $wr->row['is_html'] == 't';
       $c->text          = $wr->row['ctext'];
       $c->choices       = pg_explode($wr->row['choices']);
       $c->other_choice  = $wr->row['other_choice'];
-      $c->first_number  = $wr->row['first_number'];
-      $c->last_number   = $wr->row['last_number'];
+      $c->first_number  = (int)$wr->row['first_number'];
+      $c->last_number   = (int)$wr->row['last_number'];
       $c->is_numeric    = $wr->row['is_numeric'] == 't';
       $c->select_many   = $wr->row['select_many'] == 't';
       $c->stacked       = $wr->row['stacked'] == 't';
       $c->vertical      = $wr->row['vertical'] == 't';
       $c->rows          = $wr->row['rows'];
       
+      // todo: optimize. these queries can be performed once outside of the for loop
+      
       $result = pg_query("
-        CREATE TEMPORARY TABLE temp$id AS
-        SELECT branch_update(item_id) AS revision_id, ordinal
-        FROM list_items WHERE revision_id = $id;
+      
+        CREATE TEMPORARY TABLE tmp$c->revision_id AS
+        SELECT branch_latest(li.item_id) AS revision_id, ordinal
+        FROM list_items AS li, branch_topics_cache AS bt 
+        WHERE li.revision_id = (SELECT revision_contents($c->revision_id))
+          AND bt.base_branch_id = li.item_id AND bt.topic_id = $topic_id;
         
         SELECT t.ordinal, q.revision_id, q.qtext
-        FROM temp$id AS t INNER JOIN choice_questions AS q USING (revision_id)
+        FROM tmp$c->revision_id AS t INNER JOIN choice_questions AS q USING (revision_id)
         ORDER BY ordinal
+         
       ", $wbes, __FILE__, __LINE__);
-      pg_query("DROP TABLE temp$id", $wbes, __FILE__, __LINE__);
+       
+      pg_query("DROP TABLE tmp$c->revision_id", $wbes, __FILE__, __LINE__);
+
       $n = pg_numrows($result);
       
       $c->questions = $c->question_ids = array();
@@ -56,6 +62,8 @@ class ChoiceFactory extends ComponentFactory
         $c->questions[] = $a['qtext'];
         $c->question_ids[] = $a['revision_id'];
       }
+      
+      $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
 }
@@ -93,7 +101,7 @@ class Choice extends Component
     return new ChoiceWidget($this,$prefix,$form,$formmethod);
   }
   
-  function save($save_id)
+  function save($topic_id, $save_id)
   {
     global $wbes;
     $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
@@ -110,13 +118,13 @@ class Choice extends Component
     $stacked      = $this->stacked ? "'t'" : "'f'";
     $vertical     = $this->vertical ? "'t'" : "'f'";
     $rows         = $this->rows;
+    
     $result = pg_query("
-      SELECT choice_component_save($save_id::integer, $revision_id::integer,
-        '$ctext'::text, $is_html::boolean, $questions::text[], 
-        $question_ids::integer[], $choices::text[], '$other_choice'::text,
-        $first_number::integer, $last_number::integer, $is_numeric::boolean,
-        $select_many::boolean, $stacked::boolean, $vertical::boolean,
-        $rows::integer)
+      SELECT choice_component_save($topic_id, $revision_id, $save_id, '$ctext',
+        $is_html, $questions::text[], $question_ids::integer[],
+        $choices::text[], '$other_choice'::text, $first_number, $last_number,
+        $is_numeric::boolean, $select_many::boolean, $stacked::boolean, 
+        $vertical::boolean, $rows)
     ", $wbes, __FILE__, __LINE__);
     return pg_result($result, 0, 0);
   }
@@ -203,14 +211,15 @@ class ChoiceEditor extends ComponentEditor
     ), $this->prefix . "_orientation", $this->form, $this->formmethod);
   }
   
-  function loadvalues() // public abstract
+  function loadvalues()
   {
     ComponentEditor::loadvalues();
+    
     if ($this->loadprevious)
     {
       $this->qtype->loadvalues();       
       $this->question->loadvalues();    
-      $this->questions->loadvalues();   
+      $this->questions->loadvalues(); 
       $this->ctype->loadvalues();       
       $this->choices->loadvalues();     
       $this->select_many->loadvalues(); 
@@ -630,6 +639,10 @@ class ChoiceWidget extends ComponentWidget
   var $choices;
   var $other;
   var $legend;
+
+  var $answers = array();
+  var $others = array();
+  var $errors = array();
   
   function ChoiceWidget(&$c,$prefix,$form,$formmethod)
   {
@@ -670,9 +683,47 @@ class ChoiceWidget extends ComponentWidget
     }
   }
   
-  function loadvalues() // public abstract
+  function loadvalues()
   {
+    foreach ($this->questions as $i => $text)
+    {
+  	  $c = &$this->component;
+  	  $name = "q$i";
+  	  if ($c->select_many) $name .= "[]";
+  	  $a = $this->loadattribute($name);
+  	  if ($c->select_many)
+  	    $this->answers[$i] = is_array($a) ? $a : array();
+      else if (isset($a))
+        $this->answers[$i] = (int)$a;
+      else
+      {
+        $this->answers[$i] = NULL;
+        $this->errors[$i] = "Question '$text' is not filled in.";
+      }
+      $this->others[$i] = (string)$this->loadattribute("q{$i}_{$this->other}");
+    }
   }
+  
+  function save($completion_id)
+  {
+    global $wbes;
+    $c = &$this->component;
+    
+    $table = $c->select_many ? "mchoice_response" : "choice_response";
+    
+    foreach(array_keys($this->questions) as $i)
+    {
+      if ($c->select_many)
+        $answer = pg_implode($this->answers[$i]);
+      else
+        $answer = addslashes($this->answers[$i]);
+      $other = addslashes($this->others[$i]);
+      pg_query("
+        INSERT INTO $table(revision_id, completion_id, answer, other)
+        VALUES ({$this->component->revision_id}, $completion_id, '$answer', '$other');
+      ", $wbes, __FILE__, __LINE__);
+    }
+  }  
   
   function showchoices($questionno, $tdparams = "")
   {
@@ -685,7 +736,10 @@ class ChoiceWidget extends ComponentWidget
   	{
       print("<select name=$name" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
       foreach($this->choices as $i => $choice)
-        print("  <option value=$i>$choice\n");
+      {
+        $selected = (!$c->select_many && $i === $this->answers[$questionno]) && ($c->select_many && is_array($this->answers) && in_array($i, $this->answers[$questionno])) ? " selected" : "";
+        print("  <option value=$i$selected>$choice\n");
+      }  
       print("</select>\n");
   	}
   	else
@@ -705,24 +759,49 @@ class ChoiceWidget extends ComponentWidget
         $id = $this->prefix . '_q' . $questionno . '_' . $i;
         
         if ($c->select_many)
-        	print("<input type=checkbox name=$name value=$i id=$id>");
+        {
+        	$checked = in_array($i, $this->answers[$questionno]) ? " checked" : "";
+        	print("<input type=checkbox name=$name value=$i id=$id$checked>");
+        }	
         else
-        	print("<input type=radio name=$name value=$i id=$id>");
-        	
+        {
+        	$checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
+        	print("<input type=radio name=$name value=$i id=$id$checked>");
+        }
+       	
         if (!$c->stacked)
           print(" <label for=$id>$choice</label>");
         
         if ($i == $this->other)
-          print(" <input type=textbox size=20 name=$id>");
+        {
+          print(" <input type=textbox size=20 name=$id value=\"" . htmlspecialchars($this->others[$questionno]) . "\">");
+        } 
       }  
- 		
     }
     if ($c->stacked) print("</td>\n");
   }
   
-  function display()
+  function display($hidden = false, $showerrors = false)
   {
     global $server_media;
+
+    if($hidden)
+    {
+      foreach($this->answers as $i => $v)
+      {
+        $name = "q$i";
+        if (is_array($v))
+          $this->printarrayattribute($name, $v);
+        else
+          $this->printattribute($name, $v);
+      }
+
+      foreach($this->others as $i => $v)
+      {
+        $this->printattribute("q{$i}_{$this->other}", $v);
+      }
+      return;
+    }
 
     $c = &$this->component;
     $n = count($this->choices);
@@ -752,6 +831,7 @@ class ChoiceWidget extends ComponentWidget
       foreach ($this->questions as $i => $text)
       {
         $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $server_media . '/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $server_media . '/0xEEEEEE.gif"';
+        if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
         print("<tr>\n<td $color>$text</td>\n");
         $this->showchoices($i, "$color align=center");
         print("</tr>");
@@ -763,6 +843,7 @@ class ChoiceWidget extends ComponentWidget
       if ($this->legend) print("<p><strong>" . $this->legend . "</strong></p>\n");
       foreach ($this->questions as $i => $text)
       {
+        if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
         print("$text<br>\n");
         $this->showchoices($i);
         print("<br><br>\n");

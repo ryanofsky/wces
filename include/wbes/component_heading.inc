@@ -12,9 +12,9 @@ class HeadingFactory extends ComponentFactory
     return new Heading();
   }
   
-  function load(&$components, $ids, $ordinals)
+  function load(&$components, $ids, $ordinals, $topic_id)
   {
-    return $this->textload($components, $ids, $ordinals, "Heading");
+    return $this->textload($components, $ids, $ordinals, $topic_id, "Heading");
   }  
 };
 
@@ -34,9 +34,9 @@ class Heading extends Component
     return new HeadingWidget($this,$prefix,$form,$formmethod);
   }
   
-  function save($save_id)
+  function save($topic_id, $save_id)
   {
-    return $this->textsave($save_id, HeadingFactory::code());
+    return $this->textsave($topic_id, $save_id, HeadingFactory::code());
   }  
 }
 
@@ -88,10 +88,13 @@ class HeadingWidget extends ComponentWidget
   {
   }
   
-  function display()
+  function display($hidden = false)
   {
-    $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
-    print("<h4>$text</h4>");
+    if (!$hidden)
+    {
+      $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
+      print("<h4>$text</h4>");
+    }
   } 
 }
 

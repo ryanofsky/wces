@@ -12,9 +12,9 @@ class TextFactory extends ComponentFactory
     return new Text();
   }
   
-  function load(&$components, $ids, $ordinals)
+  function load(&$components, $ids, $ordinals, $topic_id)
   {
-    return $this->textload($components, $ids, $ordinals, "Text");
+    return $this->textload($components, $ids, $ordinals, $topic_id, "Text");
   }
 };
 
@@ -34,9 +34,9 @@ class Text extends Component
     return new TextWidget($this,$prefix,$form,$formmethod);
   }
   
-  function save($save_id)
+  function save($topic_id, $save_id)
   {
-    return $this->textsave($save_id, TextFactory::code());
+    return $this->textsave($topic_id, $save_id, TextFactory::code());
   }
   
 }
@@ -88,10 +88,13 @@ class TextWidget extends ComponentWidget
   {
   }
   
-  function display()
+  function display($hidden = false, $showerrors = true)
   {
-    $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
-    print($text);
+    if(!$hidden)
+    {
+      $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
+      print($text);
+    }
   }  
 }
 

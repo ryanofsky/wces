@@ -17,33 +17,33 @@ class ComponentFactory
   }
   
   // generic load function for component types that do not define their own 
-  function load(&$components, $ids, $ordinals)
+  function load(&$components, $ids, $ordinals, $topic_id)
   {
     global $wbes;
-    $sids = implode($ids, ", ");
+    $sids = implode($ids, ",");
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, data FROM generic_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $ord = $ordinals[$rids[$wr->row['revision_id']]];
-      $components[$ord] = unserialize($wr->row['data']);
-      $components[$ord]->revision_id = (int)$wr->row['revision_id'];
+      $c = unserialize($wr->row['data']);
+      $c->revision_id = (int)$wr->row['revision_id'];      
+      $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
   
-  function textload(&$components, $ids, $ordinals, $cn)
+  function textload(&$components, $ids, $ordinals, $topic_id, $cn)
   {
     global $wbes;
-    $sids = implode($ids, ", ");
+    $sids = implode($ids, ",");
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, ctext, is_html FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $ord = $ordinals[$rids[$wr->row['revision_id']]];
-      $components[$ord] = new $cn(); $c = &$components[$ord];
+      $c = new $cn();
       $c->revision_id = (int)$wr->row['revision_id'];
       $c->is_html     = $wr->row['is_html'] == 't';
       $c->text       = $wr->row['ctext'];
+      $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
 };
@@ -69,7 +69,7 @@ class Component
   }
   
   // save the base fields, $text and $is_html
-  function textsave($save_id, $cn)
+  function textsave($topic_id, $save_id, $cn)
   {
     global $wbes;
 
@@ -77,13 +77,16 @@ class Component
     $h = $this->is_html ? 't' : 'f';
     $r = $this->revision_id ? $this->revision_id : 'NULL';
 
-    $result = pg_query("SELECT text_component_save($save_id, $cn, $r, '$t', '$h')", $wbes, __FILE__, __LINE__);
+    $result = pg_query("SELECT text_component_save($topic_id, $r, $save_id, $cn, '$t', '$h')", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
   
   // generic save function for component types that do not define their own 
-  function save($save_id)
+  // todo: this function is very out of date, needs to be updated
+  function save($topic_id, $save_id)
   {
+    assert(false);
+    
     global $wbes;
 
     $cn = get_class($this) . "factory"; 

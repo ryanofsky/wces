@@ -2,37 +2,53 @@ DROP TABLE saves;
 DROP SEQUENCE save_ids;
 DROP TABLE branches;
 DROP SEQUENCE branch_ids;
+DROP TABLE branch_topics_cache;
 DROP TABLE branch_ancestor_cache;
 DROP TABLE generic_components;
 DROP TABLE choice_components;
 DROP TABLE choice_questions;
 DROP TABLE textresponse_components;
-DROP TABLE list_items;
-DROP SEQUENCE list_item_ids;
 DROP TABLE text_components;
 DROP TABLE revisions;
 DROP SEQUENCE revision_ids;
+DROP TABLE list_items;
+DROP SEQUENCE list_item_ids;
+DROP TABLE topics;
+DROP SEQUENCE topic_ids;
+DROP TABLE completions;
+DROP SEQUENCE completion_ids;
+DROP TABLE choice_response;
+DROP TABLE mchoice_response;
+DROP TABLE text_response;
+DROP TABLE responses;
+DROP SEQUENCE response_ids;
 DROP FUNCTION boolean_cast(BOOLEAN);
 DROP FUNCTION array_integer_length(INTEGER[]);
 DROP FUNCTION array_integer_cast(TEXT);
 DROP FUNCTION branch_generate();
-DROP FUNCTION branch_generate(INTEGER, INTEGER, INTEGER, BOOLEAN);
+DROP FUNCTION branch_generate(INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER);
 DROP FUNCTION branch_ancestor_generate();
 DROP FUNCTION branch_ancestor_generate(INTEGER, INTEGER);
-DROP SEQUENCE branch_top;
-DROP FUNCTION branch_nextval(INTEGER);
+DROP FUNCTION branch_topics_generate(INTEGER);
+DROP FUNCTION branch_topics_generate();
+DROP FUNCTION topic_contents(INTEGER);
 DROP FUNCTION revision_contents(INTEGER);
+DROP FUNCTION branch_latest(INTEGER);
+DROP FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION branch_create(INTEGER, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION branch_topics_insert(INTEGER, INTEGER, INTEGER);
+DROP FUNCTION branch_topics_add(INTEGER, INTEGER);
 DROP FUNCTION revision_save_start(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION revision_save_end(INTEGER, INTEGER);
-DROP FUNCTION branch_update(INTEGER);
-DROP FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER);
-DROP FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN);
-DROP FUNCTION textresponse_component_save(INTEGER, INTEGER, TEXT, BOOLEAN, INTEGER, INTEGER);
-DROP FUNCTION choice_question_save(INTEGER, INTEGER, TEXT);
-DROP FUNCTION choice_component_save(INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[], INTEGER[], TEXT[], TEXT, INTEGER, INTEGER, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN, INTEGER);
+DROP FUNCTION branch_save(INTEGER, INTEGER);
+DROP FUNCTION branch_topics_update(INTEGER, INTEGER, INTEGER, INTEGER);
+DROP FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN);
+DROP FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, INTEGER, INTEGER);
+DROP FUNCTION choice_question_save(INTEGER, INTEGER, INTEGER, TEXT);
+DROP FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[],INTEGER[], TEXT[], TEXT, INTEGER, INTEGER, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN, INTEGER);
 DROP FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER, INTEGER);
-DROP FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) ;
+DROP FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 DROP FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER);
@@ -40,13 +56,13 @@ DROP FUNCTION integer_merge(INTEGER, INTEGER, INTEGER, BOOLEAN);
 DROP FUNCTION text_merge(TEXT, TEXT, TEXT, BOOLEAN);
 DROP FUNCTION boolean_merge(BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN);
 DROP FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[], BOOLEAN);
+DROP FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[], BOOLEAN);
 
 CREATE TABLE saves
 (
   save_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('save_ids'),
   user_id INTEGER,
-  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  revision_id INTEGER NOT NULL
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE SEQUENCE save_ids INCREMENT 1 START 100;
@@ -68,24 +84,32 @@ CREATE TABLE revisions
   branch_id INTEGER NOT NULL,
   revision INTEGER NOT NULL,
   save_id INTEGER,
+  merged INTEGER,
   UNIQUE(parent, branch_id, revision)
 );
-CREATE SEQUENCE revision_ids INCREMENT 1 START 100;
+CREATE SEQUENCE revision_ids INCREMENT 1 START 200;
 
 CREATE TABLE branches
 (
   branch_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('branch_ids'),
-  branch INTEGER NOT NULL,
+  topic_id INTEGER NOT NULL,
 
   -- hereafter fields are redundant but included for efficiency
+  base_branch_id INTEGER NOT NULL,
   parent INTEGER,
   outdated BOOLEAN DEFAULT 'f',
   latest_id INTEGER,
-  content_id INTEGER,
-  nextbranch INTEGER NOT NULL DEFAULT 1,
-  UNIQUE(parent, branch)
+  content_id INTEGER
 );
-CREATE SEQUENCE branch_ids INCREMENT 1 START 100;
+CREATE SEQUENCE branch_ids INCREMENT 1 START 300;
+
+CREATE TABLE branch_topics_cache
+(
+  base_branch_id INTEGER,
+  topic_id INTEGER,
+  branch_id INTEGER,
+  PRIMARY KEY (base_branch_id,topic_id)
+);
 
 -- this entire table is redundant
 CREATE TABLE branch_ancestor_cache
@@ -101,7 +125,7 @@ CREATE TABLE generic_components
 
 CREATE TABLE text_components
 (
-  ctext TEXT, 
+  ctext TEXT,
   is_html BOOLEAN
 ) INHERITS (revisions);
 
@@ -137,8 +161,53 @@ CREATE TABLE list_items
   item_id INTEGER NOT NULL
 );
 
-CREATE SEQUENCE list_item_ids INCREMENT 1 START 100;
+CREATE SEQUENCE list_item_ids INCREMENT 1 START 400;
 CREATE INDEX list_item_revision_idx ON list_items(revision_id);
+
+CREATE TABLE topics
+(
+  topic_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL ('topic_ids'),
+  parent INTEGER
+);
+
+CREATE SEQUENCE topic_ids INCREMENT 1 START 500;
+
+
+CREATE TABLE completions
+(
+  completion_id INTEGER DEFAULT NEXTVAL ('completion_ids'),
+  date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  topic_id INTEGER NOT NULL,
+  user_id INTEGER
+);
+
+CREATE SEQUENCE completion_ids INCREMENT 1 START 600;
+
+CREATE TABLE responses
+(
+  response_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL ('response_ids'),
+  revision_id INTEGER NOT NULL,
+  completion_id INTEGER NOT NULL
+);
+
+CREATE SEQUENCE response_ids INCREMENT 1 START 700;
+
+CREATE TABLE choice_response
+(
+  answer INTEGER,
+  other TEXT
+) INHERITS (responses);
+
+CREATE TABLE mchoice_response
+(
+  answer INTEGER[],
+  other TEXT
+) INHERITS (responses);
+
+CREATE TABLE text_response
+(
+  rtext TEXT
+) INHERITS (responses);
 
 CREATE FUNCTION boolean_cast(BOOLEAN) RETURNS BOOLEAN AS '
   SELECT ($1 IS NOT NULL) AND $1;
@@ -168,51 +237,52 @@ CREATE FUNCTION branch_generate() RETURNS INTEGER AS '
     LOCK TABLE branches IN SHARE ROW EXCLUSIVE MODE;
     LOCK TABLE revisions IN SHARE ROW EXCLUSIVE MODE;
     UPDATE branches SET outdated = ''t'', parent = NULL;
-    PERFORM branch_generate(NULL, NULL, NULL, ''f'');
+    PERFORM branch_generate(NULL, NULL, NULL, ''f'', NULL);
     RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION branch_generate(INTEGER, INTEGER, INTEGER, BOOLEAN) RETURNS INTEGER AS '
+CREATE FUNCTION branch_generate(INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER) RETURNS INTEGER AS '
   DECLARE
     parent_revision ALIAS FOR $1;
     parent_branch   ALIAS FOR $2;
     pcontent_id     ALIAS FOR $3;
     poutdated       ALIAS FOR $4; -- parent revision is outdated
+    base_branch_id_ ALIAS FOR $5;
     last_branch_id  INTEGER := 0; -- d.branch_id from previous loop iteration
-    last_branch     INTEGER := 0; -- d.branch from previous loop iteration
     next_branch     INTEGER;      -- result of recursive call
     new_branch      BOOLEAN;      -- d.revision_id is the newest revision
     outdated_       BOOLEAN;      -- d.revision_id is outdated
     visted          BOOLEAN;      -- already visited this branch
     content         INTEGER;      -- first nonzero ancestor of d.revision_id
     d               RECORD;
+    bb              INTEGER;
   BEGIN
     FOR d IN
-      SELECT r.revision_id, r.revision, b.branch_id, b.branch, b.parent
+      SELECT r.revision_id, r.revision, b.branch_id, b.parent
       FROM revisions AS r INNER JOIN branches AS b USING(branch_id)
       WHERE r.parent = parent_revision OR (r.parent IS NULL AND parent_revision IS NULL)
-      ORDER BY b.branch, r.revision DESC
+      ORDER BY b.branch_id, r.revision DESC
     LOOP
       new_branch := d.branch_id <> last_branch_id;
       outdated_ := poutdated OR NOT new_branch;
       content := CASE WHEN d.revision = 0 THEN pcontent_id ELSE d.revision_id END;
-      next_branch := branch_generate(d.revision_id, d.branch_id, content, outdated_);
+      PERFORM branch_generate(d.revision_id, d.branch_id, content, outdated_,base_branch_id_);
       IF new_branch THEN
         IF d.parent IS NULL THEN
+          bb := COALESCE(base_branch_id_, d.branch_id);
           UPDATE branches SET
             parent = parent_branch,
             latest_id = d.revision_id,
             content_id = content,
             outdated = outdated_,
-            nextbranch = next_branch
+            base_branch_id = bb
           WHERE branch_id = d.branch_id;
         END IF;
-        last_branch := d.branch;
         last_branch_id = d.branch_id;
       END IF;
     END LOOP;
-    RETURN last_branch + 1;
+    RETURN last_branch_id;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -258,27 +328,50 @@ CREATE FUNCTION branch_ancestor_generate(INTEGER, INTEGER) RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE SEQUENCE branch_top INCREMENT 1 START 100;
-
--- for efficiency, should be called outside of other transactions, otherwise
--- branch_id will be locked unneccesarily
-
-CREATE FUNCTION branch_nextval(INTEGER) RETURNS INTEGER AS '
+CREATE FUNCTION branch_topics_generate(INTEGER) RETURNS INTEGER AS '
   DECLARE
-    branch_id_ ALIAS FOR $1;
-    ret INTEGER;
+    topic_id_ ALIAS FOR $1;
+    t INTEGER;
+    topic_info RECORD;
   BEGIN
-    IF branch_id_ is NULL THEN
-      ret := nextval(''branch_top'');
-    ELSE
-      SELECT INTO ret nextbranch FROM branches WHERE branch_id = branch_id_ FOR UPDATE;
-      IF NOT FOUND THEN
-        RAISE EXCEPTION ''branch_nextval(%) fails. branch_id not found'', $1;
-      END IF;
-      UPDATE branches SET nextbranch = nextbranch + 1 WHERE branch_id = branch_id;
-    END IF;
-    RETURN ret;
+    t := topic_id_;
+     LOOP
+      INSERT INTO branch_topics_cache (topic_id, base_branch_id, branch_id)
+      SELECT topic_id_, base_branch_id, branch_id FROM branches
+      WHERE topic_id = t;
+      SELECT INTO t parent FROM topics WHERE topic_id = t;
+      IF NOT FOUND THEN EXIT; END IF;  
+    END LOOP;                       
+    
+    FOR topic_info IN SELECT topic_id FROM topics WHERE ((topic_id_ IS NULL AND parent IS NULL) OR topic_id_ = parent) LOOP
+      PERFORM branch_topics_generate(topic_info.topic_id);
+    END LOOP;
+    RETURN 1;
   END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION branch_topics_generate() RETURNS INTEGER AS '
+  DELETE FROM branch_topics_cache;
+  SELECT branch_topics_generate(NULL);
+' LANGUAGE 'sql';
+
+-- given topic_id that might not have any branches associated with it yet.
+-- find an actual topic with saved stuff that will be used to load survey and component branches
+
+CREATE FUNCTION topic_contents(INTEGER) RETURNS INTEGER AS '
+DECLARE
+  topic_id_ ALIAS FOR $1;
+  e BOOLEAN;
+  t INTEGER;
+BEGIN
+  t := topic_id_;
+  LOOP
+    SELECT INTO e EXISTS (SELECT branch_id FROM branch_topics_cache WHERE topic_id = t);
+    IF e THEN RETURN t; END IF;
+    SELECT INTO t parent FROM topics WHERE topic_id = t;
+    IF NOT FOUND THEN RAISE EXCEPTION''topic_contents(%) fails. called with empty topic'', $1; END IF;
+  END LOOP;
+END;
 ' LANGUAGE 'plpgsql';
 
 -- if revision_id passed is a 0 revision, return the revision_id that contains the revision contents
@@ -294,6 +387,260 @@ CREATE FUNCTION revision_contents(INTEGER) RETURNS INTEGER AS'
       SELECT INTO i parent FROM revisions WHERE revision_id = r AND revision = 0;
       IF NOT FOUND THEN RETURN r; ELSE r := i; END IF;
     END LOOP;
+  END;
+' LANGUAGE 'plpgsql';
+
+-- given a branch id this function return the latest revision on the branch.
+-- If the latest existing revision is out of date
+CREATE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    branch_id_ ALIAS FOR $1;
+    info RECORD;
+    rec RECORD;
+    rec1 RECORD;
+    rec2 RECORD;
+    s_bids TEXT;
+    s_rids TEXT;
+    s_prids TEXT;
+    s_revs TEXT;
+    s_types TEXT;
+    sep TEXT;
+    i INTEGER;
+    j INTEGER;
+    bid INTEGER;
+    par INTEGER;
+    oldpar INTEGER;
+  BEGIN
+    -- RAISE NOTICE ''branch_latest(%) called'', $1;
+
+    -- get information about the branch
+
+    SELECT INTO info outdated, latest_id, content_id
+    FROM branches WHERE branch_id = branch_id_;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''branch_latest(%) called with invalid branch_id'', $1;
+    END IF;
+
+    IF NOT info.outdated THEN RETURN info.latest_id; END IF;
+
+    -- current version of plpgsql (7.1.3) allows only read access to arrays,
+    -- it is not possible to declare array variables or make assignments
+    -- into arrays. this code gets around that restriction by putting
+    -- numbers into strings, then casting those strings into array
+    -- columns in a RECORD variable.
+
+    s_bids  := ''''; -- stringed array of branch_ids for each branch level
+    s_rids  := ''''; -- stringed array of revision_ids for each branch level
+    s_prids := ''''; -- stringed array of parent revision_ids for each branch level
+    s_revs  := ''''; -- stringed array of revision numbers for each branch level
+    s_types := ''''; -- stringed array of types for each branch level
+    sep     := '''';
+
+    -- loop to lock and gather information about ancestor branches
+
+    i := 0;
+    bid := branch_id_;
+
+    LOOP
+      SELECT INTO rec latest_id AS rid, parent AS pbid
+      FROM branches
+      WHERE branch_id = bid AND outdated FOR UPDATE;
+
+      IF NOT FOUND THEN EXIT; END IF;
+      SELECT INTO rec2 parent AS prid, revision AS rev, type FROM revisions WHERE revision_id = rec.rid;
+
+      s_bids  := s_bids  || sep || bid::TEXT;
+      s_rids  := s_rids  || sep || rec.rid::TEXT;
+      s_prids := s_prids || sep || rec2.prid::TEXT;
+      s_revs  := s_revs  || sep || rec2.rev::TEXT;
+      s_types := s_types || sep || rec2.type::TEXT;
+
+      i := i + 1;
+      bid := rec.pbid;
+      sep := '','';
+    END LOOP;
+
+    IF i < 1 THEN
+      RAISE EXCEPTION ''branch_latest(%) fails. impossible condition reached'', $1;
+    END IF;
+
+    s_bids  := ''{'' || s_bids  || ''}'';
+    s_rids  := ''{'' || s_rids  || ''}'';
+    s_prids := ''{'' || s_prids || ''}'';
+    s_revs  := ''{'' || s_revs  || ''}'';
+    s_types := ''{'' || s_types || ''}'';
+
+    SELECT INTO rec
+      array_integer_cast(s_bids) AS bids,
+      array_integer_cast(s_rids) AS rids,
+      array_integer_cast(s_prids) AS prids,
+      array_integer_cast(s_revs) AS revs,
+      array_integer_cast(s_types) AS types;
+
+    -- loop to bring ancestral branches up to date
+
+    SELECT INTO par latest_id FROM branches WHERE branch_id = bid;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''branch_latest(%) fails. impossible condition reached'', $1;
+    END IF;
+
+    FOR j IN REVERSE i..1 LOOP
+      IF rec.revs[j] = 0 THEN
+        i := revision_create(rec.types[j], par, rec.bids[j], 0, NULL, rec.rids[j]);
+      ELSE
+        i := revision_create(rec.types[j], par, rec.bids[j], 1, NULL, rec.rids[j]);
+        PERFORM revision_merge(rec.prids[j], rec.rids[j], par, i);
+      END IF;
+      oldpar := par; par := i;
+      UPDATE branches SET
+        outdated = false, latest_id = par, content_id = par
+      WHERE branch_id = rec.bids[j];
+    END LOOP;
+
+    RETURN par;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    type_        ALIAS FOR $1;
+    parent_      ALIAS FOR $2;
+    branch_id_   ALIAS FOR $3;
+    revision_    ALIAS FOR $4;
+    save_id_     ALIAS FOR $5;
+    merged_      ALIAS FOR $6;
+  BEGIN
+    -- RAISE NOTICE ''revision_create(%,%,%,%,%,%) called'', $1, $2, $3, $4, $5, $6;
+    IF type_ = 1 THEN
+      INSERT INTO revisions (type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 2 THEN
+      INSERT INTO choice_components (type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 3 THEN
+      INSERT INTO textresponse_components (type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 4 OR type_ = 5 THEN
+      INSERT INTO text_components (type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 6 THEN
+      INSERT INTO choice_questions(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 7 THEN
+      INSERT INTO generic_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE
+      RAISE EXCEPTION ''revision_create(%,%,%,%,%,%) called with unknown type number'', $1, $2, $3, $4, $5, $6;
+    END IF; END IF; END IF; END IF; END IF; END IF;
+    RETURN currval(''revision_ids'');
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION branch_create(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_         ALIAS FOR $1;
+    base_branch       ALIAS FOR $2;
+    parent_branch_id  ALIAS FOR $3;
+    parent_topic_id   ALIAS FOR $4;
+    branch_id_        INTEGER;
+    base_branch_id_   INTEGER;
+    child             RECORD;
+    parent            RECORD;
+    nrev              INTEGER;
+    t                 INTEGER;
+    type_             INTEGER;
+  BEGIN
+    branch_id_ := nextval(''branch_ids'');
+    base_branch_id_ := COALESCE(base_branch, branch_id_);
+    
+    INSERT INTO branches (branch_id, parent, base_branch_id, topic_id)
+    VALUES (branch_id_, parent_branch_id, base_branch_id_, topic_id_);
+
+    IF parent_branch_id IS NULL THEN
+      PERFORM branch_topics_insert(topic_id_, base_branch_id_, branch_id_);
+    ELSE
+      -- update the branch_ancestor_cache table with information about the new branch
+
+      INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+      SELECT ancestor_id, branch_id_
+      FROM branch_ancestor_cache
+      WHERE descendant_id = parent_branch_id;
+
+      INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+      VALUES (parent_branch_id, branch_id_);
+
+      -- update the branch_topics_cache table so that topic_id_ and its subtopics point to this branch
+
+      PERFORM branch_topics_update(topic_id_, branch_id_, parent_branch_id, branch_id_);
+
+      -- it is possible that there are child branches on parent_branch_id that pertain to topic_id, so move them underneath
+
+      -- loop through the child branches
+      FOR child IN SELECT branch_id, topic_id FROM branches WHERE parent = parent_branch_id AND branch_id <> branch_id_ LOOP
+        t := child.topic_id;
+        
+        -- loop through ancestors of t
+        LOOP
+          SELECT INTO t parent FROM topics WHERE topic_id = t;
+          IF NOT FOUND THEN RAISE EXCEPTION ''branch_id % doesn''''t belong underneath branch %.'', child.branch_id, parent_branch_id; END IF;
+          IF t = topic_id_ THEN -- this branch needs to be moved
+            -- loop through the parents of revisions that are on this branch.
+            -- new zero revisions will be placed in between the parents and the revisions on rec1.branch_id
+            FOR parent IN SELECT parent AS id FROM revisions WHERE branch_id = branch_id_ GROUP BY parent LOOP
+              SELECT INTO type_ type FROM revisions WHERE revision_id_ = parent.id;
+              -- revision_create not needed since this is a zero revision.
+              INSERT INTO revisions (parent, branch_id, revision, save_id, type)
+              VALUES (parent.id, branch_id_, 0, save_id_, type_)
+              nrev := currval(''revision_ids'');
+              UPDATE revisions SET parent = nrev WHERE parent = parent.id AND branch_id_ = branch_id_ AND revision_id <> nrev;
+            END LOOP;
+            EXIT;
+          END IF;
+          -- exit condition for branches that don''t need to be moved
+          IF t = parent_topic_id THEN EXIT; END IF;
+        END LOOP;
+      END LOOP;
+    END IF;
+    
+    RETURN branch_id_;
+  END;
+' LANGUAGE 'plpgsql';
+
+-- insert branch_topics for a new branch
+CREATE FUNCTION branch_topics_insert(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_       ALIAS FOR $1;
+    base_branch_id_ ALIAS FOR $2;
+    branch_id_      ALIAS FOR $3;
+    rec RECORD;
+  BEGIN
+    IF EXISTS (SELECT * FROM branches WHERE topic_id = topic_id_) THEN
+      INSERT INTO branch_topics_cache (topic_id, base_branch_id, branch_id)
+      VALUES (topic_id_, base_branch_id_, branch_id_);
+    END IF;
+
+    FOR rec IN SELECT topic_id FROM topics WHERE (topic_id_ IS NULL AND parent IS NULL) OR parent = topic_id_ LOOP
+      PERFORM branch_topics_insert(rec.topic_id, base_branch_id_, branch_id_);
+    END LOOP;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
+-- insert a branch_topic for a (possibly) new topic
+CREATE FUNCTION branch_topics_add(INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_ ALIAS FOR $1;
+    branch_id_ ALIAS FOR $2;
+    base_branch_id_ INTEGER;
+    i INTEGER;
+  BEGIN
+    SELECT INTO base_branch_id_ base_branch_id FROM branches WHERE branch_id = branch_id_;
+    SELECT INTO i branch_id FROM branch_topics_cache WHERE topic_id = topic_id_ AND base_branch_id = base_branch_id_;
+    IF NOT FOUND THEN
+      INSERT INTO branch_topics_cache (base_branch_id, topic_id, branch_id)
+        VALUES (base_branch_id_, topic_id_, branch_id_);
+    END IF;
+    RETURN base_branch_id_;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -331,39 +678,38 @@ CREATE FUNCTION revision_save_start(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS 
     orevision INTEGER;
   BEGIN
     -- RAISE NOTICE ''revision_save_start(%,%,%,%) called'', $1, $2, $3, $4;
-    
+
     -- lock the branch
-    SELECT INTO info branch, latest_id, content_id FROM branches
+    SELECT INTO info latest_id, content_id FROM branches
     WHERE branch_id = branch_id_ FOR UPDATE;
-    
+
     IF NOT FOUND THEN
       RAISE EXCEPTION ''revision_save_start(%,%,%,%) fails. branch_id not found'', $1, $2, $3, $4;
     END IF;
-    
+
     IF info.latest_id IS NULL AND info.content_id IS NULL AND orig_id IS NULL THEN
       orevision := 0; oparent := NULL;
     ELSE
       -- check for valid orig_id
       SELECT INTO i branch_id FROM revisions WHERE revision_id = orig_id;
-      IF i IS NULL OR branch_id_ <> i THEN 
+      IF i IS NULL OR branch_id_ <> i THEN
         RAISE EXCEPTION ''revision_save_start(%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4;
       END IF;
-    
+
       -- select the latest revision
       SELECT INTO rec parent, revision FROM revisions WHERE revision_id = info.latest_id;
       orevision := rec.revision; oparent := rec.parent;
     END IF;
-    
-    i := revision_create(type_, oparent, branch_id_, orevision + 1, save_id_);
-    
+
+    i := revision_create(type_, oparent, branch_id_, orevision + 1, save_id_, NULL);
+
     -- insert a new revision right after
     IF orig_id <> info.latest_id THEN -- merge needed
-      INSERT INTO saves (revision_id) VALUES (orig_id);
-      j := revision_create(type_, oparent, branch_id_, orevision + 2, currval(''save_ids''));
+      j := revision_create(type_, oparent, branch_id_, orevision + 2, save_id_, orig_id);
     ELSE
       j := i;
     END IF;
-    
+
     -- point to new revision
     UPDATE branches SET latest_id  = j, content_id = j WHERE branch_id = branch_id_;
 
@@ -378,12 +724,14 @@ CREATE FUNCTION revision_save_end(INTEGER, INTEGER) RETURNS INTEGER AS '
     saved RECORD;
     merged RECORD;
     latest_id INTEGER;
-    merg e_id INTEGER;
+    merge_id INTEGER;
   BEGIN
     -- RAISE NOTICE ''revision_save_end(%,%) called'', $1, $2;
-    
+
     -- get information about the just saved revision
-    SELECT INTO saved parent, branch_id, revision FROM revisions WHERE revision_id = saved_id;
+    SELECT INTO saved r.parent, r.branch_id, r.revision, b.base_branch_id
+    FROM revisions AS r INNER JOIN branches AS b USING (branch_id)
+    WHERE r.revision_id = saved_id;
     IF NOT FOUND THEN
       RAISE EXCEPTION ''revision_save_end(%,%) fails. saved_id not found'', $1, $2;
     END IF;
@@ -395,13 +743,13 @@ CREATE FUNCTION revision_save_end(INTEGER, INTEGER) RETURNS INTEGER AS '
 
     -- get the merge revision, if it exists
 
-    SELECT INTO merged r.revision_id, s.revision_id AS orig_id
-      FROM revisions AS r INNER JOIN saves AS s USING (save_id)
+    SELECT INTO merged revision_id, merged AS orig_id
+      FROM revisions
       WHERE
-      ((r.parent IS NULL AND saved.parent IS NULL) OR r.parent = saved.parent)
-      AND r.branch_id = saved.branch_id AND r.revision = saved.revision + 1;
+      ((parent IS NULL AND saved.parent IS NULL) OR parent = saved.parent)
+      AND branch_id = saved.branch_id AND revision = saved.revision + 1;
 
-    IF NOT FOUND THEN return saved_id; END IF;
+    IF NOT FOUND THEN RETURN saved.base_branch_id; END IF;
 
     -- merge needed, retrieve most recent revision prior to save
 
@@ -421,324 +769,152 @@ CREATE FUNCTION revision_save_end(INTEGER, INTEGER) RETURNS INTEGER AS '
       revision_contents(latest_id),
       merged.revision_id
     );
-    RETURN merged.revision_id;
+    RETURN saved.base_branch_id;
   END;
 ' LANGUAGE 'plpgsql';
 
--- given a branch id this function return the latest revision on the branch.
--- If the latest existing revision is out of date
-CREATE FUNCTION branch_update(INTEGER) RETURNS INTEGER AS '
+CREATE FUNCTION branch_save(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
-    branch_id_ ALIAS FOR $1;
-    info RECORD;
-    rec RECORD;
-    rec1 RECORD;
-    rec2 RECORD;
-    s_bids TEXT;
-    s_rids TEXT;
-    s_prids TEXT;
-    s_revs TEXT;
-    s_types TEXT;
-    sep TEXT;
-    i INTEGER;
-    j INTEGER;
-    bid INTEGER;
-    par INTEGER;
-    oldpar INTEGER;
+    topic_id_  ALIAS FOR $1;
+    branch_id_ ALIAS FOR $2;
+    orig            RECORD;
+    existing_topic  INTEGER;
+    existing_branch INTEGER;
   BEGIN
-    -- RAISE NOTICE ''branch_update(%) called'', $1;
+    -- RAISE NOTICE ''branch_save(%,%) called'', $1, $2;
     
-    -- get information about the branch
-
-    SELECT INTO info branch, outdated, latest_id, content_id
-    FROM branches WHERE branch_id = branch_id_;
-    IF NOT FOUND THEN
-      RAISE EXCEPTION ''revision_update(%) called with invalid branch_id'', $1;
-    END IF;
-
-    IF NOT info.outdated THEN RETURN info.latest_id; END IF;
-
-    -- current version of plpgsql (7.1.3) allows only read access to arrays,
-    -- it is not possible to declare array variables or make assignments
-    -- into arrays. this code gets around that restriction by putting
-    -- numbers into strings, then casting those strings into array
-    -- columns in a RECORD variable.
-
-    s_bids  := ''''; -- stringed array of branch_ids for each branch level
-    s_rids  := ''''; -- stringed array of revision_ids for each branch level
-    s_prids := ''''; -- stringed array of parent revision_ids for each branch level
-    s_revs  := ''''; -- stringed array of revision numbers for each branch level
-    s_types := ''''; -- stringed array of types for each branch level
-    sep     := '''';
-
-    -- loop to lock and gather information about ancestor branches
-
-    i := 0;
-    bid := branch_id_;
-
-    LOOP
-      SELECT INTO rec latest_id AS rid, parent AS pbid
-      FROM branches
-      WHERE branch_id = bid AND outdated FOR UPDATE;
- 
-      IF NOT FOUND THEN EXIT; END IF;
-      SELECT INTO rec2 parent AS prid, revision AS rev, type FROM revisions WHERE revision_id = rec.rid;
-
-      s_bids  := s_bids  || sep || bid::TEXT;
-      s_rids  := s_rids  || sep || rec.rid::TEXT;
-      s_prids := s_prids || sep || rec2.prid::TEXT;
-      s_revs  := s_revs  || sep || rec2.rev::TEXT;
-      s_types := s_types || sep || rec2.type::TEXT;
-
-      i := i + 1;
-      bid := rec.pbid;
-      sep := '','';
-    END LOOP;
-
-    IF i < 1 THEN
-      RAISE EXCEPTION ''revision_update(%) fails. impossible condition reached'', $1;
-    END IF;
-
-    s_bids  := ''{'' || s_bids  || ''}'';
-    s_rids  := ''{'' || s_rids  || ''}'';
-    s_prids := ''{'' || s_prids || ''}'';
-    s_revs  := ''{'' || s_revs  || ''}'';
-    s_types := ''{'' || s_types || ''}'';
-
-    SELECT INTO rec
-      array_integer_cast(s_bids) AS bids,
-      array_integer_cast(s_rids) AS rids,
-      array_integer_cast(s_prids) AS prids,
-      array_integer_cast(s_revs) AS revs,
-      array_integer_cast(s_types) AS types;
-
-    -- loop to bring ancestral branches up to date
-
-    SELECT INTO par latest_id FROM branches WHERE branch_id = bid;
-    IF NOT FOUND THEN
-      RAISE EXCEPTION ''revision_update(%) fails. impossible condition reached'', $1;
-    END IF;
-
-    FOR j IN REVERSE i..1 LOOP
-      INSERT INTO saves (revision_id, rec.rids[j]);
-      IF rec.revs[j] = 0 THEN
-        i := revision_create(rec.types[j], par, rec.bids[j], 0, currval(''save_ids''));
+    IF branch_id_ IS NULL THEN
+      RETURN branch_create(topic_id_, NULL, NULL, NULL);
+    ELSE
+      SELECT INTO orig base_branch_id, topic_id FROM branches WHERE branch_id = branch_id_;
+      IF topic_id_ = orig.topic_id THEN
+        RETURN branch_id_;
       ELSE
-        i := revision_create(rec.types[j], par, rec.bids[j], 1, currval(''save_ids''));
-        PERFORM revision_merge(rec.prids[j], rec.rids[j], par, i);
+        -- this means that the original component''s branch was not associated with this topic
+        -- but to one of this topic''s ancestors (orig.topic_id). the following loop attempts
+        -- to find a more closely related topic (and associated branch) that might have been
+        -- created after the component was last loaded. The number of this branch
+        -- is stored in the variable, existing_branch
+
+        existing_topic := topic_id_;
+        LOOP
+          SELECT INTO existing_branch branch_id FROM branches
+          WHERE base_branch_id = orig.base_branch_id AND topic_id = existing_topic;
+          IF NOT FOUND THEN
+            SELECT INTO existing_topic parent FROM topics WHERE topic_id = existing_topic;
+            IF NOT FOUND THEN RAISE EXCEPTION ''security violation. the component that is being saved does not correspond to the survey topic, %'', topic_id_; END IF;
+          ELSE
+            EXIT;
+          END IF;
+        END LOOP;
+
+        -- Create a branch for this topic
+        RETURN branch_create(topic_id_, orig.base_branch_id, existing_branch, existing_topic);
+
       END IF;
-      oldpar := par; par := i;
-      UPDATE branches SET
-        outdated = false, latest_id = par, content_id = par
-      WHERE branch_id = rec.bids[j];
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
+-- update branch_topics for a new branch
+
+CREATE FUNCTION branch_topics_update(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_       ALIAS FOR $1;
+    base_branch_id_ ALIAS FOR $2;
+    oldbranch_id_   ALIAS FOR $3;
+    newbranch_id_   ALIAS FOR $4;
+    child RECORD;
+  BEGIN
+    UPDATE branch_topics_cache SET branch_id = newbranch_id_ WHERE
+      base_branch_id = base_branch_id_ AND topic_id = topic_id_ AND branch_id = oldbranch_id_;
+    FOR child IN SELECT topic_id FROM topics WHERE parent = topic_id_ LOOP
+      PERFORM branch_topics_update(child.topic_id, base_branch_id_, oldbranch_id_, newbranch_id_)
     END LOOP;
-
-    RETURN par;
+    RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
-  DECLARE
-    type_        ALIAS FOR $1;
-    parent_      ALIAS FOR $2;
-    branch_id_   ALIAS FOR $3;
-    revision_    ALIAS FOR $4;
-    save_id_     ALIAS FOR $5;
-  BEGIN
-    -- RAISE NOTICE ''revision_create(%,%,%,%,%) called'', $1, $2, $3, $4, $5;
-    IF type_ = 1 THEN
-      INSERT INTO revisions (type, parent, branch_id, revision, save_id)
-      VALUES (type_, parent_, branch_id_, revision_, save_id_);
-    ELSE IF type_ = 2 THEN
-      INSERT INTO choice_components (type, parent, branch_id, revision, save_id)
-      VALUES (type_, parent_, branch_id_, revision_, save_id_);      
-    ELSE IF type_ = 3 THEN
-      INSERT INTO textresponse_components (type, parent, branch_id, revision, save_id)
-      VALUES (type_, parent_, branch_id_, revision_, save_id_); 
-    ELSE IF type_ = 4 OR type_ = 5 THEN
-      INSERT INTO text_components (type, parent, branch_id, revision, save_id)
-      VALUES (type_, parent_, branch_id_, revision_, save_id_);
-    ELSE IF type_ = 6 THEN 
-      INSERT INTO choice_questions(type, parent, branch_id, revision, save_id)
-      VALUES (type_, parent_, branch_id_, revision_, save_id_);
-    ELSE IF type_ = 7 THEN
-      INSERT INTO generic_components(type, parent, branch_id, revision, save_id)
-      VALUES (type_, parent_, branch_id_, revision_, save_id_);
-    ELSE
-      RAISE EXCEPTION ''revision_create(%,%,%,%,%) called with unknown type number'', $1, $2, $3, $4, $5;
-    END IF; END IF; END IF; END IF; END IF; END IF;
-    RETURN currval(''revision_ids'');
-  END;
-' LANGUAGE 'plpgsql';
-
-CREATE FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN) RETURNS INTEGER AS '
-  DECLARE
-    save_id      ALIAS FOR $1;
-    type_        ALIAS FOR $2;
-    revision_id_ ALIAS FOR $3;
-    ctext_       ALIAS FOR $4;
-    is_html_     ALIAS FOR $5;
-    parent_ INTEGER;
-    branch_id_ INTEGER;
-    saveto INTEGER;
-    rec RECORD;
-  BEGIN
-    SELECT INTO rec ctext, is_html, branch_id FROM text_components WHERE revision_id = revision_id_;
-    IF FOUND THEN
-      branch_id_ := rec.branch_id;
-      IF rec.ctext = ctext_ AND is_html_ = rec.is_html THEN
-        RETURN branch_id_;
-      END IF;
-    ELSE  
-      parent_ := NULL; -- everything new goes on a base branch?
-      INSERT INTO branches (branch, parent) VALUES (branch_nextval(parent_), parent_);
-      branch_id_ := currval(''branch_ids'');
-    END IF;
-
-    saveto := revision_save_start(branch_id_, revision_id_, type_, save_id);
-    UPDATE text_components SET ctext = ctext_, is_html = is_html_ WHERE revision_id = saveto;
-    PERFORM revision_save_end(branch_id_, saveto);
-    RETURN branch_id_;
-  END;
-' LANGUAGE 'plpgsql';
-
-CREATE FUNCTION textresponse_component_save(INTEGER, INTEGER, TEXT, BOOLEAN, INTEGER, INTEGER) RETURNS INTEGER AS '
-  DECLARE
-    save_id      ALIAS FOR $1;
-    revision_id_ ALIAS FOR $2;
-    ctext_       ALIAS FOR $3;
-    is_html_     ALIAS FOR $4;
-    rows_        ALIAS FOR $5;
-    cols_        ALIAS FOR $6;
-    parent_ INTEGER;
-    branch_id_ INTEGER;
-    saveto INTEGER;
-    rec RECORD;
-  BEGIN
-    SELECT INTO rec ctext, is_html, branch_id, rows, cols FROM textresponse_components WHERE revision_id = revision_id_;
-    IF FOUND THEN
-      branch_id_ := rec.branch_id;
-      IF rec.ctext = ctext_ AND is_html_ = rec.is_html AND rec.rows = rows_ and rec.cols = cols_ THEN
-        RETURN branch_id_;
-      END IF;
-    ELSE  
-      parent_ := NULL; -- everything new goes on a base branch?
-      INSERT INTO branches (branch, parent) VALUES (branch_nextval(parent_), parent_);
-      branch_id_ := currval(''branch_ids'');
-    END IF;
-
-    saveto := revision_save_start(branch_id_, revision_id_, 3, save_id);
-    UPDATE textresponse_components SET ctext = ctext_, is_html = is_html_, rows = rows_, cols = cols_ WHERE revision_id = saveto;
-    PERFORM revision_save_end(branch_id_, saveto);
-    RETURN branch_id_;
-  END;
-' LANGUAGE 'plpgsql';
-
-CREATE FUNCTION choice_question_save(INTEGER, INTEGER, TEXT) RETURNS INTEGER AS '
-  DECLARE
-    save_id      ALIAS FOR $1;
-    revision_id_ ALIAS FOR $2;
-    qtext_       ALIAS FOR $3;
-    parent_      INTEGER;
-    branch_id_   INTEGER;
-    saveto       INTEGER;
-    rec          RECORD;
-  BEGIN
-    -- RAISE NOTICE ''choice_question_save(%,%,%) called'', $1, $2, $3;
-
-    SELECT INTO rec qtext, branch_id FROM choice_questions WHERE revision_id = revision_id_;
-    IF FOUND THEN
-      branch_id_ := rec.branch_id;  
-      IF rec.qtext = qtext_ THEN
-        RETURN branch_id_;
-      END IF;
-    ELSE
-      parent_ := NULL; -- everything new goes on a base branch?
-      INSERT INTO branches (branch, parent) VALUES (branch_nextval(parent_), parent_);
-      branch_id_ := currval(''branch_ids'');
-    END IF;
-
-    saveto := revision_save_start(branch_id_, revision_id_, 6, save_id);
-    UPDATE choice_questions SET qtext = qtext_ WHERE revision_id = saveto;
-    PERFORM revision_save_end(branch_id_, saveto);
-    -- RAISE NOTICE ''choice_question_save(%,%,%) returning %'', $1, $2, $3, branch_id_;
-    RETURN branch_id_;
-  END;
-' LANGUAGE 'plpgsql';
-
-CREATE FUNCTION choice_component_save(INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[],
+CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[],
   INTEGER[], TEXT[], TEXT, INTEGER, INTEGER, BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN,
-  INTEGER) RETURNS INTEGER AS ' 
+  INTEGER) RETURNS INTEGER AS '
   DECLARE
-    save_id        ALIAS FOR $1;
-    revision_id_   ALIAS FOR $2;
-    ctext_         ALIAS FOR $3;
-    is_html_       ALIAS FOR $4;
-    questions      ALIAS FOR $5; 
-    question_ids   ALIAS FOR $6; 
-    choices_       ALIAS FOR $7; 
-    other_choice_  ALIAS FOR $8; 
-    first_number_  ALIAS FOR $9; 
-    last_number_   ALIAS FOR $10;
-    is_numeric_    ALIAS FOR $11;
-    select_many_   ALIAS FOR $12;
-    stacked_       ALIAS FOR $13;
-    vertical_      ALIAS FOR $14;
-    rows_          ALIAS FOR $15;
-    i              INTEGER := 1;
-    j              INTEGER;
-    branch_id_     INTEGER;
-    parent_        INTEGER;
+    topic_id_      ALIAS FOR $1;
+    orig_id_       ALIAS FOR $2;
+    save_id_       ALIAS FOR $3;
+    ctext_         ALIAS FOR $4;
+    is_html_       ALIAS FOR $5;
+    questions      ALIAS FOR $6;
+    question_ids   ALIAS FOR $7;
+    choices_       ALIAS FOR $8;
+    other_choice_  ALIAS FOR $9;
+    first_number_  ALIAS FOR $10;
+    last_number_   ALIAS FOR $11;
+    is_numeric_    ALIAS FOR $12;
+    select_many_   ALIAS FOR $13;
+    stacked_       ALIAS FOR $14;
+    vertical_      ALIAS FOR $15;
+    rows_          ALIAS FOR $16;
+    changed        BOOLEAN := ''t'';
     saveto         INTEGER;
+    r              RECORD;
     s_branch_ids   TEXT := '''';
     sep            TEXT := '''';
+    i              INTEGER := 1;
+    j              INTEGER;
     rec            RECORD;
     rec1           RECORD;
-    r              RECORD;
-    changed        BOOLEAN := ''f'';
+    branch_id_     INTEGER;    
   BEGIN
+    -- RAISE NOTICE ''choice_component_save(%,%,%,%,%,%,%,%,%,%,%,%,%,%,%,%) fails. orig_id not found'', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16;
+    
     -- save choices
     LOOP
       EXIT WHEN questions[i] IS NULL;
       j := CASE WHEN question_ids[i] = 0 THEN NULL ELSE question_ids[i] END;
-      branch_id_ := choice_question_save(save_id, j, questions[i]);
+      branch_id_ := choice_question_save(topic_id_, j, save_id_, questions[i]);
       s_branch_ids := s_branch_ids || sep || branch_id_::TEXT;
       i := i + 1;
       sep := '','';
     END LOOP;
     
+    branch_id_ := NULL;
     s_branch_ids = ''{'' || s_branch_ids || ''}'';
     SELECT INTO rec array_integer_cast(s_branch_ids) AS branch_ids;
-    
-    -- see if choice ordering changed
-    i := 1;
-    FOR rec1 IN SELECT item_id FROM list_items WHERE revision_id = save_id ORDER BY ordinal LOOP
-      IF NOT rec.branch_ids[i] = rec1.item_id THEN changed := ''t''; EXIT; END IF;
-      i := i + 1;
-    END LOOP;
-    
-    SELECT INTO r ctext, is_html, branch_id, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows
-    FROM choice_components WHERE revision_id = revision_id_;
-    IF NOT FOUND THEN
-      parent_ := NULL; -- everything new goes on a base branch?
-      INSERT INTO branches (branch, parent) VALUES (branch_nextval(parent_), parent_);
-      branch_id_ := currval(''branch_ids'');
-      changed := ''t'';
-    ELSE
+
+    IF orig_id_ IS NOT NULL THEN
+      changed := ''f'';
+
+      -- see if choice ordering changed
+      i := 1;
+
+      FOR rec1 IN SELECT item_id FROM list_items WHERE revision_id = orig_id_ ORDER BY ordinal LOOP
+        j := rec.branch_ids[i];
+        IF j IS NULL OR boolean_cast(j = rec1.item_id) THEN changed := ''t''; EXIT; END IF;
+        i := i + 1;
+      END LOOP;
+      
+      SELECT INTO r branch_id, ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''choice_component_save(%,%,%,%,%,%,%,%,%,%,%,%,%,%,%,%) fails. orig_id not found'', $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16;
+      END IF;
+
       branch_id_ := r.branch_id;
-      IF NOT boolean_cast(r.ctext = ctext_ AND r.is_html = is_html_ AND
-        r.choices = choices_ AND r.other_choice = other_choice_ AND
-        r.first_number = first_number_ AND r.last_number = last_number_ AND
-        r.is_numeric = is_numeric_ AND r.select_many = select_many_ AND
-        r.stacked = stacked_ AND r.vertical = vertical_ AND r.rows = rows_)
-      THEN
-        changed := ''t'';
+
+      IF NOT changed THEN
+        changed := rec.branch_ids[i] IS NOT NULL OR NOT boolean_cast(
+          r.ctext = ctext_ AND r.is_html = is_html_ AND
+          r.choices = choices_ AND r.other_choice = other_choice_ AND
+          r.first_number = first_number_ AND r.last_number = last_number_ AND
+          r.is_numeric = is_numeric_ AND r.select_many = select_many_ AND
+          r.stacked = stacked_ AND r.vertical = vertical_ AND r.rows = rows_);
       END IF;
     END IF;
-    
+
     IF changed THEN
-      saveto := revision_save_start(branch_id_, revision_id_, 2, save_id);
-      UPDATE choice_components SET 
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, 2, save_id_);
+      UPDATE choice_components SET
         ctext = ctext_, is_html = is_html_,
         choices = choices_, other_choice = other_choice_,
         first_number = first_number_, last_number = last_number_,
@@ -747,15 +923,114 @@ CREATE FUNCTION choice_component_save(INTEGER, INTEGER, TEXT, BOOLEAN, TEXT[],
       WHERE revision_id = saveto;
       i := 1;
       LOOP
-        EXIT WHEN rec.branch_ids[i] IS NULL;
         j := rec.branch_ids[i];
-        -- RAISE NOTICE ''insert into list_items(%, %, %)'', saveto, i, j;
-        INSERT INTO list_items (revision_id, ordinal, item_id) VALUES (saveto, i, rec.branch_ids[i]);
+        EXIT WHEN rec.branch_ids[i] IS NULL;
+        INSERT INTO list_items (revision_id, ordinal, item_id) VALUES (saveto, i, j);
         i := i + 1;
-      END LOOP;      
-      PERFORM revision_save_end(branch_id_, saveto);
+      END LOOP;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
     END IF;
-    RETURN branch_id_;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_    ALIAS FOR $1;
+    orig_id_     ALIAS FOR $2;
+    save_id_     ALIAS FOR $3;
+    type_        ALIAS FOR $4;
+    ctext_       ALIAS FOR $5;
+    is_html_     ALIAS FOR $6;
+    branch_id_   INTEGER := NULL;
+    changed      BOOLEAN := ''t'';
+    saveto       INTEGER;
+    rec RECORD;
+  BEGIN
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, ctext, is_html FROM text_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''text_component_save(%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.ctext = ctext_ AND is_html_ = rec.is_html);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, type_, save_id_);
+      UPDATE text_components SET ctext = ctext_, is_html = is_html_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOOLEAN, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_  ALIAS FOR $1;
+    orig_id_   ALIAS FOR $2;
+    save_id_   ALIAS FOR $3;
+    ctext_     ALIAS FOR $4;
+    is_html_   ALIAS FOR $5;
+    rows_      ALIAS FOR $6;
+    cols_      ALIAS FOR $7;
+    branch_id_ INTEGER := NULL;
+    changed    BOOLEAN := ''t'';
+    saveto     INTEGER;
+    rec RECORD;
+  BEGIN
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, ctext, is_html, rows, cols FROM textresponse_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''textresponse_component_save(%,%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6, $7;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.ctext = ctext_ AND is_html_ = rec.is_html AND rec.rows = rows_ and rec.cols = cols_);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, 3, save_id_);
+      UPDATE textresponse_components SET ctext = ctext_, is_html = is_html_, rows = rows_, cols = cols_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION choice_question_save(INTEGER, INTEGER, INTEGER, TEXT) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_    ALIAS FOR $1;
+    orig_id_     ALIAS FOR $2;
+    save_id_     ALIAS FOR $3;
+    qtext_       ALIAS FOR $4;
+    branch_id_   INTEGER := NULL;
+    changed      BOOLEAN := ''t'';
+    saveto       INTEGER;
+    rec RECORD;
+  BEGIN
+    -- RAISE NOTICE ''choice_question_save(%,%,%,%) called'', $1, $2, $3, $4;
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, qtext FROM choice_questions WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''choice_question_save(%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.qtext = qtext_);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, 6, save_id_);
+      UPDATE choice_questions SET qtext = qtext_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -783,26 +1058,30 @@ CREATE FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEG
 
     IF c <> 4 OR t IS NULL THEN
       RAISE EXCEPTION ''revision_merge(%,%,%,%) called with one or more invalid arguments'', $1, $2, $3, $4;
-    END IF;
-
-    IF t = 1 THEN
+    END IF;          
+                     
+    IF t = 1 THEN    
       RETURN list_merge(common_id, primary_id, secondary_id, new_id);
-    END IF;
-
-    IF t = 2 THEN
+    END IF;          
+                      
+    IF t = 2 THEN    
       RETURN choice_component_merge(common_id, primary_id, secondary_id, new_id);
-    END IF;
-    
+    END IF;          
+                     
     IF t = 3 THEN
       RETURN textresponse_component_merge(common_id, primary_id, secondary_id, new_id);
-    END;
-    
+    END IF;             
+                     
     IF t = 4 OR t = 5 THEN
       RETURN text_component_merge(common_id, primary_id, secondary_id, new_id);
-    END IF;
-
+    END IF;          
+                     
+    IF t = 6 THEN    
+      RETURN choice_question_merge(common_id, primary_id, secondary_id, new_id);
+    END IF;          
+                     
     RAISE EXCEPTION ''revision_merge(%,%,%,%) failed. Revision type unknown.'', $1, $2, $3, $4;
-  END;
+  END;               
 ' LANGUAGE 'plpgsql';
 
 CREATE FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
@@ -818,9 +1097,10 @@ CREATE FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
     SELECT INTO orig_row      ctext, is_html FROM text_components WHERE revision_id = orig_id;
     SELECT INTO primary_row   ctext, is_html FROM text_components WHERE revision_id = primary_id;
     SELECT INTO secondary_row ctext, is_html FROM text_components WHERE revision_id = secondary_id;
-    save choice_questions SET
-      qtext = text_merge(orig.qtext, primary_row.qtext, secondary_row.qtext, ''t'')
+    UPDATE choice_questions SET
+      qtext = text_merge(orig_row.qtext, primary_row.qtext, secondary_row.qtext, ''t'')
     WHERE revision_id = new_id;
+    RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -834,23 +1114,24 @@ CREATE FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETUR
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM text_components WHERE revision_id = orig_id;
-    SELECT INTO primary_row   ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM text_components WHERE revision_id = primary_id;
-    SELECT INTO secondary_row ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM text_components WHERE revision_id = secondary_id;
+    SELECT INTO orig_row      ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row ctext, is_html, choices, other_choice, first_number, last_number, is_numeric, select_many, stacked, vertical, rows FROM choice_components WHERE revision_id = secondary_id;
+    PERFORM list_merge(orig_id, primary_id, secondary_id, new_id);
     PERFORM text_component_merge(orig_id, primary_id, secondary_id, new_id);
-    save choice_components SET
-      ctext        =    text_merge(orig.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
-      is_html      =    text_merge(orig.is_html, primary_row.is_html, secondary_row.is_html, ''t''),
-      choices      =   array_merge(orig.choices, primary_row.choices, secondary_row.choices, ''t''),
-      other_choice =    text_merge(orig.other_choice, primary_row.other_choice, secondary_row.other_choice, ''t''),
-      first_number = integer_merge(orig.first_number, primary_row.first_number, secondary_row.first_number, ''t''),
-      last_number  = integer_merge(orig.last_number, primary_row.last_number, secondary_row.last_number, ''t''),
-      is_numeric   = boolean_merge(orig.is_numeric, primary_row.is_numeric, secondary_row.is_numeric, ''t''),
-      select_many  = boolean_merge(orig.select_many, primary_row.select_many, secondary_row.select_many, ''t''),
-      stacked      = boolean_merge(orig.stacked, primary_row.stacked, secondary_row.stacked, ''t''),
-      vertical     = boolean_merge(orig.vertical, primary_row.vertical, secondary_row.vertical, ''t''),
-      rows         = integer_merge(orig.rows, primary_row.rows, secondary_row.rows, ''t'')
-    WHERE revision_id = new_id; 
+    UPDATE choice_components SET
+      ctext        =    text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      is_html      = boolean_merge(orig_row.is_html, primary_row.is_html, secondary_row.is_html, ''t''),
+      choices      = text_array_merge(orig_row.choices, primary_row.choices, secondary_row.choices, ''t''),
+      other_choice =    text_merge(orig_row.other_choice, primary_row.other_choice, secondary_row.other_choice, ''t''),
+      first_number = integer_merge(orig_row.first_number, primary_row.first_number, secondary_row.first_number, ''t''),
+      last_number  = integer_merge(orig_row.last_number, primary_row.last_number, secondary_row.last_number, ''t''),
+      is_numeric   = boolean_merge(orig_row.is_numeric, primary_row.is_numeric, secondary_row.is_numeric, ''t''),
+      select_many  = boolean_merge(orig_row.select_many, primary_row.select_many, secondary_row.select_many, ''t''),
+      stacked      = boolean_merge(orig_row.stacked, primary_row.stacked, secondary_row.stacked, ''t''),
+      vertical     = boolean_merge(orig_row.vertical, primary_row.vertical, secondary_row.vertical, ''t''),
+      rows         = integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t'')
+    WHERE revision_id = new_id;
     RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
@@ -868,11 +1149,12 @@ CREATE FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS
     SELECT INTO orig_row      ctext, is_html FROM text_components WHERE revision_id = orig_id;
     SELECT INTO primary_row   ctext, is_html FROM text_components WHERE revision_id = primary_id;
     SELECT INTO secondary_row ctext, is_html FROM text_components WHERE revision_id = secondary_id;
-    
-    save text_components SET
-      ctext   = text_merge(orig.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
-      is_html = boolean_merge(orig.is_html, primary_row.is_html, secondary_row.is_html, ''t'')
+
+    UPDATE text_components SET
+      ctext   = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      is_html = boolean_merge(orig_row.is_html, primary_row.is_html, secondary_row.is_html, ''t'')
     WHERE revision_id = new_id;
+    RETURN 1;    
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -889,13 +1171,14 @@ CREATE FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGER, INTEGER)
     SELECT INTO orig_row      ctext, is_html, rows, cols FROM text_components WHERE revision_id = orig_id;
     SELECT INTO primary_row   ctext, is_html, rows, cols FROM text_components WHERE revision_id = primary_id;
     SELECT INTO secondary_row ctext, is_html, rows, cols FROM text_components WHERE revision_id = secondary_id;
-    
-    save text_components SET
-      ctext   = text_merge(orig.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
-      is_html = boolean_merge(orig.is_html, primary_row.is_html, secondary_row.is_html, ''t'')
-      rows    = integer_merge(orig.rows, primary_row.rows, secondary_row.rows, ''t''),
-      cols    = integer_merge(orig.cols, primary_row.cols, secondary_row.cols, ''t'')
+
+    UPDATE text_components SET
+      ctext   = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      is_html = boolean_merge(orig_row.is_html, primary_row.is_html, secondary_row.is_html, ''t'')
+      rows    = integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t''),
+      cols    = integer_merge(orig_row.cols, primary_row.cols, secondary_row.cols, ''t'')
     WHERE revision_id = new_id;
+    RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -946,7 +1229,7 @@ CREATE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER A
       IF NOT FOUND THEN nk := NULL; END IF;
 
       IF ck IS NULL AND nk IS NULL THEN -- needs to be inserted
-        save list_items SET ordinal = ordinal + 1 WHERE revision_id = new_id AND ordinal >= ord;
+        UPDATE list_items SET ordinal = ordinal + 1 WHERE revision_id = new_id AND ordinal >= ord;
         INSERT INTO list_items(revision_id, ordinal, item_id) VALUES (new_id, ord, rec.item_id);
         nk := ord;
       END IF;
@@ -1067,4 +1350,32 @@ CREATE FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[], BOOLEAN) RETURNS IN
       END IF;
     END IF;
   END;
-' LANGUAGE 'plpgsql';
+' LANGUAGE 'plpgsql';                                                                                                                                                                                  
+
+-- function body is *exactly* the same for merge_integer
+CREATE FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[], BOOLEAN) RETURNS TEXT[] AS '
+  DECLARE
+    common_val    ALIAS FOR $1;
+    primary_val   ALIAS FOR $2;
+    secondary_val ALIAS FOR $3;
+    favor_primary ALIAS FOR $4;
+  BEGIN
+    IF primary_val = common_val THEN
+      IF secondary_val = common_val THEN
+        RETURN common_val;
+      ELSE
+        RETURN secondary_val;
+      END IF;
+    ELSE
+      IF secondary_val = common_val THEN
+        RETURN primary_val;
+      ELSE
+        IF favor_primary THEN
+          RETURN primary_val;
+        ELSE
+          RETURN secondary_val;
+        END IF;
+      END IF;
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';   
