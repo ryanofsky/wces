@@ -3,106 +3,87 @@ require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
-
 $db = wces_connect();
 wces_GetCurrentQuestionPeriod($db, $questionperiodid, $questionperiod, $year, $semester);
 $semester = ucfirst($semester);
 
 page_top("Professor Usage Data for $semester $year $questionperiod");
 
-wces_Findclasses($db,"currentclasses");
-
 $y = db_exec("
-CREATE TEMPORARY TABLE customprofessors
-(
-  professorid INTEGER NOT NULL,
-  PRIMARY KEY (professorid))
+CREATE TEMPORARY TABLE pu AS
+SELECT p.professorid, cl.classid, CONCAT(s.code, c.code) AS code, cl.section, cl.students, c.name AS cname, p.name AS pname, u.cunix, u.lastlogin, IF(u.lastlogin >= '2001-11-16', 1, 0) AS loggedin, IF(cc.classid IS NOT NULL, 1, 0) AS customized
+FROM groupings AS g
+INNER JOIN classes AS cl ON cl.classid = g.linkid AND g.linktype = 'classes'
+INNER JOIN courses AS c USING (courseid)
+INNER JOIN subjects AS s USING (subjectid)
+LEFT JOIN cheesyclasses AS cc ON cc.classid = cl.classid AND cc.questionperiodid = $questionperiodid
+LEFT JOIN professors AS p ON p.professorid = cl.professorid
+LEFT JOIN users AS u USING (userid)
 ",$db,__FILE__,__LINE__);
 
-$y = db_exec("
+$profcount = mysql_result(db_exec("SELECT COUNT(*) FROM pu",$db,__FILE__,__LINE__),0);
+$profcustomized = mysql_result(db_exec("SELECT COUNT(*) FROM pu WHERE customized <> 0",$db,__FILE__,__LINE__),0);
+$profloggedin = mysql_result(db_exec("SELECT COUNT(*) FROM pu WHERE loggedin <> 0",$db,__FILE__,__LINE__),0);
 
-REPLACE INTO customprofessors (professorid)
-SELECT p.professorid
-FROM groupings as g
-INNER JOIN professors as p ON g.linkid = p.professorid 
-INNER JOIN questionsets AS q ON g.questionsetid = q.questionsetid
-WHERE g.linktype = 'professors' AND q.type = 'private'
-",$db,__FILE__,__LINE__);
-
-$y = db_exec("
-REPLACE INTO customprofessors (professorid)
-SELECT cl.professorid
-FROM groupings as g INNER JOIN classes as cl ON g.linkid = cl.classid
-INNER JOIN questionsets as q ON g.questionsetid = q.questionsetid
-WHERE g.linktype = 'classes' AND q.type = 'private' AND cl.year >= '$year' AND cl.semester >= '$semester'
-",$db,__FILE__,__LINE__);
-
-$y = db_exec("
-CREATE TEMPORARY TABLE currentprofessors
-(
-  professorid INTEGER NOT NULL,
-  hasloggedin INTEGER,
-  hascustom INTEGER,
-  students INTEGER,
-  PRIMARY KEY (professorid))
-",$db,__FILE__,__LINE__);
-
-$y = db_exec("
-REPLACE INTO currentprofessors (professorid, hasloggedin, hascustom, students)
-SELECT p.professorid, IF(u.lastlogin > '2001-02-01',1,0), IF(cmp.professorid IS NULL,0,1), SUM(cl.students) as students
-FROM currentclasses
-INNER JOIN classes AS cl ON currentclasses.classid = cl.classid
-INNER JOIN professors AS p ON cl.professorid = p.professorid
-LEFT JOIN users AS u ON p.userid = u.userid
-LEFT JOIN customprofessors AS cmp ON p.professorid = cmp.professorid
-GROUP BY p.professorid",$db,__FILE__,__LINE__);
-
-$y = db_exec("DROP TABLE customprofessors",$db,__FILE__,__LINE__);
-
-$notloggedin = db_exec("SELECT p.name, cp.professorid, cp.students FROM currentprofessors as cp INNER JOIN professors as p USING (professorid) WHERE NOT cp.hasloggedin ORDER BY cp.students DESC",$db,__FILE__,__LINE__);
-$nocustoms   = db_exec("SELECT p.name, cp.professorid, cp.students FROM currentprofessors as cp INNER JOIN professors as p USING (professorid) WHERE cp.hasloggedin AND NOT cp.hascustom ORDER BY cp.students DESC",$db,__FILE__,__LINE__);
-$hascustoms  = db_exec("SELECT p.name, cp.professorid, cp.students FROM currentprofessors as cp INNER JOIN professors as p USING (professorid) WHERE cp.hasloggedin AND cp.hascustom ORDER BY cp.students DESC",$db,__FILE__,__LINE__);
-
-$notloggedincount = mysql_num_rows($notloggedin);
-$hascustomscount = mysql_num_rows($hascustoms);
-$nocustomscount = mysql_num_rows($nocustoms);
-
-$profcount = mysql_result(mysql_query("SELECT COUNT(*) FROM currentprofessors",$db),0);
-$profcustomized = mysql_num_rows($hascustoms);
-$profloggedin = $profcustomized + mysql_num_rows($nocustoms);
-
-function printproflist($title,$result,$count)
-{
-  global $wces_path;
-  print("<p>$title<br><font size=-1>$count professors sorted by number of students</font></p>");
-  print("<ul>");
-  while($row = mysql_fetch_array($result))
-  {
-    extract($row);
-    if (!$name) $name = "** Unknown **";
-    print("<li><a href=\"info.php?professorid=$professorid&surveys=1\">$name</a> ($students students)</li>");
-  }
-print("</ul>");
-}
 ?>
 
-<h3>Aggregate Professor Usage</h3>
+<h3>Aggregate Usage</h3>
 
-Number of professors: <b><?=$notloggedincount+$hascustomscount+$nocustomscount?></b><br>
-Number of professors who have logged in: <b><?=$hascustomscount+$nocustomscount?></b><br>
-Number of professors with custom surveys: <b><?=$hascustomscount?></b><br>
-<img src="<?=$wces_path?>media/graphs/pusagegraph.php?neverloggedin=<?=$notloggedincount?>&custom=<?=$hascustomscount?>&nocustom=<?=$nocustomscount?>" width=200 height=200><img src="<?=$wces_path?>media/graphs/pusagelegend.gif" width=133 height=49><br>
+Number of classes: <b><?=(int)$profcount?></b><br>
+Number of classes with professors who logged in during the customization period: <b><?=(int)$profloggedin?></b><br>
+Number of classes with professors who created custom surveys: <b><?=(int)$profcustomized?></b><br>
+<img src="<?=$wces_path?>media/graphs/pusagegraph.php?neverloggedin=<?=(int)$profcount-(int)$profloggedin?>&custom=<?=(int)$profcustomized?>&nocustom=<?=(int)$profloggedin-(int)$profcustomized?>" width=200 height=200><img src="<?=$wces_path?>media/graphs/pusagelegend.gif" width=133 height=49><br>
 <p>&nbsp;</p>
-<h3>Individual Professor Usage</h3>
+
+<h3>Individual Class Usage</h3>
 
 <?
+$result = db_exec("SELECT professorid, classid, code, section, students, cname, pname, cunix, loggedin, DATE_FORMAT(lastlogin,'%Y-%m-%d') AS lastlogin, customized FROM pu ORDER BY customized DESC, loggedin DESC, code, section", $db, __FILE__, __LINE__);
+print("<table cellspacing=1 cellpadding=1 border=1>\n");
+print("<tr><td><b>Code</b></td><td><b>Name</b></td><td><b>Size</b></td><td><b>Professor</b></td><td><b>Last Login</b></td></tr>\n");
+print("<tr><td colspan=5><b><font color=\"#0030E7\">Classes with custom surveys:</font></b></td></tr>\n");
+$lastcnt = 0;
+$lastcustom = 1;
+$stage = 0;
+while($row = mysql_fetch_assoc($result))
+{
+  $professorid = $classid = $code = $section = $students = $cname = $pname = $cunix = $lastlogin = $customized = "";
+  extract($row);
+  
+  if (!$lastlogin) $lastlogin = "<i>never</i>";
+  
+  if ($stage == 0 && $lastcustom && !$customized)
+  {
+    if ($lastcnt == 0)
+      print("<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>\n");
 
-printproflist("Professors who have not logged in during the past semester",$notloggedin,$notloggedincount);
-printproflist("Professors who have logged in without creating custom questions",$nocustoms,$nocustomscount);
-printproflist("Professors who have logged in and created custom questions",$hascustoms,$hascustomscount);
+    print("<tr><td colspan=5><b><font color=\"#0030E7\">Classes with professors who logged in during or after the customization period:</font></b></td></tr>\n");
+    $lastloggedin = 1;
+    $stage = 1;
+    $lastcnt = 0;
+  }
+  
+  if ($stage == 1 && $lastloggedin && !$loggedin)
+  {
+    if ($lastcnt == 0)
+      print("<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>\n");
 
-mysql_query("DROP TABLE currentprofessors");
-mysql_query("DROP TABLE currentclasses");
+    print("<tr><td colspan=5><b><font color=\"#0030E7\">Classes with professors who have not recently logged in:</font></b></td></tr>\n");
+    $lastcnt = 0;
+    $stage = 2;
+  }
+
+  if ($cunix) $pname .= " ($cunix)";
+
+  print("<tr><td nowrap>$code $section</td><td>$cname</td><td>$students</td><td>$pname</td><td nowrap>$lastlogin</td></tr>");
+  ++$lastcnt;
+  $lastcustom = $customized;
+  $lastloggedin = $loggedin;
+}
+print("</table>\n");
+
+
+mysql_query("DROP TABLE pu");
 
 page_bottom();
 ?>
