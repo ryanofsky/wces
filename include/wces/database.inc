@@ -18,16 +18,19 @@ function db_set($items)
   return $list;
 }
 
-function db_exec($sql,$db,$file = __FILE__,$line = __LINE__)
+function db_exec($sql, $db, $file = __FILE__, $line = __LINE__)
 {
-  global $db_debug;
+  global $db_debug, $server_isproduction;
   $result = mysql_query($sql,$db);
   if ($db_debug || !$result)
   {
     taskwindow_cprint("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
     taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
     taskwindow_cprint($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
+    if (!$result) taskwindow_cprint("<br>Error " . mysql_errno() . ": " . mysql_error());
     taskwindow_cprint("</p>\n");
+    if ($server_isproduction && !$result)
+      sendwarning("Query failed.\nError Code: " . mysql_errno() . "\nError message: " . mysql_error() . "\nQuery: $sql",$file,$line);
   }
   return $result;
 }
@@ -56,8 +59,6 @@ function db_addrow($db,$table,$values)
       $vals .= "'" . addslashes($value) . "'";
   };
   $query = $query . ")" . $vals . ")";
-  
-  if ($db_debug) taskwindow_cprint("$query<br>");
   
   if (!db_exec($query,$db, __FILE__, __LINE__)) return false;
   $insertid = mysql_insert_id($db);
@@ -107,7 +108,6 @@ function db_updatevalues($db,$table,$keys,$values)
     }
     $query .= db_whereclause($keys);
   
-    if ($db_debug) taskwindow_cprint("$query<br>");
     return db_exec($query,$db,__FILE__,__LINE__);
   }
   else
@@ -134,7 +134,6 @@ function db_select($db,$table,$keys,$columns,$suffix = "") //used internally
   $query .= " FROM $table";
   $query .= db_whereclause($keys);
   $query .= " $suffix";
-  if ($db_debug) taskwindow_cprint("$query<br>");
   
   return db_exec($query,$db,__FILE__,__LINE__);
 };
@@ -223,7 +222,6 @@ function db_delete($db,$table,$keys)
 {
   global $db_debug;
   $query = "DELETE FROM $table" . db_whereclause($keys);
-  if ($db_debug) taskwindow_cprint("$query<br>");
   return db_exec($query, $db, __FILE__, __LINE__);
 };
 
