@@ -1,5 +1,9 @@
 <?
 
+require_once("widgets/widgets.inc");
+require_once("widgets/basic.inc");
+require_once("widgets/SqlBox.inc");
+
 /*
 
 CREATE TABLE pictures
@@ -59,7 +63,7 @@ class ImageUpload extends Widget
 
       if (!($i = GetImageSize($tname)) || !isset($extensions[$i[2]]))
       {
-        $this->errors[] = "Uploaded file is not an image";
+        $this->errors[] = "Uploaded file is not a JPEG, GIF, or PNG image";
         return;
       }
       
