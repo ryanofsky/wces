@@ -1131,6 +1131,11 @@ function calc_sd($distribution, $avg)
   return $sum == 0 ? 0 : sqrt($wsum/$sum);
 }
 
+function make_html($is_html, $text)
+{
+  return $is_html ? $text : htmlspecialchars($text);
+};
+
 function nshowresults($db,$questionperiodid,$classid,$showcsv)
 {
   global $profid, $wces_path;
@@ -1198,16 +1203,18 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
   while($row = mysql_fetch_assoc($results))
     $resp[] = unserialize($row['dump']);
 
-    $first = true;
+  $first = true;
   foreach($ck as $k)
   {
+    print("<p>");
+    
     $c = &$survey->components[$k];
     $prefix = "survey_${k}_";
     $prefix2 = "student_${k}_";
 
     if (get_class($c) == "textresponse")
     {
-      print("<h5>$c->text</h5>\n");
+      print("<h5>" . make_html($c->is_html, $c->text) . "</h5>\n");
       print("<ul>");
       reset($resp);
       $first = true;
@@ -1227,7 +1234,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
     {
       if ($c->is_numeric)
       {
-        print("($c->first_number = $c->first_label, $c->last_number = $c->last_label)<br>");
+        print("($c->first_number = " . make_html($c->is_html, $c->choices[0]) . ", $c->last_number = " . make_html($c->is_html, $c->choices[1]) . ")<br>");
       }
       print("<table border=1 cellspacing=0 cellpadding=2>\n");
       print("<thead style=\"page-break-inside: avoid\">\n");
@@ -1237,12 +1244,12 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
       if ($c->is_numeric)
       {
         $showstats = true;
-        $d = $first_number < $last_number ? 1 : -1;
-        $r = abs($list_number - $first_number);
+        $d = $c->first_number < $c->last_number ? 1 : -1;
+        $r = abs($c->last_number - $c->first_number);
         for($i=0; $i <= $r; ++$i)
         {
-          $values[$i] = $first_number + $d * $i;
-          print($values[$i]);
+          $values[$i] = $c->first_number + $d * $i;
+          printf("<td>%.1f</td>", $values[$i]);
         }
       }
       else
@@ -1250,7 +1257,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
         $showstats = is_numeric($c->first_number) && is_numeric($c->last_number) ? true : false;
         foreach($c->choices as $ci => $ct)
         {
-          $str = $ct;
+          $str = make_html($c->is_html, $ct);
           if ($showstats)
           {
             $values[$ci] = $c->first_number + ($ci / (count($c->choices)-1)) * ($c->last_number - $c->first_number);
@@ -1263,7 +1270,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
         }
         if ($c->other_choice)
         {
-          $str = $c->other_choice;
+          $str = make_html($c->is_html, $c->other_choice);
           $values[] = false;
           print("  <td><div style=\"writing-mode:tb-rl; white-space: nowrap\"><b>$str</b></div></td>\n");
         }
@@ -1278,7 +1285,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
       foreach($c->questions as $q => $str)
       {
         print("<tr>\n");
-        print("  <td>$str</td>\n");
+        print("  <td>" . make_html($c->is_html, $str) . "</td>\n");
 
         // array_fill function apparently missing on oracle (?)
         $sums = array_pad(array(),count($c->choices),0);
@@ -1294,7 +1301,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
               $sums[$vi] += 1;
           }
           else if (isset($v))
-            $sums[$v] += 1;
+            @$sums[$v] += 1;
         }
 
         $dist = false;
@@ -1310,18 +1317,16 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
           printf("  <td>%.1f</td>\n  <td>%.1f</td>\n  <td>%.1f</td>\n",$a,report_mode($dist),report_sd($dist,$a));
         }
 
-
         print("</tr>\n");
       }
       print("</table>\n");
     }
+    print("</p>");
   }
   print("\n");
 
   /////////////////////////////////////////////////////////////////////////////
   // TA SECTION
-
-
 
   $sqloptions = array ("standard" => false, "custom" => false);
   $groups = Array("classes" => $classid ? true : false, "courses" => false, "professors" => true, "departments" => true, "questionperiods" => true);
