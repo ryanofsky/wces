@@ -16,8 +16,10 @@ class SqlBox extends Widget
     $this->selected = $multiple ? array() : null;
   }
 
-  function loadState()
+  function loadState($new)
   {
+    if ($new) return;
+    
     $selected = $this->readValue();
     if (isset($selected))
     {
@@ -30,7 +32,7 @@ class SqlBox extends Widget
   
   function displayHidden()
   {
-    $name = $this->name . ($this->multiple ? '[]' : '');
+    $name = $this->name() . ($this->multiple ? '[]' : '');
     if (isset($this->selected))
     {
       if (!$this->multiple)
@@ -46,17 +48,24 @@ class SqlBox extends Widget
   function display($params="")
   {
     global $wces;
-    $name = $this->name . ($this->multiple ? '[]' : '');
+    $name = $this->name() . ($this->multiple ? '[]' : '');
     if ($params) $params = " $params";
 
     wces_connect();
     $result = pg_go($this->sql, $wces, __FILE__, __LINE__);
     $n = pg_numrows($result);
     
+    
+    
     print("<select name=$name$params>\n");
     for($i = 0; $i < $n; ++$i)
     {
       extract(pg_fetch_array($result, $i, PGSQL_ASSOC));
+      if (isset($this->format))
+      {
+        $f = $this->format;
+        $name = $f($name);
+      }
       if ((!$this->multiple && $id == $this->selected) || ($this->multiple && in_array($id, $this->selected)))
         print("  <option value=$id selected>$name\n");
       else  
