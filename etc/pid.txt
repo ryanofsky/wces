@@ -1,0 +1,3 @@
+cunix.columbia.edu
+
+/wwws/data/cu/bulletin/uwb/include/*.pid
