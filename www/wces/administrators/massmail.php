@@ -371,7 +371,7 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          $email = "rey4@columbia.edu"; // debug
+          //$email = "rey4@columbia.edu"; // debug
           mail($email, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nTo: $address\nX-Mailer: PHP/" . phpversion());
         }
         else
