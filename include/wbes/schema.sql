@@ -152,12 +152,10 @@ CREATE TABLE responses
   parent INTEGER
 );
 
-
-
 CREATE TABLE survey_responses
 (
-  question_period_id INTEGER NOT NULL,
-  specialization_id INTEGER NOT NULL,
+  topic_id INTEGER NOT NULL,
+  specialization_id INTEGER NOT NULL, -- redudant
   user_id INTEGER,
   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) INHERITS (responses);
@@ -594,7 +592,6 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
 
     i := branch_id_;
     LOOP
-
       SELECT INTO j revision_id FROM revisions
       WHERE branch_id = i AND save_id <= save_id_
       ORDER BY save_id DESC LIMIT 1;
