@@ -34,6 +34,8 @@ define("SurveyEditor_modify_preview",3);
 
 $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
 
+$survey_nolock = false;
+
 class SurveyEditor extends FormWidget
 {
   var $survey = false; // persistent
@@ -204,7 +206,7 @@ class SurveyEditor extends FormWidget
 
   function display($hidden = false)
   {
-    global $server_media, $wbes, $survey_debug;
+    global $server_media, $wbes, $survey_debug, $survey_nolock;
     
     $this->printattribute("survey", urlencode(serialize($this->survey)));
     $q = unserialize(serialize($this->survey));
@@ -301,7 +303,7 @@ by clicking above and below existing components.</p>
 
 $needNode = true;
 
-if($component->locked && $component->revision_id)
+if($component->locked && $component->revision_id && !$survey_nolock)
 {
   wbes_connect();
   $sql = "SELECT topic_id FROM branches AS a, revisions AS b WHERE a.branch_id = b.branch_id AND b.revision_id = '$component->revision_id'";
