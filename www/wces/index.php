@@ -102,7 +102,7 @@ your listing and save the association.</p><p>&nbsp;</p>
       $found = true;
       $complete = true;
       if ($surveyed)  
-        print ("  <LI>Survey Complete: $name</LI>\n");
+        print ("  <LI>Evaluation Complete: $name</LI>\n");
       else
       {
         $complete = false;

@@ -481,7 +481,7 @@ function SearchPage()
 <h4>Search for a user...</h4>
 <table>
 <tr>
-  <td><label for=user_uni>UNI:</label></td>
+  <td><label for=user_uni>DND:</label></td>
   <td><input type=text name=user_uni id=user_uni value="<?=htmlspecialchars($user_uni)?>"></td>
 </tr>  
 <tr>

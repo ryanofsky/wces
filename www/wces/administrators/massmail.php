@@ -73,7 +73,7 @@ class MassEmail extends FormWidget
           $this->from->text = $email;
       }
       $this->to = "";
-      $this->replyto->text = "admin@thayer.dartmouth.edu";
+      $this->replyto->text = "registrar@thayer.dartmouth.edu";
       $this->subject->text = "WCES Reminder";
 	/*
       $this->text->text = "Dear %studentname%,\n\nCome to http://eval.thayer.dartmouth.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
@@ -84,7 +84,7 @@ class MassEmail extends FormWidget
 
 	$default = $default . "The course evaluations are available online.  To submit evaluations, simply point your web browser at: http://eval.thayer.dartmouth.edu/ \n\n When you arrive log in and then follow the directions on the page to evaluate your courses. \n\n";
 
-	$default = $default . "In consideration of the time it takes to complete the course evaluations, and in appreciation of your input, Thayer School will be giving away a Palm Pilot (Palm M105).  Every student who completes the course evaluations for all of their Thaye School classes this term will automatically be entered into a drawing for this prize.  The drawing will take place on 11-Mar-2002, and the winner will be notified via email. \n\n";
+	$default = $default . "In consideration of the time it takes to complete the course evaluations, and in appreciation of your input, Thayer School will be giving away a Palm Pilot (Palm M105).  Every student who completes the course evaluations for all of their Thayer School classes this term will automatically be entered into a drawing for this prize.  The drawing will take place on 11-Mar-2002, and the winner will be notified via email. \n\n";
 
 	$default = $default . "We would greatly appreciate your assistance! Your evaluations are very important to us, since they help us to measure and improve the quality of the courses we offer here at Thayer School.";
 
