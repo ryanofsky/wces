@@ -109,7 +109,7 @@ function PrintEnrollments($user_id)
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
     LEFT JOIN wces_topics AS t ON t.class_id = e.class_id" : "") . "
     WHERE e.user_id = $user_id" . ($restricted ? "
-    AND (e.status > 1 OR myx.class_id IS NOT NULL)" : "") . "
+    AND (e.status > 1 OR my.class_id IS NOT NULL)" : "") . "
     ORDER BY cl.year DESC, cl.semester DESC"
   ,$wces,__FILE__,__LINE__);
 
