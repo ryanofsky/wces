@@ -23,9 +23,9 @@ function sendwarning($dump, $file, $line)
   $message = "The SEAS Oracle would like you to know about an error it recently encountered in $file, line $line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
   if ($server_isproduction)
   {
-    if (function_exists("wces_connect"))
+    if (function_exists("wces_oldconnect"))
     {
-      $db = wces_connect();
+      $db = wces_oldconnect();
       $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
     }  
     mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\n$message"));
@@ -208,7 +208,7 @@ function quot($str)
 
 function nullquot($str)
 {
-  return strlen($str) > 0 ? ("'" . addslashes($str) . "'") : "NULL";
+  return isset($str) ? ("'" . addslashes($str) . "'") : "NULL";
 }
 
 function aarray_map($func, &$aa) // associative safe, in place array_map
