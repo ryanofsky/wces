@@ -1,6 +1,6 @@
 <?
   $wbes_database = 'wces';
-  $wces_path = '/wces/';
+  $wces_path = $WCES_CONFIG_PATH;
   $oracle_root = "/oracle/";
 
   require_once("wbes/general_url.inc");
@@ -91,10 +91,15 @@
   {
     $server_win32 = false;
     $server_cheapredirects = false;
+
+    // on apache, SERVER_NAME is canonical name determined from apache 
+    // configuration. HTTP_HOST is the actual host used in the HTTP
+    // request
+    
     $server_url = new URL
     (
       isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on",
-      $_SERVER["SERVER_NAME"],
+      $_SERVER["HTTP_HOST"],
       $_SERVER["SERVER_PORT"],
       $_SERVER["SCRIPT_NAME"],
       isset($_SERVER["PATH_INFO"]) ? $_SERVER["PATH_INFO"] : "",
@@ -139,5 +144,7 @@
     ini_set ('display_errors', 1);
     error_reporting (E_ALL);
   }
+
+if (!isset($PHP_SELF)) $PHP_SELF = $_SERVER['PHP_SELF'];
 
 ?>
