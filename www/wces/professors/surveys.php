@@ -62,7 +62,7 @@ if ($q)
 
 function topics_link($result, $class = false)
 {
-  global $pagename;
+  global $pagename, $ASID;
   $n = pg_numrows($result);
   print("<ul>\n");
   if ($n > 0)
@@ -70,7 +70,7 @@ function topics_link($result, $class = false)
   {
     extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
     if ($class) $name = format_class($name);
-    print("  <li><a href=\"$pagename?topic_id=$topic_id\">$name</a></li>\n");
+    print("  <li><a href=\"$pagename?topic_id=$topic_id$ASID\">$name</a></li>\n");
   }
   else
     print("<li><i>No classes found</i></li>");
