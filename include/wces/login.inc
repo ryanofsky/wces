@@ -209,7 +209,8 @@ function acisget($uni,$pw)
   if ($server_win32)
   {
     $grabber = new COM("Oracle.AffilGrabber");
-    return $grabber->retrieve("www1.columbia.edu",443,"/~rey4/info.html",(string)$uni,(string)$pw);
+    $grabber->Validate((string)$uni,(string)$pw,"https://www1.columbia.edu/~rey4/info.html");
+    return $grabber->rawoutput;
   }
   else
   {
