@@ -2,7 +2,10 @@
 require_once("wces/page.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");
-login_protect(login_administrator);
+require_once("widgets/SqlBox.inc");
+require_once("wces/TopicEditor.inc");
+
+LoginProtect(LOGIN_ADMIN);
 
 $MassEmail_students = array
 (
@@ -38,6 +41,13 @@ class MassEmail extends ParentWidget
     $this->replyto =& new TextBox(0,60,"", "replyto", $this);
     $this->subject =& new TextBox(0,60,"", "subject", $this);
     $this->text =& new TextBox(15,60,"", "text", $this);
+
+    $this->question_periods =& new QuestionPeriodSelector('', 'question_period', $this);
+
+    $this->topics =& new SqlBox(null, true, 'topics', $this);
+    $this->topics->format = "format_class";
+    $this->topics->selected = array(0);
+
     $this->event =& new EventWidget("event", $this);
     $this->errors = array();
     $this->survey_category_id = 0;
@@ -46,11 +56,10 @@ class MassEmail extends ParentWidget
   function loadInitialState()
   {
     global $MassEmail_students, $wces, $server_massreply;
-    ParentWidget::loadInitialState();
     wces_connect();
 
-    $user_id = login_getuserid();
-    $name = login_getname();
+    $user_id = LoginValue('user_id');
+    $name = LoginValue('name');
     $name = ucwords(strtolower($name));
     $email = pg_result(pg_go("SELECT email FROM users WHERE user_id = $user_id", $wces, __FILE__, __LINE__),0,0);
     if ($email)
@@ -66,19 +75,21 @@ class MassEmail extends ParentWidget
     $this->text->text = "Dear %name%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
   }
 
-  function loadState()
+  function loadState($new)
   {
-    global $wces;
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) return $this->loadInitialState();
     
-    ParentWidget::loadState();
-    $this->to = (int)$this->readValue("to");
+    global $wces;
+    $this->to = $this->readValue("to");
     $this->survey_category_id = (int)$this->readValue("survey_category_id");
 
     if ($this->event->event == MassEmail_load && $this->event->param)
     {
       $sent_mail_id = (int)$this->event->param;
       $r = pg_go("
-        SELECT sent_mail_id, mail_from, reply_to, mail_to, subject, body
+        SELECT sent_mail_id, mail_from, reply_to, mail_to, subject, body, category_id, question_period_id
         FROM sent_mails WHERE sent_mail_id = $sent_mail_id
       ", $wces, __FILE__, __LINE__);
       assert(pg_numrows($r) == 1);
@@ -89,9 +100,20 @@ class MassEmail extends ParentWidget
       $this->replyto->text = $row['reply_to'];
       $this->subject->text = $row['subject'];
       $this->text->text = $row['body'];
-      $to = explode(" ", $row['mail_to']);
-      $this->to = $to[0];
-      $this->survey_category_id = (int)$to[1];
+      $this->to = $row['mail_to'];
+      $this->survey_category_id = (int)$row['category_id'];
+      if ($row['question_period_id'])
+        set_question_period($row['question_period_id']);
+      
+      $r = pg_go("
+        SELECT topic_id
+        FROM sent_mails_topics WHERE sent_mail_id = $sent_mail_id
+      ", $wces, __FILE__, __LINE__);        
+      $n = pg_numrows($r);
+      $s = array();
+      for ($i = 0; $i < $n; ++$i)
+        $s[] = pg_result($r, $i, 0);
+      $this->topics->selected = count($s) ? $s : array(0);
     }
   }
 
@@ -131,6 +153,8 @@ class MassEmail extends ParentWidget
       $this->replyto->displayHidden();
       $this->subject->displayHidden();
       $this->text->displayHidden();
+      $this->question_periods->displayHidden();
+      $this->topics->displayHidden();
       $this->printValue("to", $this->to);
       $this->printValue("survey_category_id", $this->survey_category_id);
     }
@@ -140,6 +164,8 @@ class MassEmail extends ParentWidget
       $this->replyto->displayHidden();
       $this->subject->displayHidden();
       $this->text->displayHidden();
+      $this->question_periods->displayHidden();
+      $this->topics->displayHidden();      
       $this->printValue("to", $this->to);
       $this->printValue("survey_category_id", $this->survey_category_id);
 
@@ -164,9 +190,11 @@ class MassEmail extends ParentWidget
       
       $r = pg_go("
         SELECT m.sent_mail_id, EXTRACT(EPOCH FROM m.sent) AS date,
-          m.mail_from, m.reply_to, m.mail_to, m.subject, m.body, u.uni
+          m.mail_from, m.reply_to, m.mail_to, m.subject, m.body, u.uni, c.name AS cat, q.displayname
         FROM sent_mails AS m
         LEFT JOIN users AS u USING (user_id)
+        LEFT JOIN question_periods AS q USING (question_period_id)
+        LEFT JOIN survey_categories AS c ON c.survey_category_id = m.category_id
         ORDER BY m.sent DESC
       ", $wces, __FILE__, __LINE__);
       
@@ -177,16 +205,15 @@ class MassEmail extends ParentWidget
         $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
         
         $toa = explode(" ", $row['mail_to']);
-        assert(count($toa) == 2);
-        
-        $cat = (int)$toa[1];
-        $to = isset($cats[$cat]) ? "$cats[$cat] " : '';
-        @$to .= $MassEmail_students[$toa[0]];
+
+        $to = $row['cat'];
+        @$to .= ' ' . $MassEmail_students[$row['mail_to']];
         
         print("<hr>\n");
         print("<p>");
         $this->event->displayButton("Open this email.", MassEmail_load, $row['sent_mail_id']);
         print("</p>\n<pre>");
+        print("<b>Question Period:</b> " . htmlspecialchars($row['displayname']) . "\n");
         print("<b>Date:</b> " . date('l, F j, Y g:i a', $row['date']) . "\n");
         print("<b>Sent By:</b> " . htmlspecialchars($row['uni']) . "\n");
         print("<b>To:</b> " . htmlspecialchars($to) . "\n");
@@ -196,9 +223,6 @@ class MassEmail extends ParentWidget
         print(htmlspecialchars(wordwrap($row['body'])));
         print("</pre>\n");
       }
-      
-      
-      
     }
     else
     {
@@ -247,7 +271,7 @@ class MassEmail extends ParentWidget
   <tr>
     <td valign=top align=right><STRONG>To:</STRONG></td>
     <td><?
-      print("<select name=\"" . $this->fullName('to') . "\">");
+      print("<select name=\"" . $this->name('to') . "\">");
       foreach($MassEmail_students as $key => $label)
       {
         $selected = $key == $this->to ? " selected" : "";
@@ -259,7 +283,7 @@ class MassEmail extends ParentWidget
       $survey_categories = pg_go("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
       $n = pg_numrows($survey_categories);
 
-      print("<select name=\"" . $this->fullName('survey_category_id') . "\">");
+      print("<select name=\"" . $this->name('survey_category_id') . "\">");
       print("<option value=0$selected>All Class Categories</option>");
       for($i=0; $i<$n; ++$i)
       {
@@ -267,7 +291,19 @@ class MassEmail extends ParentWidget
         $selected = $survey_category_id == $this->survey_category_id ? " selected" : "";
         print("<option value=$survey_category_id$selected>$name Classes</option>");
       }
-      print("</select>\n");
+      print("</select><br>\n");
+      
+      $this->question_periods->display();
+      $this->topics->sql = "
+        SELECT 0 AS id, 'All Classes' AS name, 0 as ordinal
+        UNION
+        SELECT topic_id, get_class(class_id), 1
+        FROM wces_topics
+        WHERE question_period_id = " . get_question_period() . "
+        ORDER BY ordinal, name
+      ";
+      $this->topics->display("size=4 multiple");
+      
     ?></td>
   </tr>
   <tr>
@@ -292,25 +328,44 @@ class MassEmail extends ParentWidget
   {
     global $wces;
     
+    $topics = $this->topics->selected;
+    assert(is_array($topics));
+    if (in_array(0, $topics)) $topics = array();
+    
     wces_connect();
     if ($send)
     {
-      $user_id = login_getuserid();
+      $user_id = LoginValue('user_id');
       $from = addslashes($this->from->text);
       $reply_to = addslashes($this->replyto->text);
-      $mail_to = addslashes($this->to) . " " . addslashes($this->survey_category_id);
+      $mail_to = addslashes($this->to);
+      $category_id = (int)$this->survey_category_id;
       $subject = addslashes($this->subject->text);
       $body = addslashes($this->text->text);
+      $question_period_id = get_question_period();
 
-      pg_go("
-        INSERT INTO sent_mails (user_id, mail_from, reply_to, mail_to, subject, body)
-        VALUES ($user_id, '$from', '$reply_to', '$mail_to', '$subject', '$body');
+      $r = pg_go("
+        BEGIN;
+        INSERT INTO sent_mails (user_id, mail_from, reply_to, mail_to, subject, body, question_period_id, category_id)
+        VALUES ($user_id, '$from', '$reply_to', '$mail_to', '$subject', '$body', $question_period_id, $category_id);
+        SELECT currval('sent_mail_ids');
       ", $wces, __FILE__, __LINE__); 
       
+      $sent_mail_id = pg_result($r, 0, 0);
+      
+      foreach($topics AS $topic_id)
+      {
+        pg_go("
+          INSERT INTO sent_mails_topics (sent_mail_id, topic_id)
+          VALUES ($sent_mail_id, $topic_id);
+        ", $wces, __FILE__, __LINE__); 
+      }
+
+      pg_go("COMMIT;", $wces, __FILE__, __LINE__); 
     }
     
     $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
-
+    $topic = count($topics) ? ("AND t.topic_id IN (" . implode(",", $topics) . ")") : "";
     $status = $this->to == "prof" ? 3 : 1;
 
     $result = pg_go("
@@ -318,10 +373,10 @@ class MassEmail extends ParentWidget
       SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = $status 
+      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status & $status <> 0
       INNER JOIN users AS u ON u.user_id = e.user_id AND u.flags & 128 = 0" . ($status == 1 ? "
       LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id)" : "") . "
-      WHERE t.question_period_id = 23 $cat
+      WHERE t.question_period_id = " . get_question_period() . " $cat $topic
       GROUP BY e.class_id, e.user_id
     ", $wces, __FILE__, __LINE__);      
 
@@ -356,7 +411,7 @@ class MassEmail extends ParentWidget
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN courses AS c USING (course_id)
       INNER JOIN subjects AS s USING (subject_id)
-      LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND status = 3
+      LEFT JOIN enrollments_p AS e ON e.class_id = cl.class_id
       LEFT JOIN users AS p ON p.user_id = e.user_id
       GROUP BY sc.user_id, cl.class_id, e.user_id, cl.section, c.code, c.name, s.code, p.firstname, p.lastname, sc.surveyed
       ORDER BY sc.user_id
@@ -431,7 +486,7 @@ class MassEmail extends ParentWidget
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
           //$email = $address = "rey4@columbia.edu"; // debug
-          mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
+          //mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
         }
         else
         {
@@ -461,11 +516,13 @@ class MassEmail extends ParentWidget
 
 page_top("Mass Emailer");
 $f =& new Form('f');
-$mm =& new MassEmail("mm",$f);
+$t =& new InitializerWidget('init', $f);
+$mm =& new MassEmail("mm", $t);
 $f->loadState();
 
 print("<form name=f method=post event=massmail.php>$ISID\n");
 $f->display();
+$t->display();
 $mm->display();
 print("</form>\n");
 
