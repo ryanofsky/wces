@@ -131,10 +131,6 @@ COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - professor, 0 -
 CREATE INDEX class_idx ON enrollments (class_id);
 CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
 CREATE INDEX user_idx ON enrollments (user_id);
-CREATE INDEX report_user_idx ON report_topics (user_id);
-CREATE INDEX report_category_idx ON report_topics (category_id);
-CREATE INDEX report_course_idx ON report_topics (course_id);
-CREATE INDEX report_period_idx ON report_topics (question_period_id);
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 CREATE INDEX ta_ratings_parent_idx ON ta_ratings (parent);
 
@@ -226,32 +222,6 @@ CREATE TABLE semester_question_periods
   profdate TIMESTAMP
 ) INHERITS (question_periods);
 
-CREATE TABLE report_topics (
-  topic_id INTEGER,
-  question_period_id INTEGER,
-  class_id INTEGER,
-  category_id INTEGER,
-  course_id INTEGER,
-  department_id INTEGER,
-  user_id INTEGER
-);
-
-CREATE OR REPLACE FUNCTION report_topics_update() RETURNS BOOLEAN AS '
-  LOCK report_topics IN ACCESS EXCLUSIVE MODE;
-  TRUNCATE report_topics;
-  INSERT INTO report_topics (topic_id, question_period_id, class_id, category_id, course_id, department_id, user_id)
-  SELECT DISTINCT t.topic_id, t.question_period_id, t.class_id, t.category_id, cl.course_id, cl.department_id, e.user_id
-  FROM survey_responses AS r
-  INNER JOIN wces_topics AS t USING (topic_id)
-  INNER JOIN classes AS cl USING (class_id)
-  LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3;
-  SELECT BOOLEAN ''t''
-' LANGUAGE 'sql';
-  
-CREATE INDEX report_user_idx ON report_topics (user_id);
-CREATE INDEX report_category_idx ON report_topics (category_id);
-CREATE INDEX report_course_idx ON report_topics (course_id);
-CREATE INDEX report_period_idx ON report_topics (question_period_id);
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 
 ALTER TABLE classes ADD FOREIGN KEY fk_class_course(course_id) REFERENCES courses(course_id);
@@ -351,7 +321,7 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER)
 ' LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
-  SELECT course_find($1, 't');
+  SELECT course_find($1, ''t'');
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION course_find(TEXT, BOOLEAN) RETURNS INTEGER AS '
@@ -1187,13 +1157,12 @@ CREATE OR REPLACE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
 ' LANGUAGE 'plpgsql'
 WITH (ISCACHABLE);
 
-DROP FUNCTION get_class(INTEGER);
 CREATE OR REPLACE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
   SELECT COALESCE(s.code, '''') || ''\n'' 
     || COALESCE(c.divisioncode, '''') || ''\n'' 
     || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
-    || COALESCE(cl.section, '''')     || ''\n'' || COALESCE(cl.year, '''') || ''\n'' 
-    || COALESCE(cl.semester, '''')    || ''\n'' || COALESCE(c.name, '''') || ''\n''
+    || COALESCE(cl.section, '''')     || ''\n'' || COALESCE(cl.year::text, '''') || ''\n'' 
+    || COALESCE(cl.semester::text, '''')    || ''\n'' || COALESCE(c.name, '''') || ''\n''
     || COALESCE(cl.name, '''') || ''\n'' || $1 || ''\n'' || c.course_id
   FROM classes AS cl
   INNER JOIN courses AS c USING (course_id)
