@@ -319,76 +319,82 @@ function report_makepage(&$outtext, &$outhtml, $options, $groups, &$header, &$li
 
   //////////////////////////////////// PAGE HEADER /////////////////////////////////////
   
-  $students = $response = $clusterid = $dname = $dcode = $semester = $year = $description = "";
-  extract($header->row);
+  if (!$dataonly)
+  {
+    $students = $response = $clusterid = $dname = $dcode = $semester = $year = $description = "";
+    
+    extract($header->row);
+    
+    if ($outhtml)
+    {
+      $pagehtml .= "<h4>On this page</h4>\n";
+      $pagehtml .= "<table border=0>\n";
+      if ($groups["questionperiods"]) $pagehtml .= "<tr><td>Question Period:</td><td><b>" . ucfirst($qpname) . "</b></td></tr>\n";
+      if ($groups["departments"]) $pagehtml .= "<tr><td>Department:</td><td><b>$dname ($dcode)</b></td></tr>\n";
+    }
+    
+    if ($outtext)
+    {
+      $pagetext .= "Included on this page:\n\n";
+      if ($groups["questionperiods"]) $pagetext .= " - Question Period: " . ucfirst($qpname) . "\n";
+      if ($groups["departments"]) $pagetext .= " - Department: $dname ($dcode)\n";
+    }
+    
+    if ($listprofessors && $clusterid == $listprofessors->row["clusterid"])
+    {
+      do
+      {
+        $plname = $pfname = $professorid = "";
+        extract($listprofessors->row);
+        $profname = ($pfname || $plname) ? "$pfname $plname" : "Unknown";
+        if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${wces_path}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
+        if ($outtext) $pagetext .= " - Professor: $profname\n"; 
+      }
+      while($listprofessors->advance());
+    }
+    
+    if ($listclasses && $clusterid == $listclasses->row["clusterid"])
+    {
+      do
+      {
+        $ccode = $cname = $section = $year = $semester = $classid = "";
+        extract($listclasses->row);
+        $classname = "$ccode $cname Section $section";
+        if ($groups["questionperiods"])
+          $classname .= " " . ucfirst($semester) . " $year";
+        if ($outhtml)
+          $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${wces_path}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
+        if ($outtext)
+          $pagetext .= " - Class: $classname\n"; 
+      }
+      while($listclasses->advance());
+    }  
+    if ($outhtml) $pagehtml .= "</table>\n";
+  }
   
-  if ($outhtml && !$dataonly)
-  {
-    $pagehtml .= "<h4>On this page</h4>\n";
-    $pagehtml .= "<table border=0>\n";
-    if ($groups["questionperiods"]) $pagehtml .= "<tr><td>Question Period:</td><td><b>" . ucfirst($qpname) . "</b></td></tr>\n";
-    if ($groups["departments"]) $pagehtml .= "<tr><td>Department:</td><td><b>$dname ($dcode)</b></td></tr>\n";
-  }
-
-  if ($outtext)
-  {
-    $pagetext .= "Included on this page:\n\n";
-    if ($groups["questionperiods"]) $pagetext .= " - Question Period: " . ucfirst($qpname) . "\n";
-    if ($groups["departments"]) $pagetext .= " - Department: $dname ($dcode)\n";
-  }
-
-  if ($listprofessors && $clusterid == $listprofessors->row["clusterid"])
-  {
-    do
-    {
-      $plname = $pfname = $professorid = "";
-      extract($listprofessors->row);
-      $profname = ($pfname || $plname) ? "$pfname $plname" : "Unknown";
-      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${wces_path}administrators/info.php?professorid=$professorid\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
-      if ($outtext) $pagetext .= " - Professor: $profname\n"; 
-    }
-    while($listprofessors->advance());
-  }
-
-  if ($listclasses && $clusterid == $listclasses->row["clusterid"])
-  {
-    do
-    {
-      $ccode = $cname = $section = $year = $semester = $classid = "";
-      extract($listclasses->row);
-      $classname = "$ccode $cname Section $section";
-      if ($groups["questionperiods"])
-        $classname .= " " . ucfirst($semester) . " $year";
-      if ($outhtml)
-        $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${wces_path}administrators/info.php?classid=$classid\">$classname</a></b></td></tr>\n";
-      if ($outtext)
-        $pagetext .= " - Class: $classname\n"; 
-    }
-    while($listclasses->advance());
-  }  
-
-  if ($outhtml && !$dataonly) $pagehtml .= "</table>\n";
-
   //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
   
-  if ($pagetext)
-  {  
-    $pagetext .= "\nResponse Statistics:\n\n";
-    $pagetext .= " - Total Students: $students\n";
-    $pagetext .= " - Students Evaluated: $response\n\n";
-  }
-
-  if ($outhtml && !$dataonly)
+  if (!$dataonly)
   {
-    $pagehtml .= "<h4>Response Statistics</h4>";
-    $pagehtml .= "<table border=0>\n";
-    $pagehtml .= "<tr><td>Total Students:</td><td><b>$students</b></td></tr>\n";
-    $pagehtml .= "<tr><td>Students Evaluated:</td><td><b>$response</b></td></tr>\n";
-    $pagehtml .= "</table>\n";
-    if ($options["pies"]) $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$response) . "&filled=$response\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
+    if ($pagetext)
+    {  
+      $pagetext .= "\nResponse Statistics:\n\n";
+      $pagetext .= " - Total Students: $students\n";
+      $pagetext .= " - Students Evaluated: $response\n\n";
+    }
+    
+    if ($outhtml)
+    {
+      $pagehtml .= "<h4>Response Statistics</h4>";
+      $pagehtml .= "<table border=0>\n";
+      $pagehtml .= "<tr><td>Total Students:</td><td><b>$students</b></td></tr>\n";
+      $pagehtml .= "<tr><td>Students Evaluated:</td><td><b>$response</b></td></tr>\n";
+      $pagehtml .= "</table>\n";
+      if ($options["pies"]) $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$response) . "&filled=$response\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
+    }
+    
+    $header->advance();
   }
-
-  $header->advance();
 
   ///////////////////////////////// COURSE RATINGS /////////////////////////////////////
 

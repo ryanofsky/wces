@@ -79,10 +79,7 @@ function listclasses()
       if ($first)
         $first = false;
       else
-      {
-        if ($count > 0) print("  <li><a href=\"?questionperiodid=$lqp\">All Classes Combined</a></li>\n</ul>");      
         print("</ul>");
-      } 
       $count = 0;
       $lqp = $questionperiodid;
       print("<h4>" . ucfirst($semester) . " $year - $description</h4>\n");
