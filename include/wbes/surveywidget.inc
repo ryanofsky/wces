@@ -193,7 +193,11 @@ class SurveyWidget extends FormWidget
 
     if ($this->ta->modal)
     {
-      $this->ta->display();
+      foreach(array_keys($this->questionwidgets) as $k)
+      {
+        $q = &$this->questionwidgets[$k];
+        $q->display(!isset($q->modal) || !$q->modal);
+      }
       return;
     }
 
