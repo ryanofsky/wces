@@ -64,7 +64,6 @@ CREATE TABLE Classes (
   classid int(11) NOT NULL auto_increment,
   courseid int(11) NOT NULL default '0',
   section char(3) NOT NULL default '',
-  divisioncode char(1) NOT NULL default '',
   year year(4) NOT NULL default '0000',
   semester enum('spring','summer','fall') NOT NULL default 'spring',
   name tinytext,
@@ -74,9 +73,8 @@ CREATE TABLE Classes (
   location tinytext,
   callnumber int(11) default NULL,
   departmentid int(11) default NULL,
-  divisionid int(11) default NULL,
   PRIMARY KEY (classid),
-  UNIQUE KEY code(courseid,section,divisioncode,year,semester)
+  UNIQUE KEY code(courseid,section,year,semester)
 );
 
 CREATE TABLE CompleteSurveys (
@@ -89,12 +87,13 @@ CREATE TABLE Courses (
   courseid int(11) NOT NULL auto_increment,
   subjectid int(11) NOT NULL default '0',
   code int(11) NOT NULL default '0',
+  divisionid int(11),
   name tinytext,
   information text,
   departmentid int(11) default NULL,
   schoolid int(11) default NULL,
   PRIMARY KEY (courseid),
-  UNIQUE KEY code(subjectid,code)
+  UNIQUE KEY code(subjectid,code,divisionid)
 );
 
 CREATE TABLE Departments (
@@ -111,7 +110,7 @@ CREATE TABLE Divisions (
   shortcode char(1) NOT NULL default '',
   name tinytext NOT NULL,
   PRIMARY KEY (divisionid),
-  UNIQUE KEY name(name(255))
+  UNIQUE KEY name(name(255),shortcode,code)
 );
 
 CREATE TABLE Enrollments (
@@ -147,13 +146,13 @@ CREATE TABLE ProfessorDupeData (
 CREATE TABLE Professors (
   professorid int(11) NOT NULL auto_increment,
   userid int(11) default NULL,
-  name tinytext,
-  email tinytext,
-  url tinytext,
-  picname tinytext,
-  statement text,
-  profile text,
-  education text,
+  name tinytext NOT NULL,
+  email tinytext NOT NULL,
+  url tinytext NOT NULL,
+  picname tinytext NOT NULL,
+  statement text NOT NULL,
+  profile text NOT NULL,
+  education text NOT NULL,
   departmentid int(11) default NULL,
   PRIMARY KEY (professorid),
   UNIQUE KEY userid(userid)
@@ -199,15 +198,15 @@ CREATE TABLE Schools (
 CREATE TABLE Subjects (
   subjectid int(11) NOT NULL auto_increment,
   code varchar(4) NOT NULL default '',
-  name tinytext,
+  name tinytext NOT NULL,
   PRIMARY KEY (subjectid),
   UNIQUE KEY code(code)
 );
 
 CREATE TABLE Users (
   userid int(11) NOT NULL auto_increment,
-  cunix varchar(15) default NULL,
-  email tinytext,
+  cunix varchar(15) NOT NULL,
+  email tinytext NOT NULL,
   status set('student','professor','administrator','barnard') NOT NULL default '',
   lastlogin datetime default NULL,
   isprofessor enum('false','true') NOT NULL default 'false',
