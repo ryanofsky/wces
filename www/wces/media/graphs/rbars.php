@@ -1,18 +1,16 @@
 <?php
 
+session_cache_limiter('public');
+
 error_reporting(0);
 
 require_once("jpgraph/jpgraph.php");
 require_once("jpgraph/jpgraph_bar.php");
 require_once("wces/report_help.inc");
-require_once("wbes/png.inc");
 
-$filename = png_start(__FILE__, 60*60*24);
-$width = $_GET['width'];
-$height = $_GET['height'];
-$datax = @unserialize($_GET['datax']);
-$datay = @unserialize($_GET['datay']);
-$title = @(string)$_GET['title'];
+$datax = @unserialize($datax);
+$datay = @unserialize($datay);
+if (!isset($title)) $title = "";
 
 $params = compact("width", "height");
 LineGraphSize($params, $datax);
@@ -56,8 +54,5 @@ $bplot->SetColor("navy");
 $graph->Add($bplot);
 
 // Finally send the graph to the browser
-$graph->Stroke($filename);
-
-png_end($filename);
-
+$graph->Stroke();
 ?>
