@@ -6,6 +6,7 @@ require_once('wbes/component_pagebreak.inc');
 require_once('wbes/component_textresponse.inc');
 require_once('wbes/component_text.inc');
 require_once('wces/component_abet.inc');
+require_once('wces/component_instructor.inc');
 
 $WCES_CONFIG_FACTORIES = array
 ( 
@@ -18,7 +19,8 @@ $WCES_CONFIG_FACTORIES = array
   new TextResponseFactory(),
   new TextFactory(),
   new HeadingFactory(),
-  new PageBreakFactory()
+  new PageBreakFactory(),
+  new InstructorSurveyFactory()
 );
 
 ?>
