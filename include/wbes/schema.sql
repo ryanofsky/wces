@@ -64,13 +64,13 @@ ALTER TABLE item_specializations ADD CONSTRAINT item_branch_idx
 -- 8 = a subsurvey component
 -- 9 = a page break component
 -- 10 = an abet component
+-- 11 = instructor subsurvey component
 
 CREATE TABLE components
 (
   component_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('component_ids'),
   type INTEGER NOT NULL
 );
-
 
 CREATE TABLE components_generic
 (
@@ -88,6 +88,11 @@ CREATE TABLE components_survey
 ) INHERITS (components_text);
 
 CREATE TABLE components_subsurvey
+(
+  specialization_id INTEGER
+) INHERITS (components_survey);
+
+CREATE TABLE components_instructor_subsurvey
 (
   specialization_id INTEGER
 ) INHERITS (components_survey);
@@ -154,9 +159,14 @@ CREATE TABLE responses
 CREATE TABLE responses_survey
 (
   topic_id INTEGER NOT NULL,
-  specialization_id INTEGER NOT NULL, -- redudant
+  specialization_id INTEGER NOT NULL,
   user_id INTEGER,
   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) INHERITS (responses);
+
+CREATE TABLE responses_instructor_subsurvey
+(
+  topic_id INTEGER NOT NULL
 ) INHERITS (responses);
 
 CREATE TABLE responses_choice
@@ -1358,7 +1368,7 @@ CREATE OR REPLACE FUNCTION component_merge(INTEGER, INTEGER, INTEGER, INTEGER) R
     ELSIF type_ = 3 THEN
       RETURN textresponse_component_merge(common_id, primary_id, secondary_id);
     ELSIF type_ = 4 OR type_ = 5 THEN
-      RETURN text_component_merge(common_id, primary_id, secondary_id);
+      RETURN text_component_merge(common_id, primary_id, secondary_id, type_);
     ELSIF type_ = 6 THEN
       RETURN choice_question_merge(common_id, primary_id, secondary_id);
     ELSIF type_ = 8 THEN
@@ -1415,6 +1425,20 @@ CREATE OR REPLACE FUNCTION list_insert(INTEGER, INTEGER[]) RETURNS INTEGER AS '
       i := i + 1;
     END LOOP;
     RETURN component_id_;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION instructor_subsurvey_save(INTEGER, INTEGER[]) RETURNS INTEGER AS '
+  DECLARE
+    component_id_ ALIAS FOR $1;
+    item_ids      ALIAS FOR $2;
+  BEGIN
+    IF list_changed(component_id_, item_ids) THEN
+      INSERT INTO components_instructor_subsurvey (type) VALUES (11);
+      RETURN list_insert(currval(''component_ids'')::integer, item_ids);
+    ELSE
+      RETURN component_id_;
+    END IF;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1725,8 +1749,8 @@ CREATE OR REPLACE FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEG
     SELECT INTO primary_row   ctext, flags FROM components_text WHERE component_id = primary_id;
     SELECT INTO secondary_row ctext, flags FROM components_text WHERE component_id = secondary_id;
 
-    INSERT components_text (type, ctext, flags) VALUES
-    ( type_
+    INSERT INTO components_text (type, ctext, flags) VALUES
+    ( type_,
       text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
     );
