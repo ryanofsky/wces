@@ -192,13 +192,13 @@ function ShowProfessor($user_id)
   
   print("<h3>$firstname $lastname</h3>\n");
   
-  $result = pg_go("SELECT url, picname, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   if (!pg_numrows($result) != 1)
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   else
-    $picture_id = $url = $picname = $statement = $profile = $education = NULL;
+    $picture_id = $url = $picture_id = $statement = $profile = $education = NULL;
 
-  if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>\n");
+  if ($picture_id) print("<p><img src=\"" . picture_src($picture_id) . "\"></p>\n");
   
   $classes = pg_go("
     SELECT e.class_id, get_class(e.class_id) AS class_info
