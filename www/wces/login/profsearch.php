@@ -32,20 +32,32 @@ if ($lastname)
   <p><font size=-1">Note: If you see your name listed twice, you should contact an administrator so the listings can be merged. In the meantime, choose the listing with the classes you need to access.</font></p>
   <?
 
-  $db = wces_connect();
-  $professors = mysql_query("SELECT professorid, name FROM professors WHERE name LIKE '%" . addslashes($lastname) . "%' LIMIT 30",$db);
-  if (mysql_num_rows($professors) > 0)
+  wces_connect();
+
+  $professors = pg_query("SELECT user_id, lastname, firstname FROM users WHERE flags & 4 = 4 AND lastname ILIKE '%" . addslashes($lastname) . "%' LIMIT 30",$wces,__FILE__,__LINE__);
+  $sems = array(0 => "Spring", 1 => "Summer", 2 => "Fall");
+  if (($ps = pg_numrows($professors)) > 0)
   {
     print("<TABLE cellSpacing=0 cellPadding=2 border=1>\n");
-    while ($professor = mysql_fetch_array($professors))
+    for($p = 0; $p < $ps; ++$p)
     {
-      extract($professor);
-      print("<TR><TD>$name [<a href=\"profbounce.php?profid=$professorid&url=$url\">Use This Listing</a>]<UL>");
-      $classes = mysql_query("SELECT cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode FROM classes as cl LEFT JOIN courses AS c USING (courseid) LEFT JOIN subjects AS s USING (subjectid) WHERE cl.professorid = '$professorid' ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
-      while ($class = mysql_fetch_array($classes))
+      extract(pg_fetch_array($professors,$p,PGSQL_ASSOC));
+      print("<TR><TD>$firstname $lastname [<a href=\"profbounce.php?user_id=$user_id&url=$url\">Use This Listing</a>]<UL>");
+      $classes = pg_query("
+        SELECT cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode
+        FROM enrollments AS e
+        INNER JOIN classes as cl USING (class_id)
+        INNER JOIN courses AS c USING (course_id)
+        INNER JOIN subjects AS s USING (subject_id)
+        WHERE e.user_id = '$user_id' AND status = 3
+        ORDER BY cl.year DESC, cl.semester DESC LIMIT 50
+      ",$wces,__FILE__,__LINE__);
+      
+      $cs = pg_numrows($classes);
+      for($c = 0; $c < $cs; ++$c)
       {
-        extract($class);
-        print ("<LI>" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>");
+        extract(pg_fetch_array($classes,$c,PGSQL_ASSOC));
+        print ("<LI>$sems[$semester] $year  - $scode$code <i>$name</i> (section $section)</LI>");
       }
       print("</UL><P>&nbsp;</P></TD></TR>\n");
     }
