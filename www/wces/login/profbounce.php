@@ -1,6 +1,6 @@
 <%
-  require_once("server.inc");
-  require_once("login.inc");
+  require_once("wces/server.inc");
+  require_once("wces/login.inc");
   login_protect(login_professor);
  
   if (!$destination) $destination = $server_wcespath . "professors/index.php";

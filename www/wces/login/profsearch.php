@@ -1,7 +1,7 @@
 <%
 
-require_once("login.inc");
-require_once("page.inc");
+require_once("wces/login.inc");
+require_once("wces/page.inc");
 login_protect(login_professor);
 
 page_top("Professor Search Page");

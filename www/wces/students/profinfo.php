@@ -1,7 +1,7 @@
 <%
-  require_once("page.inc");
-  require_once("login.inc");
-  require_once("wces.inc");
+  require_once("wces/page.inc");
+  require_once("wces/login.inc");
+  require_once("wces/wces.inc");
   page_top("Professor Profile","1000");
   
 $db = wces_connect();

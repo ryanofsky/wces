@@ -1,5 +1,5 @@
 <%
-require_once("page.inc");
+require_once("wces/page.inc");
 page_top("Feedback");
 
 

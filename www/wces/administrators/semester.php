@@ -1,9 +1,9 @@
 <%
-require_once("server.inc");
-require_once("login.inc");
-require_once("page.inc");
-require_once("wces.inc");
-require_once("taskwindow.inc");
+require_once("wces/server.inc");
+require_once("wces/login.inc");
+require_once("wces/page.inc");
+require_once("wces/wces.inc");
+require_once("wces/taskwindow.inc");
 login_protect(login_administrator);
 page_top("New Semester Initialization");
 
