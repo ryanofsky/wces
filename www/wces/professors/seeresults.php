@@ -13,7 +13,6 @@
 
   require_once("wces/report_page.inc");
   require_once("wces/report_generate.inc");
-
   login_protect(login_professor);
   $user_id = login_getuserid();
   wces_connect();
@@ -810,7 +809,7 @@ function listclasses()
     INNER JOIN classes AS cl ON cl.class_id = e.class_id
     INNER JOIN semester_question_periods AS q ON q.year = cl.year AND q.semester = cl.semester
     LEFT JOIN survey_responses AS r ON r.topic_id = t.topic_id AND r.question_period_id = q.question_period_id
-    WHERE e.user_id = $uid AND e.status = 3 AND q.question_period_id <= 1
+    WHERE e.user_id = $uid AND e.status = 3 AND q.question_period_id <= 2
     GROUP BY t.class_id, q.question_period_id, q.displayname, t.topic_id
     ORDER BY q.question_period_id DESC, cl
   ", $wces, __FILE__, __LINE__);
