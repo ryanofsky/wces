@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("widgets/widgets.inc");
 require_once("widgets/dynamiclist.inc");
@@ -197,22 +197,22 @@ class FreeResponseEditor extends QuestionEditor
   function display()
   {
     QuestionEditor::display();
-%>
+?>
 <table>
 <tr>
-  <td valign=top><strong><% $this->fieldname("Question Text:",$this->text->broken); %></strong></td>
-  <td><% $this->text->display(false); %><br><% $this->usehtml->display(false); $this->usehtml->displaylabel("Contains HTML Tags"); %></td>
+  <td valign=top><strong><? $this->fieldname("Question Text:",$this->text->broken); ?></strong></td>
+  <td><? $this->text->display(false); ?><br><? $this->usehtml->display(false); $this->usehtml->displaylabel("Contains HTML Tags"); ?></td>
 </tr>
 <tr>
-  <td valign=top><strong><% $this->fieldname("Height (rows)",$this->rows->broken); %></strong></td>
-  <td><%$this->rows->display(false);%></td>
+  <td valign=top><strong><? $this->fieldname("Height (rows)",$this->rows->broken); ?></strong></td>
+  <td><?$this->rows->display(false);?></td>
 </tr>
 <tr>
-  <td valign=top><strong><% $this->fieldname("Width (columns)",$this->cols->broken); %></strong></td>
-  <td><% $this->cols->display(false); %></td>
+  <td valign=top><strong><? $this->fieldname("Width (columns)",$this->cols->broken); ?></strong></td>
+  <td><? $this->cols->display(false); ?></td>
 </tr>
 </table>
-<%    
+<?    
   }
 };
 
@@ -329,26 +329,26 @@ class RatingsBlockEditor extends QuestionEditor
   function display()
   {
     QuestionEditor::display();
-%>    
+?>    
 <table>
 <tr>
-  <td valign=top><strong><% $this->fieldname("Question Text:",$this->text->broken); %></strong></td>
-  <td><%$this->text->display(false);%><br><%$this->usehtml->display(false); $this->usehtml->displaylabel("Contains HTML Tags");%></td>
+  <td valign=top><strong><? $this->fieldname("Question Text:",$this->text->broken); ?></strong></td>
+  <td><?$this->text->display(false);?><br><?$this->usehtml->display(false); $this->usehtml->displaylabel("Contains HTML Tags");?></td>
 </tr>
 <tr>
-  <td valign=top><strong><% $this->fieldname("Low Value:",$this->lowvalue->broken); %></strong></td>
-  <td><%$this->lowvalue->display(false);%></td>
+  <td valign=top><strong><? $this->fieldname("Low Value:",$this->lowvalue->broken); ?></strong></td>
+  <td><?$this->lowvalue->display(false);?></td>
 </tr>
 <tr>
-  <td valign=top><strong><% $this->fieldname("High Value:",$this->highvalue->broken); %></strong></td>
-  <td><% $this->highvalue->display(false); %></td>
+  <td valign=top><strong><? $this->fieldname("High Value:",$this->highvalue->broken); ?></strong></td>
+  <td><? $this->highvalue->display(false); ?></td>
 </tr>
 <tr>
-  <td valign=top><strong><% $this->fieldname("Items to rate:",$this->items->broken); %></strong></td>
-  <td><% $this->items->display(false); %></td>
+  <td valign=top><strong><? $this->fieldname("Items to rate:",$this->items->broken); ?></strong></td>
+  <td><? $this->items->display(false); ?></td>
 </tr>
 </table>
-<%    
+<?    
   }
 }
 
@@ -432,4 +432,4 @@ class QuestionSet
   }
 }
 
-%>
+?>
