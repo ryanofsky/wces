@@ -169,8 +169,7 @@ class EventWidget extends Widget
 {
   var $event = null;
   var $param = null;
-  var $names = array();
-
+  
   function EventWidget($name, &$parent)
   {
     $this->Widget($name, $parent);
@@ -206,46 +205,13 @@ class EventWidget extends Widget
     else
       return $event;
   }
-  
+
   function makeParam($param)
   {
     if (is_array($param))
       return implode(EVENT_WIDGET_SEPARATOR, $param);
     else
       return $param;
-  }
-
-  function shortName($event, $name)
-  {
-    $this->names[$event] = $name;
-    if (is_array($name))
-    {
-      foreach($name as $n)
-        $this->form->names[] = $n;    
-    }
-    else
-      $this->form->names[] = $name;
-  }
-
-  function getUrl($event, $param)
-  {
-    $hasName = isset($this->names[$event]);
-    if ($hasName)
-    {
-      $name = $this->names[$event];
-      if (!is_array($param)) $param = array($param);
-      if (!is_array($name)) $name = array($name);
-      $arg = "";
-      foreach($param as $k => $p)
-      {
-        if (strlen($arg)) $arg .= '&';
-        if (isset($name[$k])) $arg .= $name[$k] . '=' . $p; else $break;
-      }
-    }
-    else
-      $arg = "$this->name=" . $this->makeEvent($event, $param);   
-    $full = $this->form->getUrlVars(!$hasName);
-    return $this->form->pageName . "?$arg" . (strlen($full) ? '&' : '') . $full;
   }
 
   function loadState() // public abstract
@@ -269,27 +235,6 @@ class EventWidget extends Widget
       $this->setEvent(substr($j,$length));
       return;
     };
-
-    foreach($this->names as $event => $name)
-    {
-      if (is_array($name))
-      {
-        $this->param = array();
-        foreach($name as $p) 
-        {
-          if (!isset($_GET[$p])) break 2;
-          $this->param[] = $_GET[$p];
-        }
-        $this->event = $event;
-        return;
-      }
-      else if (isset($_GET[$name]))
-      {
-        $this->event = $event;
-        $this->param = $_GET[$name];
-        return;
-      }
-    }
   }
 
   function displayPersistent()
@@ -309,7 +254,7 @@ class EventWidget extends Widget
     if (strlen($attribs) > 0) $attribs = " $attribs";
     print("<input type=submit name=$n value=$l$attribs>");
   }
-  
+
   function displayNoJavascriptRefresh($label, $attribs = '')
   {
     print("<noscript>");
@@ -319,7 +264,7 @@ class EventWidget extends Widget
 
   function displayField()
   {
-    $this->printValue('', ''); 
+    $this->printValue('', '');
   }
 
   function gethref($event,$param)
@@ -348,10 +293,10 @@ class EventWidget extends Widget
     //alert(eventObject.name + " set to '" + event + "'");
     eventObject.value = event;
     if (object != null) eventObject.value += EVENT_WIDGET_SEPARATOR + object;
-    
+
     if (eventObject.length)
       alert("Warning: An event object has been displayed multiple times on the same page");
-    
+
     if (eventObject.form.onsubmit) eventObject.form.onsubmit();
     eventObject.form.submit();
   }
@@ -422,7 +367,7 @@ class StatefullWidget extends ParentWidget
     $this->eventLoop($this->readValue("currentEvent"), $this->event->parseParam($this->readValue("currentParam")), false);
     $this->eventLoop($this->event->event, $this->event->param, true);
   }
-  
+
   function eventLoop($event, $param, $new)
   {
     while(isset($event))
@@ -433,9 +378,9 @@ class StatefullWidget extends ParentWidget
       $event = $this->newEvent;
       $param = $this->newParam;
       $new = true;
-    } 
+    }
   }
-  
+
   function setCurrent(&$widget, $event, $param)
   {
     if (isset($widget))
@@ -483,23 +428,23 @@ class TabbedWidget extends ParentWidget
 
   // array all widget-returning events seen so far
   //   true if widget was modal, false otherwise
-  var $seen = array(); 
-  
+  var $seen = array();
+
   // references to child widgets corresponding to events
   var $handled = array();
-  
+
   var $currentEvent;
-  
+
   function TabbedWidget($name, &$parent)
   {
     $this->ParentWidget($name, $parent);
     $this->event =& new EventWidget('event', $this);
   }
-  
+
   function addEvent($event, $param)
   {
     $this->newEvent = $event;
-    $this->newParam = $param; 
+    $this->newParam = $param;
   }
 
   function setCurrent(&$widget, $event, $setCurrent)
@@ -507,19 +452,19 @@ class TabbedWidget extends ParentWidget
     if (isset($widget))
     {
       $this->handled[$event] =& $widget;
-      
-      if (!$setCurrent) 
+
+      if (!$setCurrent)
       {
         $this->seen[$event] = false;
         return;
       }
-      
+
       if (isset($this->currentEvent))
       {
         $this->seen[$this->currentEvent] = false;
-        $this->currentEvent = null; 
+        $this->currentEvent = null;
       }
-      
+
       if (isset($this->modalChild))
       {
         $this->modalChild->modal = false;
@@ -554,7 +499,7 @@ class TabbedWidget extends ParentWidget
       $event = $this->newEvent;
       $param = $this->newParam;
       $new = true;
-    } 
+    }
   }
 
   function loadState()
@@ -567,12 +512,12 @@ class TabbedWidget extends ParentWidget
 
     $this->eventLoop($this->event->event, $this->event->param, true, true);
   }
-  
+
   function printState()
   {
-    $this->printValue('seen', serialize($this->seen)); 
+    $this->printValue('seen', serialize($this->seen));
   }
-  
+
   function printVisible()
   {
     foreach(array_keys($this->handled) as $k)
