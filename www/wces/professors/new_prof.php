@@ -26,14 +26,21 @@ class ProfResponseMenu extends ParentWidget
     {
       global $user_id;
       ProfResponse::DumpScript();
-      $this->init =& new InitializerWidget('init', $this);
       $this->response =& new ProfResponse($course_id, $user_id, false, 
-        'response', $this->init);
+        'response', $this);
+
       $this->response->modal = true;
-      $this->loadChild($this->init);
+      $last_course_id = (int)$this->readValue('last_course_id');
+      $this->loadChild($this->response, $course_id != $last_course_id);
       if ($this->response->done) unset($this->modalChild);
     }
   }  
+  
+  function printState()
+  {
+    if (isset($this->response) && !$this->response->done)
+      $this->printValue('last_course_id', $this->response->course_id);
+  }
   
   function printVisible()
   {
