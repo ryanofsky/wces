@@ -1,5 +1,5 @@
 <?
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
@@ -73,7 +73,7 @@ $profloggedin = $profcustomized + mysql_num_rows($nocustoms);
 
 function printproflist($title,$result,$count)
 {
-  global $server_wcespath;
+  global $wces_path;
   print("<p>$title<br><font size=-1>$count professors sorted by number of students</font></p>");
   print("<ul>");
   while($row = mysql_fetch_array($result))
@@ -91,7 +91,7 @@ print("</ul>");
 Number of professors: <b><?=$notloggedincount+$hascustomscount+$nocustomscount?></b><br>
 Number of professors who have logged in: <b><?=$hascustomscount+$nocustomscount?></b><br>
 Number of professors with custom surveys: <b><?=$hascustomscount?></b><br>
-<img src="<?=$server_wcespath?>media/graphs/pusagegraph.php?neverloggedin=<?=$notloggedincount?>&custom=<?=$hascustomscount?>&nocustom=<?=$nocustomscount?>" width=200 height=200><img src="<?=$server_wcespath?>media/graphs/pusagelegend.gif" width=133 height=49><br>
+<img src="<?=$wces_path?>media/graphs/pusagegraph.php?neverloggedin=<?=$notloggedincount?>&custom=<?=$hascustomscount?>&nocustom=<?=$nocustomscount?>" width=200 height=200><img src="<?=$wces_path?>media/graphs/pusagelegend.gif" width=133 height=49><br>
 <p>&nbsp;</p>
 <h3>Individual Professor Usage</h3>
 

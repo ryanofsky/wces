@@ -1,6 +1,6 @@
 <?
 
-require_once("wces/general.inc");
+require_once("wbes/general.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 require_once("wces/login.inc");
@@ -65,7 +65,7 @@ function PrintEnrollments($db, $userid)
   
   print("<h3>Cached AcIS Enrollments</h3>");
     
-  if (!login_isvalid(login_administrator) && !(login_getuserid() == $userid))
+  if (!(login_getstatus() & login_administrator) && !(login_getuserid() == $userid))
   {
     print("<font color=red><strong>You must be logged in as administrator to view this information</strong></font>");
     return false;
@@ -233,7 +233,7 @@ function PrintClassInfo($db, $classid)
   {
     print("<h4>Known Enrollments</h4>\n");
    
-    if (!login_isvalid(login_administrator) && !($professorid && login_getprofid(false) == $professorid))
+    if (!((login_administrator & login_getstatus()) || ($professorid && login_getprofid() == $professorid)))
       print("<font color=red><strong>You must be logged in as administrator to view this information</strong></font>");
     else
     {     
@@ -311,7 +311,7 @@ $db = wces_connect();
 if ($surveys && !$surveyid)
 {
   $questionperiodid = wces_Findquestionsetsta($db,"qsets");
-  $back = "&back=" . urlencode(server_getrequest());
+  $back = "&back=" . urlencode($server_url->toString(false,true,true));
 }  
 
 if ($cunix || $userid || $professorid) 

@@ -1,5 +1,5 @@
 <?
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
@@ -7,7 +7,7 @@ login_protect(login_administrator);
 param($topicid);
 
 $db = wces_connect();
-wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
+wces_GetCurrentQuestionPeriod($db, $questionperiodid, $questionperiod, $year, $semester);
 $semester = ucfirst($semester);
 page_top("Student Usage Data for $semester $year $questionperiod");
 
@@ -86,7 +86,7 @@ extract(mysql_fetch_array($y));
 Total number of surveys: <b><?=$students?></b><br>
 Number of surveys completed: <b><?=$responses?></b><br>
 
-<img src="<?=$server_wcespath?>media/graphs/susagegraph.php?blank=<?=$students-$responses?>&filled=<?=$responses?>" width=200 height=200><img src="<?=$server_wcespath?>media/graphs/susagelegend.gif" width=147 height=31><br>
+<img src="<?=$wces_path?>media/graphs/susagegraph.php?blank=<?=$students-$responses?>&filled=<?=$responses?>" width=200 height=200><img src="<?=$wces_path?>media/graphs/susagelegend.gif" width=147 height=31><br>
 
 <h3>Individual Class Usage</h3>
 <p><font size="-1">Sorted by number of surveys that haven't been filled out</font></p>
@@ -149,7 +149,7 @@ while ($student = mysql_fetch_array($students))
     $first = true;
   }  
   if ($first) $first = false; else print(", ");
-  print("\n  <a href=\"${server_wcespath}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
+  print("\n  <a href=\"${wces_path}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
   $oldlevel = $level;
 }
 print("</blockquote>");
