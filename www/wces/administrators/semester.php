@@ -4,6 +4,7 @@ require_once("wces/login.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 require_once("wces/taskwindow.inc");
+require_once("wces/import.inc");
 login_protect(login_administrator);
 page_top("New Semester Initialization");
 
@@ -20,6 +21,34 @@ $i = 0;
     
     $fp = fopen($userfile,"r");
     $db = wces_connect();
+  
+    $i = 0;
+    $row = 0;
+  
+    while ($data = fgetcsv ($fp, 8192, ","))
+    {
+      ++$row;
+      if (count($data) != 5)
+        taskwindow_cprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (5 expected, " . count($data) . " found)<br>\n");
+      else
+      {
+        $classid = class_update($db,$data[0] . "_" . $data[1] . "_2001_1", &$courseid);
+        prof_parsepidname($data[4],$first,$last,$middlei,$dept);
+        $pids = prof_findwithfirstlast($db, $first, $last);
+        //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
+        $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
+        $i = Array("professorid" => $pid);
+        if ($data[3]) $i["students"] = $data[3];
+        db_updatevalues($db, "Classes", Array("classid" => $classid), $i);
+        if ($questionsetid) db_replace($db,"Groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+        taskwindow_cprint($data[0] . " Section ". $data[1]." added (courseid = $courseid, classid = $classid, professorid = $pid)<br>\n");
+      };
+      if (((++$i) % 10) == 1) taskwindow_flush();  
+    }
+    
+/*
+  original format. will it ever be used again?
+  note: db structure has changed since this was written
   
     while (!feof ($fp))
     {
@@ -61,6 +90,8 @@ $i = 0;
         if ((++$i) % 10 == 1) taskwindow_flush();
       }
     }
+*/  
+
     fclose ($fp); 
     taskwindow_end();  
   }      
