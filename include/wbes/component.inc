@@ -1,5 +1,6 @@
 <?
 
+require_once("wbes/survey.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/dynamiclist.inc");
 
@@ -7,25 +8,12 @@ class Component
 {
   var $text = "";      // string, component text
   var $is_html = false;   // boolean html allowed
-  var $id;
-  var $type;
-  var $is_shared;
-  var $was_answered;
+  var $component_id;
+  var $type = 0;
+  var $visibility = 0;
 
-  var $componentid;
-  var $replace;
-  var $replace_before;
-  var $replace_after;
- 
   function Component()
   {
-    $this->text = "";
-    $this->is_html = false;
-    $this->id = 0;
-    $this->type = 0;
-    $this->is_personal = false;
-    $this->is_shared = false;
-    $this->was_answered = false;
   }
   
   function geteditor($prefix,$form,$formmethod)
@@ -36,6 +24,14 @@ class Component
   function getwidget($prefix,$form,$formmethod)
   {
     return new ComponentWidget($this,$prefix,$form,$formmethod);
+  }
+  
+  function load()
+  {
+  }
+  
+  function save()
+  {
   }
 };
 
