@@ -185,7 +185,7 @@ by clicking above and below existing components.</p>
         if($component->locked && $component->revision_id)
         {
           wbes_connect();
-          $r = pg_query("
+          $r = pg_go("
             SELECT topic_id FROM branches AS a, revisions AS b
             WHERE a.branch_id = b.branch_id
               AND b.revision_id = '$component->revision_id'

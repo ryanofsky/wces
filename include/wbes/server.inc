@@ -1,7 +1,7 @@
 <?
   require_once("wbes/general_url.inc");
 
-  define("server_mode","oracle"); // "oracle" "dartmouth" "russ"
+  define("server_mode", "russ"); // "oracle" "dartmouth" "russ"
 
   $server_session_name = "session";
 
@@ -17,6 +17,8 @@
     $server_feedback = "wces@columbia.edu";
     $server_admin = "wces@columbia.edu";
     $server_dev = "rey4@columbia.edu, tjw19@columbia.edu";
+    $server_upload = "/home/httpd/www/wces/upload/";
+    $server_www_upload = "/wces/upload/";
 
     function server_mysqlinit()
     {
@@ -63,15 +65,18 @@
     $server_feedback = "rey4@columbia.edu";
     $server_admin = "rey4@columbia.edu";
     $server_dev = "rey4@columbia.edu";
+    $server_upload = "l:/server/shares/russ.esurveys.hn.org/www/wces/media/upload/";
+    $server_www_upload = "/wces/media/upload/";
 
     function server_mysqlinit()
     {
-      return mysql_connect("localhost","root","------");
+      return mysql_connect("localhost","wces","--------");
     };
 
     function server_pginit($dbname = "wbes")
     {
-      return pg_Connect("host=localhost dbname=$dbname user=postgres password=--------");
+      //return pg_Connect("host=oracle.seas.columbia.edu dbname=$dbname user=russ password=----------------");
+      return pg_Connect("host=localhost dbname=$dbname user=postgres");
     }
   }
   else

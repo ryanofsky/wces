@@ -14,30 +14,30 @@ function SurveyEditor_onload(e)
   for (p in window.SurveyEditor_loadpackage)
   {
     var o = window.SurveyEditor_loadpackage[p];    
-    var r = document.images[o.prefix + '_insertmarker'].x;
-    var actionobject = document.forms[o.form][o.prefix + "_main_action"];
+    var r = document.images[o.prefix + WIDGET_SEPARATOR + "insertMarker"].x;
+    var eventParam = document.forms[o.form][o.prefix + WIDGET_SEPARATOR + "event"];
        
     for(var i=0;;++i)
     {
-      var insert = document.images[o.prefix + '_ns4marker' + i];
+      var insert = document.images[o.prefix + WIDGET_SEPARATOR + "ns4marker" + i];
       insert.ns4_onclick = SurveyEditor_insert_onclick;
       insert.ns4_onmouseover = SurveyEditor_insert_onmouseover;
       insert.ns4_onmouseout = SurveyEditor_insert_onmouseout;
       insert.key = i;
-      insert.actionobject = actionobject;
+      insert.eventParam = eventParam;
       insert.right_edge = r;
       window.SurveyEditor_spots.push(new SurveyEditor_Spot(insert.x, insert.y, r, insert.y + 10, insert)); 
       
       if (i >= o.nodes) break;
       
-      var node = document.images[o.prefix + '_node' + i];
+      var node = document.images[o.prefix + WIDGET_SEPARATOR + "node" + i];
       
       if (!node) continue;
       
       node.ns4_onmouseover = SurveyEditor_node_onmouseover;
       node.ns4_onmouseout = SurveyEditor_node_onmouseout;
       node.key = i;
-      node.actionobject = actionobject;
+      node.eventParam = eventParam;
       window.SurveyEditor_spots.push(new SurveyEditor_Spot(node.x, node.y, node.x + node.width, node.y + node.height, node));
     }
   }
@@ -90,13 +90,13 @@ function SurveyEditor_mouseclick(e)
   if (spot && spot.ns4_onclick) spot.ns4_onclick(e);
 }
 
-function ns_choose(action)
+function ns_choose(event)
 {
   var m = window.SurveyEditor_menu;
-  ActionButton_go(action, m.activenode.key, m.actionobject);
+  EventWidget_go(event, m.activenode.key, m.eventParam);
 }
 
-function SurveyEditor(nodes,prefix,form)
+function SurveyEditor(nodes, prefix, form)
 {
   var o = new Object();
   o.nodes = nodes;
@@ -123,7 +123,7 @@ function SurveyEditor_insert_onmouseout()
 {
   var l = document.SurveyEditor_mryellow;
   l.visibility = 'hide';
-  var c = document.SurveyEditor_insert ;
+  var c = document.SurveyEditor_insert;
   c.visibility = 'hide';
 }  
 
@@ -144,14 +144,14 @@ function SurveyEditor_Menu() // extender
   a.timeout = SurveyEditor_Menu_timeout;
   a.show = SurveyEditor_Menu_show;
   a.hide = SurveyEditor_Menu_hide;
-  a.hover = a.activenode = a.actionobject = false; //state variables
+  a.hover = a.activenode = a.eventParam = false; //state variables
   return a;    
 }
 
-function SurveyEditor_Menu_show(activenode,actionobject)
+function SurveyEditor_Menu_show(activenode,eventParam)
 {
   this.activenode = activenode;
-  this.actionobject = actionobject;
+  this.eventParam = eventParam;
 
   this.pageX = activenode.x + 9;
   this.pageY = activenode.y + 9;
@@ -164,7 +164,7 @@ function SurveyEditor_Menu_hide()
     this.visibility = "hide";
 }  
 
-function SurveyEditor_preview(form,actionelement,state)
+function SurveyEditor_preview(form,eventelement,state)
 {
   // workaround due to a race condition in netscape 4, the commands in the
   // DOM preview code are not serialized and execute out of turn
@@ -178,9 +178,9 @@ function SurveyEditor_preview(form,actionelement,state)
   d.open();
   d.write("<script>\n");
   d.write("window.opener.SurveyEditor_form.target = 'previewwin';\n");
-  d.write("window.opener.ActionButton_sgo(" + state + ", 0, '" + form.name + "', '" + actionelement + "');\n");
+  d.write("window.opener.EventWidget_sgo(" + state + ", 0, '" + form.name + "', '" + eventelement + "');\n");
   d.write("window.opener.SurveyEditor_form.target = '_self';\n");
-  d.write("window.opener.SurveyEditor_form['" + actionelement + "'].value = '';\n");
+  d.write("window.opener.SurveyEditor_form['" + eventelement + "'].value = '';\n");
   d.write("</script>\n");
   d.close();
   w.focus();

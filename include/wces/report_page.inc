@@ -66,7 +66,7 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   // the subselect in the FROM clause is only there as an optimization. ~ 4.5 times faster
   wces_connect();
 
-  pg_query("
+  pg_go("
     CREATE TEMPORARY TABLE $tempname AS
     SELECT NULL::INTEGER AS ordinal, r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pselect
     FROM (SELECT question_period_id, topic_id FROM survey_responses {$twhere}GROUP BY question_period_id, topic_id) AS r
@@ -166,7 +166,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
   }
   if (!$group_s)
   {
-    pg_query("UPDATE $topicstable SET ordinal = 1", $wces, __FILE__, __LINE__);
+    pg_go("UPDATE $topicstable SET ordinal = 1", $wces, __FILE__, __LINE__);
     return true;
   }
   else
@@ -196,7 +196,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
     $tempname = substr(md5(uniqid(rand(),1)),0,20);
 
-    pg_query("
+    pg_go("
       CREATE TEMPORARY TABLE tab$tempname AS
       SELECT $tcols
       FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "

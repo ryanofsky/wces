@@ -40,6 +40,7 @@ param($do_categories);
 param($do_topics);
 param($do_getcustoms);
 param($do_results);
+param($do_oldresults);
 param($import);
 
 function print_item($str)
@@ -82,6 +83,7 @@ if (!$import)
 <INPUT NAME=do_topics           ID=do_topics           TYPE=checkbox value=1><label for=do_topics>Import Topics</label><br>
 <INPUT NAME=do_getcustoms       ID=do_getcustoms       TYPE=checkbox value=1><label for=do_getcustoms>Import Custom Questions</label><br>
 <INPUT NAME=do_results          ID=do_results          TYPE=checkbox value=1><label for=do_results>Import Results</label><br>
+<INPUT NAME=do_oldresults       ID=do_oldresults       TYPE=checkbox value=1><label for=do_oldresults>Import Old Results</label><br>
 </td></tr>
 <tr><td>&nbsp;</td><td><INPUT type="submit" NAME="import" VALUE="Go"></td></tr></table>
 </FIELDSET>
@@ -101,52 +103,52 @@ else
   if($do_subject)
   {
     print("<h3>Subjects</h3>\n");
-    $s = pg_query("DELETE FROM temp_subj; BEGIN", $wbes, __FILE__, __LINE__);
+    $s = pg_go("DELETE FROM temp_subj; BEGIN", $wbes, __FILE__, __LINE__);
     $result = db_exec("SELECT subjectid, code, name FROM subjects", $my, __FILE__, __LINE__);
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("nullquot", $row);
-      pg_query("SELECT temp_subji($row[subjectid], subject_update($row[code], $row[name]))", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT temp_subji($row[subjectid], subject_update($row[code], $row[name]))", $wbes, __FILE__, __LINE__);
       print_item($row['code']);
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if($do_department)
   {
     print("<h3>Departments</h3>\n");
-    pg_query("DELETE FROM temp_dept; BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("DELETE FROM temp_dept; BEGIN", $wbes, __FILE__, __LINE__);
     $result = db_exec("SELECT departmentid, code, name FROM departments", $my, __FILE__, __LINE__);
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("nullquot", $row);
-      pg_query("SELECT temp_depti($row[departmentid], department_update($row[code], $row[name]))", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT temp_depti($row[departmentid], department_update($row[code], $row[name]))", $wbes, __FILE__, __LINE__);
       print_item($row['code']);
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if($do_division)
   {
     print("<h3>Divisions</h3>\n");
-    pg_query("DELETE FROM temp_div; BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("DELETE FROM temp_div; BEGIN", $wbes, __FILE__, __LINE__);
     $result = db_exec("SELECT divisionid, code, shortcode as scode, name FROM divisions", $my, __FILE__, __LINE__);
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("quot", $row);
-      pg_query("SELECT temp_divi($row[divisionid], division_update($row[code], $row[scode], $row[name]))", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT temp_divi($row[divisionid], division_update($row[code], $row[scode], $row[name]))", $wbes, __FILE__, __LINE__);
       print_item($row['code']);
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if($do_course)
   {
     print("<h3>Courses</h3>\n");
-    pg_query("DELETE FROM temp_course; BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("DELETE FROM temp_course; BEGIN", $wbes, __FILE__, __LINE__);
     $result = db_exec("
       SELECT c.courseid, c.subjectid, c.code, cl.divisioncode, c.name, c.information
       FROM courses AS c
@@ -156,18 +158,18 @@ else
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("nullquot", $row);
-      pg_query("SELECT temp_coursei($row[courseid], $row[divisioncode], course_update(temp_subjr($row[subjectid]), $row[code], $row[divisioncode], $row[name], $row[information]))", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT temp_coursei($row[courseid], $row[divisioncode], course_update(temp_subjr($row[subjectid]), $row[code], $row[divisioncode], $row[name], $row[information]))", $wbes, __FILE__, __LINE__);
       print_item($row['code']);
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if($do_classid)
   {
     print("<h3>Classes</h3>\n");
     $sem = array("spring" => 0, "summer" => 1, "fall" => 2);
-    pg_query("DELETE FROM temp_class; BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("DELETE FROM temp_class; BEGIN", $wbes, __FILE__, __LINE__);
     $result = db_exec("
       SELECT
         cl.classid, cl.courseid, cl.section, cl.year, cl.semester, cl.name,
@@ -180,18 +182,18 @@ else
     {
       $row["semester"] = $sem[$row["semester"]];
       aarray_map("nullquot", $row);
-      pg_query("SELECT temp_classi($row[classid], class_update(temp_courser($row[courseid],$row[divisioncode]), $row[section], $row[year], $row[semester], $row[name], $row[time], $row[location], $row[students], $row[callnumber], temp_deptr($row[departmentid]), temp_divr($row[divisionid]), temp_schr($row[schoolid])))", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT temp_classi($row[classid], class_update(temp_courser($row[courseid],$row[divisioncode]), $row[section], $row[year], $row[semester], $row[name], $row[time], $row[location], $row[students], $row[callnumber], temp_deptr($row[departmentid]), temp_divr($row[divisionid]), temp_schr($row[schoolid])))", $wbes, __FILE__, __LINE__);
       print_item($row['classid']);
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if($do_users)
   {
     print("<h3>Users</h3>\n");
 
-    pg_query("DELETE FROM temp_user; DELETE FROM temp_prof; BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("DELETE FROM temp_user; DELETE FROM temp_prof; BEGIN", $wbes, __FILE__, __LINE__);
 
     $result = array // mysql doesn't do full outer joins. or unions...
     (
@@ -242,20 +244,20 @@ else
           $flags |= 4;
 
         aarray_map("nullquot", $row);
-        $r = pg_query("SELECT user_update($row[cunix], $row[last], $row[first], $row[email], $flags, $row[lastlogin], temp_deptr($row[departmentid]))", $wbes, __FILE__, __LINE__);
+        $r = pg_go("SELECT user_update($row[cunix], $row[last], $row[first], $row[email], $flags, $row[lastlogin], temp_deptr($row[departmentid]))", $wbes, __FILE__, __LINE__);
         $user_id = pg_result($r,0,0);
 
         if ($uid)
-          pg_query("SELECT temp_useri($uid, $user_id)", $wbes, __FILE__, __LINE__);
+          pg_go("SELECT temp_useri($uid, $user_id)", $wbes, __FILE__, __LINE__);
 
         if ($pid)
-          pg_query("SELECT temp_profi($pid,professor_data_update($user_id, $row[url], $row[picname], $row[statement], $row[profile], $row[education]))", $wbes, __FILE__, __LINE__);
+          pg_go("SELECT temp_profi($pid,professor_data_update($user_id, $row[url], $row[picname], $row[statement], $row[profile], $row[education]))", $wbes, __FILE__, __LINE__);
 
         print_item("$uid/$pid");
       }
       print_rows($result);
     }
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if($do_enrollments)
@@ -266,14 +268,14 @@ else
       SELECT e.userid, e.classid, u.lastlogin FROM enrollments AS e INNER JOIN users AS u USING (userid)
     ", $my, __FILE__, __LINE__);
 
-    pg_query("BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("BEGIN", $wbes, __FILE__, __LINE__);
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("nullquot", $row);
-      pg_query("SELECT enrollment_update(temp_userr($row[userid]), temp_classr($row[classid]), 1, $row[lastlogin])", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT enrollment_update(temp_userr($row[userid]), temp_classr($row[classid]), 1, $row[lastlogin])", $wbes, __FILE__, __LINE__);
       print_item("$row[userid]/$row[classid]");
     }
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
     print_rows($result);
   }
 
@@ -284,21 +286,21 @@ else
       SELECT professorid, classid FROM classes WHERE professorid IS NOT NULL
     ", $my, __FILE__, __LINE__);
 
-    pg_query("BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("BEGIN", $wbes, __FILE__, __LINE__);
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("nullquot", $row);
-      pg_query("SELECT enrollment_update(temp_profr($row[professorid]), temp_classr($row[classid]), 3, NULL)", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT enrollment_update(temp_profr($row[professorid]), temp_classr($row[classid]), 3, NULL)", $wbes, __FILE__, __LINE__);
       print_item("$row[professorid]/$row[classid]");
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if ($do_profhooks)
   {
     print("<h3>Professor Hooks</h3>\n");
-    pg_query("BEGIN", $wbes, __FILE__, __LINE__);
+    pg_go("BEGIN", $wbes, __FILE__, __LINE__);
     $result = db_exec("
       SELECT professorid, source, first, middle, last, fullname, pid FROM professordupedata
     ", $my, __FILE__, __LINE__);
@@ -334,20 +336,20 @@ else
       else
         assert(false);
 
-      $r = pg_query("SELECT professor_hooks_update(temp_profr($row[professorid]), $src, $row[fullname], $row[first], $row[last], $row[middle], $row[pid])", $wbes, __FILE__, __LINE__);
+      $r = pg_go("SELECT professor_hooks_update(temp_profr($row[professorid]), $src, $row[fullname], $row[first], $row[last], $row[middle], $row[pid])", $wbes, __FILE__, __LINE__);
       $r = pg_result($r, 0, 0);
       if (!$r) die ("professor_hooks_update failed for professorid = $row[professorid]");
       print_item("$row[professorid]/$row[source]/$r");
     }
     print_rows($result);
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   if ($do_question_periods)
   {
     print("<h3>Question Periods</h3>\n");
 
-    pg_query("
+    pg_go("
       DELETE FROM temp_questionperiod;
       DELETE FROM question_periods;
       BEGIN;
@@ -361,14 +363,14 @@ else
       $semester = $row['semester'] == 'fall' ? 2 : $row['semester'] == 'summer' ? 1 : 0;
       $d = ucwords($row['semester']) . " $row[year] $row[description]";
       aarray_map("mnullquot", $row);
-      pg_query("
+      pg_go("
         INSERT INTO semester_question_periods (displayname, begindate, enddate, year, semester)
         VALUES ('$d', $row[periodstart], $row[periodend], $year, $semester);
         SELECT temp_questionperiodi($row[questionperiodid], currval('question_period_ids'))
       ", $wbes, __FILE__, __LINE__);
       print_item($row['questionperiodid']);
     }
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
     print_rows($result);
   }
 
@@ -376,7 +378,7 @@ else
   {
     print("<h3>Categories</h3>\n");
 
-    pg_query("
+    pg_go("
       DELETE FROM temp_topic;
       DELETE FROM survey_categories;
       BEGIN;
@@ -387,13 +389,13 @@ else
     while($row = mysql_fetch_assoc($result))
     {
       aarray_map("nullquot", $row);
-      pg_query("
+      pg_go("
         INSERT INTO survey_categories (name) VALUES ($row[name]);
         SELECT temp_topici($row[topicid], currval('survey_category_ids'))
       ", $wbes, __FILE__, __LINE__);
       print_item($row['name']);
     }
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
     print_rows($result);
   }
 
@@ -413,7 +415,7 @@ else
     // ta questions   30 (branch 40)
     // ta comments    40 (branch 41)
 
-    pg_query("
+    pg_go("
       DELETE FROM branch_topics_cache;
       DELETE FROM branch_ancestor_cache;
       DELETE FROM branches;
@@ -471,7 +473,7 @@ else
       INSERT INTO branches (branch_id,topic_id,base_branch_id,parent,outdated,latest_id,content_id) VALUES (41,2,41,NULL,'f',40,40);
     ", $wbes, __FILE__, __LINE__);
 
-    pg_query("
+    pg_go("
       INSERT INTO choice_components (revision_id,type,parent,branch_id,revision,save_id,merged,ctext,choices,other_choice,first_number,last_number,flags,rows) VALUES (11,2,NULL,13,1,NULL,NULL,'','{excellent,very good,satisfactory,poor,disastrous}','',5,1,16777216,0);
       INSERT INTO choice_components (revision_id,type,parent,branch_id,revision,save_id,merged,ctext,choices,other_choice,first_number,last_number,flags,rows) VALUES (31,2,NULL,33,1,NULL,NULL,'','{not at all,a great deal}','',0,5,16777221,0);
       INSERT INTO choice_components (revision_id,type,parent,branch_id,revision,save_id,merged,ctext,choices,other_choice,first_number,last_number,flags,rows) VALUES (39,2,NULL,40,1,NULL,NULL,'','{excellent,very good,satisfactory,poor,disastrous}','',5,1,16777216,0);
@@ -511,7 +513,7 @@ else
       INSERT INTO choice_questions (revision_id,type,parent,branch_id,revision,save_id,merged,qtext) VALUES (38,6,NULL,39,1,NULL,NULL,'Communication');
     ", $wbes, __FILE__, __LINE__);
 
-    pg_query("
+    pg_go("
       INSERT INTO textresponse_components (revision_id,type,parent,branch_id,revision,save_id,merged,flags,ctext,rows,cols) VALUES (12,3,NULL,14,1,NULL,NULL,16777216,'Comments:',5,60);
       INSERT INTO textresponse_components (revision_id,type,parent,branch_id,revision,save_id,merged,flags,ctext,rows,cols) VALUES (33,3,NULL,34,1,NULL,NULL,50331648,'<strong>Enter a TA name:</strong> <small>(leave blank to rate all TA''s together)</small>',0,25);
       INSERT INTO textresponse_components (revision_id,type,parent,branch_id,revision,save_id,merged,flags,ctext,rows,cols) VALUES (40,3,NULL,41,1,NULL,NULL,16777216,'Comments:',5,40);
@@ -541,7 +543,7 @@ else
       INSERT INTO list_items (list_item_id,revision_id,ordinal,item_id) VALUES (23,31,13,27);
     ", $wbes, __FILE__, __LINE__);
 
-    pg_query("
+    pg_go("
       INSERT INTO list_items (list_item_id,revision_id,ordinal,item_id) VALUES (24,31,14,28);
       INSERT INTO list_items (list_item_id,revision_id,ordinal,item_id) VALUES (25,31,15,29);
       INSERT INTO list_items (list_item_id,revision_id,ordinal,item_id) VALUES (26,31,16,30);
@@ -572,7 +574,7 @@ else
   {
     print("<h3>Survey Topics</h3>\n");
 
-    pg_query("
+    pg_go("
       DELETE FROM topics WHERE topic_id <> 1;
       BEGIN;
     ", $wbes, __FILE__, __LINE__);
@@ -591,12 +593,12 @@ else
       while($row = mysql_fetch_assoc($result))
       {
         aarray_map("nullquot", $row);
-        pg_query("SELECT topic_update(1, temp_classr($row[classid]), temp_topicr($row[topicid]))", $wbes, __FILE__, __LINE__);
+        pg_go("SELECT topic_update(1, temp_classr($row[classid]), temp_topicr($row[topicid]))", $wbes, __FILE__, __LINE__);
         print_item($row['classid']);
       }
       print_rows($result);
     }
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   }
 
   $factories = array
@@ -624,7 +626,7 @@ else
     //$db_debug = true;
     while($row = mysql_fetch_assoc($customs))
     {
-      $result = pg_query("SELECT topic_id FROM wces_topics WHERE class_id = (SELECT temp_classr($row[classid])) AND parent = 1", $wbes, __FILE__, __LINE__);
+      $result = pg_go("SELECT topic_id FROM wces_topics WHERE class_id = (SELECT temp_classr($row[classid])) AND parent = 1", $wbes, __FILE__, __LINE__);
       $topic_id = (int)pg_result($result,0,0);
       if ($topic_id == 0)
       {
@@ -707,13 +709,13 @@ else
       if ($lq != $row['questionperiodid'])
       {
         $lq == $row['questionperiodid'];
-        $question_period_id = pg_result(pg_query("SELECT temp_questionperiodr($row[questionperiodid])", $wbes, __FILE__, __LINE__),0,0);
+        $question_period_id = pg_result(pg_go("SELECT temp_questionperiodr($row[questionperiodid])", $wbes, __FILE__, __LINE__),0,0);
       }
 
       if ($lc != $row['classid'])
       {
         $lc = $row['classid'];
-        $result = pg_query("SELECT topic_id FROM wces_topics WHERE class_id = (SELECT temp_classr($row[classid])) AND parent = 1", $wbes, __FILE__, __LINE__);
+        $result = pg_go("SELECT topic_id FROM wces_topics WHERE class_id = (SELECT temp_classr($row[classid])) AND parent = 1", $wbes, __FILE__, __LINE__);
         $topic_id = pg_result($result,0,0);
         if (!$topic_id) debugout("(class_id = $row[classid])", "topic_id not found ");
 
@@ -772,7 +774,7 @@ else
       $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, response_id, topic_id, user_id) VALUES ({$survey->orig_id}, $question_period_id, NULL, $topic_id, temp_userr($row[userid]));\n";
       $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, date, topic_id) VALUES ({$survey->orig_id}, $question_period_id, NULL, $topic_id);\n";
       $sql .= "SELECT currval('response_ids')";
-      $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+      $result = pg_go($sql, $wbes, __FILE__, __LINE__);
       $response_id = (int)pg_result($result, 0, 0);
       $db_debug = false;
 
@@ -785,17 +787,101 @@ else
 
       if ($failure)
       {
-        pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
+        pg_go("ROLLBACK", $wbes, __FILE__, __LINE__);
         print("<h1>fuck</h1>");
         exit();
       }
       else
-        pg_query("COMMIT", $wbes, __FILE__, __LINE__) or die("huh?");
+        pg_go("COMMIT", $wbes, __FILE__, __LINE__) or die("huh?");
 
       print("<hr>");
     }
     print("</form>");
   }
+  
+  if ($do_oldresults) // import old results
+  {
+/*
+    CREATE TABLE old_mc_question
+    (
+      qtext TEXT
+    );
+    
+    CREATE TABLE qchoices
+    (
+      
+    );
+    
+    CREATE TABLE old_mc_answers
+    (
+      topic_id INTEGER NOT NULL,
+      question_period_id INTEGER NOT NULL, 
+      question_id INTEGER NOT NULL,
+      distribution INTEGER[] NOT NULL
+    );
+    
+    if:
+    
+    1) branch system
+    2) topic system
+    3) map topic_id to branch_id's
+    
+    why is the mapping from topic_id's to branches bound up in the branches table itself?
+    might need another layer of indirection
+
+CREATE TABLE survey
+(
+  url TEXT,
+  begindate TIMESTAMP,
+  enddate TIMESTAMP
+  
+  // guaranteeed to be only one level deep
+  base_branch_id
+);
+
+CREATE TABLE sub_survey
+(
+  posistioning INTEGER, 
+    -- inlined
+    -- linked
+    
+  save_mode INTEGER,
+     -- same as parent
+     -- saved live into the database
+     -- edited offline and saved at the end
+  
+  anonymitity INTEGER
+    -- same as parent
+    -- save user's identity with survey responses
+    -- don't save identity but indicate that all responses come from same person
+    -- don't save identity, don't indicate same responses come from same person
+  
+) INHERITS (revisions);
+
+CREATE TABLE specializations
+(
+  display_name TEXT,
+  class_name TEXT,
+);
+
+abstract class Specialization
+{
+  function GetEditor();
+  function SaveResponse($response_id /* parent id */ )
+}
+
+CREATE TABLE survey_specializations
+(
+);
+
+
+*/
+  //$my, $wces
+  
+  
+  
+  
+  
 }
 page_bottom(true);
 

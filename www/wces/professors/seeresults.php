@@ -19,7 +19,7 @@
   $db = wces_oldconnect();
   $profname = login_getname();
 
-  $result = pg_query("SELECT oldid FROM temp_prof WHERE newid = $user_id", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT oldid FROM temp_prof WHERE newid = $user_id", $wces, __FILE__, __LINE__);
   if (pg_numrows($result) == 1)
     $profid = pg_result($result,0,0);
   else
@@ -50,7 +50,7 @@ function tshowresults($question_period_id,$class_id)
 
   wces_connect();
   report_findtopics("rwtopics", $criteria);
-  //$result = pg_query("SELECT * FROM rwtopics", $wces, __FILE__, __LINE__);
+  //$result = pg_go("SELECT * FROM rwtopics", $wces, __FILE__, __LINE__);
   //pg_show($result);
   report_findgroups("rwtopics", $groups, $sort);
 
@@ -802,7 +802,7 @@ function listclasses()
 
   print("<h3>$profname - Survey Responses</h3>\n");
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT t.topic_id, t.class_id, get_class(t.class_id) AS cl, q.question_period_id, COUNT(r.user_id) AS count, q.displayname
     FROM enrollments AS e
     INNER JOIN wces_topics AS t USING (class_id)

@@ -21,10 +21,10 @@ wces_connect();
 
 if ($class_id)
 {
-  $question_period_id = (int) pg_result(pg_query("SELECT get_question_period()", $wces, __FILE__, __LINE__),0,0);
+  $question_period_id = (int) pg_result(pg_go("SELECT get_question_period()", $wces, __FILE__, __LINE__),0,0);
   $user_id = login_getuserid();
   $class_id = (int)$class_id;
-  $result = pg_query("
+  $result = pg_go("
       SELECT t.topic_id, EXISTS (SELECT * FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id)
       FROM wces_topics AS t
       INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
@@ -62,7 +62,7 @@ if ($class_id)
   else
   {
     page_top("Student Survey");
-    $r = pg_query("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
 
     $class = format_class(pg_result($r,0,0));
     $prof = format_profs(pg_result($r,0,1), false, "<br>Professor ");

@@ -72,7 +72,7 @@ function move_over($newid, $entity_type, $othercols = array())
 
   $colnames = implode($columns, ", ");
 
-  $r = pg_query("SELECT $colnames FROM $new_table_name WHERE $new_id_name = $newid", $pg, __FILE__, __LINE__);
+  $r = pg_go("SELECT $colnames FROM $new_table_name WHERE $new_id_name = $newid", $pg, __FILE__, __LINE__);
   if (pg_numrows($r) != 1) die ("Inconsistent information about $new_id_name $newid at" . __FILE__ . ":" . __LINE__);
 
   $data = pg_fetch_assoc($r, 0, PGSQL_ASSOC);
@@ -87,7 +87,7 @@ function move_over($newid, $entity_type, $othercols = array())
 
   $oldid = mysql_insert_id($my);
 
-  pg_query("INSERT INTO $temp_table_name (oldid, newid) VALUES ($oldid, $newid)", $pg, __FILE__, __LINE__)
+  pg_go("INSERT INTO $temp_table_name (oldid, newid) VALUES ($oldid, $newid)", $pg, __FILE__, __LINE__)
     or die("insert failed at" . __FILE__ . ":" . __LINE__);
 
   return $oldid;
@@ -105,7 +105,7 @@ $my = wces_oldconnect();
 $result = db_exec("DELETE FROM answersets WHERE my_question_period_id = $qp AND questionsetid = $my_question_set_id", $my, __FILE__, __LINE__);
 
 // first, import new class data from new database to old
-$result = pg_query("
+$result = pg_go("
   SELECT t.class_id
   FROM wces_topics AS t
   EXCEPT
@@ -118,7 +118,7 @@ for($i = 0; $i < $n; ++$i)
 {
   $class_id = (int)pg_result($result, $i, 0);
 
-  $r = pg_query("
+  $r = pg_go("
     SELECT cl.name,
       d.department_id, do.oldid AS old_department_id,
       s.subject_id, so.oldid AS old_subject_id,
@@ -151,7 +151,7 @@ for($i = 0; $i < $n; ++$i)
   if (!$old_course_id)
     $old_course_id = move_over($course_id, COURSE, array("subjectid" => $old_subject_id));
 
-  $r = pg_query("
+  $r = pg_go("
     SELECT section, year, semester, division FROM classes WHERE class_id = $class_id
   ", $pg, __FILE__, __LINE__);
   

@@ -158,7 +158,7 @@ function picture_src($id)
   global $wces, $server_www_upload;
   if (!$id) return false;
   wces_connect();
-  $r = pg_query("SELECT name FROM pictures WHERE file_id = $id", $wces, __FILE__, __LINE__);
+  $r = pg_go("SELECT name FROM pictures WHERE file_id = $id", $wces, __FILE__, __LINE__);
   return $server_www_upload . pg_result($r, 0, 0);
 };
 

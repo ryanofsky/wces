@@ -42,7 +42,7 @@ class SimpleResults
     ///////////////////////////////////////////////////////////////////////////
     // NEW RESPONSE STATISTICS
 
-    $r = pg_query("
+    $r = pg_go("
       SELECT cl.class_id, cl.students, COUNT(DISTINCT r.user_id) AS responses
       FROM classes AS cl
       INNER JOIN wces_topics AS t USING (class_id)
@@ -61,7 +61,7 @@ class SimpleResults
     ///////////////////////////////////////////////////////////////////////////
     // NEW MULTIPLE CHOICE RESULTS
 
-    $r = pg_query("
+    $r = pg_go("
       SELECT t.class_id, first(c.choices) AS cchoices, q.qtext, choice_dist(qr.answer) AS rdist
       FROM wces_topics AS t
       INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
@@ -95,7 +95,7 @@ class SimpleResults
 
     if ($includeComments)
     {
-      $r = pg_query("
+      $r = pg_go("
         SELECT DISTINCT t.class_id, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
         FROM wces_topics AS t
         INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
@@ -119,7 +119,7 @@ class SimpleResults
     if (count($this->distributions) >= count($class_ids)) return;
 
     $old_new_map = array();
-    $r = pg_query("SELECT oldid, newid FROM temp_class WHERE newid IN ($classes)", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT oldid, newid FROM temp_class WHERE newid IN ($classes)", $wces, __FILE__, __LINE__);
     $n = pg_numrows($r);
     for($i = 0; $i < $n; ++$i)
     {

@@ -43,7 +43,7 @@ function getRevisions($startBranch, &$base)
   {
     $w = $base ? "r.parent = $base->revision_id" : "r.parent IS NULL";
   }
-  $result = pg_query("
+  $result = pg_go("
     SELECT r.revision_id, r.branch_id, r.revision, r.save_id, r.merged, r.type, b.base_branch_id, b.topic_id
     FROM revisions AS r
     INNER JOIN branches AS b USING (branch_id)
@@ -70,7 +70,7 @@ function getRevisions($startBranch, &$base)
 
 function getBaseBranch($bbid)
 {
-  $result = pg_query("
+  $result = pg_go("
     SELECT r.revision_id, r.branch_id, r.revision, r.save_id, r.merged, r.type, b.base_branch_id, b.topic_id
     FROM revisions AS r
     INNER JOIN branches AS b USING (branch_id)
@@ -96,9 +96,9 @@ if ($bbid)
     print("<p>type = $r->type ($table)</p>");
     print("<p>merged = $r->merged</p>");
     print("<p>topic_id = $r->topic_id</p>");
-    $result = pg_query("SELECT * FROM $table WHERE revision_id = $r->revision_id",$wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT * FROM $table WHERE revision_id = $r->revision_id",$wbes, __FILE__, __LINE__);
     pg_show($result);
-    $result = pg_query("SELECT item_id FROM list_items WHERE revision_id = $r->revision_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT item_id FROM list_items WHERE revision_id = $r->revision_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
     if (0 < ($n = pg_numrows($result)))
     {
       print("<p><b>List Items (base_branch_id's): </b>");
@@ -117,7 +117,7 @@ else
 {
   print("<p>Choose a base branch</p>");
   print("<ul>\n");
-  $result = pg_query("SELECT branch_id FROM branches WHERE parent IS NULL ORDER BY branch_id", $wbes, __FILE__, __LINE__);
+  $result = pg_go("SELECT branch_id FROM branches WHERE parent IS NULL ORDER BY branch_id", $wbes, __FILE__, __LINE__);
   $n = pg_numrows($result);
   for ($i = 0; $i < $n; ++$i)
   {

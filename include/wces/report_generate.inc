@@ -33,7 +33,7 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
   report_findtopics("rwtopics", $wizard->criteria);
   report_findgroups("rwtopics", $groups, $sort);
 
-  $pages = pg_result(pg_query("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
+  $pages = pg_result(pg_go("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
 
   $displayoptions = array("pies" => $wizard->output->includePies->checked);
 
@@ -64,7 +64,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
   global $wces_path, $wces, $line;
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT s.ordinal, s.students, r.responses
     FROM
     (
@@ -98,7 +98,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   $stats = new pg_segmented_wrapper($result, "ordinal");
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT DISTINCT t.ordinal, d.name, d.code
     FROM rwtopics AS t
     INNER JOIN departments AS d USING (department_id)
@@ -107,7 +107,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   $departments = new pg_segmented_wrapper($result, "ordinal");
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT DISTINCT t.ordinal, t.question_period_id, qp.displayname
     FROM rwtopics AS t
     INNER JOIN question_periods AS qp USING (question_period_id)
@@ -118,7 +118,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   if ($groups[CLASSES] || $groups[PROFESSORS])
   {
-    $result = pg_query("
+    $result = pg_go("
       SELECT DISTINCT t.ordinal, t.class_id, s.code AS scode, c.code AS ccode, c.name, cl.section
       FROM rwtopics AS t
       INNER JOIN classes AS cl USING (class_id)
@@ -129,7 +129,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
     $classes = new pg_segmented_wrapper($result, "ordinal");
 
-    $result = pg_query("
+    $result = pg_go("
       SELECT DISTINCT t.ordinal, t.user_id, u.firstname, u.lastname
       FROM rwtopics AS t
       INNER JOIN users AS u USING (user_id)
@@ -140,7 +140,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   }
   else
   {
-    $result = pg_query("
+    $result = pg_go("
       SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
       FROM rwtopics AS t
       INNER JOIN classes AS cl USING (class_id)
@@ -155,7 +155,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     $professors = NULL;
   }
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
     FROM rwtopics AS t
     INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
@@ -168,7 +168,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   if (isset($options['taresponses']) && $options['taresponses'])
   {
-    $result = pg_query("
+    $result = pg_go("
       SELECT DISTINCT t.ordinal, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
         tr.approachability, tr.availability, tr.communication, tr.comments
       FROM rwtopics AS t
@@ -182,7 +182,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   else
     $taresponses = NULL;
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS component_choices,
       c.flags, c.first_number, c.last_number, c.other_choice,
       q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
@@ -200,7 +200,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   $choices = new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
 
   // XXX: what is the meaning of *magic* branch_id 1
-  $result = pg_query("  
+  $result = pg_go("  
     SELECT t.ordinal, ibtc.branch_id, l.ordinal AS iordinal
     FROM
     ( 
@@ -216,7 +216,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   
   $ords = new pg_segmented_wrapper($result, array("ordinal"));
   
-  $pages = pg_result(pg_query("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
+  $pages = pg_result(pg_go("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
 
   $outhtml = is_string($html);
   $outtext = is_string($text);

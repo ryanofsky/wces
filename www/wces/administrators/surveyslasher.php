@@ -35,7 +35,7 @@ if(!isset($HTTP_POST_VARS['input']))
     $sql = "SELECT topic_id, d.name AS name, section, year, s.code || ' ' || d.code AS code FROM wces_topics t, classes c, courses d, subjects s";
     $sql = $sql . " WHERE c.class_id = t.class_id and c.course_id = d.course_id and d.subject_id = s.subject_id and t.category_id IS NOT NULL ORDER BY code, section";
    
-    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+    $result = pg_go($sql, $wbes, __FILE__, __LINE__);
 ?>
 
 <form method=POST>
@@ -128,7 +128,7 @@ else
     global $wbes;
     wbes_connect();
     if($elements != null)
-	{$result = pg_query($sql, $wbes, __FILE__, __LINE__);}
+	{$result = pg_go($sql, $wbes, __FILE__, __LINE__);}
     ?>
     
     Execution done.<br>
@@ -182,7 +182,7 @@ else
 	    */
 	    $sql = "SELECT c.course_id, c.class_id, d.subject_id FROM wces_topics t, classes c, courses d WHERE t.topic_id = '$Id' and c.class_id = t.class_id and c.course_id = d.course_id";
 	    
-	    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+	    $result = pg_go($sql, $wbes, __FILE__, __LINE__);
 	    
 	    $wr = new pg_wrapper($result);
 	    
@@ -200,7 +200,7 @@ else
 	    
 	    print("SQL 1: $sql \n<br><br>");
 
-	    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+	    $result = pg_go($sql, $wbes, __FILE__, __LINE__);
 	    
 	    $sql = "UPDATE courses SET name = '$name', code = $code2 WHERE course_id = '$course_id'";
 	    */
@@ -208,7 +208,7 @@ else
 
 	    print("SQL 2: $sql \n<br><br>");
 	    
-	    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+	    $result = pg_go($sql, $wbes, __FILE__, __LINE__);
 	    }
 	}
 

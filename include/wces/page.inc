@@ -123,7 +123,7 @@ function showhelp(topic)
   {
     wces_connect();
     
-    $result = pg_query("
+    $result = pg_go("
       SELECT question_period_id, displayname, year, semester, 
         CASE WHEN begindate < NOW() THEN 0 ELSE 1 END AS closed
       FROM semester_question_periods
@@ -146,7 +146,7 @@ function showhelp(topic)
   {  
     $user_id = login_getuserid();
     
-    $survey_listing = pg_query("
+    $survey_listing = pg_go("
       SELECT t.class_id, get_class(t.class_id) AS name,
         CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
       FROM wces_topics AS t

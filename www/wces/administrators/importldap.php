@@ -7,7 +7,7 @@ page_top("LDAP Import", true);
 
 wces_connect();
 
-$users = pg_query("
+$users = pg_go("
   SELECT u.user_id, u.uni, u.firstname, u.lastname, u.email
   FROM users AS u
   WHERE u.email IS NULL AND u.uni IS NOT NULL
@@ -38,13 +38,13 @@ for($i = 0; $i < $n; ++$i)
     if ($email)
     {
       bprint(", email = $email");
-      pg_query("UPDATE users SET email = '" . addslashes($email) . "' WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+      pg_go("UPDATE users SET email = '" . addslashes($email) . "' WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
     }
     
     if (!$firstname && !$lastname)
     {
       bprint(", lastname = '$last', firstname = '$first'");
-      pg_query("UPDATE users SET firstname = '" . addslashes($first) . "',
+      pg_go("UPDATE users SET firstname = '" . addslashes($first) . "',
         lastname = '" . addslashes($last) . "'
         WHERE user_id = $user_id
       ", $wces, __FILE__, __LINE__);

@@ -67,7 +67,7 @@ class TopicEditor extends StatefullWidget
 
     print("<p>Choose a survey to edit.</p>");
 
-    $result = pg_query("
+    $result = pg_go("
       SELECT topic_id, 'Base Questions' AS name
       FROM wces_topics
       WHERE category_id IS NULL AND class_id IS NULL
@@ -77,7 +77,7 @@ class TopicEditor extends StatefullWidget
 
     print("<h5>Individual Classes</h5>\n");
 
-    $result = pg_query("
+    $result = pg_go("
       SELECT question_period_id, displayname, year, semester
       FROM semester_question_periods
       WHERE question_period_id = (SELECT get_question_period())
@@ -85,7 +85,7 @@ class TopicEditor extends StatefullWidget
 
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
-    $result = pg_query("
+    $result = pg_go("
       SELECT t.topic_id, get_class(t.class_id) AS name
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)

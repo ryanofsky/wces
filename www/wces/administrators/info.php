@@ -26,7 +26,7 @@ function PrintUser(&$uni, &$user_id)
   else
     return false;  
   
-  $result = pg_query("
+  $result = pg_go("
     SELECT 
       u.uni, u.user_id, u.email, u.flags, d.code, u.firstname, u.lastname,
       to_char(u.lastlogin, 'Day, Month DD, YYYY at HH12:MI:SS AM') AS lastlogin
@@ -94,7 +94,7 @@ function DeleteEnrollment($user_id, $class_id)
   if (login_getstatus() & login_administrator)
   {
     $user_id = (int)$user_id; $class_id = (int)$class_id; 
-    pg_query("UPDATE enrollments SET status = 0 WHERE status = 1 AND user_id = $user_id and class_id = $class_id", $wces, __FILE__, __LINE__); 
+    pg_go("UPDATE enrollments SET status = 0 WHERE status = 1 AND user_id = $user_id and class_id = $class_id", $wces, __FILE__, __LINE__); 
   }
 }
 
@@ -108,14 +108,14 @@ function PrintEnrollments($user_id)
   $restricted = !(login_getstatus() & login_administrator) && $user_id != $userid;
   $surveys = (bool)(login_getstatus() & login_administrator);
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT question_period_id, displayname, year, semester
     FROM semester_question_periods
     WHERE question_period_id = (SELECT get_question_period())
   ", $wces, __FILE__, __LINE__);
   extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
-  $classes = pg_query("
+  $classes = pg_go("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
       t.topic_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND e.status = 1 AS survey,
       EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
@@ -177,7 +177,7 @@ function PrintAffils($user_id)
   $userid = (int)login_getuserid();
   $restricted = !(login_getstatus() & login_administrator) && $user_id != $userid;
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT g.acis_group_id, g.code
     FROM acis_affiliations AS a" . ($restricted ? "
     INNER JOIN acis_affiliations AS my ON my.user_id = $userid AND my.acis_group_id = a.acis_group_id" : "") . "
@@ -237,7 +237,7 @@ function PrintLDAP($uni)
 function PrintProfessorInfo($user_id)
 {
   global $wces;
-  $result = pg_query("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   if (!pg_numrows($result)) return false;
   
   $info = pg_fetch_array($result,0,PGSQL_ASSOC);
@@ -287,7 +287,7 @@ function PrintClassInfo($class_id)
   
   $class_id = (int)$class_id;
   
-  $result = pg_query("
+  $result = pg_go("
     SELECT cl.name AS clname, cl.section, cl.year, cl.semester, cl.students, c.code, c.divisioncode, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname, c.course_id, d.department_id, s.subject_id, sc.school_id, dv.code AS dvcode, dv.division_id, cl.time, cl.location, cl.callnumber
     FROM classes as cl
     INNER JOIN courses as c USING (course_id)
@@ -326,14 +326,14 @@ function PrintClassInfo($class_id)
   else
   {
     $userid = (int)login_getuserid();
-    $result = pg_query("SELECT COUNT(*) FROM enrollments WHERE user_id = $userid AND class_id = $class_id", $wces, __FILE__, __LINE__);
+    $result = pg_go("SELECT COUNT(*) FROM enrollments WHERE user_id = $userid AND class_id = $class_id", $wces, __FILE__, __LINE__);
     $restricted = pg_result($result,0,0) ? false : true;
   }
 
   $surveys = false;
   if (login_getstatus() & login_administrator)
   {
-    $result = pg_query("
+    $result = pg_go("
       SELECT topic_id FROM wces_topics WHERE class_id = $class_id AND category_id IS NOT NULL
     ", $wces, __FILE__, __LINE__);
     
@@ -341,7 +341,7 @@ function PrintClassInfo($class_id)
     {
       $topic_id = (int)pg_result($result,0,0);
       
-      $result = pg_query("
+      $result = pg_go("
         SELECT question_period_id FROM semester_question_periods
         WHERE question_period_id = (SELECT get_question_period()) AND year = $year AND semester = $semester
       ", $wces, __FILE__, __LINE__);
@@ -354,7 +354,7 @@ function PrintClassInfo($class_id)
     }
   }
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT e.user_id, e.status, u.uni, (u.lastname || ', ' || u.firstname) AS name " . ($surveys ? ",
       EXISTS(SELECT * FROM survey_responses WHERE user_id = e.user_id AND question_period_id = $question_period_id AND topic_id = $topic_id) AS response" : "") . "
     FROM enrollments AS e
@@ -399,7 +399,7 @@ function PrintCourseInfo($course_id)
   
   $course_id = (int)$course_id;
   
-  $result = pg_query(
+  $result = pg_go(
     "SELECT c.code, c.name, c.information, s.subject_id, s.code as scode, s.name as sname
     FROM courses as c
     LEFT JOIN subjects as s ON (c.subject_id = s.subject_id)
@@ -415,7 +415,7 @@ function PrintCourseInfo($course_id)
         if ($row['scode']) print ("<p><i>Subject:</i> $row[scode] - $row[sname] ($row[subject_id])</p>");
   }
   
-  $result = pg_query("
+  $result = pg_go("
     SELECT cl.class_id, cl.name, cl.section, cl.year, cl.semester, get_profs(cl.class_id) AS pname
     FROM classes AS cl
     WHERE cl.course_id = $course_id
@@ -466,7 +466,7 @@ function SearchPage()
     
     if ($where)
     {
-      $users = pg_query("SELECT user_id, firstname, lastname, uni FROM users WHERE $where ORDER BY lastname LIMIT 300", $wces, __FILE__, __LINE__);
+      $users = pg_go("SELECT user_id, firstname, lastname, uni FROM users WHERE $where ORDER BY lastname LIMIT 300", $wces, __FILE__, __LINE__);
       $usern = pg_numrows($users);
     }  
     else
@@ -505,7 +505,7 @@ function SearchPage()
     //$GLOBALS['db_debug'] = true;
     if ($where)
     {
-      $courses = pg_query("
+      $courses = pg_go("
         SELECT c.course_id AS course_id, s.code AS scode, c.name AS name, c.divisioncode AS divisioncode, c.code
         FROM courses AS c
         INNER JOIN subjects AS s USING (subject_id)
@@ -556,7 +556,7 @@ function SearchPage()
     <select name=course_subject id=course_subject>
     <option value="">
 <?
-  $result = pg_query("SELECT subject_id, code, name FROM subjects ORDER BY code", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT subject_id, code, name FROM subjects ORDER BY code", $wces, __FILE__, __LINE__);
   $n = pg_numrows($result);
   for($i=0; $i<$n; ++$i)
   {

@@ -6,7 +6,7 @@ login_protect(login_administrator);
 
 wces_connect();
 
-$result = pg_query("
+$result = pg_go("
   SELECT question_period_id, displayname, year, semester
   FROM semester_question_periods
   WHERE question_period_id = (SELECT get_question_period())
@@ -15,7 +15,7 @@ extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
 page_top("Professor Usage Data for $displayname]");
 
-pg_query("
+pg_go("
   CREATE TEMPORARY TABLE profcounts AS
   SELECT t.class_id, t.topic_id, CASE WHEN COUNT(DISTINCT b.branch_id) >0 THEN 1 ELSE 0 END AS customized
   FROM wces_topics AS t
@@ -25,7 +25,7 @@ pg_query("
   GROUP BY t.class_id, t.topic_id
 ",$wces,__FILE__, __LINE__);
 
-$y = pg_query("
+$y = pg_go("
   CREATE TEMPORARY TABLE pu AS
   SELECT pc.class_id, pc.topic_id, s.code || c.divisioncode || c.code AS code, c.name AS cname, cl.section,
     cl.students, u.user_id, u.uni, u.firstname, u.lastname, u.lastlogin,
@@ -39,9 +39,9 @@ $y = pg_query("
   INNER JOIN users AS u USING (user_id)
 ",$wces,__FILE__,__LINE__);
 
-$profcount = pg_result(pg_query("SELECT COUNT(*) FROM pu",$wces,__FILE__,__LINE__),0,0);
-$profcustomized = pg_result(pg_query("SELECT COUNT(*) FROM pu WHERE customized <> 0",$wces,__FILE__,__LINE__),0,0);
-$profloggedin = pg_result(pg_query("SELECT COUNT(*) FROM pu WHERE loggedin <> 0",$wces,__FILE__,__LINE__),0,0);
+$profcount = pg_result(pg_go("SELECT COUNT(*) FROM pu",$wces,__FILE__,__LINE__),0,0);
+$profcustomized = pg_result(pg_go("SELECT COUNT(*) FROM pu WHERE customized <> 0",$wces,__FILE__,__LINE__),0,0);
+$profloggedin = pg_result(pg_go("SELECT COUNT(*) FROM pu WHERE loggedin <> 0",$wces,__FILE__,__LINE__),0,0);
 
 ?>
 
@@ -57,7 +57,7 @@ Number of classes with professors who created custom surveys: <b><?=(int)$profcu
 
 <?
 
-$result = pg_query("
+$result = pg_go("
   SELECT user_id, class_id, topic_id, code, section, students, firstname, lastname, uni, loggedin,
    cname, to_char(lastlogin,'YYYY-MM-DD') AS lastlogin, customized
   FROM pu
@@ -66,7 +66,7 @@ $result = pg_query("
 
 $n = pg_numrows($result);
 
-pg_query("DROP TABLE profcounts; DROP TABLE pu;", $wces, __FILE__, __LINE__);
+pg_go("DROP TABLE profcounts; DROP TABLE pu;", $wces, __FILE__, __LINE__);
 
 print("<table cellspacing=1 cellpadding=1 border=1>\n");
 print("<tr><td><b>Code</b></td><td><b>Name</b></td><td><b>Size</b></td><td><b>Professor</b></td><td><b>Last Login</b></td></tr>\n");

@@ -17,7 +17,7 @@ class PageBreakFactory extends ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, renumber FROM pagebreak_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, renumber FROM pagebreak_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -48,7 +48,7 @@ class PageBreak extends Component
     global $wbes;
     $renumber = $this->renumber ? "'t'" : "'f'";    
     $revision_id = $this->revision_id ? $this->revision_id : 'NULL';    
-    $result = pg_query("SELECT pagebreak_component_save($topic_id, $revision_id, $save_id, $renumber)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT pagebreak_component_save($topic_id, $revision_id, $save_id, $renumber)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
 };

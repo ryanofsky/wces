@@ -72,7 +72,7 @@ class ImageUpload extends Widget
 
       // get a unique number
       wces_connect();
-      $r = pg_query("SELECT nextval('picture_ids')", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT nextval('picture_ids')", $wces, __FILE__, __LINE__);
       $picture_id = (int)pg_result($r, 0, 0);
 
       // resulting filename
@@ -86,7 +86,7 @@ class ImageUpload extends Widget
         return;
       };
         
-      $r = pg_query("INSERT INTO pictures (file_id, name) VALUES ($picture_id, '"
+      $r = pg_go("INSERT INTO pictures (file_id, name) VALUES ($picture_id, '"
         . addslashes($this->file_name) . "')", $wces, __FILE__, __LINE__);
       $this->picture_id = $picture_id;
     }
@@ -153,7 +153,7 @@ class SqlBox extends Widget
     if ($params) $params = " $params";
 
     wces_connect();
-    $result = pg_query($this->sql, $wces, __FILE__, __LINE__);
+    $result = pg_go($this->sql, $wces, __FILE__, __LINE__);
     $n = pg_numrows($result);
     
     print("<select name=$name$params>\n");
@@ -214,7 +214,7 @@ class UserEditor extends Widget
     global $wces;
     
     wces_connect();
-    $r = pg_query("
+    $r = pg_go("
       SELECT u.firstname, u.lastname, u.email, u.department_id, d.url, 
        d.statement, d.profile, d.education, d.picture_id, u.flags
       FROM users AS u
@@ -265,7 +265,7 @@ class UserEditor extends Widget
     $dt = $this->department->selected ? (int)$this->department->selected : "NULL";
 
     $result = true;
-    $result = $result && pg_query("
+    $result = $result && pg_go("
       UPDATE users SET
         firstname = $fn, lastname = $ln, email = $em, department_id = $dt
       WHERE user_id = $this->user_id
@@ -279,10 +279,10 @@ class UserEditor extends Widget
       $ed = nullquot($this->education->text);
       $pi = $this->picture->picture_id ? (int)$this->picture->picture_id : "NULL";
 
-      $r= pg_query("SELECT EXISTS(SELECT * FROM professor_data WHERE user_id = $this->user_id)", $wces, __FILE__, __LINE__);
+      $r= pg_go("SELECT EXISTS(SELECT * FROM professor_data WHERE user_id = $this->user_id)", $wces, __FILE__, __LINE__);
       if (pg_result($r, 0, 0) == 't')
       {
-        $result = $result && pg_query("
+        $result = $result && pg_go("
           UPDATE professor_data SET
             url = $ur,
             statement = $st,
@@ -294,7 +294,7 @@ class UserEditor extends Widget
       }
       else
       {
-        $result = $result && pg_query("
+        $result = $result && pg_go("
           INSERT INTO professor_data (user_id, url, statement, profile, education, picture_id)
           VALUES ($this->user_id, $ur, $st, $pr, $ed, $pi)
         ", $wces, __FILE__, __LINE__);     
@@ -304,7 +304,7 @@ class UserEditor extends Widget
     if ($this->show_admin)
     {
       $oo = $this->optout->checked ? "flags | 16" : "flags & ~16";
-      $result = $result && pg_query("UPDATE users SET flags = $oo WHERE user_id = $this->user_id
+      $result = $result && pg_go("UPDATE users SET flags = $oo WHERE user_id = $this->user_id
       ", $wces, __FILE__, __LINE__);
     }
 

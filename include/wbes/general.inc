@@ -126,8 +126,8 @@ function redirect($url)
 */
 function sloppyredirect($url)
 {
-  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
-  print("Click <a href=\"$url\">here</a> to proceed.");
+  //print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  //print("Click <a href=\"$url\">here</a> to proceed.");
   exit();
 }
 

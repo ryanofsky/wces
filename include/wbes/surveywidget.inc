@@ -132,7 +132,7 @@ class SurveyWidget extends ParentWidget
       $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $question_period_id, $this->topic_id, $this->user_id);\n";
 
     $sql .= "SELECT currval('response_ids')";
-    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+    $result = pg_go($sql, $wbes, __FILE__, __LINE__);
 
     $response_id = (int)pg_result($result, 0, 0);
 
@@ -156,16 +156,16 @@ class SurveyWidget extends ParentWidget
     //
     if ($this->backup)
     {
-      $failure = $failure || !pg_query("
+      $failure = $failure || !pg_go("
         INSERT INTO safe_backup (user_id, topic_id, question_period_id, form_vals)
         VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
       ", $wbes, __FILE__, __LINE__);
     }
 
     if ($failure)
-      pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
+      pg_go("ROLLBACK", $wbes, __FILE__, __LINE__);
     else
-      $failure = $failure || !pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+      $failure = $failure || !pg_go("COMMIT", $wbes, __FILE__, __LINE__);
 
     if ($failure)
     {

@@ -61,7 +61,7 @@ class TARating
   var $comments; //string response
   var $answers; // array of
 
-  function TARating($name, $comments, $answers)
+  function TARating($name = null, $comments = null, $answers = array())
   {
     $this->name = $name;
     $this->comments = $comments;
@@ -85,7 +85,7 @@ class TARating
       $bsql .= ", $column";
       $msql .= ", '" . addslashes($this->answers[$column]) . "'";
     }
-    return pg_query($bsql . $msql . $esql, $wces, __FILE__, __LINE__);
+    return pg_go($bsql . $msql . $esql, $wces, __FILE__, __LINE__);
   }
 
   function validate()
@@ -98,44 +98,49 @@ class TARating
   }
 };
 
-class TAWidget extends FormWidget
+class TAWidget extends Widget
 {
-  var $finished;
-  var $save;
+  var $done = false;
+  var $save = false;
 
   var $tarating;
-  var $errors;
+  var $errors = array();
   var $action;
-  var $showerrors;
+  var $showerrors = false;
 
-  function TAWidget($ta, $prefix, $form, $formmethod)
+  function TAWidget($name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->tarating = $ta ? $ta : new TARating("","",array());
-    $this->errors = array();
-    $this->save = $this->finished = false;
-    $this->action = new ActionButton("${prefix}_action", $form, $formmethod);
-    $this->showerrors = false;
+    $this->FormWidget($name, $parent);
+    $this->action = & new ActionButton("action", $this);
   }
 
-  function loadvalues()
+  function loadRating($taRating)
+  {
+    $this->taRating = $taRating;
+  }
+  
+  function saveRating(&$taRating)
+  {
+    $taRating = $this->taRating;
+  }
+
+  function loadValues()
   {
     global $TAQUESTIONS, $TAVALUES;
+    Widget::loadValues();
 
+    ifassign(trim($this->loadValue("comments")), $this->tarating->comments);
+    ifassign(trim($this->loadValue("name")), $this->tarating->name);
     foreach($TAQUESTIONS as $fieldname => $text)
     {
-      $val = $this->loadattribute("ta$fieldname");
+      $val = $this->loadValue("ta$fieldname");
       if (isset($TAVALUES[$val]))
         $this->tarating->answers[$fieldname] = $val;
       else
         $this->errors[$fieldname] = "Missing response for <i>$text</i>";
     }
 
-    ifassign(trim($this->loadattribute("comments")), $this->tarating->comments);
-    ifassign(trim($this->loadattribute("name")), $this->tarating->name);
-    $this->action->loadvalues();
-
-    $this->finished = $this->action->action == TAWidget_save || $this->action->action == TAWidget_cancel;
+    $this->done = $this->action->action == TAWidget_save || $this->action->action == TAWidget_cancel;
 
     if ($this->action->action == TAWidget_save || $this->action->action == TAWidget_saveand)
     {
@@ -144,15 +149,20 @@ class TAWidget extends FormWidget
      else
      {
        $this->showerrors = true;
-       $this->finished = false;
+       $this->done = false;
      }
     }
   }
 
-  function display($hidden = false)
+  function displayHidden()
+  {
+    // never implemented
+    assert(0);      
+  } 
+  
+  function display()
   {
     global $TAQUESTIONS, $TAVALUES;
-    $prefix = $this->prefix;
 
     if ($this->showerrors)
     {
@@ -163,7 +173,7 @@ class TAWidget extends FormWidget
       print("</ul>\n");
     }
 
-    print("<p><strong>Enter a TA Name:</strong> <input name=\"${prefix}_name\" size=25 value=\"" . htmlspecialchars($this->tarating->name) . "\"><br>\n");
+    print("<p><strong>Enter a TA Name:</strong> <input name=\"" . $this->fullName("name") . "\" size=25 value=\"" . htmlspecialchars($this->tarating->name) . "\"><br>\n");
     print("<font size=-1>(Leave blank to rate all TA's together)</font></p>");
 
     foreach($TAQUESTIONS AS $key => $text)
@@ -174,13 +184,12 @@ class TAWidget extends FormWidget
       foreach($TAVALUES AS $vkey => $vtext)
       {
         $selected = isset($this->tarating->answers[$key]) && $vkey == $this->tarating->answers[$key] ? " checked" : "";
-        print("<input type=radio name=\"${prefix}_ta$key\" id=\"${prefix}_ta$key$vkey\" value=\"$vkey\"$selected><label for=\"${prefix}_ta$key$vkey\">$vtext</label>\n");
+        print("<input type=radio name=\"" . $this->fullName("ta$key") . "\" id=\"" . $this->fullName("ta$key$vkey") . "\" value=\"$vkey\"$selected><label for=\"" . $this->fullname("ta$key$vkey") . "\">$vtext</label>\n");
       }
       print("</blockquote>\n");
     }
     print("<p><b>Comments</b></p>\n");
-    print("<blockquote><textarea name=\"${prefix}_comments\" rows=8 cols=50 wrap=virtual>" . htmlspecialchars($this->tarating->comments) . "</textarea></blockquote>\n");
-
+    print("<blockquote><textarea name=\"" . $this->fullName("comments") . "\" rows=8 cols=50 wrap=virtual>" . htmlspecialchars($this->tarating->comments) . "</textarea></blockquote>\n");
     print("<p>");
     $this->action->display("Save",TAWidget_save); print(" ");
     $this->action->display("Save and rate another TA",TAWidget_saveand); print(" ");
@@ -189,69 +198,77 @@ class TAWidget extends FormWidget
   }
 };
 
-class TASurvey extends FormWidget
+class TASurvey extends Widget
 {
 //public:
   var $modal = false;
-
-//private:
-
-  var $action; // ActionButton widget
+  var $errors = array();
+  var $editing = null;
 
   var $tas;
-  var $tawidget = false;
-  var $errors = array();
+  var $action, $tawidget; 
 
-  function TASurvey($prefix, $form, $formmethod)
+  function TASurvey($name, &$parent)
   {
-    $this->FormWidget($prefix, $form, $formmethod);
-    $this->form = new Form("${prefix}_form",$form,$formmethod);
-    $this->tas = array();
-    $this->action = new ActionButton("${prefix}_action",$form,$formmethod);
-    $this->finished = false;
+    $this->Widget($name, $parent);
+    $this->action = & new ActionButton("action", $this);
+    $this->done = false;
     $this->showerrors = false;
   }
 
-  function loadvalues()
+  function loadDefaults()
   {
-    $this->tas = @unserialize($this->loadattribute("tas"));
-    if (!is_array($this->tas)) $this->tas = array();
+    $this->tas = array();      
+  }
 
-    $this->action->loadvalues();
-    //DebugBreak();
-    if ($this->action->action == OldSurvey_taedit)
+  function loadValues()
+  {
+    Widget::loadValues();
+    
+    $this->editing = $this->loadValues("editing");
+    $this->tas = unserialize($this->loadValue("tas"));
+    assert(is_array($this->tas));
+
+    $newLoad = false;
+    
+    if (!isset($this->editing))
     {
-      $this->modal = true;
-      $n = $this->action->object;
-      $ta = isset($this->tas[$n]) ? $this->tas[$n] : false;
-      $this->tawidget = new TAWidget($ta, $this->prefix . "_tawidget", $this->form, $this->formmethod);
-      $this->tawidget->loadvalues();
+      if ($this->action->action == OldSurvey_taedit)
+      {
+        $this->editing = $this->action->param;
+        $newLoad = true;
+      }
+      else if ($this->action->action == OldSurvey_tadelete)
+      {
+        if (isset($this->tas[$this->action->param]))
+          array_splice($this->tas, $this->action->object, 1);
+      }
+    }
 
+    if (isset($this->editing))
+    {
+      $this->modal = true;    
+      $this->tawidget = & new TAWidget($ta, "tawidget", $this);
+      $this->tawidget->loadRating(isset($this->tas[$n]) ? $this->tas[$n] : new TaRating);
+      $this->loadChild($this->tawidget, $newLoad);
+  
       if ($this->tawidget->save)
       {
         if (isset($this->tas[$n]))
-          $this->tas[$n] = $this->tawidget->tarating;
+          $this->tawidget->saveRating($this->tas[$n]);
         else
-          array_push($this->tas, $this->tawidget->tarating);
+          $this->tawidget->saveRating($this->tas[]);
       }
-
-      if ($this->tawidget->save && !$this->tawidget->finished)
+  
+      if ($this->tawidget->save && !$this->tawidget->done)
       {
-        $this->tawidget = new TAWidget(false, $this->prefix . "_tawidget", $this->form, $this->formmethod);
-        $this->action->object = "new";
+        $this->loadRating(new TaRating());
+        $this->editing = 'new';
       }
-      else if ($this->tawidget->finished)
+      else if ($this->tawidget->done)
       {
-        $this->action->action = $this->action->object = "";
         $this->modal = false;
-        $this->tawidget = false;
       }
-    }
-    else if ($this->action->action == OldSurvey_tadelete)
-    {
-      if ($this->tas[$this->action->object])
-        array_splice($this->tas, $this->action->object, 1);
-      $this->action->object = $this->action->action = "";
     }
   }
 
@@ -273,62 +290,76 @@ class TASurvey extends FormWidget
         $success = false;
       }
     }
-    $this->finished = true;
+    $this->done = true;
     return $success;
   }
 
+  function displayHidden()
+  {
+    Widget::displayHidden();
+    $this->printValue('editing', $this->editing);
+    $this->printValue("tas",serialize($this->tas));    
+  }
 
-  function display($hidden = false)
+  function display()
   {
     global $wces_path, $TAQUESTIONS, $TAVALUES;
 
-    $this->action->display();
-    
-    if (is_array($this->tas)) $this->printattribute("tas",serialize($this->tas));
-    if ($this->tawidget) $this->tawidget->display();
-    if ($this->tawidget ||$hidden) return;
+    $this->printValue('editing', $this->editing);
+    $this->printValue("tas",serialize($this->tas));
 
-    print("<h4>TA Ratings</h4>");
-    if (count($this->tas) == 0)
+    $this->action->display();
+
+    if ($this->modal)
     {
-      print("<p>If your class has teaching assistants, you can use this section of the survey to rate them.</p>");
-      $this->action->display("Rate a TA...",OldSurvey_taedit,"new");
+      $this->tawidget->display();
     }
     else
     {
-      print("<p>You can rate an additional TA by clicking the <i>Rate Another TA</i> button. You can also edit or delete ratings that you have already entered.</p>");
-      $this->action->display("Rate another TA...",OldSurvey_taedit,"new");
-      print("<table>\n");
-      foreach($this->tas as $key => $value)
+      print("<h4>TA Ratings</h4>");
+      if (count($this->tas) == 0)
       {
-        print("<tr>\n  <td>");
-
-        $taname = $value->name ? $value->name : "ALL TAs";
-        print("<table cellspacing=0 cellpadding=1 border=1 bordercolor=black RULES=NONE FRAME=BOX>\n");
-        print("<tr><td colspan=2 bgcolor=black background=\"${wces_path}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
-        foreach($TAQUESTIONS as $answerkey => $question)
-        {
-          print("<tr>\n");
-          print("  <td valign=top bgcolor=\"#EEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">$question:</td>\n");
-          print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . $TAVALUES[$value->answers[$answerkey]] . "</td>\n");
-          print("</tr>");
-        };
-        if ($value->comments)
-        {
-          print("<tr>\n");
-          print("  <td valign=top bgcolor=\"#EEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">Comments:</td>\n");
-          print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . htmlspecialchars(nl2br($value->comments)) . "</td>\n");
-          print("</tr>");
-        };
-        print("</table>\n");
-
-        print("</td>\n  <td>");
-        $this->action->display("Edit...", OldSurvey_taedit, $key, 'style="width: 100%"');
-        print("<br>");
-        $this->action->display("Delete", OldSurvey_tadelete, $key);
-        print("  </td>\n</tr>\n");
+        print("<p>If your class has teaching assistants, you can use this section of the survey to rate them.</p>");
+        $this->action->display("Rate a TA...", OldSurvey_taedit, "new");
       }
-      print("</table>\n");
+      else
+      {
+        print("<p>You can rate an additional TA by clicking the <i>Rate Another TA</i> button. You can also edit or delete ratings that you have already entered.</p>");
+        $this->action->display("Rate another TA...", OldSurvey_taedit, "new");
+        print("<table>\n");
+        foreach($this->tas as $key => $value)
+        {
+          print("<tr>\n  <td>");
+  
+          $taname = $value->name ? $value->name : "ALL TAs";
+          print("<table cellspacing=0 cellpadding=1 border=1 bordercolor=black RULES=NONE FRAME=BOX>\n");
+          print("<tr><td colspan=2 bgcolor=black background=\"${wces_path}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
+          
+          foreach($TAQUESTIONS as $answerkey => $question)
+          {
+            print("<tr>\n");
+            print("  <td valign=top bgcolor=\"#EEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">$question:</td>\n");
+            print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . $TAVALUES[$value->answers[$answerkey]] . "</td>\n");
+            print("</tr>");
+          };
+          
+          if ($value->comments)
+          {
+            print("<tr>\n");
+            print("  <td valign=top bgcolor=\"#EEEEEE\" background=\"${wces_path}media/0xEEEEEE.gif\">Comments:</td>\n");
+            print("  <td bgcolor=white background=\"${wces_path}media/0xFFFFFF.gif\">" . htmlspecialchars(nl2br($value->comments)) . "</td>\n");
+            print("</tr>");
+          };
+          print("</table>\n");
+  
+          print("</td>\n  <td>");
+          $this->action->display("Edit...", OldSurvey_taedit, $key, 'style="width: 100%"');
+          print("<br>");
+          $this->action->display("Delete", OldSurvey_tadelete, $key);
+          print("  </td>\n</tr>\n");
+        }
+        print("</table>\n");
+      }
     }
   }
 }

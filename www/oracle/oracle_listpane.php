@@ -120,7 +120,7 @@ if ($mode == "search")
     if ($searchin == 2)
     {
       $search = db_makesearch($searchfor, array("u.firstname", "u.lastname"));
-      $result = pg_query("
+      $result = pg_go("
         SELECT u.user_id AS id, (u.lastname || ', ' || u.firstname) AS name
         FROM ($select_classes) AS l
         INNER JOIN enrollments AS e ON e.class_id = l.class_id AND e.status = 3
@@ -133,7 +133,7 @@ if ($mode == "search")
     else // $searchin == 1
     {
       $search = db_makesearch($searchfor, array("cl.name","c.name"));
-      $result = pg_query("
+      $result = pg_go("
         SELECT cl.course_id AS id, get_course(cl.course_id) AS course_info
         FROM ($select_classes) AS l
         INNER JOIN classes AS cl USING (class_id)
@@ -181,7 +181,7 @@ else if ($mode == "professors")
   <script>AttachImage('courses','courselit.jpg'); AttachImage('search','searchlit.jpg');</script>
   <? 
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT DISTINCT u.user_id, u.firstname, u.lastname, d.department_id, d.code, d.name
     FROM ($select_classes) AS l
     INNER JOIN enrollments AS e ON e.class_id = l.class_id AND e.status = 3
@@ -215,7 +215,7 @@ else // $mode == "courses"
   <script>AttachImage('profs','proflit.jpg'); AttachImage('search','searchlit.jpg')</script>
   <?  
 
-  $result = pg_query("
+  $result = pg_go("
     SELECT d.department_id, d.code, d.name, c.course_id, get_course(c.course_id) AS course_info
     FROM ($select_classes) AS l
     INNER JOIN classes AS cl USING (class_id)

@@ -26,8 +26,8 @@ function delete_response($response_id, $depth)
 
   print("$response_id ");
 
-  pg_query("DELETE FROM responses WHERE response_id = $response_id", $wbes, __FILE__, __LINE__);
-  $r = pg_query("SELECT DISTINCT response_id FROM responses WHERE parent = $response_id", $wbes, __FILE__, __LINE__);
+  pg_go("DELETE FROM responses WHERE response_id = $response_id", $wbes, __FILE__, __LINE__);
+  $r = pg_go("SELECT DISTINCT response_id FROM responses WHERE parent = $response_id", $wbes, __FILE__, __LINE__);
   
   $n = pg_numrows($r);
   
@@ -43,13 +43,13 @@ function cleanRuined($question_period_id, $category_id)
   global $wbes;
   wbes_connect();
   
-  pg_query("
+  pg_go("
     DELETE FROM survey_responses WHERE question_period_id = $question_period_id
     AND response_id IS NULL
     AND topic_id IN (SELECT topic_id FROM wces_topics WHERE category_id = $category_id)
   ", $wbes, __FILE__, __LINE__);
   
-  $r = pg_query("
+  $r = pg_go("
     SELECT DISTINCT r.response_id
     FROM wces_topics AS t
     INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id AND r.question_period_id = $question_period_id
@@ -71,7 +71,7 @@ function loadRuined($question_period_id, $category_id, &$factories)
   global $wbes;
   wbes_connect();
   
-  $r = pg_query("
+  $r = pg_go("
     SELECT b.user_id, b.topic_id, b.date, b.form_vals
     FROM safe_backup AS b
     INNER JOIN wces_topics AS t ON t.topic_id = b.topic_id AND t.category_id = $category_id
@@ -120,9 +120,9 @@ wbes_connect();
 
 //$db_debug = true;
 wbes_connect();
-//pg_query("BEGIN", $wbes, __FILE__, __LINE__);
+//pg_go("BEGIN", $wbes, __FILE__, __LINE__);
 //cleanRuined(1, 100);
 loadRuined(1, 100, $factories);
-//pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+//pg_go("COMMIT", $wbes, __FILE__, __LINE__);
 
 ?>

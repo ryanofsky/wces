@@ -31,7 +31,7 @@ class AbetFactory extends ChoiceFactory
     
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, which FROM abet_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, which FROM abet_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -101,7 +101,7 @@ class Abet extends Component
     foreach($this->which as $k => $w)
       if ($w) $which |= 1 << (int)$k;
 
-    $result = pg_query("SELECT abet_component_save($topic_id, $r, $save_id, $which)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT abet_component_save($topic_id, $r, $save_id, $which)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }  
 };

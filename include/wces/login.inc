@@ -36,7 +36,7 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
   global $wces;
   wces_connect();
   
-  $result = pg_query("
+  $result = pg_go("
     select u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
     from users AS u
     left join enrollments AS e ON 
@@ -227,7 +227,7 @@ function login_validate($uni,$password)
   aarray_map('quot',$p);
   
   wces_connect();
-  $result = pg_query("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
   $user_id = (int)pg_result($result,0,0);
   login_update($user_id);
 

@@ -12,7 +12,7 @@ require_once("wces/wces.inc");
 function prof_update($db, $professorid, $email, $url)
 {
   $professorid = (int)$professorid;
-  $result = pg_query("SELECT email, url FROM professors WHERE user_id = '$professorid'", $db, __FILE__, __LINE__);
+  $result = pg_go("SELECT email, url FROM professors WHERE user_id = '$professorid'", $db, __FILE__, __LINE__);
   if (($rows = pgsql_num_rows($result)) != 1) return false;
   
   $row = pgsql_fetch_row($result,0);
@@ -31,7 +31,7 @@ function prof_update($db, $professorid, $email, $url)
 function prof_merge($db, $userids)
 {
   $pids = array_map("intval", $userids);
-  $result = pg_query("
+  $result = pg_go("
     SELECT 
       user_id, uni, lastname, firstname, email, department_id, flags,
       affiliations, url, picname, statement, profile, education
@@ -95,8 +95,8 @@ function prof_merge($db, $userids)
     WHERE user_id = $masta[user_id]
   ", $db, __FILE__, __LINE);
   
-  pg_query("UPDATE enrollments SET user_id = $user_id WHERE userid IN (" . implode($deletes,",") . ")", $db, __FILE__, __LINE__);
-  pg_query("DELETE FROM users WHERE user_id IN (" . implode($deletes,",") . ")", $db, __FILE__, __LINE__);
+  pg_go("UPDATE enrollments SET user_id = $user_id WHERE userid IN (" . implode($deletes,",") . ")", $db, __FILE__, __LINE__);
+  pg_go("DELETE FROM users WHERE user_id IN (" . implode($deletes,",") . ")", $db, __FILE__, __LINE__);
 }
 
 print("<h3>Test Page</h3>\n");
@@ -108,33 +108,33 @@ print("<h3>Test Page</h3>\n");
 
 $db = server_pginit("wces");
 
-// $result = pg_query("SELECT * FROM professor_hooks",$db, __FILE__, __LINE__);
+// $result = pg_go("SELECT * FROM professor_hooks",$db, __FILE__, __LINE__);
 // pg_show($result,"professor_hooks");
 // print("<p>&nbsp;</p>"); 
 //                         
-// $result = pg_query("SELECT * FROM professors",$db, __FILE__, __LINE__);
+// $result = pg_go("SELECT * FROM professors",$db, __FILE__, __LINE__);
 // pg_show($result,"professors");
 // print("<p>&nbsp;</p>"); 
 
-//pg_query("execute class_update(2, '023', 2342, 2, 'maa class', 'time', 'location', 32, 32210, 1, 4, 1)", $db, __FILE__, __LINE__);
+//pg_go("execute class_update(2, '023', 2342, 2, 'maa class', 'time', 'location', 32, 32210, 1, 4, 1)", $db, __FILE__, __LINE__);
 
-$result = pg_query("SELECT * FROM users",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM users",$db, __FILE__, __LINE__);
 pg_show($result,"users");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM enrollments",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM enrollments",$db, __FILE__, __LINE__);
 pg_show($result,"enrollments");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM acis_groups",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM acis_groups",$db, __FILE__, __LINE__);
 pg_show($result,"acis_groups");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM acis_affiliations",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM acis_affiliations",$db, __FILE__, __LINE__);
 pg_show($result,"acis_affiliations");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("
+$result = pg_go("
   SELECT cl.class_id, s.code || c.divisioncode || c.code AS code, cl.year, cl.semester, cl.section, cl.name
   FROM classes AS cl
   INNER JOIN courses AS c ON c.course_id = cl.course_id
@@ -143,23 +143,23 @@ $result = pg_query("
 pg_show($result,"classes");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM courses",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM courses",$db, __FILE__, __LINE__);
 pg_show($result,"courses");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM subjects",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM subjects",$db, __FILE__, __LINE__);
 pg_show($result,"subjects");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM departments",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM departments",$db, __FILE__, __LINE__);
 pg_show($result,"departments");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM divisions",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM divisions",$db, __FILE__, __LINE__);
 pg_show($result,"divisions");
 print("<p>&nbsp;</p>");
 
-$result = pg_query("SELECT * FROM professor_hooks",$db, __FILE__, __LINE__);
+$result = pg_go("SELECT * FROM professor_hooks",$db, __FILE__, __LINE__);
 pg_show($result,"professor_hooks");
 print("<p>&nbsp;</p>");
 

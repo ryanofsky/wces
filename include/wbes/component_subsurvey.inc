@@ -37,7 +37,7 @@ class SubsurveyFactory extends ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, base_branch, flags, title FROM subsurvey_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, base_branch, flags, title FROM subsurvey_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -106,7 +106,7 @@ class Subsurvey extends Component
     if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
     if ($this->locked)      $flagGroup |= FLAG_LOCKED;
     
-    $result = pg_query("SELECT subsurvey_component_save($topic_id, $revision_id, $save_id, $this->base_branch, $flagGroup, '$this->text')", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT subsurvey_component_save($topic_id, $revision_id, $save_id, $this->base_branch, $flagGroup, '$this->text')", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
 };

@@ -9,7 +9,7 @@ param($sort);
 
 wces_connect();
 
-$result = pg_query("
+$result = pg_go("
   SELECT question_period_id, displayname, year, semester
   FROM semester_question_periods
   WHERE question_period_id = (SELECT get_question_period())
@@ -21,7 +21,7 @@ page_top("Student Usage Data for $displayname");
 ///////////////////////////////////////////////////////////////////////////////
 $ssid = $survey_category_id = (int) $survey_category_id;
 print("<p>Filtering: ");
-$survey_categories = pg_query("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
+$survey_categories = pg_go("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
 $first = true;
 $foundfilter = false;
 $n = pg_numrows($survey_categories);
@@ -78,7 +78,7 @@ $times["begin"] = microtime();
 $cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
 
 //todo: use user_id instead of response_id
-pg_query("
+pg_go("
   CREATE TEMPORARY TABLE surveycounts AS
   SELECT t.class_id, COUNT(DISTINCT response_id) AS responses
   FROM wces_topics AS t
@@ -90,7 +90,7 @@ pg_query("
 
 $times["count_responses"] = microtime();
 
-pg_query("
+pg_go("
   CREATE TEMPORARY TABLE surveyclasses AS
   SELECT cc.class_id, COALESCE(cl.students,0) AS students, COALESCE(cc.responses,0) AS responses
   FROM surveycounts AS cc
@@ -99,7 +99,7 @@ pg_query("
 
 $times["count_enrollments"] = microtime();
 
-$y = pg_query("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$wces,__FILE__, __LINE__);
+$y = pg_go("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$wces,__FILE__, __LINE__);
 
 $times["sum_counts"] = microtime();
 
@@ -121,7 +121,7 @@ Number of surveys completed: <b><?=$responses?></b><br>
 
 <?
 
-$classes = pg_query("
+$classes = pg_go("
   SELECT CASE WHEN students < responses THEN responses ELSE students END AS students, responses, get_class(class_id) AS cl, get_profs(class_id) AS p
   FROM surveyclasses
   ORDER BY $ordersql[$sort]
@@ -163,7 +163,7 @@ flush();
 
 $cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
 
-$students = pg_query("
+$students = pg_go("
   SELECT i.user_id, u.uni, CASE WHEN i.responses = 0 THEN 0 WHEN i.classes <= i.responses THEN 2 ELSE 1 END AS level
   FROM
     (SELECT e.user_id, COUNT (DISTINCT t.topic_id) AS classes, COUNT(DISTINCT s.topic_id) AS responses
