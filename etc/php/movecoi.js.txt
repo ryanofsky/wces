@@ -1,0 +1,58 @@
+// Execute with 'cscript movecoi.js //E:jscript'
+
+
+//-----------------------------------------------------
+// OPTIONS
+
+var ORIGINALPATH = "J:/server/shares/oracle/wces/COI";
+var NEWPATH = "J:/server/shares/oracle/COI";
+var NEWWEBPATH = "http://oracle.seas.columbia.edu/COI";
+
+//-----------------------------------------------------
+// SCRIPT
+
+
+var fso = new ActiveXObject("Scripting.FileSystemObject")
+
+function MoveFolder(folder)
+{
+  var folderobj = fso.GetFolder(fso.BuildPath(ORIGINALPATH,folder));
+  
+  var newfolder = fso.BuildPath(NEWPATH,folder);
+  
+  if (!fso.FolderExists(newfolder)) fso.CreateFolder(newfolder);
+
+  var fc = new Enumerator(folderobj.Files);
+  for(; !fc.atEnd(); fc.moveNext())
+  {
+    var f = fc.item();
+    var newfile = fso.BuildPath(newfolder,f.Name);
+
+    //WScript.Echo('path    = ' + f.path);
+    //WScript.Echo('newfile = ' + newfile + '\n');
+    
+    if (fso.FileExists(f.path) && !fso.FileExists(newfile))
+    {
+      var webpath = NEWWEBPATH + folder + '/' + f.Name;
+      var oldpath = f.Path;
+
+      fso.MoveFile(f.Path,newfile);
+      
+
+      var fh = fso.CreateTextFile(oldpath, true);
+      fh.WriteLine('Update your bookmarks. This page has moved to <a href="' + webpath + '">' + webpath + '</a>');
+      fh.Close();
+    }
+    else
+      WScript.Echo('"' + f.path + '" not moved');
+  };
+
+  var fc = new Enumerator(folderobj.SubFolders);  
+  for(; !fc.atEnd(); fc.moveNext())
+  {
+    var f = fc.item();    
+    MoveFolder(folder + '/' + f.Name);
+  };
+}
+
+MoveFolder("");
