@@ -1,4 +1,4 @@
-CREATE TABLE AnswerSets (
+CREATE TABLE answersets (
   answersetid int(11) NOT NULL auto_increment,
   questionsetid int(11) NOT NULL default '0',
   questionperiodid int(11) NOT NULL default '0',
@@ -60,7 +60,7 @@ CREATE TABLE AnswerSets (
   UNIQUE KEY code(questionperiodid,questionsetid,classid)
 );
 
-CREATE TABLE Classes (
+CREATE TABLE classes (
   classid int(11) NOT NULL auto_increment,
   courseid int(11) NOT NULL default '0',
   section char(3) NOT NULL default '',
@@ -79,13 +79,13 @@ CREATE TABLE Classes (
   UNIQUE KEY code(courseid,section,divisioncode,year,semester)
 );
 
-CREATE TABLE CompleteSurveys (
+CREATE TABLE completesurveys (
   userid int(11) NOT NULL default '0',
   answersetid int(11) NOT NULL default '0',
   PRIMARY KEY (userid,answersetid)
 );
 
-CREATE TABLE Courses (
+CREATE TABLE courses (
   courseid int(11) NOT NULL auto_increment,
   subjectid int(11) NOT NULL default '0',
   code int(11) NOT NULL default '0',
@@ -97,7 +97,7 @@ CREATE TABLE Courses (
   UNIQUE KEY code(subjectid,code)
 );
 
-CREATE TABLE Departments (
+CREATE TABLE departments (
   departmentid int(11) NOT NULL auto_increment,
   code varchar(4) NOT NULL default '',
   name tinytext,
@@ -105,7 +105,7 @@ CREATE TABLE Departments (
   UNIQUE KEY code(code)
 );
 
-CREATE TABLE Divisions (
+CREATE TABLE divisions (
   divisionid int(11) NOT NULL auto_increment,
   code char(2) NOT NULL default '',
   shortcode char(1) NOT NULL default '',
@@ -114,20 +114,20 @@ CREATE TABLE Divisions (
   UNIQUE KEY name(name(255))
 );
 
-CREATE TABLE Enrollments (
+CREATE TABLE enrollments (
   userid int(11) NOT NULL default '0',
   classid int(11) NOT NULL default '0',
   PRIMARY KEY (userid,classid)
 );
 
-CREATE TABLE Groupings (
+CREATE TABLE groupings (
   linkid int(11) NOT NULL default '0',
   linktype enum('classes','professors','subjects','departments','courses') NOT NULL default 'classes',
   questionsetid int(11) NOT NULL default '0',
   PRIMARY KEY (linkid,linktype,questionsetid)
 );
 
-CREATE TABLE ProfessorDupeData (
+CREATE TABLE professordupedata (
   professorid int(11) default NULL,
   first tinytext,
   middle char(1) default NULL,
@@ -144,7 +144,7 @@ CREATE TABLE ProfessorDupeData (
   KEY pid(pid)
 );
 
-CREATE TABLE Professors (
+CREATE TABLE professors (
   professorid int(11) NOT NULL auto_increment,
   userid int(11) default NULL,
   name tinytext,
@@ -159,7 +159,7 @@ CREATE TABLE Professors (
   UNIQUE KEY userid(userid)
 );
 
-CREATE TABLE QuestionPeriods (
+CREATE TABLE questionperiods (
   questionperiodid int(11) NOT NULL auto_increment,
   year year(4) NOT NULL default '0000',
   semester enum('spring','summer','fall') NOT NULL default 'spring',
@@ -169,7 +169,7 @@ CREATE TABLE QuestionPeriods (
   PRIMARY KEY (questionperiodid)
 );
 
-CREATE TABLE QuestionSets (
+CREATE TABLE questionsets (
   questionsetid int(11) NOT NULL auto_increment,
   displayname tinytext,
   description tinytext,
@@ -189,14 +189,14 @@ CREATE TABLE QuestionSets (
   PRIMARY KEY (questionsetid)
 );
 
-CREATE TABLE Schools (
+CREATE TABLE schools (
   schoolid int(11) NOT NULL auto_increment,
   name tinytext NOT NULL,
   PRIMARY KEY (schoolid),
   UNIQUE KEY name(name(255))
 );
 
-CREATE TABLE Subjects (
+CREATE TABLE subjects (
   subjectid int(11) NOT NULL auto_increment,
   code varchar(4) NOT NULL default '',
   name tinytext,
@@ -204,7 +204,7 @@ CREATE TABLE Subjects (
   UNIQUE KEY code(code)
 );
 
-CREATE TABLE Users (
+CREATE TABLE users (
   userid int(11) NOT NULL auto_increment,
   cunix varchar(15) default NULL,
   email tinytext,
