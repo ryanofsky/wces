@@ -1,11 +1,19 @@
 <?
 
+define("component_choice",       1);
+define("component_textresponse", 2);
+define("component_picture",      3);
+define("component_text",         4);
+define("component_heading",      5);
+
 class Survey
 {
-  var $components = array();
-  var $survey_id = false;
-  var $branch = false;
-  var $revision = false;
+  var $components;
+  
+  function Survey()
+  {
+    $this->components = array();
+  }
   
   function insert($component,$position = 0)
   {
@@ -35,101 +43,148 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
   
+  // TODO:
+// 
+// The load and save implementations that follow are intentially monolithic
+// and meant to be experimental.
+// 
+// A more clean OOPish way of loading and saving components might use an object
+// factory and a polymorphic save method. The reason why I didn't do it this
+// way (for now) is that it requires a lot of repeated SQL queries. Having all
+// the relevant code in one place here makes it a little easier to look for
+// optimizations and possibly minimize the number of queries by combining them
+// and by moving some logic into stored procedures. In short, optimizations and
+// extensibility will be added little later.
 
-  function load($survey_id, $index)
+  function load($db, $id, $istransform = false)
   {
-    SELECT $branches, $depth FROM surveys WHERE survey_id = $survey_id;
-    $revision = list_getrevision($branches);
+    $id = (int)$id;
     
-    $list_id = $revision[$depth*3 + 1];
-    
-    $result = 
-      SELECT c.component_id, c.type
-      FROM list_items AS li
-      INNER JOIN components AS c ON c.component_id = li.item_id
-      WHERE list_id = $list_id
-      ORDER BY type,ordinal;
-    
-    $n = pg_numrows($result);
-    $lasttype = false;
-    $ordinals = $components = $array();
-    $this->components = array_fill(0, $n, false);
-    for($i = 0; $i < $n; ++$i)
+    if ($istransform)
     {
-      extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
+      $transform_id = $id;
+      $result = pg_query("SELECT survey_id FROM transforms WHERE transform_id = '$id'", $db, __FILE__, __LINE__);
+      if (pg_num_rows($result) != 1) sendwarning("Transform $id does not exist.", __FILE__, __LINE__);
+      $survey_id = (int)pg_result($result, 0, 0);
+    }
+    else 
+      $transform_id = false;
+    
+    $g = pg_query("
+      SELECT sc.component_id AS id, c.component_type AS text,
+      c.component_text AS text, c.is_html, c.is_personal, c.is_shared
+      FROM survey_components AS sc
+      INNER JOIN components AS c ON c.component_id = sc.component_id
+      WHERE survey_id = '$survey_id'
+    ", $db, __FILE__, __LINE__);
+    
+    pg_show($result, "Get list of components");
+    
+    $qs = array();
+    
+    $composite = false;
+    $q = NULL;
+    
+    for($i=0; $gr = @pg_fetch_array($result,$i); ++$i)
+    {
+      $id = (int)$gr["id"];
+      $type = (int)$gr["type"];
+      switch((int)$type)
+      {
+        case component_multchoice:
+          $composite = false;
+          $c = pg_query("
+            SELECT choices, first_number, last_number, orientation, check_many, is_required 
+            FROM multiple_choice
+            WHERE component_id = '$id'
+          ", $db, __FILE__, __LINE__);
+          $cr = pg_fetcharray($c);
+          $q = new MultChoice();
+          $q->choices      = $cr["choices"];
+          $q->first_number = (int) $cr["first_number"];
+          $q->last_number  = (int) $cr["last_number"];
+          $q->orientation  = (int) $cr["orientation"];
+          $q->check_many   = (boolean) $cr["check_many"];
+          $q->is_required  = (boolean) $cr["is_required"];
+          break;
+        case component_textresponse:
+          $composite = false;
+          $c = pg_query("
+            SELECT rows, cols FROM text_responses WHERE component_id = '$id'
+          ", $db, __FILE__, __LINE__);
+          break;        
+        case component_picture:
+          $composite = false;
+          $c = pg_query("
+            SELECT location, originalname, format, width, height FROM pictures WHERE component_id = '$id'
+          ", $db, __FILE__, __LINE__);
+          $q = new Picture();
+          $q->location     = $c["location"];
+          $q->originalname = $c["location"];
+          $q->format       = $c["location"];
+          $q->width        = $c["location"];
+          $q->height       = $c["location"];
+          break;        
+        case component_text:
+          $composite = false;
+          $c = pg_query("
+            SELECT location, originalname, format, width, height FROM pictures WHERE component_id = '$id'
+          ", $db, __FILE__, __LINE__);
+          $q = new Text();
+          $q->rows = $c["rows"];
+          $q->cols = $c["cols"];
+          break;
+        case component_heading:
+          $composite = false;
+          break;
+
+        case component_rating:
+          $composite = true;
+
+          $c = pg_query("
+            SELECT first_number, last_number, is_required
+            FROM rating_items
+            WHERE component_id = '$id'
+          ", $db, __FILE__, __LINE__);
+          
+          if (!isset($prev) || !($prev->first_number == $cr["first_number"] && $prev->last_number == $cr["last_number"]))
+          {
+            unset($prev);
+            $prev = new Rating();
+            $q->first_number = (int) $cr["first_number"];
+            $q->last_number  = (int) $cr["last_number"];
+            $qs[] = &$prev;
+          }
+          $prev->items[] = $joe;
+          
+          break;        
+        case component_rating_head:
+          $q = new Rating();
+          $qs[] = &$q;
+          $prev = $q;
+          unset($q);
+          break;        
+
+
+        default:
+          sendwarning("Unknown component type '$type' encountered in survey '$survey_id'", __FILE__, __LINE__);
+      }
       
-      if ($type === $lasttype)
+      if (isset($q) && !$composite)
       {
-        $ordinals[] = $ordinal;
-        $components[] = $component_id;
+        $q->text        = $gr["text"];
+        $q->is_html     = $gr["is_html"];
+        $q->is_personal = $gr["is_personal"];
+        $q->is_shared   = $gr["is_shared"];
+        $qs[] = &$q;
+        unset($q);
       }
-      else
-      {
-        if ($lasttype !== false)
-          $component_factory($this->components, $ids, $ordinals, $revision);
-        $components = array($component_id);
-        $ordinals = array($ordinal);
-      }
-      $lasttype = $type;
     }
-    
-    if ($lasttype !== false)
-      $component_factory($this->components, $ids, $ordinals, $revision);
   }
-  
-  function save($link_id, $depth);
+
+  function save($db, $survey_id, $transform_id)
   {
-    $revision = SELECT list_getrevision($this->list_id);
-    
-    SELECT $branches FROM links WHERE link_id = $link;
-    foreach($branches AS $k => $v)
-      if ($v != $revision[$k * 3 + 1])
-        return false;                        // security breach (invalid $this->list_id)
- 
-    if (count($revision) + 3 == $depth * 3)  // might need to add new branch
-      $b = list_newbranch($depth);           // get a new branch number
-    else if (count($revision) == $depth * 3) // proper depth
-      $b = false;
-    else                                    
-      return false;                          // security breach
-    
-
-    BEGIN TRANSACTION;
-    SELECT $branches FROM links WHERE link = $link_id FOR UPDATE; // lock
-
-    if (!$b || count($branches) == $depth) // branch already added
-    {
-      primary = secondary = list_getrevision($branches);
-      primary[-1] += 1;
-    }
-    else if (count($branches) == $depth - 1)) // need to add a new branch
-    {
-      $branches[] = $b;
-      UPDATE links SET branches = $branches;
-
-      primary = secondary = $revision;
-      primary[] = 0;
-      primary[] = $b; 
-      primary[] = 1;
-    }
-    else // this should never happen  
-    { 
-      ROLLBACK; return false;
-    } 
-
-    INSERT INTO lists (parent, branch, revision) VALUES (primary[-6], primary[-2], primary[-1]);
-    primary[-3] := currval(list_ids);
-    reset($this->components);
-    while(list($k) = $each($this->components))
-      $this->components->save(primary);
-
-    IF (revision[-3] != secondary[-3]) THEN
-      INSERT INTO lists (parent, branch, revision) VALUES (primary[-6], primary[-2], primary[-1] + 1);          
-      merge(revision[-3],primary[-3],secondary[-3],currval(list_ids));
-    END IF;
-    
-    COMMIT;
-    return true;    
+    return array($survey_id, $transform_id);
   }
 }
 
