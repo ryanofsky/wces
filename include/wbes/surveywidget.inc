@@ -143,7 +143,7 @@ class SurveyWidget extends FormWidget
     // );
     //
     
-    pg_query("
+    $failure = $failure || !pg_query("
       INSERT INTO safe_backup (user_id, topic_id, question_period_id, form_vals)
       VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
     ", $wbes, __FILE__, __LINE__);
