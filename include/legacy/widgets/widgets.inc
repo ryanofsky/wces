@@ -1,7 +1,7 @@
 <?
 
-define("WIDGET_POST",1);
-define("WIDGET_GET",2);
+@define("WIDGET_POST",1);
+@define("WIDGET_GET",2);
 
 class legacy_Widget //abstract
 {
