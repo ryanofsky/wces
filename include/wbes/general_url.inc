@@ -56,7 +56,7 @@ class URL
     $this->query = $query;
   }
   
-  function toString($includeserver = false, $includexpath = false, $includequery = false)
+  function toString($includeserver = false, $includexpath = false, $includequery = false, $includepath = true)
   {
     $url = "";
     if ($includeserver)
@@ -74,7 +74,7 @@ class URL
       $url .= $this->server;
       if($dport != $this->port) $url .= ":" . $this->port;
     }  
-    $url .= $this->path;
+    if ($includepath) $url .= $this->path;
     if ($includexpath) $url .= $this->xpath;
     if ($includequery && $this->query !== "") $url .= "?$this->query";
     return $url;
