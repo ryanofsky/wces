@@ -46,11 +46,10 @@ DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,TEXT,TEXT,TEXT,TEXT,TEXT);
 DROP FUNCTION cunix_associate(INTEGER,INTEGER);
 DROP FUNCTION MAX(INTEGER, INTEGER);
 DROP FUNCTION get_status(INTEGER, INTEGER);
-DROP FUNCTION get_profs(INTEGER);
 DROP FUNCTION text_join(TEXT, TEXT, TEXT);
 DROP FUNCTION professor_merge(INTEGER, INTEGER);
-DROP FUNCTION get_semestername(SMALLINT);
-DROP FUNCTION get_classname(INTEGER, BOOL);
+DROP FUNCTION get_profs(INTEGER);
+DROP FUNCTION get_class(INTEGER);
 DROP FUNCTION get_question_period();
 
 CREATE TABLE sent_mails
@@ -1158,6 +1157,7 @@ CREATE FUNCTION cunix_associate(INTEGER,INTEGER) RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION get_profs(INTEGER);
 CREATE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
   DECLARE
     classid ALIAS FOR $1;
@@ -1170,20 +1170,21 @@ CREATE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
       INNER JOIN users AS u USING (user_id)
       WHERE e.class_id = classid AND e.status = 3
     LOOP
-      list := list || rec.user_id || ''\\n'' || rec.lastname || ''\\n'' || rec.firstname || ''\\n'';
+      list := list || rec.user_id || ''\\n'' || COALESCE(rec.lastname, '''') 
+        || ''\\n'' || COALESCE(rec.firstname, '''');
     END LOOP;
     RETURN list;
   END;
 ' LANGUAGE 'plpgsql'
 WITH (ISCACHABLE);
 
-CREATE FUNCTION get_semestername(INT2) RETURNS TEXT AS '
-  SELECT CASE WHEN $1 = 0 THEN ''Spring'' WHEN $1 = 1 THEN ''Summer'' WHEN $1 = 2 THEN ''Fall'' ELSE ''?'' END;
-' LANGUAGE 'sql' WITH (ISCACHABLE);
-
-CREATE FUNCTION get_classname(INTEGER, BOOL) RETURNS TEXT AS '
-  SELECT s.code || '' '' || c.divisioncode || to_char(c.code::int4,''0000'') || '' Section '' || cl.section
-    || (CASE WHEN $2 THEN get_semestername(cl.semester) || '' '' ELSE '''' END)
+DROP FUNCTION get_class(INTEGER);
+CREATE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
+  SELECT COALESCE(s.code, '''') || ''\n'' 
+    || COALESCE(c.divisioncode, '''') || ''\n'' || COALESCE(c.code, '''')  || ''\n''
+    || COALESCE(cl.section, '''')     || ''\n'' || COALESCE(cl.year, '''') || ''\n'' 
+    || COALESCE(cl.semester, '''')    || ''\n'' || COALESCE(c.name, '''') || ''\n''
+    || COALESCE(cl.name, '''') || ''\n'' || $1
   FROM classes AS cl
   INNER JOIN courses AS c USING (course_id)
   INNER JOIN subjects AS s USING (subject_id)
