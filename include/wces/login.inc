@@ -5,6 +5,7 @@ require_once("wbes/general.inc");
 require_once("wbes/session.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
+require_once("wbes/postgres.inc");
 
 //-----------------------------------------------------------------------------
 // LOGIN GLOBALS
@@ -15,7 +16,7 @@ define("login_professor",      0x00000004);
 define("login_administrator",  0x00000008);
 define("login_any",            0x0000000F);
 
-$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "profid", "depts");
+$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts");
 $LOGIN_SESSION = session_restore($LOGIN_SESSION_VARS, "login/");
 $LOGIN_PROMPTING = false;
 
@@ -29,25 +30,50 @@ function login_protect($requiredstatus)
     login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
 };
 
-function login_setup($db, $userid, $uni, $status, $name, $profid)
+function login_update($user_id)
+{
+  global $wces;
+  
+  $result = pg_query("
+    select u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
+    from users AS u
+    left join enrollments AS e ON 
+      u.user_id = e.user_id
+      AND
+      e.status = 3
+    where u.user_id = $user_id
+    group by u.user_id, u.flags, u.department_id, u.firstname, u.lastname, u.uni
+  ", $wces, __FILE__, __LINE__);  
+
+  $row = pg_fetch_array($result,0,PGSQL_ASSOC);
+  
+  $status = 0;
+  if ($row['flags'] & 8)
+    $status |= login_student;
+
+  if ($row['flags'] & 4)
+    $status |= login_professor;
+  
+  if ($row['known'])
+    $status |= login_knownprofessor;
+    
+  if ($row['flags'] & 1)
+    $status |= login_administrator;
+    
+  $p['user_id'] = $user_id;
+  
+  login_setup($user_id,$row['uni'],$status,$row['name'],(int)$row['dept']);
+}
+
+function login_setup($userid, $uni, $status, $name, $deptid)
 {
   global $LOGIN_SESSION, $LOGIN_SESSION_VARS;
-
-  $depts = false;
-  if($status & login_administrator)
-  {
-    $result = db_exec("SELECT departmentid FROM admins WHERE userid = '$userid'", $db, __FILE__, __LINE__);
-    while($row = mysql_fetch_assoc($result))
-      $depts[] = (int)$row["departmentid"];
-  }
-    
   session_initialize($LOGIN_SESSION_VARS, "login/");
   $LOGIN_SESSION["userid"] = (int)$userid;
   $LOGIN_SESSION["uni"] = $uni;
   $LOGIN_SESSION["status"] = (int)$status;
   $LOGIN_SESSION["name"] = $name;
-  $LOGIN_SESSION["profid"] = (int)$profid;
-  $LOGIN_SESSION["depts"] = $depts;
+  $LOGIN_SESSION["depts"] = $deptid ? array($deptid) : false;
 };
 
 function login_logout()
@@ -57,7 +83,6 @@ function login_logout()
   $LOGIN_SESSION["uni"]    = NULL;
   $LOGIN_SESSION["status"] = NULL;
   $LOGIN_SESSION["name"]   = NULL;
-  $LOGIN_SESSION["profid"] = NULL;
   $LOGIN_SESSION["depts"]  = NULL;
   session_kill();
 };
@@ -123,34 +148,15 @@ function login_whoami()
 }
 
 //-----------------------------------------------------------------------------
-// PROFESSOR LOGIN FUNCTIONS
-
-function login_getprofid()
-{
-  global $LOGIN_SESSION;
-  return isset($LOGIN_SESSION["profid"]) ? $LOGIN_SESSION["profid"] : "";
-}
-
-function login_saveprofid($profid)
-{
-  global $LOGIN_SESSION;
-  if (!isset($LOGIN_SESSION["userid"])) return;
-  $userid = $LOGIN_SESSION["userid"];
-  $LOGIN_SESSION["profid"] = $profid;
-  $db = wces_connect();
-  db_updatevalues($db, "professors", Array("userid" => $userid),Array("userid" => false));
-  db_updatevalues($db, "professors", Array("professorid" => $profid),Array("userid" => $userid));
-  mysql_close($db);
-};
-
-//-----------------------------------------------------------------------------
 // PASSWORD VALIDATION ROUTINES
 
 function login_validate($uni,$password)
 {
+  global $wces;
+  
   $uni = str_replace("@columbia.edu","",$uni);
-  $dump = nl2br(acisget($uni,$password));
-
+  $dump = acisget($uni,$password);
+  
   if (!$dump)
   {
     sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
@@ -159,89 +165,23 @@ function login_validate($uni,$password)
      
   if (strpos($dump,"no soup for you") !== false)
     return false; // BAD PASSWORD
-
-  if (ereg(".*REMOTE_USER=([^<]+)<br",$dump,$result))
-    $cunix = $result[1];
+  
+  if(preg_match('/^REMOTE_USER=(.*)$/m', $dump, $matches))
+    $cunix = $matches[1];
   else
   {
     $cunix = $uni;
     sendwarning("Login parser warning: username '$uni' could not be verified.\n\n----------\n\n$dump", __FILE__, __LINE__);
   }  
-
-  if (ereg(".*USER_EMAIL=([^<>]+)<br",$dump,$result))
-    $email = $result[1];
-  else
-  {
-    $email = "";
-    sendwarning("Login parser warning: email address not found.\n\n----------\n\n$dump",__FILE__,__LINE__);
-  }  
   
-  $db = wces_connect();
-
-  $result = db_exec("SELECT userid FROM users WHERE cunix = '" . addslashes($cunix) . "'",$db);
-  if (mysql_num_rows($result) == 1)
-  {
-    $userid = mysql_result($result,0);
-    $email = $email ? ", email = '" . addslashes($email) . "'" : "";
-    db_exec("UPDATE users SET lastlogin = NOW() $email WHERE userid = '$userid'",$db);
-  }
-  else
-  {
-    db_exec("REPLACE INTO users(cunix,lastlogin) VALUES ('" . addslashes($cunix) . "',NOW())",$db);
-    $userid = mysql_insert_id($db);
-  }
-
-  wces_GetCurrentQuestionPeriod($db, $null, $null, $year, $semester);
-  $result = db_exec ("
-  SELECT e.classid
-  FROM enrollments AS e
-  INNER JOIN classes AS cl USING (classid)
-  WHERE cl.year >= '$year' AND cl.semester >= '$semester' AND e.userid = '$userid'", $db, __FILE__, __LINE__);
-
-  $badenrollments = array();
-  while($row = mysql_fetch_assoc($result))
-    $badenrollments[$row["classid"]] = true;
-
-  $pos = strpos($dump,"CUcourse_");
-  $insertfailed = false;
-  while(!($pos === false))
-  {
-    $classid = class_update($db, substr($dump,$pos+9,20), $null);
-    if ($classid)
-    {
-      if (isset($badenrollments[$classid])) unset($badenrollments[$classid]);
-      db_replacenoid($db,"enrollments",Array("userid" => $userid, "classid" => $classid),0);
-    }
-    else
-      $insertfailed = true;
-    $pos = strpos($dump,"CUcourse_",$pos+1);
-  };
+  $email = preg_match('/^USER_EMAIL=(.*)$/m', $dump, $matches) ? $matches[1] : "";
+  $affils = preg_match('/^USER_AFFILIATIONS=(.*)$/m', $dump, $matches) ? $matches[1] : "";
   
-  if ($insertfailed)
-    sendwarning("Login parser warning: class insertions failed.\n\n----------\n\n$dump", __FILE__, __LINE__);
-  
-  if (count($badenrollments) > 0)
-    db_exec("DELETE FROM enrollments WHERE userid = '$userid' AND classid IN (" . implode(",",array_keys($badenrollments)) . ")", $db, __FILE__, __LINE__);
-
-  // begin validation
-  $status = 0;
-
-  if (contains($dump,Array("CUstudent","BCstudent","CPMCstudent","TCstudent","UTSstudent")))
-    $status |= login_student;
-  
-  if (db_getvalue($db,"users",Array("userid" => $userid),"isprofessor") == "true")
-    $status |= login_professor;
-  else if (contains($dump,Array("CUinstructor", "BCinstructor", "CUNIX_instructor", "CUadministrator", "CUNIX_Instructor")))
-  {
-     $status |= login_professor;
-     db_updatevalues($db,"users",Array("userid" => $userid),Array("isprofessor" => "true"));
-  }
-
   $ds=ldap_connect("ldap.columbia.edu");
   $r=ldap_bind($ds);
   $sr=ldap_search($ds,"o=Columbia University,c=US", "uni=$cunix");  
   $info = ldap_get_entries($ds, $sr);
-  $ldap = array("cn" => false, "title" => false, "ou" => false, "mail" => false);
+  $ldap = array("givenname" => "", "sn" => "", "mail" => false);
   if ($info["count"] == 1)
   {
     $result = $info[0];
@@ -252,27 +192,13 @@ function login_validate($uni,$password)
     }
   }  
 
-  // TODO: put this information in ldapcache
+  $p = array('cunix' => $cunix, 'email' => $email ? $email : $ldap['mail'], 'last' => $ldap['sn'], 'first' => $ldap['givenname'], 'affils' => $affils);
+  aarray_map('quot',$p);
   
-  $name = $ldap["cn"];
-  $profid = 0;  
-  
-  if ($status & login_professor)
-  {
-    $result = db_getrow($db,"professors",Array("userid" => $userid),array("professorid","name"));
-    if ($result)
-    {
-      $profid = $result["professorid"];
-      $name = $result["name"];
-      $status |= login_knownprofessor;
-    }  
-  }
-
-  if (db_getvalue($db,"users",Array("userid" => $userid),"isadmin") == "true")
-    $status |= login_administrator;
-  
-  login_setup($db,$userid,$cunix,$status,$name,$profid);
- 
+  wces_connect();
+  $result = pg_query("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
+  $user_id = (int)pg_result($result,0,0);
+  login_update($user_id);
   return true;
 };
 
@@ -329,11 +255,12 @@ function login_prompt($url, $rs, $de = false, $uni = "")
   if($luni)
   {
     if ($url && $rs && !($rs & login_getstatus()))
-      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><b>You are currently logged in as $luni with " . login_whoami() . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../about/feedback.php\">let us know</a>.</b></p>");
+      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as '$luni' with " . (($x = login_whoami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../about/feedback.php\">let us know</a>. You can use the form below to log in as another user.</small></p>");
     else     
-      print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
+      print("<p><small>You are currently logged in as $luni. You can use the form below to log in with another set of credentials.</small></p>");
   }
-  else if ($uni)
+  
+  if ($uni)
     print("<p><b><font color=red>Invalid username or password.</font></b></p>\n");
 
   $securesite = "$server_sbase${wces_path}login/login.php";
