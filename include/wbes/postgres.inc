@@ -94,7 +94,7 @@ class pg_wrapper
   }
 }
 
-function array_fill($num, $val)
+function array_make($num, $val)
 {
   return array_pad(array(), $num, $val); 
 }
