@@ -1,5 +1,6 @@
 OPT=-fpic
 INC=/usr/include/postgresql
+#INC=/usr/include/pgsql
 LIB=
 OUTPUT=distribution.so
 
