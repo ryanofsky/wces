@@ -365,7 +365,7 @@ function PrintClassInfo($class_id)
 
   $result = pg_go("
     SELECT e.user_id, e.status, u.uni, (u.lastname || ', ' || u.firstname) AS name " . ($surveys ? ",
-      EXISTS(SELECT * FROM survey_responses WHERE user_id = e.user_id AND question_period_id = $question_period_id AND topic_id = $topic_id) AS response" : "") . "
+      EXISTS(SELECT * FROM survey_responses WHERE user_id = e.user_id AND topic_id = $topic_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN users AS u USING (user_id)
     WHERE e.class_id = $class_id" . ($restricted ? "
