@@ -5,6 +5,13 @@ require_once("wces/oldquestions.inc");
 require_once("wces/report_help.inc");
 require_once("wces/report_textgrid.inc");
 
+define("QUESTION_PERIODS", 0x01);
+define("CLASSES",          0x02);
+define("COURSES",          0x04);
+define("DEPARTMENTS",      0x08);
+define("PROFESSORS",       0x10);
+define("CATEGORIES",       0x20);
+
 //options is an array of booleans with these keys:
 // - "standard"
 // - "custom"
@@ -14,12 +21,204 @@ $STANDARDCONDITION = "qs.type = 'public'";
 $CUSTOMCONDITION = "qs.type = 'private'";
 $RATINGSCONDITION = "(LENGTH(qs.MC1) > 0 OR LENGTH(qs.MC2) > 0 OR LENGTH(qs.MC3) > 0 OR LENGTH(qs.MC4) > 0 OR LENGTH(qs.MC5) > 0 OR LENGTH(qs.MC6) > 0 OR LENGTH(qs.MC7) > 0 OR LENGTH(qs.MC8) > 0 OR LENGTH(qs.MC9) > 0 OR LENGTH(qs.MC10) > 0)";
 $TEXTCONDITION = "(LENGTH(qs.FR1) > 0 OR LENGTH(qs.FR2) > 0)";
- 
-function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, &$listclasses, &$listprofessors, &$ratings, &$abet, &$responses, &$tas)
-{
-  global $ABETCONDITION, $STANDARDCONDITION, $CUSTOMCONDITION, $RATINGSCONDITION, $TEXTCONDITION, $TAQUESTIONS;
 
-  db_exec("
+function report_findtopics($tempname, $criteria, $needprof = true)
+{
+  global $wces;
+  
+  $where = $twhere = "";
+  
+  if ($criteria[PROFESSORS] || $needprof)
+  {
+    $pjoin = "LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3\n    ";
+    $pgroup = ", e.user_id";
+    $pselect = ", e.user_id";
+  }
+  else 
+    $pjoin = $pgroup = $pselect = "";
+  
+  if ($criteria[QUESTION_PERIODS])
+    $twhere = "WHERE question_period_id IN (" . implode($criteria[QUESTION_PERIODS],",") . ") ";
+
+  if ($criteria[CATEGORIES])
+  {
+    $where .= $where ? "  AND " : "WHERE ";
+    $where .= "t.category_id IN (" . implode($criteria[CATEGORIES],",") . ")\n    ";
+  }
+
+  if ($criteria[COURSES])
+  {
+    $where .= $where ? "  AND " : "WHERE ";
+    $where .= "cl.course_id IN (" . implode($criteria[COURSES],",") . ")\n    ";
+  }
+  
+  if ($criteria[DEPARTMENTS])
+  {
+    $where .= $where ? "  AND " : "WHERE ";
+    $where .= "cl.department_id IN (" . implode($criteria[DEPARTMENTS],",") . ")\n    ";
+  }
+  
+  if ($criteria[PROFESSORS])
+  {
+    $where .= $where ? "  AND " : "WHERE ";
+    $where .= "e.user_id IN (" . implode($criteria[PROFESSORS],",") . ")\n    ";
+  }
+  
+  // the subselect in the FROM clause is only there as an optimization. ~ 4.5 times faster
+  
+  pg_query("
+    CREATE TEMPORARY TABLE $tempname AS
+    SELECT NULL::INTEGER AS ordinal, r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pselect
+    FROM (SELECT question_period_id, topic_id FROM survey_responses {$twhere}GROUP BY question_period_id, topic_id) AS r
+    INNER JOIN wces_topics AS t USING (topic_id)
+    INNER JOIN classes AS cl USING (class_id)
+    $pjoin{$where}GROUP BY r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pgroup;
+  ", $wces, __FILE__, __LINE__);
+
+  // todo:
+  //
+  // a major optimization would be to have a materialized view like
+  // 
+  // CREATE MATERIALIZED VIEW report_topics
+  // SELECT r.question_period_id, t.class_id, cl.course_id, cl.department_id, e.user_id
+  // FROM survey_responses AS r
+  // INNER JOIN wces_topics AS t USING (topic_id)
+  // INNER JOIN classes AS cl USING (class_id)
+  // LEFT JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3
+  // GROUP BY t.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id, e.user_id;
+  //
+  // postgres doesn't currently support materialized views, but it might be
+  // possible to set something up with triggers. since reporting isn't typically
+  // accessed in the middle of a question period, the triggers wouldn't have to
+  // actually maintain data in the view, they could just set a flag that would cause
+  // the view to be regenerated before it was used again
+  //
+  // another option would be to use a view like
+  // CREATE MATERIALIZED VIEW professors
+  // SELECT user_id, class_id FROM enrollments WHERE status = 3
+  //
+  // less of an optimization, but less complicated, and could be used to speed up other parts of the site  
+};
+
+function report_findgroups($topicstable, $groupings, $orderings)
+{
+  global $wces;
+  
+  $cols = array(
+    QUESTION_PERIODS => "question_period_id",
+    CLASSES          => "class_id",
+    COURSES          => "course_id",
+    DEPARTMENTS      => "department_id",
+    PROFESSORS       => "user_id",
+    CATEGORIES       => "survey_category_id"
+  );
+    
+  $order = array(
+    QUESTION_PERIODS => "cl.year, cl.semester, t.question_period_id",
+    CLASSES          => "s.code, c.code, cl.section",
+    DEPARTMENTS      => "d.code",
+    PROFESSORS       => "u.lastname, firstname",
+    CATEGORIES       => "t.survey_category_id"
+  );
+  
+  $orderfields = array(
+    QUESTION_PERIODS => "cl.year, cl.semester",
+    CLASSES          => "s.code, c.code, cl.section",
+    DEPARTMENTS      => "d.code",
+    PROFESSORS       => "u.lastname, firstname",
+    CATEGORIES       => ""
+  );  
+
+  $gorder = array(
+    QUESTION_PERIODS => "MIN(t.question_period_id)",
+    CLASSES          => "MIN(s.code)",
+    DEPARTMENTS      => "MIN(d.code)",
+    PROFESSORS       => "MIN(u.lastname)",
+    CATEGORIES       => "MIN(t.survey_category_id)"
+  );
+  
+  $badorder = false;
+  
+  $fargs = $fcond = $fcols = $group_s = "";
+  
+  $i = 0;
+  foreach($groupings as $k => $v)
+  {
+    if ($group_s) $group_s .= ", ";
+    $group_s .= "t.$cols[$k]";
+
+    ++$i;
+    
+    if ($fargs) $fargs .= ", ";
+    $fargs .= "INTEGER";
+    
+    if ($fcond) $fcond .= " AND ";
+    $fcond .= "((\$$i IS NULL AND $cols[$k] IS NULL) OR $cols[$k] = \$$i)";
+    
+    if ($fcols) $fcols .= ", ";
+    $fcols .= "$cols[$k]";
+  }
+  
+  $joins = $sjoins = 0;
+  $order_s = "";
+  
+  foreach($orderings as $o)
+  {
+    if ($order_s) $order_s .= ", ";
+    $joins |= $o;
+    if ($groupings[$o])
+    {
+      $order_s .= $order[$o];
+      $group_s .= ", $orderfields[$o]";
+      $sjoins |= $o;
+      unset($groupings[$o]);
+      if (count($groupings == 0)) break;
+    }
+    else
+    {
+      $badorder = true;
+      $order_s .= $gorder[$o];
+    }
+  }
+  
+  $tempname = substr(md5(uniqid(rand(),1)),0,20);
+  
+  pg_query("
+    CREATE TEMPORARY TABLE tab$tempname AS
+    SELECT $group_s
+    FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
+    LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & CLASSES ? "
+    LEFT JOIN courses AS c ON c.course_id = t.course_id
+    LEFT JOIN subjects AS s ON s.subject_id = c.course_id" : "") . ($joins & PROFESSORS ? "
+    LEFT JOIN users AS u ON u.user_id = t.user_id" : "") . ($joins & DEPARTMENTS ? "
+    LEFT JOIN departments AS d ON d.department_id = t.department_id" : "") ."
+    GROUP BY $group_s
+    ORDER BY $order_s;
+    
+    CREATE FUNCTION fun$tempname($fargs) RETURNS INTEGER AS '
+      SELECT oid::integer FROM tab$tempname WHERE $fcond
+    ' LANGUAGE 'sql';
+    
+    UPDATE $topicstable SET ordinal = fun$tempname($fcols);
+    
+    DROP FUNCTION fun$tempname($fargs);
+    DROP TABLE tab$tempname;
+  ", $wces, __FILE__, __LINE__); 
+  
+  return !$badorder;
+  
+  pg_query("
+    UPDATE $topicstable AS t SET ordinal 
+  ", $wces, __FILE__, __LINE__);
+  
+  
+}
+
+function report_makequeries($options, $criteria, $groups, $sort, &$header, &$listclasses, &$listprofessors, &$ratings, &$abet, &$responses, &$tas)
+{
+  global $wces, $ABETCONDITION, $STANDARDCONDITION, $CUSTOMCONDITION, $RATINGSCONDITION, $TEXTCONDITION, $TAQUESTIONS;
+
+  pg_query("
     CREATE TEMPORARY TABLE filledclasses
     (
       classid INTEGER NOT NULL,
@@ -28,7 +227,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       response INTEGER,
       UNIQUE KEY(classid, questionperiodid, questionsetid)
     )
-  ", $db, __FILE__, __LINE__);
+  ", $wces, __FILE__, __LINE__);
   
   db_exec("
     CREATE TEMPORARY TABLE mastertable
@@ -52,12 +251,12 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       PRIMARY KEY(masterid),
       UNIQUE KEY(classid,questionperiodid)
     )  
-  ", $db, __FILE__, __LINE__);
+  ", $wces, __FILE__, __LINE__);
 
   $where = "";
     
-  if ($criteria["topics"])
-    addwhere($where,"topicid IN (" . implode(", ", $criteria["topics"]) . ")");
+  if ($criteria["categories"])
+    addwhere($where,"topicid IN (" . implode(", ", $criteria["categories"]) . ")");
   
   if ($criteria["questionperiods"])
     addwhere($where,"questionperiodid IN (" . implode(", ", $criteria["questionperiods"]) . ")");
@@ -66,7 +265,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
     addwhere($where,"classid IN (" . implode(", ", $criteria["classes"]) . ")");
 
   if ($tas)
-    db_exec("INSERT INTO filledclasses(classid, questionperiodid) SELECT classid, questionperiodid FROM taratings $where GROUP BY classid, questionperiodid", $db, __FILE__, __LINE__);
+    db_exec("INSERT INTO filledclasses(classid, questionperiodid) SELECT classid, questionperiodid FROM taratings $where GROUP BY classid, questionperiodid", $wces, __FILE__, __LINE__);
 
   if ($options["custom"] && $options["standard"])
     $typecondition = "";
@@ -96,7 +295,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       SELECT a.classid, a.questionperiodid, a.questionsetid, a.responses
       FROM answersets AS a
       INNER JOIN questionsets AS qs ON (qs.questionsetid = a.questionsetid)
-      $where", $db, __FILE__, __LINE__);
+      $where", $wces, __FILE__, __LINE__);
   }
     
   $where = "";
@@ -161,7 +360,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
       SUBSTRING(p.name,1,LENGTH(p.name)-LOCATE(' ',REVERSE(p.name))) AS pfname,
       cl.students, MAX(fc.response)
     $tables $where GROUP BY fc.classid, fc.questionperiodid $order
-  ",$db,__FILE__,__LINE__);
+  ",$wces,__FILE__,__LINE__);
 
   $group = "";
   if ($groups["classes"]) addgroup($group, "classid");
@@ -170,7 +369,7 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
   if ($groups["departments"]) addgroup($group, "departmentid");
   if ($groups["questionperiods"]) addgroup($group, "questionperiodid");
   
-  $counts = db_exec("SELECT COUNT(*) AS number FROM mastertable $group ORDER BY masterid", $db, __FILE__, __LINE__);
+  $counts = db_exec("SELECT COUNT(*) AS number FROM mastertable $group ORDER BY masterid", $wces, __FILE__, __LINE__);
   
   $masterid = 0;
   $clusterid = 0;
@@ -178,10 +377,10 @@ function report_makequeries($db, $options, $criteria, $groups, $sort, &$header, 
   {
     ++$clusterid;
     $emasterid = $masterid + $row["number"];
-    mysql_query("UPDATE mastertable SET clusterid = $clusterid WHERE $masterid < masterid AND masterid <= $emasterid", $db) or die("bad,bad,bad");
+    pg_query("UPDATE mastertable SET clusterid = $clusterid WHERE $masterid < masterid AND masterid <= $emasterid", $db, __FILE__, __LINE__);
     $masterid = $emasterid;
   }
-
+  
   if ($header)
   {
     $columns = " ";

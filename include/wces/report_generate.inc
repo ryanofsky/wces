@@ -4,7 +4,7 @@ require_once("wces/report_page.inc");
 
 function makereport($db,&$wizard,$stdout,&$html,&$text)
 {
-  global $wces_path;    
+  global $wces_path, $wces;    
       
   $sqloptions = array
   (
@@ -14,11 +14,11 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
 
   $groups = Array
   (
-    "classes" => $wizard->groupclasses->checked,
-    "courses" => $wizard->groupcourses->checked,
-    "professors" => $wizard->groupprofessors->checked,
-    "departments" => $wizard->groupdepartments->checked,
-    "questionperiods" => $wizard->groupquestionperiods->checked
+    CLASSES => $wizard->groupclasses->checked,
+    COURSES => $wizard->groupcourses->checked,
+    PROFESSORS => $wizard->groupprofessors->checked,
+    DEPARTMENTS => $wizard->groupdepartments->checked,
+    QUESTION_PERIODS => $wizard->groupquestionperiods->checked
   );
 
   $header = true;
@@ -29,13 +29,12 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
   $abet = $wizard->includeabet->checked ? true : false;
   $responses = $wizard->includetext->checked ? true : false;
   $tas = $wizard->includeta->checked ? true : false;
-  $sort = array();
-  foreach ($wizard->order->items as $order)
-    array_push($sort, $wizard->ordernames[$order]);
+  $sort = $wizard->order->keys;
     
-  $pages = report_makequeries($db, $sqloptions, $wizard->criteria, $groups,
-    $sort, $header, $listclasses, $listprofessors, $ratings, $abet, 
-    $responses, $tas);
+  report_findtopics("rwtopics", $wizard->criteria);
+  report_findgroups("rwtopics", $groups, $sort);  
+
+  $pages = pg_result(pg_query("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
   
   $displayoptions = array("pies" => $wizard->includepies->checked);
 
@@ -45,7 +44,7 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
     $outhtml = "<font size=1>[ $page / $pages ]</font>\n";
     $outhtml .= "<h4>Report Information</h4>\n";
     $outhtml .= "<table border=0><tr><td>Administrator ID: </td><td><b>" . login_getuni() . "</b></td></tr><tr><td>Date:</td><td><b>" . date("l, F j, Y") . "</b></td></tr><tr><td>Time:</td><td><b>" . date("g:i:s A") . "</b></td></tr></table>";
-    $outhtml .= "<h4>Report Specification</h4><pre>" . htmlspecialchars($wizard->summarize()) . "</pre>";
+    $outhtml .= "<h4>Report Specification</h4><pre>" . htmlspecialchars($wizard->summarize(true)) . "</pre>";
       
     if ($html) $html = $outhtml;
     if ($stdout) print ($outhtml);
@@ -60,6 +59,49 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
     $text .= " - Date: " . date("l, F j, Y") . "\n";
     $text .= " - Time: " . date("g:i:s A") . "\n";
   }
+
+  pg_show(pg_query("SELECT * FROM rwtopics", $wces, __FILE__,__LINE__),"rwtopics");
+  
+  $departments = pg_query("
+    SELECT t.ordinal, d.name, d.code
+    FROM rwtopics AS t
+    INNER JOIN departments AS d USING (department_id)
+    ORDER BY t.ordinal
+  ", $wces, __FILE__, __LINE__);
+
+  $questionperiods = pg_query("
+    SELECT t.ordinal, t.question_period_id, qp.name
+    FROM rwtopics AS t
+    INNER JOIN question_periods AS qp USING (question_period_id)
+    ORDER BY t.ordinal
+  ", $wces, __FILE__, __LINE__);
+  
+  $classes = pg_query("
+    SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, ccode AS ccode, c.name, cl.section
+    FROM rwtopics AS t
+    INNER JOIN question_periods AS qp USING (question_period_id)
+    ORDER BY t.ordinal
+  ", $wces, __FILE__, __LINE__);  
+  
+  $textresponse = pg_query("
+    SELECT t.ordinal, tr.revision_id, c.ctext, c.is_html, tr.rtext
+    FROM rwtopics AS t
+    INNER JOIN survey_responses AS r USING (topic_id)
+    INNER JOIN text_responses AS tr ON tr.parent = r.response_id
+    INNER JOIN textresponse_components AS c USING (revision_id)
+    ORDER BY t.ordinal, tr.revision_id
+  ", $wces, __FILE__, __LINE__);
+  
+  $choices = pg_query("
+    SELECT t.ordinal, tr.revision_id, c.ctext, c.is_html, tr.rtext
+    FROM rwtopics AS t
+    INNER JOIN survey_responses AS r USING (topic_id)
+    INNER JOIN choice_responses AS c ON c.parent = r.response_id
+    INNER JOIN choice_question_responses AS cq ON cq.parent = c.response_id
+    INNER JOIN text_questions AS tr ON tr.parent = r.response_id
+    ORDER BY t.ordinal, tr.revision_id
+  ", $wces, __FILE__, __LINE__);  
+  
     
   $outhtml = false;
   for($page = 1; $page <= $pages; ++$page)

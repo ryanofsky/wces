@@ -23,7 +23,7 @@ define("ReportWizard_output_email",1);
 class ReportWizard extends Wizard
 {
   var $output;
-  
+
   var $includestandard;
   var $includecustom;
   var $includeabet;
@@ -44,44 +44,40 @@ class ReportWizard extends Wizard
   function ReportWizard($prefix,$form,$formmethod)
   {
     global $wces_path;
-    
+
     $this->Wizard
-    ( 
+    (
       array("Start","Output","Question Periods","Departments","Professors","Courses","Aggregation","Order","Finish"),
       $wces_path,
       $prefix,$form,$formmethod
     );
-    
+
     $this->depts = login_getdepts();
+    
+    $this->output = new RadioButton(array("Display Report on Web Page","Email reports to professors"),$this->prefix . "_output",$this->form,$this->formmethod);
+    $this->includestandard = new CheckBox("{$prefix}_includestandard", $this->form, $this->formmethod);
+    $this->includecustom = new CheckBox("{$prefix}_includecustom", $this->form, $this->formmethod);
+    $this->includeabet = new CheckBox("{$prefix}_includeabet", $this->form, $this->formmethod);
+    $this->includetext = new CheckBox("{$prefix}_includetext", $this->form, $this->formmethod);
+    $this->includeta = new CheckBox("{$prefix}_includeta", $this->form, $this->formmethod);
+    $this->printable = new CheckBox("{$prefix}_printable",$this->form,$this->formmethod);
+    $this->includepies = new CheckBox("{$prefix}_includepies", $this->form, $this->formmethod);
+    $this->bighead = new CheckBox("{$prefix}_bighead",$this->form,$this->formmethod);
+
+    $this->groupclasses = new CheckBox("{$prefix}_groupclasses", $this->form, $this->formmethod);
+    $this->groupcourses = new CheckBox("{$prefix}_groupcourses", $this->form, $this->formmethod);
+    $this->groupprofessors = new CheckBox("{$prefix}_groupprofessors", $this->form, $this->formmethod);
+    $this->groupdepartments = new CheckBox("{$prefix}_groupdepartments", $this->form, $this->formmethod);
+    $this->groupquestionperiods = new CheckBox("{$prefix}_groupquestionperiods", $this->form, $this->formmethod);
   }
 
   function loadvalues()
   {
-    global $db;
-    
-    //////////////////////////////// WIZARD SETUP ////////////////////////////////////////    
-    
+    global $wces;
     Wizard::loadvalues(false);
 
-    //////////////////////////////// WIDGET SETUP ////////////////////////////////////////    
-    
-    $this->output = new RadioButton(array("Display Report on Web Page","Email reports to professors"),$this->prefix . "_output",$this->form,$this->formmethod);
-    $this->includestandard = new CheckBox($this->prefix . "_includestandard", $this->form, $this->formmethod);
-    $this->includecustom = new CheckBox($this->prefix . "_includecustom", $this->form, $this->formmethod);
-    $this->includeabet = new CheckBox($this->prefix . "_includeabet", $this->form, $this->formmethod);
-    $this->includetext = new CheckBox($this->prefix . "_includetext", $this->form, $this->formmethod);
-    $this->includeta = new CheckBox($this->prefix. "_includeta", $this->form, $this->formmethod);
-    $this->printable = new CheckBox($this->prefix . "_printable",$this->form,$this->formmethod);
-    $this->includepies = new CheckBox($this->prefix . "_includepies", $this->form, $this->formmethod);
-    $this->bighead = new CheckBox($this->prefix . "_bighead",$this->form,$this->formmethod);
-    
+    //////////////////////////////// WIDGET SETUP ////////////////////////////////////////
 
-    $this->groupclasses = new CheckBox($this->prefix . "_groupclasses", $this->form, $this->formmethod);
-    $this->groupcourses = new CheckBox($this->prefix . "_groupcourses", $this->form, $this->formmethod);
-    $this->groupprofessors = new CheckBox($this->prefix . "_groupprofessors", $this->form, $this->formmethod);
-    $this->groupdepartments = new CheckBox($this->prefix . "_groupdepartments", $this->form, $this->formmethod);
-    $this->groupquestionperiods = new CheckBox($this->prefix . "_groupquestionperiods", $this->form, $this->formmethod);
-    
     if ($this->visited[ReportWizard_output])
     {
       $this->output->loadvalues();
@@ -93,7 +89,7 @@ class ReportWizard extends Wizard
       $this->printable->loadvalues();
       $this->includepies->loadvalues();
       $this->bighead->loadvalues();
-    }  
+    }
     else
     {
       $this->output->checked = ReportWizard_output_www;
@@ -105,8 +101,8 @@ class ReportWizard extends Wizard
       $this->printable->checked = true;
       $this->includepies->checked = false;
       $this->bighead->checked = true;
-    }  
-    
+    }
+
     if ($this->visited[ReportWizard_aggreg])
     {
       $this->groupclasses->loadvalues();
@@ -122,13 +118,13 @@ class ReportWizard extends Wizard
       $this->groupdepartments->checked = true;
     }
 
-    //////////////////////////////// WIZARD SETUP ////////////////////////////////////////    
-    
+    //////////////////////////////// WIZARD SETUP ////////////////////////////////////////
+
     $this->crawl(array(ReportWizard_aggreg => ($this->output->checked == ReportWizard_output_email) ? true : false, ReportWizard_order => ($this->output->checked == ReportWizard_output_email) ? true : false));
 
-    //////////////////////////////// CRITERIA SETUP //////////////////////////////////////    
+    //////////////////////////////// CRITERIA SETUP //////////////////////////////////////
 
-    $t = $this->loadattribute("topics");
+    $t = $this->loadattribute("categories");
     $q = $this->loadattribute("questionperiods");
     $d = $this->depts ? $this->depts : $this->loadattribute("departments");
     $p = $this->loadattribute("professors");
@@ -136,88 +132,131 @@ class ReportWizard extends Wizard
 
     if (!is_array($t) || !(count($t) > 0))
     {
-      if (!$db) $db = wces_connect();
-      $t = array(mysql_result(db_exec("SELECT topicid FROM topics ORDER BY topicid LIMIT 1", $db, __FILE__, __LINE__),0));
+      wces_connect();
+      $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0));
     }
     else if (in_array("all",$t)) $t = false;
-    
-    if (!is_array($q) || !(count($q) > 0)) 
+
+    if (!is_array($q) || !(count($q) > 0))
     {
-      if (!$db) $db = wces_connect();
-      $q = array(mysql_result(mysql_query("SELECT questionperiodid FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC LIMIT 1", $db),0));
+      wces_connect();
+      //todo: restore this default $q = array((int)pg_result(pg_query("SELECT MAX(question_period_id) FROM question_periods", $wces, __FILE__, __LINE__),0,0));
+      $q = false;
     }
     else if (in_array("all",$q)) $q = false;
-    
+
     if (!is_array($p) || !(count($p) > 0) || in_array("all",$p)) $p = false;
     if (!is_array($d) || !(count($d) > 0) || in_array("all",$d)) $d = false;
     if (!is_array($c) || !(count($c) > 0) || in_array("all",$c)) $c = false;
-    
-    $this->criteria = array("questionperiods" => $q, "departments" => $d, "professors" => $p, "courses" => $c, "topics" => $t);
+
+    $this->criteria = array(QUESTION_PERIODS => $q, DEPARTMENTS => $d, PROFESSORS => $p, COURSES => $c, CATEGORIES => $t);
     unset($q,$d,$p,$c,$t);
 
     /////////////////////////////// ORDERING SETUP ///////////////////////////////////////
 
-    $labels = array("Question Period", "Department", "Professor", "Course", "Class Section");
-    $this->ordernames = array("questionperiods", "departments", "professors", "courses", "classes");
-    
-    $this->order = new DynamicList(25,5,$labels, $this->prefix . "_order", $this->form, $this->formmethod);
+    $labels = array(QUESTION_PERIODS => "Question Period", DEPARTMENTS => "Department", PROFESSORS => "Professor", COURSES => "Course");
+    $this->order = new DynamicList(25,4,$labels, $this->prefix . "_order", $this->form, $this->formmethod);
     $this->order->loadvalues();
-
-    //////////////////////////// SELECTMONSTER SETUP /////////////////////////////////////
     
-    $this->query = new db_SelectMonster();
-    $this->query->settable("answersets AS a");
-    $this->query->addjoin("classes AS cl",db_SelectMonster_inner,"cl.classid","a.classid");
+    // QUESTION_PERIODS", 0x01);
+    // CLASSES",          0x02);
+    // COURSES",          0x04);
+    // DEPARTMENTS",      0x08);
+    // PROFESSORS",       0x10);
+    // CATEGORIES",       0x20);
 
-    $c = $this->criteria;
-    if ($this->showstep == ReportWizard_start) $c["topics"] = false;
-    if ($this->showstep == ReportWizard_qperiods) $c["questionperiods"] = false;
-    if ($this->showstep == ReportWizard_depts && !$this->depts) $c["departments"] = false;
-    if ($this->showstep == ReportWizard_profs) $c["professors"] = false;
-    if ($this->showstep == ReportWizard_courses) $c["courses"] = false;
-    $c["classes"] = false;
-   
-    ReportWizard::makecriteria($this->query,$c);
-    unset($c);
+    $this->queries = array(
+      CATEGORIES => "SELECT survey_category_id AS id, name FROM survey_categories ORDER BY survey_category_id",
+      QUESTION_PERIODS => "SELECT question_period_id AS id, displayname AS name FROM question_periods ORDER BY question_period_id DESC",
+      DEPARTMENTS => "
+        SELECT t.department_id AS id, d.code::text || ' - ' || d.name::text AS name
+        FROM rwtopics AS t
+        INNER JOIN departments AS d USING (department_id)
+        GROUP BY t.department_id, d.code, d.name
+        ORDER BY d.code",
+      COURSES => "
+        SELECT t.course_id AS id, s.code || ' ' || c.code || ' ' || COALESCE(c.name,'') AS name
+        FROM rwtopics AS t
+        INNER JOIN courses AS c USING (course_id)
+        INNER JOIN subjects AS s USING (subject_id)
+        GROUP BY t.course_id, s.code, c.code, c.name
+        ORDER BY s.code, c.code",
+      PROFESSORS => "
+        SELECT t.user_id AS id, u.lastname || ', ' || u.firstname AS name
+        FROM rwtopics AS t
+        INNER JOIN users AS u USING (user_id)
+        GROUP BY t.user_id, u.lastname, u.firstname
+        ORDER BY u.lastname, u.firstname
+      "
+    );
+  }
+
+  function selectquery($which, $sql, $needstemp = false, $block = true, $needprof = false)
+  {
+    global $wces;
+    wces_connect();    
+
+    if ($needstemp)
+    {
+      $c = $this->criteria;
+      if ($block) $c[$which] = false;
+      report_findtopics("rwtopics", $c, $needprof);
+    }
+    
+    return pg_query($sql, $wces, __FILE__, __LINE__);
+  }
+  
+  function selectshow($which, $result, $name, $all)
+  {
+    $criteria = $this->criteria[$which];
+    if (!$criteria) $criteria = array("all");
+    $hash = array_bflip($criteria);
+
+    print("<select name=\"{$this->prefix}_{$name}[]\" size=5 multiple>\n");
+    print("<option value=all" . (isset($hash["all"]) ? " selected" : "") . ">$all</option>\n");
+
+    $n = pg_numrows($result);
+    for($i = 0; $i < $n; ++$i)
+    {
+      extract(pg_fetch_array ($result, $i, PGSQL_ASSOC));
+      $selected = $hash[$id] ? " selected" : "";
+      print("<option value=\"$id\"$selected>$name</option>");
+    }
+    print("</select>\n");  
+  }
+  
+  function critshow($sql, &$report, $name)
+  {
+    global $wces;
+    
+    $result = pg_query($sql, $wces, __FILE__, __LINE__);
+    $n = pg_numrows($result);
+    for($i = 0; $i < $n; ++$i)
+    {
+      $row = pg_fetch_array ($result, $i, PGSQL_ASSOC);
+      $report .= "$name: {$row['name']} ({$row['id']})\n";
+    }
   }
 
   function drawstep($stepno,$hidden)
-  {  
-    global $db;
-    
+  {
     switch($stepno)
     {
       case ReportWizard_start:
         if ($hidden)
-          $this->preservearrayattribute("topics");
+          $this->preservearrayattribute("categories");
         else
         {
-          if (!$db) $db = wces_connect();
-          $result = db_exec("SELECT topicid, name FROM topics ORDER BY topicid",$db,__FILE__,__LINE__);
-          $criteria = $this->criteria["topics"];
-          if (!$criteria) $criteria = array("all");
-          $hash = array();
-          foreach($criteria as $value)
-            $hash[$value] = true;
-
+          $result = $this->selectquery(CATEGORIES, $this->queries[CATEGORIES]);
           print("<p>Welcome to the reporting wizard. This wizard will allow you to display results or send out professor emails for one or more of the survey groups listed below.</p>\n");
-          print('<select name="' . $this->prefix . '_topics[]" size=5 multiple>' . "\n");
-          print('<option value="all"' . ($hash["all"] ? " selected" : "") . '>--- All Survey Groups ---</option>' . "\n");
-          while($row = mysql_fetch_array($result))
-          {
-            $topicid = $name = "";
-            extract($row);
-            $selected = $hash[$topicid] ? " selected" : "";
-            print("<option value=\"$topicid\"$selected>$name</option>");
-          }
-          print("</select>\n");
+          $this->selectshow(CATEGORIES, $result, "categories", "--- All Survey Categories ---");
         };
-      break;  
-      case ReportWizard_output:  
+      break;
+      case ReportWizard_output:
         if ($hidden)
         {
           $this->output->display(true);
-          $this->includestandard->display(true);     
+          $this->includestandard->display(true);
           $this->includecustom->display(true);
           $this->includeabet->display(true);
           $this->includetext->display(true);
@@ -251,31 +290,15 @@ class ReportWizard extends Wizard
 </div>
 <?
         };
-      break;      
+      break;
      case ReportWizard_qperiods:
         if ($hidden)
           $this->preservearrayattribute("questionperiods");
         else
         {
-          if (!$db) $db = wces_connect();
-          $result = mysql_query("SELECT questionperiodid, year, semester, description FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC",$db);
-          $criteria = $this->criteria["questionperiods"];
-          if (!$criteria) $criteria = array("all");
-          $hash = array();
-          foreach($criteria as $value)
-            $hash[$value] = true;
-
+          $result = $this->selectquery(QUESTION_PERIODS, $this->queries[QUESTION_PERIODS]);
           print("<p>Surveys included in the report must come from the following question period(s):</p>\n");
-          print('<select name="' . $this->prefix . '_questionperiods[]" size=7 multiple>' . "\n");
-          print('<option value="all"' . ($hash["all"] ? " selected" : "") . '>--- Any Question Period ---</option>' . "\n");
-          while($row = mysql_fetch_array($result))
-          {
-            $questionperiodid = ""; $year = ""; $semester = ""; $description = "";
-            extract($row);
-            $selected = $hash[$questionperiodid] ? " selected" : "";
-            print("<option value=\"$questionperiodid\"$selected>" . ucwords($semester) . " $year $description</option>");
-          }
-          print("</select>\n");
+          $this->selectshow(QUESTION_PERIODS, $result, "questionperiods", "--- Any Question Period ---");
         };
       break;
       case ReportWizard_depts:
@@ -283,96 +306,29 @@ class ReportWizard extends Wizard
           $this->preservearrayattribute("departments");
         else
         {
-          if (!$db) $db = wces_connect();
-          $this->query->addcolumn("d.departmentid, d.name, d.code");
-          $this->query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-          $this->query->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");
-          $this->query->addgroup("d.departmentid");
-          $this->query->addordering("d.code");
-          $this->query->execute($db);
-          $criteria = $this->criteria["departments"];
-          if (!$criteria) $criteria = array("all");
-          $hash = array();
-          foreach($criteria as $value)
-            $hash[$value] = true;
- 
+          $result = $this->selectquery(DEPARTMENTS, $this->queries[DEPARTMENTS], true);
           print("<p>Surveys included in the report must come from classes in these departments:</p>\n");
-          print('<select name="' . $this->prefix . '_departments[]" size=7 multiple>' . "\n");
-          print('<option value="all"' . ($hash["all"] ? " selected" : "") . '>--- Any Department ---</option>' . "\n");
-
-          while($this->query->advance())
-          {
-            extract($this->query->row);
-            $selected = $hash[$departmentid] ? " selected" : "";
-            print("<option value=\"$departmentid\"$selected>$code - $name</option>\n");
-          }
-          print("</select>\n");
+          $this->selectshow(DEPARTMENTS, $result, "departments", "--- Any Department ---");
         }
-      break;  
+      break;
       case ReportWizard_courses:
         if ($hidden)
           $this->preservearrayattribute("courses");
         else
         {
-          if (!$db) $db = wces_connect();
-          $this->query->addcolumn("c.courseid, concat(s.code, c.code, ' ', IFNULL(c.name,'')) AS coursename");
-          $this->query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-          $this->query->addjoin("subjects AS s",db_SelectMonster_inner,"s.subjectid","c.subjectid");
-          $this->query->addgroup("c.courseid");
-          $this->query->addordering("coursename");
-          $this->query->execute($db);
-          $criteria = $this->criteria["courses"];
-          if (!$criteria) $criteria = array("all");
-          $hash = array();
-          foreach($criteria as $value)
-            $hash[$value] = true;
-
+          $result = $this->selectquery(COURSES, $this->queries[COURSES], true);
           print("<p>Surveys included in the report must come from these courses:</p>\n");
-          print('<select name="' . $this->prefix . '_courses[]" size=7 multiple>' . "\n");
-          print('<option value="all"' . ($hash["all"] ? " selected" : "") . ">--- Any Course ---</option>\n");
-        
-          while($this->query->advance())
-          {
-            extract($this->query->row);
-            $selected = $hash[$courseid] ? " selected" : "";
-            print("<option value=\"$courseid\"$selected>$coursename</option>");
-          }          
-          print("</select>\n");
+          $this->selectshow(COURSES, $result, "courses", "--- Any Course ---");
         }
-      break; 
+      break;
       case ReportWizard_profs:
         if ($hidden)
           $this->preservearrayattribute("professors");
         else
         {
-          if (!$db) $db = wces_connect();
-          $this->query->addcolumn("p.professorid, p.name");
-          $this->query->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
-          $this->query->addgroup("p.professorid");
-          $this->query->execute($db);
-          $criteria = $this->criteria["professors"];
-          if (!$criteria) $criteria = array("all");
-          $hash= array();
-          foreach($criteria as $value)
-            $hash[$value] = true;
+          $result = $this->selectquery(PROFESSORS, $this->queries[PROFESSORS], true, true, true);
           print("<p>Surveys included in the report must come from classes with these professors:</p>\n");
-          print('<select name="' . $this->prefix . '_professors[]" size=7 multiple>' . "\n");
-          print('<option value="all"' . ($hash["all"] ? " selected" : "") . ">--- Any Professor ---</option>\n");
-          $plist = array();
-          while($this->query->advance())
-          if ($name = $this->query->row["name"]) 
-          {
-            $pos = strrpos($name," ");
-            array_push($plist,array("first" => substr($name,0,$pos), "last" => substr($name,$pos), "professorid" => $this->query->row["professorid"]));
-          }
-          usort($plist,"pcmp");
-          foreach($plist as $p)
-          {
-            extract($p);
-            $selected = $hash[$professorid] ? " selected" : "";
-            print("<option value=\"$professorid\"$selected>$last, $first</option>");
-          }  
-          print("</select>\n");  
+          $this->selectshow(PROFESSORS, $result, "professors", "--- Any Professor ---");
         }
       break;
       case ReportWizard_aggreg:
@@ -398,15 +354,15 @@ class ReportWizard extends Wizard
 <? $this->groupprofessors->display(); ?> <? $this->groupprofessors->displaylabel("Professors"); ?><br>
 <? $this->groupdepartments->display(); ?> <? $this->groupdepartments->displaylabel("Departments"); ?><br>
 <? $this->groupquestionperiods->display(); ?> <? $this->groupquestionperiods->displaylabel("Question Periods"); ?><br>
-</p> 
+</p>
 <?
           };
         };
-      break;  
+      break;
       case ReportWizard_order:
         if ($hidden || $this->output->checked == ReportWizard_output_email)
           $this->order->display(true);
-        
+
         if (!$hidden)
         {
           if($this->output->checked == ReportWizard_output_email)
@@ -416,7 +372,7 @@ class ReportWizard extends Wizard
             print("<p>Report pages will be ordered by these properties (highest priority first):</p>");
             $this->order->display();
           }
-        }  
+        }
       break;
       case ReportWizard_finish:
         if (!$hidden)
@@ -426,14 +382,19 @@ class ReportWizard extends Wizard
       break;
     };
   }
-  
-  function summarize()
+
+  function summarize($initialized = false)
   {
-    global $db;
-    if (!$db) $db = wces_connect();
-     
+    global $wces;
+    
+    if (!$initialized)
+    {
+      wces_connect();
+      report_findtopics("rwtopics", $this->criteria, true);
+    }
+    
     $report = "------------------------\nREPORT OPTIONS\n\n";
-     
+
     $report .= "Output: " . ($this->output->checked == ReportWizard_output_email ? "Professor Email" : "Web Report") . "\n";
     $report .= "Standard Questions: " . ($this->includestandard->checked ? "Yes" : "No") . "\n";
     $report .= "Custom Questions: " . ($this->includecustom->checked ? "Yes" : "No") . "\n";
@@ -441,13 +402,12 @@ class ReportWizard extends Wizard
     $report .= "Comments: " . ($this->includetext->checked ? "Yes" : "No") . "\n";
     $report .= "TA Ratings: " . ($this->includeta->checked ? "Yes" : "No") . "\n";
 
-
     if ($this->output->checked == ReportWizard_output_www)
     {
       $report .= "Pie Graphs: " . ($this->includepies->checked ? "Yes" : "No") . "\n";
       $report .= "Printable: " . ($this->printable->checked ? "Yes" : "No") . "\n";
       $report .= "Exhaustive Listings: " . ($this->bighead->checked ? "Yes" : "No") . "\n";
-      
+
       $first = true;
       $report .= "Group by: ";
       if ($this->groupclasses->checked) { if ($first) $first = false; else $report.=", "; $report.="Classes"; }
@@ -456,144 +416,83 @@ class ReportWizard extends Wizard
       if ($this->groupdepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="Departments"; }
       if ($this->groupquestionperiods->checked) { if ($first) $first = false; else $report.=", "; $report.="Question Periods"; }
       if ($first) $report .= "None";
-      $report .= "\n";       
-      
+      $report .= "\n";
+
       $report .= "Order by: ";
       $first = true;
       foreach($this->order->items as $item)
       {
         if ($first) $first = false; else $report .= ", ";
-        $report .= $this->order->orderonlyitems[$item];  
+        $report .= $item;
       }
       $report .= "\n";
     }
 
     $report .= "\n------------------------\nREPORT CRITERIA\n\n";
 
-    $list = $this->criteria["topics"];
+    $list = $this->criteria[CATEGORIES];
     if ($list)
     {
       $group = db_set($list);
-      $y = db_exec("SELECT topicid, name FROM topics WHERE topicid IN $group ORDER BY topicid",$db,__FILE__,__LINE__);
-      while($row = mysql_fetch_array($y))
-      {
-        extract($row);
-        $report .= "Topic: $name ($topicid)\n";
-      };
+      $this->critshow("SELECT survey_category_id AS id, name FROM survey_categories WHERE survey_category_id IN $group ORDER BY survey_category_id", $report, "Category");
     }
     else
-      $report .= "Topic: ANY\n";
+      $report .= "Category: ANY\n";
 
-    $list = $this->criteria["questionperiods"];
+    $list = $this->criteria[QUESTION_PERIODS];
     if ($list)
     {
       $group = db_set($list);
-      $y = mysql_query("SELECT questionperiodid, year, semester, description FROM questionperiods WHERE questionperiodid IN $group ORDER BY year DESC, semester DESC, questionperiodid DESC",$db);
-      while($row = mysql_fetch_array($y))
-      {
-        extract($row);
-        $report .= "Question Period: " . ucwords($semester) . " $year $description ($questionperiodid)\n";
-      };
+      $this->critshow("SELECT question_period_id AS id, displayname AS name FROM question_periods WHERE question_period_id IN $group ORDER BY question_period_id DESC", $report, "Question Period");
     }
     else
       $report .= "Question Period: ANY\n";
-        
-    $q = $this->query;
-    if ($this->criteria["departments"])
-    {
-      $q->addcolumn("d.departmentid, d.name, d.code");
-      $q->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-      $q->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");
-      $q->addgroup("d.departmentid");
-      $q->addordering("d.code");
-      $q->execute($db);
-      while($q->advance())
-      {
-        extract($q->row);
-        $report .= "Department: $code $name ($departmentid)\n";
-      };
-    }
+
+    if ($this->criteria[DEPARTMENTS])
+      $this->critshow($this->queries[DEPARTMENTS], $report, "Department");
     else
       $report .= "Department: ANY\n";
-    
-    $q = $this->query;
-    if ($this->criteria["professors"])
-    {
-      $q->addcolumn("p.professorid, p.name");
-      $q->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
-      $q->addgroup("p.professorid");
-      $q->execute($db);
-      while($q->advance())
-      {
-        extract($q->row);
-        $report .= "Professor: $name ($professorid)\n";
-      };  
-    }
+
+    if ($this->criteria[PROFESSORS])
+      $this->critshow($this->queries[PROFESSORS], $report, "Professor");
     else
       $report .= "Professor: ANY\n";
-       
-    $q = $this->query;
-    if ($this->criteria["courses"])
-    {
-      $q->addcolumn("c.courseid, concat(s.code, c.code, ' ', IFNULL(c.name,'')) AS coursename");
-      $q->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-      $q->addjoin("subjects AS s",db_SelectMonster_inner,"s.subjectid","c.subjectid");
-      $q->addgroup("c.courseid");
-      $q->addordering("coursename");
-      $q->execute($db);
-      while($q->advance())
-      {
-        extract($q->row);
-        $report .= "Course: $coursename ($courseid)\n";
-      };
-    }
+
+    if ($this->criteria[COURSES])
+      $this->critshow($this->queries[COURSES], $report, "Course");
     else
       $report .= "Course: ANY\n";
-    
-    return $report;     
+
+    return $report;
   }
-  
-  function makecriteria(&$query,&$criteria)
+
+  function makequery(&$criteria)
   {
-    if ($criteria["topics"])
-    {
-      $query->addwhere("a.topicid IN " . db_set($criteria["topics"]));
-    };
+    $query = new db_SelectMonster();
+    $query->settable("survey_responses AS r");
+    $query->addjoin("wces_topics AS t",db_SelectMonster_inner,"t.topic_id = r.topic_id");
+    $query->addjoin("classes AS cl",db_SelectMonster_inner,"cl.class_id = t.class_id");
     
-    if ($criteria["questionperiods"])
-    {
-      $query->addwhere("qp.questionperiodid IN " . db_set($criteria["questionperiods"]));
-      $query->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
-    }; 
+    if (is_array($criteria[CATEGORIES]))
+      $query->addwhere("t.category_id IN " . db_set($criteria["categories"]));
+
+    if (is_array($criteria[QUESTION_PERIODS]))
+      $query->addwhere("r.question_period_id IN " . db_set($criteria["questionperiods"]));
+
+    if (is_array($criteria[DEPARTMENTS]))
+      $query->addwhere("cl.department_id IN " . db_set($criteria["departments"]));
+
+    if (is_array($criteria[PROFESSORS]))
+      $query->addwhere("e.user_id IN " . db_set($criteria["professors"]));
     
-    if ($criteria["departments"])
-    {
-      $query->addwhere("d.departmentid IN " . db_set($criteria["departments"]));
-      $query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-      $query->addjoin("departments AS d",db_SelectMonster_inner,"d.departmentid","c.departmentid");    
-    };
-    
-    if ($criteria["professors"])
-    {
-      $query->addwhere("p.professorid IN " . db_set($criteria["professors"]));
-      $query->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
-    };
-    
-    if ($criteria["courses"])
-    {
-      $query->addwhere("c.courseid IN " . db_set($criteria["courses"]));
-      $query->addjoin("courses AS c",db_SelectMonster_inner,"c.courseid","cl.courseid");
-    }; 
-    
-    if ($criteria["classes"])
-    {
-      $query->addwhere("cl.classid IN " . db_set($criteria["classes"]));
-    }
+    if ($criteria[PROFESSORS])
+      $query->addjoin("enrollments AS e",db_SelectMonster_inner,"e.class_id = cl.class_id AND e.status = 3");
+
+    if ($criteria[COURSES])
+      $query->addwhere("cl.course_id IN " . db_set($criteria["courses"]));
+
+    return $query;
   }
 }
 
-function pcmp($a, $b)
-{
-  return strcmp($a["last"],$b["last"]);
-} 
 ?>
