@@ -359,6 +359,7 @@ CREATE TABLE taratings (
   tauserid int(11) default NULL,
   questionperiodid int(11) default NULL,
   classid int(11) default NULL,
+  topicid int(11) default NULL,
   name tinytext,
   overall int(11) default NULL,
   knowledgeability int(11) default NULL,
