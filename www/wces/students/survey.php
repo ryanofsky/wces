@@ -62,6 +62,7 @@ else
   $seconds = 3600;
   session_cache_limiter('public');
   header('Cache-Control: public');
+  header("Pragma: public");
   header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
   header('Last-Modified: ' . gmdate('D, d M Y H:i:s', getlastmod()) . ' GMT');
 

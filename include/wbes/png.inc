@@ -8,6 +8,7 @@ function png_start($file, $seconds)
 {
   session_cache_limiter('public');
   header('Cache-Control: public');
+  header('Pragma: public');
   header('ETag: ' . md5($_SERVER['QUERY_STRING']));
   header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
   header('Last-Modified: ' . gmdate('D, d M Y H:i:s', filemtime($file)) . ' GMT');
