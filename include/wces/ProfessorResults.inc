@@ -24,25 +24,26 @@ class ProfessorResults extends ParentWidget
   function ProfessorResults($name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->urlShortName('class_id');
-    $this->urlShortName('question_period_id');
-    $this->urlShortName('era');
-    $this->urlShortName('printable');
+    $this->shortName('class_id');
+    $this->shortName('question_period_id');
+    $this->shortName('era');
+    $this->shortName('printable');
   }
 
-  function & loadState()
+  function loadState($new)
   {
-    $mode = WIDGET_FORM | WIDGET_URL;
+    ParentWidget::loadState($new);
+    if ($new) return;
+    
+    $this->question_period_id = (int)$this->readValue('question_period_id');
 
-    $this->question_period_id = (int)$this->readValue('question_period_id', $mode);
-
-    $cid = (int)$this->readValue('class_id', $mode);
+    $cid = (int)$this->readValue('class_id');
     $this->class_id = $cid ? $cid : false;
 
-    $era = $this->readValue('era', $mode);
+    $era = $this->readValue('era');
     $this->era = isset($era) ? (int)$era : ERA_POSTGRES;
 
-    $this->printable = (bool)$this->readValue('printable', $mode);
+    $this->printable = (bool)$this->readValue('printable');
 
     if ($this->question_period_id)
     {
@@ -56,18 +57,18 @@ class ProfessorResults extends ParentWidget
   {
     global $wces;
 
-    $user_id = login_getuserid();
+    $user_id = LoginValue('user_id');
     wces_connect();
 
-    print("<h3>" . login_getname() . " - Survey Responses</h3>\n");
+    print("<h3>" . LoginValue('name') . " - Survey Responses</h3>\n");
 
     $result = pg_go("
       SELECT t.topic_id, t.class_id, get_class(t.class_id) AS class_info, q.question_period_id, q.displayname,
         (SELECT COUNT(DISTINCT user_id) FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id) AS responses
-      FROM enrollments AS e
+      FROM enrollments_p AS e
       INNER JOIN wces_topics AS t USING (class_id)
       INNER JOIN semester_question_periods AS q USING (question_period_id)
-      WHERE e.user_id = $user_id AND e.status = 3 AND q.profdate < (SELECT NOW())
+      WHERE e.user_id = $user_id AND q.profdate < (SELECT NOW())
       ORDER BY q.enddate DESC, q.question_period_id DESC, class_info
     ", $wces, __FILE__, __LINE__);
 
@@ -219,7 +220,7 @@ class ResultPage extends ParentWidget
 
   function printVisible()
   {
-    $user_id = login_getuserid();
+    $user_id = LoginValue('user_id');
 
     ob_flush(); flush();
 
