@@ -819,7 +819,7 @@ class ChoiceWidget extends ComponentWidget
           
         $q =& $this->component->questions[$i];
 
-        if (0 && isset($a))
+        if (isset($a))
         {
           $cast = $this->component->select_many ? '::integer[]' : '::integer';
           $cache_update = "select cached_choice_responses_add ($topic_id, "
