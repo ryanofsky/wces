@@ -99,7 +99,7 @@ if ($mode == "professors")
   FROM answersets AS a
   INNER JOIN classes as cl USING (classid)
   INNER JOIN professors AS p USING (professorid)
-  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4)
+  WHERE $answer_criteria
   GROUP BY p.professorid
   ORDER BY last, first
   ",$db, __FILE__, __LINE__);
@@ -153,7 +153,7 @@ else if ($mode == "search")
 		  FROM answersets AS a
 		  INNER JOIN classes AS cl USING (classid)
 		  INNER JOIN professors AS p USING (professorid)
-		  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4) AND ($search)
+		  WHERE $answer_criteria AND ($search)
       GROUP BY p.professorid
 		  LIMIT 100",$db,__FILE__,__LINE__);
 		}  
@@ -199,15 +199,15 @@ else // $mode == "courses"
   <script>AttachImage('profs','proflit.jpg'); AttachImage('search','searchlit.jpg')</script>
   <?  
 
-  $y = mysql_query("
+  $y = db_exec("
 
   SELECT c.courseid, c.name, c.code, s.code AS scode, d.name AS dname, d.departmentid FROM answersets AS a
   INNER JOIN classes as cl USING (classid)
   INNER JOIN courses AS c USING (courseid)
   INNER JOIN departments AS d USING (departmentid)
   LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
-  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4)
-  GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);
+  WHERE $answer_criteria
+  GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db,__FILE__,__LINE__);
 
   $departmentidprev = -1;
 
