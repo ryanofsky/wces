@@ -1,10 +1,13 @@
 <?
   require_once("wbes/general_url.inc");
   
-  define("server_mode","oracle"); // "oracle" "yahweh"  "yahwehisapi"
+  define("server_mode","yahweh"); // "oracle" "yahweh"  "yahwehisapi"
 
   $server_media = "/wces/media";
   $server_session_name = "session";    
+  //ini_set ('display_startup_errors', 1);
+  //ini_set ('display_errors', 1);
+  //error_reporting (E_ALL);
 
   if (server_mode == "oracle")
   {
@@ -21,7 +24,7 @@
       $HTTP_SERVER_VARS["SERVER_PORT"],
       $HTTP_SERVER_VARS["SCRIPT_NAME"],
       $HTTP_SERVER_VARS["PATH_INFO"],
-      "?$HTTP_SERVER_VARS[QUERY_STRING]"
+      $HTTP_SERVER_VARS["QUERY_STRING"]
     );
         
     function server_mysqlinit()
@@ -38,8 +41,8 @@
   {                        
     $server_isproduction = false;
     $server_win32 = true;  
-    $server_base = "http://esurveys.hn.org";
-    $server_sbase = "https://esurveys.hn.org:999";
+    $server_base = "http://russ.esurveys.hn.org";
+    $server_sbase = "http://russ.esurveys.hn.org";
     $server_tempdir = "M:/server/shares/temp";
     $server_cheapredirects = true;
     $server_url = new URL
@@ -49,7 +52,7 @@
       $HTTP_SERVER_VARS["SERVER_PORT"],
       $HTTP_SERVER_VARS["SCRIPT_NAME"],
       substr($HTTP_SERVER_VARS["PATH_INFO"], strlen($HTTP_SERVER_VARS["SCRIPT_NAME"])),
-      isset($HTTP_SERVER_VARS["QUERY_STRING"]) ? "?$HTTP_SERVER_VARS[QUERY_STRING]" : "?"
+      isset($HTTP_SERVER_VARS["QUERY_STRING"]) ? $HTTP_SERVER_VARS["QUERY_STRING"] : ""
     );
 
     function server_mysqlinit()
@@ -59,15 +62,15 @@
     
     function server_pginit($dbname = "wbes")
     {
-      return pg_Connect("host=localhost dbname=$dbname user=postgres password=------");
+      return pg_Connect("host=localhost dbname=$dbname user=postgres password=--------");
     }
   }
   else if (server_mode == "yahwehisapi")
   {
     $server_isproduction = false;
     $server_win32 = true;
-    $server_base = "http://esurveys.hn.org";
-    $server_sbase = "https://esurveys.hn.org:999";
+    $server_base = "http://russ.esurveys.hn.org";
+    $server_sbase = "http://russ.esurveys.hn.org";
     $server_tempdir = "M:/server/shares/temp";
     $server_cheapredirects = false;
     $server_url = new URL
@@ -77,7 +80,7 @@
       $HTTP_SERVER_VARS["SERVER_PORT"],
       $HTTP_SERVER_VARS["SCRIPT_NAME"],
       substr($HTTP_SERVER_VARS["PATH_INFO"], strlen($HTTP_SERVER_VARS["SCRIPT_NAME"])),
-      isset($HTTP_SERVER_VARS["QUERY_STRING"]) ? "?$HTTP_SERVER_VARS[QUERY_STRING]" : "?"
+      isset($HTTP_SERVER_VARS["QUERY_STRING"]) ? $HTTP_SERVER_VARS["QUERY_STRING"] : ""
     );
             
     function server_mysqlinit()
