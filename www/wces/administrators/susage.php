@@ -16,7 +16,7 @@ $result = pg_query("
 ", $wces, __FILE__, __LINE__);
 extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
-page_top("Student Usage Data for $displayname]");
+page_top("Student Usage Data for $displayname");
 
 ///////////////////////////////////////////////////////////////////////////////
 $ssid = $survey_category_id = (int) $survey_category_id;
@@ -145,7 +145,7 @@ for($i=0; $i<$n; ++$i)
 {
   extract(pg_fetch_array($classes,$i,PGSQL_ASSOC));
   print("<tr>\n  <td>$responses</td>\n  <td>" . ($students - $responses)  . "</td>\n  <td>$students</td>\n");
-  $classinfo = format_class($cl, "%c %n Section %s", true) . format_profs($p, true, "<br>Professor ");
+  $classinfo = format_class($cl, "%c %N Section %s", true) . format_profs($p, true, "<br>Professor ");
   print("  <td>$classinfo</td>\n");  
   print("</tr>\n");
 }
