@@ -70,5 +70,29 @@ function pg_show($result,$name = "Result", $showtypes = false)
   print("<p><b>No Result</b></p>\n");
 }
 
+class pg_wrapper
+{
+  var $row = false;
+  var $rkey = 0;
+  var $rows = 0;
+  var $result = NULL;
+  
+  function pg_wrapper($result)
+  {
+    $this->rows = pg_numrows($result);
+    $this->result = $result;
+    $this->advance();
+  }
+  
+  function advance()
+  {
+    if ($this->rkey < $this->rows)
+      $this->row = pg_fetch_array($this->result,$this->rkey,PGSQL_ASSOC);
+    else
+      $this->row = false;
+    ++$this->rkey;
+    return $this->row;
+  }
+}
 
 ?>
