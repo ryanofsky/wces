@@ -80,7 +80,6 @@ td.sidelinks
   font-family: Verdana, Arial, Helvetica, sans-serif;
   font-weight: bold;
   font-color: black;
-  white-space: nowrap;
 }
 
 /* styles used in survey builder */
@@ -138,4 +137,30 @@ td.insertmenuhover
   font-style: normal;
   font-weight: 700;
   src: url(TREBUCH0.eot);
+}
+
+.plainbox
+{ 
+  background: transparent;
+  background-color: White;
+  border: 1px solid #000000;
+  color: #000000;
+  font-family: Verdana,Arial,Helvetica;
+  font-size: x-small;
+  text-align: left;
+  scrollbar-face-color: #CCCCCC;
+  scrollbar-shadow-color: #FFFFFF;
+  scrollbar-highlight-color: #FFFFFF;
+  scrollbar-3dlight-color: #FFFFFF;
+  scrollbar-darkshadow-color: #FFFFFF;
+  scrollbar-track-color: #FFFFFF;
+  scrollbar-arrow-color: #000000
+}
+
+.reallytinybutton
+{
+  font-weight: bolder;
+  font-size: xx-small;
+  cursor: hand;
+  font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
 }
