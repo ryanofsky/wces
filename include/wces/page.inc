@@ -102,7 +102,7 @@ function showhelp(topic)
     if ($status & login_knownprofessor)
     {
       page_spacer();
-      //page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
+      page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
       page_link("Survey Results",   "professors/seeresults.php", $QSID);
       //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
       //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);

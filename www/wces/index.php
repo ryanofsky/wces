@@ -69,9 +69,7 @@ and make the rest of the site accessible to you.
 ?>
 <p><?=$pimg?>Here is a list of the options currently available for professors:</p>
 <ul>
-<? /*
   <li><a href="<?=$wces_path?>professors/surveys.php<?= ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID) ?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
-*/ ?>
   <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys. Access to the results of course evaluations will be available at the close of the evaluation period</li>
 <? /*
   <li><a href="<?=$wces_path?>professors/respond/multiclasses.php<?=$QSID?>">Survey Responses</a> - Post responses to your survey results</li>
