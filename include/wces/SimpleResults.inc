@@ -166,6 +166,7 @@ class SimpleResults
         $this->addBase($class_id, $qtext, $dist);
       }
     }
+    $this->class_ids = $class_ids;
   }
 
   function addStatistic($class_id, $students, $responses)
