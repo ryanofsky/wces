@@ -34,7 +34,7 @@ function topics_list($question_period_id)
     ( "<h5>Course Surveys</h5>\n",
       "
         SELECT t.item_id, t.specialization_id, get_course(t.course_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
-        FROM wces_course_topics_new AS t
+        FROM wces_course_topics AS t
         ORDER BY name
       ", 
       TOPICS_COURSE
