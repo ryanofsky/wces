@@ -2,13 +2,20 @@
 
 /*
 
-put this stuff in the database:
+first initialize the database:
 
-TRUNCATE branches;
-TRUNCATE revisions;
-INSERT INTO branches (branch_id, branch) VALUES (1,1);
+\o nul
+DELETE FROM topics;
+DELETE FROM branches;
+DELETE FROM revisions;
+DELETE FROM list_items;
+INSERT INTO topics (topic_id) VALUES (1);
+INSERT INTO branches (branch_id, base_branch_id, topic_id) VALUES (1,1,1);
 INSERT INTO revisions (revision_id, type, branch_id, revision) VALUES (1,1,1,1);
 SELECT branch_generate();
+SELECT branch_ancestor_generate();
+SELECT branch_topics_generate();
+\o
 
 */
 
@@ -30,7 +37,7 @@ $factories = array
   new HeadingFactory()
 );
 
-$q = new SurveyEditor(1, $factories, "prefix","f",WIDGET_POST);
+$q = new SurveyEditor(1, 1, $factories, "prefix","f",WIDGET_POST);
 $q->loadvalues();
 
 if ($q->barepage) 
