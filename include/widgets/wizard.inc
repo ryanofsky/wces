@@ -53,20 +53,20 @@ class Wizard extends FormWidget
       $move = -1;
     else if ($this->loadattribute("next"))
       $move = 1;
-	else 
-	  $move = 0;
+    else 
+      $move = 0;
     
-	array_point($this->showstep,$this->steps);
+    array_point($this->showstep,$this->steps);
     $this->showstep = key($this->steps);
     if ($move)
     do
     {
-	  if ($move < 0) prev($this->steps); else next($this->steps);
-	  $oldkey = $this->showstep;
-	  $this->showstep = key($this->steps);
-	  if(!isset($this->showstep)) {$this->showstep = $oldkey; break; }
-	}	
-	while($skipsteps[$this->showstep]);
+      if ($move < 0) prev($this->steps); else next($this->steps);
+      $oldkey = $this->showstep;
+      $this->showstep = key($this->steps);
+      if(!isset($this->showstep)) {$this->showstep = $oldkey; break; }
+    }	
+    while(isset($skipsteps[$this->showstep]) && $skipsteps[$this->showstep]);
   }
   
   function loadvalues($crawl = true)
