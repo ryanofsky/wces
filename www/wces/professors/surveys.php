@@ -5,7 +5,7 @@ require_once("wbes/component_heading.inc");
 require_once("wbes/component_choice.inc");
 require_once("wbes/component_textresponse.inc");
 require_once("wbes/component_pagebreak.inc");
-require_once("wces/component_abet.inc");
+//require_once("wces/component_abet.inc");
 
 require_once("wbes/server.inc");
 require_once("wbes/surveyeditor.inc");
@@ -25,7 +25,7 @@ $factories = array
   new TextFactory(),
   new HeadingFactory(),
   new PageBreakFactory(),
-  new AbetFactory()
+//  new AbetFactory()
 );
 
 if($topic_id)
