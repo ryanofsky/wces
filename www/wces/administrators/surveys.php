@@ -12,6 +12,8 @@ require_once("wbes/surveyeditor.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 
+login_protect(login_administrator);
+
 param($topic_id);
 
 $factories = array
@@ -81,14 +83,21 @@ if (!$q || $q->state == SurveyEditor_done)
   topics_link($result);
   
   print("<h5>Individual Classes</h5>\n");
+
+  $result = pg_query("
+    SELECT question_period_id, displayname, year, semester
+    FROM semester_question_periods
+    WHERE question_period_id = (SELECT get_question_period())
+  ", $wces, __FILE__, __LINE__);
+  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   
   $result = pg_query("
-    SELECT t.topic_id, (s.code || ' ' || c.divisioncode || c.code || ' ' || c.name) AS name
+    SELECT t.topic_id, (s.code || ' ' || c.divisioncode || c.code || ' ' || cl.section || ' ' || c.name) AS name
     FROM wces_topics AS t
     INNER JOIN classes AS cl USING (class_id)
     INNER JOIN courses AS c USING (course_id)
     INNER JOIN subjects AS s USING (subject_id)
-    WHERE t.category_id IS NOT NULL AND t.class_id IS NOT NULL
+    WHERE t.class_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
     ORDER BY s.code, c.code
   ", $wces, __FILE__, __LINE__);
   topics_link($result);
