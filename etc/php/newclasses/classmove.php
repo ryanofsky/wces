@@ -236,7 +236,28 @@ if($do_penrollments)
 
 if ($do_profhooks)
 {
-  print("todo");
+  $result = db_exec("
+    SELECT professorid, source, first, middle, last, fullname, pid FROM professordupedata
+  ", $my, __FILE__, __LINE__);
+  $first = true;
+  $sources = array('regweb' => 1,'regpid' => 2,'oracle' => 3,'oldclasses' => 4);
+  while($row = mysql_fetch_assoc($result))
+  {
+    if (isset($sources[$row['source']]))
+      $src = $sources[$row['source']];
+    else
+      $src = 'NULL';
+    aarray_map("nullquot", $row);    
+    $r = pg_query("SELECT professor_hooks_update(temp_profr($row[professorid]), $src, $row[fullname], $row[first], $row[last], $row[middle], $row[pid])", $pg, __FILE__, __LINE__);
+    $r = pg_result($r, 0, 0);
+    if ($first) $first = false; else print(",");
+    if (++$i % 100 == 0) { print("<br>\n"); flush(); }
+    
+    if (!$r) print("\n\n\n<h1><font color=red>***");
+    print("$row[professorid]/$row[source]/$r");
+    if (!$r) print("***</font></h1>\n\n\n");
+  }
+  print("<br>\n" . mysql_num_rows($result) . " rows<br><br>\n");
 }
 
 
