@@ -6,6 +6,9 @@ function makereport(&$wizard,$stdout,&$html,&$text)
 {
   global $wces_path, $wces;
 
+  $outhtml = is_string($html);
+  $outtext = is_string($text);
+
   $sqloptions = array
   (
     "standard" => $wizard->includestandard->checked || ($wizard->includetext->checked && !$wizard->includecustom->checked),
