@@ -73,7 +73,6 @@ p            { font-family: Verdana,Trebuchet MS, Arial, Helvetica, sans-serif; 
     <table cellspacing=0 cellpadding=0 width=235 border=0>
     <tr><td><a href="<%=$oracleroot%>aboutus.php"    onmouseover="swap('b1')" onmouseout="swap('b1')"><img name="b1" src="<%=$oracleroot%>media/aboutus_off.gif"    alt="About Us" width=235 height=87 border=0></a></td></tr>
     <tr><td><a href="<%=$oracleroot%>survey.php"     onmouseover="swap('b2')" onmouseout="swap('b2')"><img name="b2" src="<%=$oracleroot%>media/survey_off.gif"     alt="Survey" width=235 height=49 border=0></a></td></tr>
-    <tr><td><a href="<%=$oracleroot%>background.php" onmouseover="swap('b3')" onmouseout="swap('b3')"><img name="b3" src="<%=$oracleroot%>media/background_off.gif" alt="Background" width=235 height=48 border=0></a></td></tr>
     <tr><td><a href="<%=$oracleroot%>index.php"      onmouseover="swap('b4')" onmouseout="swap('b4')"><img name="b4" src="<%=$oracleroot%>media/home_off.gif"       alt="Home" width=235 height=64 border=0></a></td></tr>
     </table>
 
@@ -81,7 +80,7 @@ p            { font-family: Verdana,Trebuchet MS, Arial, Helvetica, sans-serif; 
 <!--
   AttachImage("b1","aboutus_on.gif");
   AttachImage("b2","survey_on.gif");
-  AttachImage("b3","background_on.gif");
+  //AttachImage("b3","background_on.gif");
   AttachImage("b4","home_on.gif");
 // -->
 </script>
