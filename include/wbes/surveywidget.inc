@@ -31,6 +31,7 @@ class SurveyWidget extends FormWidget
   var $page = 0;
   var $backup = true;
   var $ta;
+  var $message = "";
 
   function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, $prefix, $form, $formmethod)
   {
@@ -68,8 +69,11 @@ class SurveyWidget extends FormWidget
       $this->questionwidgets[] = $c;
     }
 
-    $this->ta->page = $page;
-    $this->questionwidgets[] = &$this->ta;
+    if ($this->ta)
+    {
+      $this->ta->page = $page;
+      $this->questionwidgets[] = &$this->ta;
+    }
 
     $this->pages = $page;
 
@@ -89,7 +93,10 @@ class SurveyWidget extends FormWidget
     if ($this->action->action == SurveyWidget_save)
       $this->save();
     else if ($this->action->action == SurveyWidget_cancel)
+    {
+      $this->message = "<p><font color=red>Responses Not Saved</font></p>";
       $this->finished = true;
+    }
     else if ($this->action->action == SurveyWidget_next)
       ++$this->page;
     else if ($this->action->action == SurveyWidget_previous)
@@ -169,7 +176,12 @@ class SurveyWidget extends FormWidget
       $this->failure = true;
       print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:' . $server_feedback . '">' . $server_feedback . '</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
     }
-    $this->finished = true;
+    else
+    {
+      $this->finished = true;
+      $this->message = "<p><font color=blue>Responses Saved</font></p>";      
+    }
+
   }
 
   function display()
