@@ -103,14 +103,15 @@ function PrintEnrollments($user_id)
 
   $classes = pg_query("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
-      t.topic_id, (cl.year = $year AND cl.semester = $semester) AND EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
+      t.topic_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND e.status = 1 AS survey,
+      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN classes AS cl USING (class_id)" . ($restricted ? "
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
     LEFT JOIN wces_topics AS t ON t.class_id = e.class_id" : "") . "
     WHERE e.user_id = $user_id" . ($restricted ? "
     AND (e.status > 1 OR myx.class_id IS NOT NULL)" : "") . "
-    ORDER BY cl.year DESC, cl.semester DESC"
+    ORDER BY cl.year DESC, cl.semester DESC, class"
   ,$wces,__FILE__,__LINE__);
 
   $stats = array(0 => "dropped", 1 => "student", 2 => "ta", 3 => "professor");
@@ -136,8 +137,7 @@ function PrintEnrollments($user_id)
     if ($surveys)
     {
       print("<td>");
-      //debugout((!$row['topic_id'] ? 1 : 0),"topic_id  ");
-      print((!$row['topic_id'] ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
+      print(($row['survey'] != 't' ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
     }
     print("</tr>\n");
   }
@@ -279,7 +279,7 @@ function PrintClassInfo($class_id)
     WHERE cl.class_id = $class_id
   ", $wces, __FILE__, __LINE__); 
   
-  $sems = array(0 => "Spring", 1 => "Summer", 2 => "Fall");
+  $sems = array(0 => "Spring", 1 => "Summer", 2 => "Fall", 3 => "Winter");
   if (pg_numrows($result) != 1) return;
   extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   
@@ -345,7 +345,7 @@ function PrintClassInfo($class_id)
   $stat = array(0 => "Dropped", 1 => "Student", 2 => "TA", 3 => "Professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
-  print("  <tr><td><b>Status</b></td><td><b>UNI</b></td><td><b>Name</b></td>");
+  print("  <tr><td><b>Status</b></td><td><b>DND</b></td><td><b>Name</b></td>");
   if ($surveys) print("<td><b>Surveyed</b></td>");
   print("</tr>\n");
   $n = pg_numrows($result);
@@ -400,7 +400,7 @@ function PrintCourseInfo($course_id)
     ORDER BY cl.year DESC, cl.semester DESC, cl.section
   ", $wces, __FILE__, __LINE__);
 
-  $sems = array(0 => 'Spring', 1 => 'Summer', 2 => 'Fall');
+  $sems = array(0 => 'Spring', 1 => 'Summer', 2 => 'Fall', 3 => 'Winter');
   print("<h4>Sections</h4>\n<ul>");
   $n = pg_numrows($result);
   for($i=0; $i < $n; ++$i)
