@@ -158,8 +158,8 @@ class ProfResponse extends ParentWidget
 
     $r = pg_go("
       SELECT cl.class_id, get_class(cl.class_id) AS cl, 
-        EXISTS (SELECT * FROM enrollments AS e WHERE e.user_id = $this->user_id 
-          AND class_id = l.class_id AND status = 3) as prof
+        EXISTS (SELECT * FROM enrollments_p AS e WHERE e.user_id = $this->user_id 
+          AND class_id = l.class_id) as prof
       FROM classes AS cl
       INNER JOIN ($select_classes) AS l USING (class_id)
       WHERE cl.course_id = $this->course_id
@@ -217,15 +217,17 @@ class ProfResponse extends ParentWidget
     }          
   }
   
-  function loadInitialState()
+  function loadState($new)
   {
-    ParentWidget::loadInitialState();
-    $this->getResults(true);
-  }
-  
-  function loadState()
-  {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    
+    if ($new) 
+    {
+      $this->getResults(true);
+      return;
+    }
+    
     $event = $this->event->event;
     if ($event == ProfResponse_save)
     {
