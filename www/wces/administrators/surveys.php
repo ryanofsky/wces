@@ -43,7 +43,7 @@ class TopicEditor extends StatefullWidget
 
   function printTopics($result, $class = false)
   {
-    global $pagename;
+    global $pagename, $ASID;
     $n = pg_numrows($result);
     print("<ul>\n");
     for($i = 0; $i < $n; ++$i)
@@ -52,7 +52,7 @@ class TopicEditor extends StatefullWidget
       if ($class) $name = format_class($name);
       print('  <li><a href="'
         . $this->event->getUrl(TopicEditor_choose, $topic_id)
-        . "\">$name</a></li>\n");
+        . "$ASID\">$name</a></li>\n");
     }
     print("</ul>\n");
   }
