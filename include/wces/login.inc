@@ -16,7 +16,7 @@ define("login_professor",      0x00000004);
 define("login_administrator",  0x00000008);
 define("login_any",            0x0000000F);
 
-$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts", "fake");
+$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts", "fake", "fakeuni");
 $LOGIN_SESSION = session_restore($LOGIN_SESSION_VARS, "login/");
 $LOGIN_PROMPTING = false;
 
@@ -30,7 +30,7 @@ function login_protect($requiredstatus)
     login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
 };
 
-function login_update($user_id, $fake = false)
+function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 {
   global $wces;
   
@@ -62,10 +62,10 @@ function login_update($user_id, $fake = false)
     
   $p['user_id'] = $user_id;
   
-  login_setup($user_id,$row['uni'],$status,$row['name'],(int)$row['dept'],$fake);
+  login_setup($user_id,$row['uni'],$status,$row['name'],(int)$row['dept'],$fake,$fakeuni);
 }
 
-function login_setup($userid, $uni, $status, $name, $deptid, $fake)
+function login_setup($userid, $uni, $status, $name, $deptid, $fake, $fakeuni)
 {
   global $LOGIN_SESSION, $LOGIN_SESSION_VARS;
   session_initialize($LOGIN_SESSION_VARS, "login/");
@@ -75,6 +75,7 @@ function login_setup($userid, $uni, $status, $name, $deptid, $fake)
   $LOGIN_SESSION["name"] = $name;
   $LOGIN_SESSION["depts"] = $deptid ? array($deptid) : false;
   $LOGIN_SESSION["fake"] = $fake;
+  $LOGIN_SESSION["fakeuni"] = $fakeuni;
 };
 
 function login_logout()
@@ -126,6 +127,13 @@ function login_getfake()
   global $LOGIN_SESSION;
   return isset($LOGIN_SESSION["fake"]) ? $LOGIN_SESSION["fake"] : false;
 };
+
+function login_getfakeuni()
+{
+  global $LOGIN_SESSION;
+  return isset($LOGIN_SESSION["fakeuni"]) ? $LOGIN_SESSION["fakeuni"] : false;
+};
+
 
 function login_whoami()
 {

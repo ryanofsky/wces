@@ -592,7 +592,7 @@ wces_connect();
 if ($fake && (login_getstatus() & login_administrator))
 {
   global $QSID;
-  login_update($fake, login_getuserid());
+  login_update($fake, login_getuserid(), login_getuni());
   redirect("{$wces_path}index.php$QSID");  
 }
 
