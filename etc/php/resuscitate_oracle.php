@@ -1,5 +1,8 @@
 <?
 
+// script to convert responses in the cheesyresponses and cheesyquestions
+// table into the answersets format that oracle can understand
+
 require_once("wces/wces.inc");
 require_once("wces/database.inc");
 
@@ -11,6 +14,8 @@ $qp = 9; // question period id
 $choices = array('a', 'b', 'c', 'd', 'e');
 $questions = array(1,2,3,4,5,6,7,8,9,10);
 
+
+// build up $allquestions and $allchoices strings
 $allquestions = $allchoices = "";
 foreach($questions as $q)
 {
@@ -26,21 +31,31 @@ foreach($questions as $q)
 $nchoices = count($choices);
 $nquestions = count($questions);
 
+// delete old responses instead of adding to them
+$db_debug = true;
+db_exec("DELETE FROM answersets WHERE questionperiodid = $qp AND questionsetid = $qs", $db, __FILE__, __LINE__);
+$db_debug = false;
+
+// put old question text into oldbase variable
 $db = wces_oldconnect();
 $result = db_exec("SELECT $allquestions FROM questionsets WHERE questionsetid = $qs", $db, __FILE__, __LINE__);
 $oldbase = mysql_fetch_assoc($result);
 
+// get new responses
 $result = db_exec("SELECT classid, dump FROM cheesyresponses WHERE questionperiodid = $qp order by classid", $db, __FILE__, __LINE__);
 $lastclassid = 0;
 $row = mysql_fetch_assoc($result);
 
-$db_debug = true;
-db_exec("DELETE FROM answersets WHERE questionperiodid = $qp AND questionsetid = $qs", $db, __FILE__, __LINE__);
-$db_debug = false;
+// loop through responses
 for(;;)
 {
+  // responses are ordered by class_id, so all responses for the same class_id will be adjacent
+  // if the current class_id is not the same as the last one...
   if (!$lastclassid || $lastclassid != $row['classid'])
   {
+    // need to grab the question set associated with this class, and match p its questions
+    // with the base questions in $oldbase
+    
     $count = 0;
     $map = array(); // map of prefixes to index in questions array
     $dist = array_pad(array(), $nchoices * $nquestions, 0);
@@ -87,6 +102,7 @@ for(;;)
   ++$count;
   $response = unserialize($row['dump']);
   
+  // some responses begin with student_ and others begin with survey_
   // find the row prefix
   $prefix = "";
   foreach($response as $k => $v)
