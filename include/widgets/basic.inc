@@ -178,11 +178,10 @@ class EventWidget extends Widget
 
   function parseParam($param)
   {
-      $r = explode(EVENT_WIDGET_SEPARATOR, $param);
-      if (count($r) < 2)
-        return $r[0];     
-      else
-        return $r;
+    if (!isset($param)) return null;
+    if (strlen($param) == 0) return '';
+    $r = explode(EVENT_WIDGET_SEPARATOR, $param);
+    return count($r) == 1 ? $r[0] : $r;
   }
 
   function setEvent($str)
@@ -381,7 +380,7 @@ last for a one or more page loads before it was destroyed and the main menu
 screen shown again.
 
 With this class, the logic behind the system no longer needs to be reimplemented.
-Complex menu widgets need only inherit from Widget and write a
+Complex menu widgets need only inherit from StateWidget and write a
 handleEvent() method. The handleEvent() method should look like this:
 
   function & handleEvent($event, $param, $isNew)
