@@ -118,11 +118,11 @@ class ReportWizard extends Wizard
         GROUP BY t.department_id, d.code, d.name
         ORDER BY d.code",
       COURSES => "
-        SELECT t.course_id AS id, s.code || ' ' || c.code || ' ' || COALESCE(c.name,'') AS name
+        SELECT t.course_id AS id, s.code || ' ' || c.divisioncode || c.code || ' ' || COALESCE(c.name,'') AS name
         FROM rwtopics AS t
         INNER JOIN courses AS c USING (course_id)
         INNER JOIN subjects AS s USING (subject_id)
-        GROUP BY t.course_id, s.code, c.code, c.name
+        GROUP BY t.course_id, s.code, c.divisioncode, c.code, c.name
         ORDER BY s.code, c.code",
       PROFESSORS => "
         SELECT t.user_id AS id, u.lastname || ', ' || u.firstname AS name
@@ -308,7 +308,7 @@ class ReportWizard extends Wizard
       case ReportWizard_aggreg:
         if ($hidden) break;
         
-        if ($this->output->checked == ReportWizard_output_email)
+        if ($this->output->output->checked == ReportWizard_output_email)
         {
           $this->groupClasses->displayHidden();
           $this->groupCourses->displayHidden();
@@ -317,7 +317,7 @@ class ReportWizard extends Wizard
           $this->groupQuestionPeriods->displayHidden();
         }
         
-        if ($this->output->checked == ReportWizard_output_email)
+        if ($this->output->output->checked == ReportWizard_output_email)
           print("<p>Aggregation is not available in email reports. Choose a web based report to use this feature.</p>");
         else
         {

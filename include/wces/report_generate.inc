@@ -60,113 +60,144 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
   makeall($stdout, $html, $text, $groups, $options);
 }
 
+// values in options array         
+//   responseStatistics: boolean, default true. 
+//     find number of responses and max possible number
+//   pies: boolean, default true
+//     for html reports draw pie graphs of response statistics
+//   multipleChoice: boolean, default true
+//     include multiple choice responses
+//   textResponses: boolean, default true
+//     include text responses
+//   taResponses: boolean, default true
+//     include results from TA section
+//   topicInfo: boolean, default true
+//     include information about survey topics (classes,
+//       professors, departments, question periods etc)
+//     this information appears in headers in the report
+//   pageNumbers: boolean, default true
+//     display page numbers
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
   global $wces_path, $wces, $line;
 
-  $result = pg_go("
-    SELECT s.ordinal, s.students, r.responses
-    FROM
-    (
-      -- this subselect contains the count of students for each ordinal
-      SELECT cc.ordinal, sum(cc.students) AS students
-      FROM
-      ( -- this subselect is needed to eliminate
-        -- duplicate class entries in the rwtopics
-        -- table that occur when a class has more than
-        -- one professor
-        SELECT t1.ordinal, cl1.students
-        FROM rwtopics AS t1
-        INNER JOIN classes AS cl1 USING (class_id)
-        GROUP BY t1.ordinal, t1.class_id, cl1.students
-      ) AS cc
-      GROUP BY cc.ordinal
-    ) AS s
-    INNER JOIN
-    (
-      -- this subselect contains the number of responses for each ordinal
-      SELECT t2.ordinal, COUNT(*) AS responses
-      FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t2
-      LEFT JOIN survey_responses AS r2 ON
-        r2.topic_id = t2.topic_id
-        AND r2.question_period_id = t2.question_period_id
-        AND r2.user_id IS NOT NULL
-      GROUP BY t2.ordinal
-    ) AS r ON s.ordinal = r.ordinal
-    ORDER BY s.ordinal
-  ", $wces, __FILE__, __LINE__);
-
-  $stats = new pg_segmented_wrapper($result, "ordinal");
-
-  $result = pg_go("
-    SELECT DISTINCT t.ordinal, d.name, d.code
-    FROM rwtopics AS t
-    INNER JOIN departments AS d USING (department_id)
-    ORDER BY t.ordinal
-  ", $wces, __FILE__, __LINE__);
-
-  $departments = new pg_segmented_wrapper($result, "ordinal");
-
-  $result = pg_go("
-    SELECT DISTINCT t.ordinal, t.question_period_id, qp.displayname
-    FROM rwtopics AS t
-    INNER JOIN question_periods AS qp USING (question_period_id)
-    ORDER BY t.ordinal
-  ", $wces, __FILE__, __LINE__);
-
-  $questionperiods = new pg_segmented_wrapper($result, "ordinal");
-
-  if ($groups[CLASSES] || $groups[PROFESSORS])
+  if (!isset($options['responseStatistics']) || $options['responseStatistics'])
   {
     $result = pg_go("
-      SELECT DISTINCT t.ordinal, t.class_id, s.code AS scode, c.code AS ccode, c.name, cl.section
-      FROM rwtopics AS t
-      INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN courses AS c ON c.course_id = cl.course_id
-      INNER JOIN subjects AS s USING (subject_id)
-      ORDER BY t.ordinal
+      SELECT s.ordinal, s.students, r.responses
+      FROM
+      (
+        -- this subselect contains the count of students for each ordinal
+        SELECT cc.ordinal, sum(cc.students) AS students
+        FROM
+        ( -- this subselect is needed to eliminate
+          -- duplicate class entries in the rwtopics
+          -- table that occur when a class has more than
+          -- one professor
+          SELECT t1.ordinal, cl1.students
+          FROM rwtopics AS t1
+          INNER JOIN classes AS cl1 USING (class_id)
+          GROUP BY t1.ordinal, t1.class_id, cl1.students
+        ) AS cc
+        GROUP BY cc.ordinal
+      ) AS s
+      INNER JOIN
+      (
+        -- this subselect contains the number of responses for each ordinal
+        SELECT t2.ordinal, COUNT(*) AS responses
+        FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t2
+        LEFT JOIN survey_responses AS r2 ON
+          r2.topic_id = t2.topic_id
+          AND r2.question_period_id = t2.question_period_id
+          AND r2.user_id IS NOT NULL
+        GROUP BY t2.ordinal
+      ) AS r ON s.ordinal = r.ordinal
+      ORDER BY s.ordinal
     ", $wces, __FILE__, __LINE__);
-
-    $classes = new pg_segmented_wrapper($result, "ordinal");
-
-    $result = pg_go("
-      SELECT DISTINCT t.ordinal, t.user_id, u.firstname, u.lastname
-      FROM rwtopics AS t
-      INNER JOIN users AS u USING (user_id)
-      ORDER BY t.ordinal
-    ", $wces, __FILE__, __LINE__);
-
-    $professors = new pg_segmented_wrapper($result, "ordinal");
+    
+    $stats =& new pg_segmented_wrapper($result, "ordinal");
   }
   else
+    $stats = NULL;
+  
+  if (!isset($options['topicInfo']) || $options['topicInfo'])
   {
     $result = pg_go("
-      SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
+      SELECT DISTINCT t.ordinal, d.name, d.code
       FROM rwtopics AS t
-      INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN courses AS c ON c.course_id = cl.course_id
-      INNER JOIN subjects AS s USING (subject_id)
-      INNER JOIN users AS u USING (user_id)
+      INNER JOIN departments AS d USING (department_id)
       ORDER BY t.ordinal
     ", $wces, __FILE__, __LINE__);
-
-    $classes = new pg_segmented_wrapper($result, "ordinal");
-
-    $professors = NULL;
+  
+    $departments =& new pg_segmented_wrapper($result, "ordinal");
+  
+    $result = pg_go("
+      SELECT DISTINCT t.ordinal, t.question_period_id, qp.displayname
+      FROM rwtopics AS t
+      INNER JOIN question_periods AS qp USING (question_period_id)
+      ORDER BY t.ordinal
+    ", $wces, __FILE__, __LINE__);
+  
+    $questionperiods =& new pg_segmented_wrapper($result, "ordinal");
+  
+    if ($groups[CLASSES] || $groups[PROFESSORS])
+    {
+      $result = pg_go("
+        SELECT DISTINCT t.ordinal, t.class_id, s.code AS scode, c.code AS ccode, c.name, cl.section
+        FROM rwtopics AS t
+        INNER JOIN classes AS cl USING (class_id)
+        INNER JOIN courses AS c ON c.course_id = cl.course_id
+        INNER JOIN subjects AS s USING (subject_id)
+        ORDER BY t.ordinal, s.code, c.code, cl.section
+      ", $wces, __FILE__, __LINE__);
+  
+      $classes =& new pg_segmented_wrapper($result, "ordinal");
+  
+      $result = pg_go("
+        SELECT DISTINCT t.ordinal, t.user_id, u.firstname, u.lastname
+        FROM rwtopics AS t
+        INNER JOIN users AS u USING (user_id)
+        ORDER BY t.ordinal
+      ", $wces, __FILE__, __LINE__);
+  
+      $professors =& new pg_segmented_wrapper($result, "ordinal");
+    }
+    else
+    {
+      $result = pg_go("
+        SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
+        FROM rwtopics AS t
+        INNER JOIN classes AS cl USING (class_id)
+        INNER JOIN courses AS c ON c.course_id = cl.course_id
+        INNER JOIN subjects AS s USING (subject_id)
+        INNER JOIN users AS u USING (user_id)
+        ORDER BY t.ordinal
+      ", $wces, __FILE__, __LINE__);
+  
+      $classes =& new pg_segmented_wrapper($result, "ordinal");
+      $professors = NULL;
+    }
   }
+  else
+    $departments = $questionperiods = $professors = $classes = NULL;
 
-  $result = pg_go("
-    SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
-    FROM rwtopics AS t
-    INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
-    INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
-    INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
-    ORDER BY t.ordinal, tr.revision_id
-  ", $wces, __FILE__, __LINE__);
+  if (!isset($options['textResponses']) || $options['textResponses'])
+  {
+    $result = pg_go("
+      SELECT DISTINCT t.ordinal, tr.revision_id, c.ctext, c.flags, tr.rtext, c.branch_id
+      FROM rwtopics AS t
+      INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
+      INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
+      INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
+      ORDER BY t.ordinal, tr.revision_id
+    ", $wces, __FILE__, __LINE__);
 
-  $textresponses = new pg_segmented_wrapper($result, array("ordinal", "revision_id"));
+    $textresponses =& new pg_segmented_wrapper($result, array("ordinal", "revision_id"));
+  }
+  else
+    $textresponses = NULL;
 
-  if (isset($options['taresponses']) && $options['taresponses'])
+  if (!isset($options['taResponses']) || $options['taResponses'])
   {
     $result = pg_go("
       SELECT DISTINCT t.ordinal, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
@@ -177,27 +208,40 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       ORDER BY t.ordinal, name, tr.response_id
     ", $wces, __FILE__, __LINE__);
 
-    $taresponses = new pg_segmented_wrapper($result, array("ordinal"));  
+    $taresponses =& new pg_segmented_wrapper($result, array("ordinal"));  
   }
   else
     $taresponses = NULL;
 
-  $result = pg_go("
-    SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS component_choices,
-      c.flags, c.first_number, c.last_number, c.other_choice,
-      q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
-    FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
-    INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
-    INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
-    INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-    INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
-    INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
-    GROUP BY t.ordinal, c.revision_id, q.revision_id, c.flags, c.first_number,
-      c.last_number, c.other_choice, c.branch_id, q.qtext
-    ORDER BY t.ordinal, c.revision_id, q.revision_id
-  ", $wces, __FILE__, __LINE__);
+  if (!isset($options['multipleChoice']) || $options['multipleChoice'])
+  {
+    $result = pg_go("
+      SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS component_choices,
+        c.flags, c.first_number, c.last_number, c.other_choice,
+        q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
+      FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
+      INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
+      INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+      INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+      INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
+      INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
+      GROUP BY t.ordinal, c.revision_id, q.revision_id, c.flags, c.first_number,
+        c.last_number, c.other_choice, c.branch_id, q.qtext
+      ORDER BY t.ordinal, c.revision_id, q.revision_id
+    ", $wces, __FILE__, __LINE__);
 
-  $choices = new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
+    $choices =& new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
+  }
+  else
+    $choices = NULL;
+
+  //
+  
+  $result = pg_go("
+    SELECT ordinal FROM rwtopics GROUP BY ordinal ORDER BY ordinal
+  ", $wces, __FILE__, __LINE__);
+  
+  $pacer =& new pg_wrapper($result);
 
   // XXX: what is the meaning of *magic* branch_id 1
   $result = pg_go("  
@@ -214,26 +258,33 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     ORDER BY t.ordinal;
   ", $wces, __FILE__, __LINE__);
   
-  $ords = new pg_segmented_wrapper($result, array("ordinal"));
+  $ords =& new pg_segmented_wrapper($result, array("ordinal"));
   
   $pages = pg_result(pg_go("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
 
   $outhtml = is_string($html);
   $outtext = is_string($text);
+  
+  $pageNumbers = !isset($options['pageNumbers']) || $options['pageNumbers'];
 
   for($page = 1; $page <= $pages; ++$page)
   {
-    if ($outtext) $text .= "\n{$line}[ $page / $pages ]\n\n";
-
-    if ($outhtml || $stdout)
+    if ($pageNumbers)
     {
-      $pagehtml = '<hr style="page-break-before:always">' . "\n";
-      $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
+      if ($outtext) $text .= "\n{$line}[ $page / $pages ]\n\n";
+
+      if ($outhtml || $stdout)
+      {
+        $pagehtml = '<hr style="page-break-before:always">' . "\n";
+        $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
+      }
+      else
+        $pagehtml = false;
     }
     else
-      $pagehtml = false;
+      $pagehtml = ($outhtml || $stdout) ? '' : false;
 
-    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords, $taresponses);
+    report_makepage($pacer, $text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords, $taresponses, $options);
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;

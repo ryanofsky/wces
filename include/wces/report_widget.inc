@@ -120,7 +120,7 @@ class Report extends TabbedWidget
     global $wces_path, $db;
     TabbedWidget::printVisible();
     $html = $text = false;
-    makereport($this->wizard,true,$html,$text,array('taresponses' => 1));
+    makereport($this->wizard,true,$html,$text,array('taResponses' => 1));
   }
 };
 
@@ -270,7 +270,7 @@ class ReportEmail extends ParentWidget
     if ($this->generate)
     {
       $html = false; $text = "";
-      makereport($this->wizard,false,$html,$text,array('taresponses' => 1));
+      makereport($this->wizard,false,$html,$text,array('taResponses' => 1));
       $this->email_text->text = $text;
       $this->generate = false;
     }    

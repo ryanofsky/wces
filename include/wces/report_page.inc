@@ -104,6 +104,12 @@ function report_findgroups($topicstable, $groupings, $orderings)
 {
   global $wces;
 
+  if (isset($groupings[CLASSES]) && $groupings[CLASSES])
+    $groupings[COURSES] = true;
+
+  if (isset($groupings[COURSES]) && $groupings[COURSES])
+    $groupings[DEPARTMENTS] = true;
+
   $cols = array(
     QUESTION_PERIODS => "question_period_id",
     CLASSES          => "class_id",
@@ -281,79 +287,78 @@ class Sections
 // to facilitate situations where both formats of a report are needed at
 // once, such as when we want to make multiformat MIME messages.
 
-// possible options:
-// - "pies"
-
-function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords, &$taresponses)
+function report_makepage(&$pacer, &$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords, &$taresponses, $options)
 {
   global $wces_path, $TAQUESTIONS, $TAVALUES;
 
   $outhtml = is_string($pagehtml);
   $outtext = is_string($pagetext);
 
-  $ordinal = (int)$stats->row['ordinal'];
-  $students = (int)$stats->row['students'];
-  $responses = (int)$stats->row['responses'];
-  $stats->advance();
+  $ordinal = (int)$pacer->row['ordinal'];
+  $pacer->advance();
 
-  //////////////////////////////////// PAGE HEADER /////////////////////////////////////
+  //////////////////////////////////// TOPIC INFO //////////////////////////////////////
 
-  if ($outhtml)
+  if (!isset($options['topicInfo']) || $options['topicInfo'])
   {
-    $pagehtml .= "<h4>On this page</h4>\n";
-    $pagehtml .= "<table border=0 summary=\"Survey Information\">\n";
-  }
-
-  if ($outtext)
-    $pagetext .= "Included on this page\n\n";
-
-  while($questionperiods->row && $questionperiods->row['ordinal'] == $ordinal)
-  {
-    if ($outhtml) $pagehtml .= "<tr><td>Question Period:</td><td><b>{$questionperiods->row['displayname']}</b></td></tr>\n";
-    if ($outtext) $pagetext .= " - Question Period: {$questionperiods->row['displayname']}\n";
-    $questionperiods->advance();
-  }
-
-  while(isset($departments->row) && $departments->row['ordinal'] == $ordinal)
-  {
-    extract($departments->row);
-    if ($outhtml) $pagehtml .= "<tr><td>Department:</td><td><b>$name ($code)</b></td></tr>\n";
-    if ($outtext) $pagetext .= " - Department: $name ($code)\n";
-    $departments->advance();
-  }
-
-  if ($professors)
-  {
-    while(isset($professors->row) && $professors->row['ordinal'] == $ordinal)
+    if ($outhtml)
     {
-      extract($professors->row);
-      $profname = ($firstname || $lastname) ? "$firstname $lastname" : "Unknown";
-      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($user_id ? "<a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
-      if ($outtext) $pagetext .= " - Professor: $profname\n";
-      $professors->advance();
+      $pagehtml .= "<h4>On this page</h4>\n";
+      $pagehtml .= "<table border=0 summary=\"Survey Information\">\n";
     }
-
-    while(isset($classes->row) && $classes->row['ordinal'] == $ordinal)
+  
+    if ($outtext)
+      $pagetext .= "Included on this page\n\n";
+  
+    while($questionperiods->row && $questionperiods->row['ordinal'] == $ordinal)
     {
-      extract($classes->row);
-      if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${wces_path}administrators/info.php?class_id=$class_id\">$scode $ccode $name Section $section</a></b></td></tr>\n";
-      if ($outtext) $pagetext .= " - Class: $scode $ccode $name Section $section\n";
-      $classes->advance();
+      if ($outhtml) $pagehtml .= "<tr><td>Question Period:</td><td><b>{$questionperiods->row['displayname']}</b></td></tr>\n";
+      if ($outtext) $pagetext .= " - Question Period: {$questionperiods->row['displayname']}\n";
+      $questionperiods->advance();
     }
-  }
-  else
-  {
-    while(isset($classes->row) && $classes->row['ordinal'] == $ordinal)
+  
+    while(isset($departments->row) && $departments->row['ordinal'] == $ordinal)
     {
-      extract($classes->row);
-      $pname = $firstname || $lastname ? " - Professor $firstname $lastname" : "";
-      if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b>$scode $ccode $name Section $section$pname</b></td></tr>\n";
-      if ($outtext) $pagetext .= " - Class: $scode $ccode $name Section $section$pname\n";
-      $classes->advance();
+      extract($departments->row);
+      if ($outhtml) $pagehtml .= "<tr><td>Department:</td><td><b>$name ($code)</b></td></tr>\n";
+      if ($outtext) $pagetext .= " - Department: $name ($code)\n";
+      $departments->advance();
     }
+  
+    if ($professors)
+    {
+      while(isset($professors->row) && $professors->row['ordinal'] == $ordinal)
+      {
+        extract($professors->row);
+        $profname = ($firstname || $lastname) ? "$firstname $lastname" : "Unknown";
+        if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($user_id ? "<a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
+        if ($outtext) $pagetext .= " - Professor: $profname\n";
+        $professors->advance();
+      }
+  
+      while(isset($classes->row) && $classes->row['ordinal'] == $ordinal)
+      {
+        extract($classes->row);
+        if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b><a href=\"${wces_path}administrators/info.php?class_id=$class_id\">$scode $ccode $name Section $section</a></b></td></tr>\n";
+        if ($outtext) $pagetext .= " - Class: $scode $ccode $name Section $section\n";
+        $classes->advance();
+      }
+    }
+    else
+    {
+      while(isset($classes->row) && $classes->row['ordinal'] == $ordinal)
+      {
+        extract($classes->row);
+        $pname = $firstname || $lastname ? " - Professor $firstname $lastname" : "";
+        if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b>$scode $ccode $name Section $section$pname</b></td></tr>\n";
+        if ($outtext) $pagetext .= " - Class: $scode $ccode $name Section $section$pname\n";
+        $classes->advance();
+      }
+    }
+    if ($outhtml) $pagehtml .= "</table>\n";
   }
 
-  if ($outhtml) $pagehtml .= "</table>\n";
+  ////////////////////////////////// COMPONENT ORDER ///////////////////////////////////
 
   $branchorder = array();
   while(isset($ords->row) && $ords->row['ordinal'] == $ordinal)
@@ -364,22 +369,30 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
   }
 
   //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
-
-  if ($outtext)
+  if (!isset($options['responseStatistics']) || $options['responseStatistics'])
   {
-    $pagetext .= "\nResponse Statistics\n\n";
-    $pagetext .= " - Total Surveys: $students\n";
-    $pagetext .= " - Evaluated Surveys: $responses\n\n";
-  }
-
-  if ($outhtml)
-  {
-    $pagehtml .= "<h4>Response Statistics</h4>";
-    $pagehtml .= "<table border=0 summary=\"number of responses\">\n";
-    $pagehtml .= "<tr><td>Total Surveys:</td><td><b>$students</b></td></tr>\n";
-    $pagehtml .= "<tr><td>Evaluated Surveys:</td><td><b>$responses</b></td></tr>\n";
-    $pagehtml .= "</table>\n";
-    $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$responses) . "&filled=$responses\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
+    assert($ordinal == (int)$stats->row['ordinal']);
+    $students = (int)$stats->row['students'];
+    $responses = (int)$stats->row['responses'];
+    $stats->advance();
+    
+    if ($outtext)
+    {
+      $pagetext .= "\nResponse Statistics\n\n";
+      $pagetext .= " - Total Surveys: $students\n";
+      $pagetext .= " - Evaluated Surveys: $responses\n\n";
+    }
+    
+    if ($outhtml)
+    {
+      $pagehtml .= "<h4>Response Statistics</h4>";
+      $pagehtml .= "<table border=0 summary=\"number of responses\">\n";
+      $pagehtml .= "<tr><td>Total Surveys:</td><td><b>$students</b></td></tr>\n";
+      $pagehtml .= "<tr><td>Evaluated Surveys:</td><td><b>$responses</b></td></tr>\n";
+      $pagehtml .= "</table>\n";
+      if (!isset($options['pies']) || $options['pies'])
+        $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$responses) . "&filled=$responses\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
+    }
   }
 
   ///////////////////////////////// COURSE RATINGS /////////////////////////////////////
@@ -410,7 +423,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
         $d = $first_number < $last_number ? 1 : -1;
         $r = abs($last_number - $first_number);
         for($i=0; $i <= $r; ++$i)
-          $values[$i] = $first_number + $d * $i;
+          $values[] = $first_number + $d * $i;
         $headings = $values;
       }
       else
@@ -420,7 +433,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
         foreach($cchoices as $ci => $ct)
         {
-          $values[$ci] = $showstats ? $values[$ci] = $first_number + ($ci
+          $values[] = $showstats ? $first_number + ($ci
             / (count($cchoices)-1)) * ($last_number - $first_number) : false;
         }
       }
