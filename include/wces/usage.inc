@@ -12,20 +12,18 @@ class UsageOptions extends Widget
   {
     $this->Widget($name, $parent);
     $this->sortChoices = $sortChoices;
-    $this->urlShortName('category_id');
-    $this->urlShortName('question_period_id');
-    $this->urlShortName('sort');
+    $this->shortName('category_id');
+    $this->shortName('question_period_id');
+    $this->shortName('sort');
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    $this->getChoices();
-  }
-
-  function loadState()
-  {
-    $this->category_id = $this->readValue('category_id', WIDGET_FORM | WIDGET_URL);
-    $this->question_period_id = $this->readValue('question_period_id', WIDGET_FORM | WIDGET_URL);
+    if (empty($new)) 
+    {
+      $this->category_id = $this->readValue('category_id');
+      $this->question_period_id = $this->readValue('question_period_id');
+    }
     $this->getChoices();
   }
 
@@ -35,14 +33,9 @@ class UsageOptions extends Widget
     wces_connect();
 
     // generate lists of options
-    $this->questionPeriodChoices = usage_sql_array("
-      SELECT q.question_period_id, q.displayname
-      FROM semester_question_periods AS q
-      WHERE EXISTS (SELECT * FROM wces_topics AS t WHERE t.question_period_id = q.question_period_id AND NOT cancelled)
-      ORDER BY begindate
-    ", $wces, __FILE__, __LINE__);
+    $this->questionPeriodChoices = get_question_periods();
 
-    $this->categoryChoices = usage_sql_array("
+    $this->categoryChoices = pg_select_array("
       SELECT 0 AS id, 'None'
       UNION
       SELECT c.survey_category_id, c.name
@@ -197,7 +190,7 @@ Number of surveys completed: <b><?=$responses?></b><br>
       FROM
         (SELECT e.user_id, COUNT (DISTINCT t.topic_id) AS classes, COUNT(DISTINCT s.topic_id) AS responses
         FROM wces_topics AS t
-        INNER JOIN enrollments AS e ON e.class_id = t.class_id AND e.status = 1
+        INNER JOIN enrollments AS e ON e.class_id = t.class_id AND e.status & 1 <> 0
         LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id
         WHERE t.question_period_id = {$this->options->question_period_id} AND NOT t.cancelled $cat
         GROUP BY e.user_id) AS i
@@ -270,7 +263,7 @@ class ProfessorUsage extends ParentWidget
         THEN 1 ELSE 0 END AS loggedin
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 3
+      INNER JOIN enrollments_p AS e ON e.class_id = cl.class_id
       INNER JOIN users AS u USING (user_id)
       WHERE t.question_period_id = {$this->options->question_period_id} AND NOT t.cancelled $cat;
     ",$wces,__FILE__, __LINE__);
@@ -362,19 +355,6 @@ class ProfessorUsage extends ParentWidget
     }
     print("</table>\n");
   }
-}
-
-function usage_sql_array($sql, $db, $file, $line)
-{
-  $r = pg_go($sql, $db, $file, $line);
-  $n = pg_numrows($r);
-  $a = array();
-  for ($i = 0; $i < $n; ++$i)
-  {
-    list($k, $v) = pg_fetch_array($r, $i, PGSQL_NUM);
-    $a[$k] = $v;
-  }
-  return $a;
 }
 
 ?>
