@@ -10,28 +10,25 @@ define("SurveyWidget_previous",4);
 class SurveyWidget extends ParentWidget
 {
   // parameters
-  var $topic_id, $base_branch_id, $user_id, $question_period_id, $factories;
+  var $specialization_id, $base_branch_id, $user_id, $question_period_id, $factories;
   var $backup = true;
-  var $anonymous = false;
-  var $replacements = false;
-  var $save_id = false;
 
-  // output 
+  // output
   var $done = false;
   var $failure = false; // failure on save
   var $message = "";
 
-  // persistent 
+  // persistent
   var $page = 0;
   var $survey = null;
   var $showErrors = false;
   var $sawLastPage = false;
 
-  // widgets  
+  // widgets
   var $ta = null;
   var $event;
   var $questionWidgets = array();
-  
+
   // private
   var $isStale = true;
   var $pages = 0;
@@ -40,10 +37,10 @@ class SurveyWidget extends ParentWidget
   // $abc =& new SurveyWidget(...);
   // $abc->ta =& new TASurvey(...);
 
-  function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, &$factories, $name, &$parent)
+  function SurveyWidget($specialization_id, $base_branch_id, $user_id, $question_period_id, &$factories, $name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->topic_id           = (int)$topic_id;
+    $this->specialization_id           = (int)$specialization_id;
     $this->base_branch_id     = (int)$base_branch_id;
     $this->user_id            = (int)$user_id;
     $this->question_period_id = (int)$question_period_id;
@@ -57,7 +54,7 @@ class SurveyWidget extends ParentWidget
     $this->isStale = false;
     if (!$this->survey) $this->loadSurvey();
     $this->makeWidgets(true);
-  } 
+  }
 
   function loadState()
   {
@@ -87,7 +84,7 @@ class SurveyWidget extends ParentWidget
     global $wbes;
     wbes_connect();
     $this->survey =& new Survey();
-    $this->survey->load($this->topic_id, $this->base_branch_id, $this->factories, $this->save_id);
+    $this->survey->load($this->specialization_id, $this->base_branch_id, $this->factories);
   }
 
   function makeWidgets($newLoad)
@@ -110,20 +107,13 @@ class SurveyWidget extends ParentWidget
     }
 
     $this->pages = $page;
-
-    if (count($this->questionWidgets) == 0)
-    {
-      $this->message = "<p><font color=red>Survey is empty.</font></p>";
-      $this->done = true;
-      return;
-    }
   }
 
   function saveResponses()
   {
     global $wbes, $_POST, $server_feedback;
 
-    $anonymous = $this->anonymous;
+    $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
 
     $this->showErrors = true;
@@ -134,11 +124,11 @@ class SurveyWidget extends ParentWidget
     $sql = "BEGIN;\n";
     if ($anonymous)
     {
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, response_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->topic_id, $this->user_id);\n";
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, date, topic_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->topic_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, response_id, specialization_id, user_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->specialization_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, date, specialization_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->specialization_id);\n";
     }
     else
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, $this->topic_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, specialization_id, user_id) VALUES ({$this->survey->orig_id}, $question_period_id, $this->specialization_id, $this->user_id);\n";
 
     $sql .= "SELECT currval('response_ids')";
     $result = pg_go($sql, $wbes, __FILE__, __LINE__);
@@ -157,7 +147,7 @@ class SurveyWidget extends ParentWidget
     //
     // CREATE TABLE safe_backup (
     //   user_id INTEGER,
-    //   topic_id INTEGER,
+    //   specialization_id INTEGER,
     //   question_period_id INTEGER,
     //   date DATETIME DEFAULT 'now',
     //   form_vals TEXT
@@ -166,8 +156,8 @@ class SurveyWidget extends ParentWidget
     if ($this->backup)
     {
       $failure = $failure || !pg_go("
-        INSERT INTO safe_backup (user_id, topic_id, question_period_id, form_vals)
-        VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
+        INSERT INTO safe_backup (user_id, specialization_id, question_period_id, form_vals)
+        VALUES ($this->user_id, $this->specialization_id, $this->question_period_id, $fields)
       ", $wbes, __FILE__, __LINE__);
     }
 
@@ -191,7 +181,7 @@ class SurveyWidget extends ParentWidget
   {
     $this->printValue("survey", serialize($this->survey));
     $this->printValue("page", $this->page);
-    $this->printValue("showErrors", (int)$this->showErrors);    
+    $this->printValue("showErrors", (int)$this->showErrors);
     $this->printValue("sawLastPage", (int)$this->sawLastPage);
   }
 
@@ -223,15 +213,7 @@ class SurveyWidget extends ParentWidget
       if ($q->page == $this->page)
       {
         print("<div>");
-        if ($this->replacements) ob_start();
         $q->display();
-        if ($this->replacements)
-        {
-          $contents = ob_get_contents();
-          ob_end_clean();
-          print(str_replace(array_keys($this->replacements), array_values($this->replacements), $contents));
-        }
-        
         print("</div>\n<br>\n");
       }
       else
@@ -260,7 +242,7 @@ class SurveyWidget extends ParentWidget
     <? if ($prev) $this->event->displayButton("Previous Page", SurveyWidget_previous, false, ""); ?>
     <? if ($next) $this->event->displayButton("Next Page", SurveyWidget_next, false, ""); ?>
     <? if ($save) $this->event->displayButton("Save responses", SurveyWidget_save, false, ""); ?>
-    <? if ($save) $this->event->displayButton("Cancel", SurveyWidget_cancel, false, " onclick=\"return confirm('You survey responses will be not be saved if you continue.\\n\\nPress OK to continue, or Cancel to keep filling out the survey.');\""); ?>
+    <? if ($save) $this->event->displayButton("Return without saving", SurveyWidget_cancel, false, ""); ?>
   </td>
 </tr>
 </table>

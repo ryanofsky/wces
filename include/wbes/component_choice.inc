@@ -16,6 +16,26 @@ define("FLAG_ROMAN",      0x20);
 define("FLAG_ARABIC",     0x40);
 define("FLAG_ALPHA",      0x60);
 
+class ChoiceQuestionFactory extends ComponentFactory
+{
+  function code() { return 6; }
+  function name() { return null; }
+
+  function loadComponents(&$components)
+  {
+    global $wbes;
+    $cids = implode(',', array_keys($components));
+    $r = pg_go("SELECT component_id, qtext FROM choice_questions WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
+    {
+      $c &= new ChoiceQuestion;
+      $c->text = $wr->row['qtext'] == 't';
+      $components[$wr->row['component_id']] =& $c;
+    }
+  }
+}
+
 class ChoiceFactory extends ComponentFactory
 {
   function code() { return 2; }
@@ -26,27 +46,22 @@ class ChoiceFactory extends ComponentFactory
     return new Choice;
   }
 
-  function load(&$components, $ids, $ordinals, $topic_id, $latest)
+  function loadComponents(&$components)
   {
     global $wbes;
-    $sids = implode($ids, ",");
-    $rids = array_flip($ids);
+    $cids = implode(',', array_keys($components));
     $r = pg_go("SELECT revision_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = & new Choice;
-      $c->revision_id   = (int)$wr->row['revision_id'];
+      $c &= new Choice;
       $c->text          = $wr->row['ctext'];
       $c->choices       = pg_explode($wr->row['choices']);
       $c->other_choice  = $wr->row['other_choice'];
       $c->first_number  = (int)$wr->row['first_number'];
       $c->last_number   = (int)$wr->row['last_number'];
       $c->rows          = $wr->row['rows'];
-
-      //added to support intro text.
       $c->intro_text    = $wr->row['ctext'];
-
       $flagGroup        = $wr->row['flags'];
       $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
       $c->is_html       = (bool)($flagGroup & FLAG_ISHTML);
@@ -56,43 +71,15 @@ class ChoiceFactory extends ComponentFactory
       $c->vertical      = (bool)($flagGroup & FLAG_VERTICAL);
       $c->na_choice     = (bool)($flagGroup & FLAG_NACHOICE);
       $c->numbering_scheme = $flagGroup & MASK_NUMBERING;
-
-      // todo: optimize. these queries can be performed once outside of the for loop
-
-      $result = pg_go("
-        CREATE TEMPORARY TABLE tmp$c->revision_id AS
-        SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
-        FROM list_items AS li
-        LEFT JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $topic_id
-        WHERE li.revision_id = (SELECT revision_contents($c->revision_id));
-
-        SELECT t.ordinal, q.revision_id, q.qtext
-        FROM tmp$c->revision_id AS t INNER JOIN choice_questions AS q USING (revision_id)
-        ORDER BY ordinal
-      ", $wbes, __FILE__, __LINE__);
-
-      pg_go("DROP TABLE tmp$c->revision_id", $wbes, __FILE__, __LINE__);
-
-      $n = pg_numrows($result);
-
-      $c->questions = $c->question_ids = array();
-      for($i = 0; $i < $n; ++$i)
-      {
-        $a = pg_fetch_array($result,$i,PGSQL_ASSOC);
-        $c->questions[] = $a['qtext'];
-        $c->question_ids[] = $a['revision_id'];
-      }
-
-      $components[$ordinals[$rids[$c->revision_id]]] = $c;
+      $components[$wr->row['component_id']] =& $c;
     }
   }
 }
 
 class Choice extends Component
 {
-  // array of stringed items to rate
+  // array of ChoiceQuestion objects
   var $questions = array();
-  var $question_ids = array();
 
   // array of stringed choices
   var $choices = array();
@@ -116,6 +103,11 @@ class Choice extends Component
   var $vertical = false;
   var $rows = 0;
 
+  function & getChildren()
+  {
+    return $this->questions;
+  }
+
   function Choice()
   {
     $this->Component();
@@ -131,21 +123,13 @@ class Choice extends Component
     return new ChoiceWidget($this, $name, $parent);
   }
 
-  function save($topic_id, $save_id)
+  function saveComponent($component_id, $children)
   {
-    global $wbes;
-    $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
     $ctext        = addslashes($this->intro_text);
-    $questions    = pg_implode($this->questions);
-    $question_ids = pg_implode($this->question_ids);
     $choices      = pg_implode($this->choices);
     $other_choice = addslashes($this->other_choice);
     $first_number = $this->first_number;
     $last_number  = $this->last_number;
-    $is_numeric   = $this->is_numeric ? "'t'" : "'f'";
-    $select_many  = $this->select_many ? "'t'" : "'f'";
-    $stacked      = $this->stacked ? "'t'" : "'f'";
-    $vertical     = $this->vertical ? "'t'" : "'f'";
     $rows         = $this->rows;
 
     $flagGroup = (int) $this->numbering_scheme;
@@ -157,13 +141,7 @@ class Choice extends Component
     if ($this->locked)      $flagGroup |= FLAG_LOCKED;
     if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
 
-    $result = pg_go("
-      SELECT choice_component_save($topic_id, $revision_id, $save_id, '$ctext',
-        $questions::text[], $question_ids::integer[],
-        $choices::text[], '$other_choice'::text, $first_number, $last_number,
-        $flagGroup, $rows)
-    ", $wbes, __FILE__, __LINE__);
-    return pg_result($result, 0, 0);
+    return "choice_component_save($component_id,'$ctext',$children,$choices,'$other_choice',$first_number,$last_number,$flags,$rows)";
   }
 };
 
@@ -189,9 +167,6 @@ class ChoiceEditor extends ComponentEditor
   var $controls;
   var $rows;
   var $orientation;
-
-  // persistent
-  var $question_id;
 
   function ChoiceEditor(&$component, $name, &$parent)
   {
@@ -274,10 +249,12 @@ class ChoiceEditor extends ComponentEditor
 
     if ($c >= 1)
     {
-      $this->question->text = $this->component->questions[0];
-      $this->question_id = $this->component->question_ids[0];
-      $this->questions->items = $this->component->questions;
-      $this->questions->keys = $this->component->question_ids;
+      $this->question->text = $this->component->questions[0]->text;
+      $questions = array();
+      foreach ($this->component->questions as $question)
+        $questions[] = $question->text;
+      $this->questions->items = $questions;
+      $this->questions->keys = range(0, $c-1);
       $this->qtype->selected = $c == 1 ? "single" : "multiple";
     }
     else
@@ -458,14 +435,21 @@ class ChoiceEditor extends ComponentEditor
 
     if ($this->qtype->selected == "single")
     {
-      $c->questions = array($this->question->text);
-      $c->question_ids = array($this->question_id);
+      $q = isset($c->questions[0]) ? $c->questions[0] : new ChoiceQuestion;
+      $q->text = $this->question->text;
+      $c->questions = array($q);
       $this->numbering_scheme->selected = FLAG_NONUMBERS;
     }
     else if ($this->qtype->selected == "multiple")
     {
-      $c->questions = $this->questions->items;
-      $c->question_ids = $this->questions->keys;
+      $questions = array();
+      foreach ($this->questions->keys as $li => $qi)
+      {
+        $q = isset($c->questions[qi]) ? $c->questions[$qi] : new ChoiceQuestion;
+        $q->text = $this->questions->items[$li];
+        $questions[] = $q;
+      }
+      $c->questions = $questions;
     }
 
     if ($this->ctype->selected == "text" || $this->ctype->selected == "ntext")
@@ -906,7 +890,7 @@ class ChoiceWidget extends ComponentWidget
       print(".  ");
     }
     else if($this->component->numbering_scheme == FLAG_ROMAN)
-      print(Numbers_Roman::toNumeral($i+1) . ".  ");
+      print(Numbers_Roman::toRoman($i+1) . ".  ");
   }
 
   function printHidden()
@@ -1009,6 +993,25 @@ class ChoiceWidget extends ComponentWidget
       }
     }
   }
+}
+
+class ChoiceQuestion extends Component
+{
+  var $text;
+  var $revision_id;
+  var $item_id;
+
+  function getChildren()
+  {
+    return null;
+  }
+
+  function saveComponent($component_id, $children)
+  {
+    $text = addslashes($text);
+    return "choice_question_save($component_id, '$text')";
+  }
+
 }
 
 ?>

@@ -20,7 +20,7 @@ $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
 class SurveyEditor extends StatefullWidget
 {
   // parameters
-  var $topic_id, $base_branch_id, $user_id, $factories;
+  var $specialization_id, $base_branch_id, $user_id, $factories;
 
   // output
   var $done = false;
@@ -35,18 +35,15 @@ class SurveyEditor extends StatefullWidget
   var $modify;
   var $preview;
 
-  function SurveyEditor($topic_id, $base_branch_id, $user_id, &$factories, $name, &$parent)
+  function SurveyEditor($item_id, $specialization_id, $user_id, &$factories, $name, &$parent)
   {
     global $server_url;
     $this->StatefullWidget($name, $parent);
-    $this->topic_id = (int)$topic_id;
-    $this->base_branch_id = (int)$base_branch_id;
+    $this->specialization_id = (int)$specialization_id;
+    $this->item_id = (int)$item_id;
     $this->user_id = (int)$user_id;
     $this->factories = &$factories;
-
-    $this->event = & new EventWidget("event", $this);
-
-    $GLOBALS['topic_id'] = $topic_id; // xxx: wtf?
+    $this->event =& new EventWidget("event", $this);
   }
 
   function & handleEvent($event, $param, $new)
@@ -110,7 +107,7 @@ class SurveyEditor extends StatefullWidget
 
       case SurveyEditor_save:
         $this->done = true;
-        if ($this->survey->save($this->topic_id, $this->user_id,0))
+        if ($this->survey->save($this->specialization_id, $this->user_id,0))
           $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
         else
           $this->message = "<h1>Save Error</h1>";
@@ -125,9 +122,8 @@ class SurveyEditor extends StatefullWidget
 
   function loadInitialState()
   {
-    $this->survey =& new Survey();
-    $this->survey->load($this->topic_id, $this->base_branch_id, $this->factories);
-    StatefullWidget::loadInitialState();
+    $surveyGlobals =& new SurveyGlobals(&$this->factories, &$specializationGroups, $user_id, $question_period_id = null, $latest = null)
+    $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $surveyGlobals);
   }
 
   function loadState()
@@ -144,7 +140,7 @@ class SurveyEditor extends StatefullWidget
 
   function printVisible()
   {
-    global $server_media, $wbes, $survey_debug;
+    global $server_media, $wbes;
 
     $this->event->displayField();
 
@@ -186,12 +182,12 @@ by clicking above and below existing components.</p>
         {
           wbes_connect();
           $r = pg_go("
-            SELECT topic_id FROM branches AS a, revisions AS b
+            SELECT specialization_id FROM branches AS a, revisions AS b
             WHERE a.branch_id = b.branch_id
               AND b.revision_id = '$component->revision_id'
           ", $wbes, __FILE__, __LINE__);
           $wr = & new pg_wrapper($r);
-          $readOnly = (bool)($wr->row['topic_id'] != $this->topic_id);
+          $readOnly = (bool)$wr->row['specialization_id'] != $this->specialization_id;
         }
         $name = $this->fullName($readOnly ? "lockedNode$i" : "node$i");
         $image = $readOnly ? "grey_node.gif" : "node.gif";
@@ -201,12 +197,7 @@ by clicking above and below existing components.</p>
 <tr>
   <td width=40><img src="<?=$server_media?>/editor/<?=$image?>" width=40 height=18 border=0 id=<?=$name?> name=<?=$name?> align=absmiddle alt=Orb></td>
   <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
-  <td>
-<? 
-  if ($survey_debug) debugout($w->component->revision_id, "revision_id = ");
-  $w->preview = true; $w->display(); 
-?>
-</td>
+  <td><? $w->preview = true; $w->display(); ?></td>
 </tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
@@ -354,7 +345,6 @@ class SurveyEditorInsert extends ParentWidget
     $first = true;
     foreach($this->factories as $key => $f)
     {
-      if (isset($f->noshow) && $f->noshow) continue;
       if ($first) $first = false; else print("<br>\n");
       $this->choices->display($key);
       $this->choices->displayLabel($key, $f->name());

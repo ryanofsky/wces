@@ -3,52 +3,55 @@
 require_once("wbes/component.inc");
 
 class PageBreakFactory extends ComponentFactory
-{
+{b
   function code() { return 9; }
   function name() { return "Page Break Component"; }
-  
+
   function & create()
   {
     return new PageBreak;
   }
-  
-  function load(&$components, $ids, $ordinals)
+
+  function loadComponents(&$components)
   {
     global $wbes;
-    $sids = implode($ids, ",");
-    $rids = array_flip($ids);
-    $r = pg_go("SELECT revision_id, renumber FROM pagebreak_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $cids = implode(',', array_keys($components));
+    $r = pg_go("SELECT component_id, renumber FROM pagebreak_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
-    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = new PageBreak();
-      $c->revision_id = (int)$wr->row['revision_id'];
-      $c->renumber    = $wr->row['renumber'] == 't';
-      $components[$ordinals[$rids[$c->revision_id]]] = $c;
+      $c &= new PageBreak;
+      $c->renumber = $wr->row['renumber'] == 't';
+      $components[$wr->row['component_id']] =& $c;
     }
-  } 
+  }
 };
 
 class PageBreak extends Component
 {
   var $renumber = false;
- 
+
   function & getEditor($name, &$parent)
   {
     return new PageBreakEditor($this, $name, $parent);
-  }  
-  
+  }
+
   function & getWidget($name, &$parent)
   {
     return new PageBreakWidget($this, $name, $parent);
   }
-  
-  function save($topic_id, $save_id)
+
+  function saveComponent($component_id, $children)
   {
-    global $wbes;
-    $renumber = $this->renumber ? "'t'" : "'f'";    
-    $revision_id = $this->revision_id ? $this->revision_id : 'NULL';    
-    $result = pg_go("SELECT pagebreak_component_save($topic_id, $revision_id, $save_id, $renumber)", $wbes, __FILE__, __LINE__);
+    $renumber = $this->renumber ? "'t'" : "'f'";
+    return "SELECT text_component_save($component_id, $renumber)";
+  }
+
+  function save($specialization_id, $save_id)
+  {
+
+    $revision_id = $this->revision_id ? $this->revision_id : 'NULL';
+    $result = pg_go("SELECT pagebreak_component_save($specialization_id, $revision_id, $save_id, $renumber)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
 };
@@ -57,14 +60,14 @@ class PageBreakEditor extends ComponentEditor
 {
   // widgets
   var $renumber;
-  
+
   function PageBreakEditor(&$component, $name, &$parent)
   {
     $this->ComponentEditor($component, $name, $parent);
     $this->renumber = new CheckBox("renumber", $this);
     $this->renumber->checked = $component->renumber;
   }
-  
+
   function loadInitialState()
   {
     ComponentEditor::loadInitialState();
@@ -76,7 +79,7 @@ class PageBreakEditor extends ComponentEditor
     ComponentEditor::save();
     $this->component->renumber = $this->renumber->checked;
   }
-  
+
   function printVisible()
   {
     $this->printErrors();
@@ -88,7 +91,7 @@ class PageBreakEditor extends ComponentEditor
   <td><? $this->renumber->display(); $this->renumber->displayLabel("Restart Survey Numbering"); ?></td>
 </tr>
 </table>
-<?    
+<?
   }
 };
 
@@ -98,10 +101,10 @@ class PageBreakWidget extends ComponentWidget
   {
     $this->ComponentWidget($component, $name, $parent);
   }
-  
+
   function printVisible()
   {
-    if ($this->preview) print("[ Page Break ]");  
+    if ($this->preview) print("[ Page Break ]");
   }
 };
 

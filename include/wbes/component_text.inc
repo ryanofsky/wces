@@ -6,15 +6,15 @@ class TextFactory extends ComponentFactory
 {
   function code() { return 5; }
   function name() { return "Text Component"; }
-  
+
   function & create()
   {
     return new Text;
   }
-  
-  function load(&$components, $ids, $ordinals, $topic_id)
+
+  function loadComponents(&$components)
   {
-    return $this->textLoad($components, $ids, $ordinals, $topic_id, "Text");
+    ComponentFactory::loadTextComponents($components, 5);
   }
 };
 
@@ -23,16 +23,16 @@ class Text extends Component
   function & geteditor($name, &$parent)
   {
     return new TextEditor($this, $name, $parent);
-  }  
-  
+  }
+
   function & getwidget($name, &$parent)
   {
     return new TextWidget($this, $name, $parent);
   }
-  
-  function save($topic_id, $save_id)
+
+  function saveComponent($component_id, $children)
   {
-    return $this->textSave($topic_id, $save_id, TextFactory::code());
+    return $this->saveTextComponent($component_id, TextFactory::code());
   }
 }
 
@@ -42,7 +42,7 @@ class TextEditor extends ComponentEditor
   {
     $this->ComponentEditor($component, $name, $parent);
   }
-  
+
   function printVisible()
   {
     $this->printErrors();
@@ -57,7 +57,7 @@ class TextEditor extends ComponentEditor
   </td>
 </tr>
 </table>
-<?    
+<?
   }
 };
 
@@ -67,12 +67,12 @@ class TextWidget extends ComponentWidget
   {
     $this->ComponentWidget($component, $name, $parent);
   }
-  
+
   function printVisible()
   {
     $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
     print($text);
-  }  
+  }
 }
 
 ?>

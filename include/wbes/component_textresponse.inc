@@ -8,34 +8,30 @@ class TextResponseFactory extends ComponentFactory
 {
   function code() { return 3; }
   function name() { return "Text Response Question"; }
-  
+
   function & create()
   {
     return new TextResponse;
   }
-  
+
   function load(&$components, $ids, $ordinals)
   {
     global $wbes;
-    $sids = implode($ids, ",");
-    $rids = array_flip($ids);
-    $r = pg_go("SELECT revision_id, ctext, flags, rows, cols FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
-
+    $cids = implode(',', array_keys($components));
+    $r = pg_go("SELECT component_id, ctext, flags, rows, cols FROM textresponse_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = & new TextResponse;
-      $c->revision_id   = (int)$wr->row['revision_id'];
-      $c->text          = $wr->row['ctext'];
-      $c->rows          = (int) $wr->row['rows'];
-      $c->cols          = (int) $wr->row['cols'];
-
-      $flagGroup        = $wr->row['flags'];
-      $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
-      $c->is_html       = (bool)($flagGroup & FLAG_ISHTML);
-      $c->labelAlign   =  (bool)($flagGroup & FLAG_ALIGN);
-      $components[$ordinals[$rids[$c->revision_id]]] = $c;
+      $c =& new TextResponse;
+      $c->text       = $wr->row['ctext'];
+      $c->rows       = (int) $wr->row['rows'];
+      $c->cols       = (int) $wr->row['cols'];
+      $flagGroup     = $wr->row['flags'];
+      $c->locked     = (bool)($flagGroup & FLAG_LOCKED);
+      $c->is_html    = (bool)($flagGroup & FLAG_ISHTML);
+      $c->labelAlign =  (bool)($flagGroup & FLAG_ALIGN);
+      $components[$wr->row['component_id']] =& $c;
     }
-  }  
+  }
 };
 
 class TextResponse extends Component
@@ -43,25 +39,25 @@ class TextResponse extends Component
   var $rows = 5;
   var $cols = 60;
   var $labelAlign = false;
-  
+
   function TextResponse()
   {
     $this->Component();
     $this->rows = 5;
     $this->cols = 60;
   }
-  
+
   function & geteditor($name, &$parent)
   {
      return new TextResponseEditor($this, $name, $parent);
   }
-  
+
   function & getwidget($name, &$parent)
   {
      return new TextResponseWidget($this, $name, $parent);
   }
-  
-  function save($topic_id, $save_id)
+
+  function save($specialization_id, $save_id)
   {
     global $wbes;
 
@@ -75,16 +71,16 @@ class TextResponse extends Component
     if ($this->locked)      $flagGroup |= FLAG_LOCKED;
     if ($this->labelAlign)  $flagGroup |= FLAG_ALIGN;
 
-    $result = pg_go("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT textresponse_component_save($specialization_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
-  }  
+  }
 };
 
 class TextResponseEditor extends ComponentEditor
 {
   // widgets
   var $rows, $cols, $labelAlign;
-  
+
   function TextResponseEditor(&$component, $name, &$parent)
   {
     $this->ComponentEditor($component, $name, $parent);
@@ -94,28 +90,28 @@ class TextResponseEditor extends ComponentEditor
     $this->cols->broken = false;
     $this->labelAlign = & new DropBox(array("above","left"), "labelAlign", $this);
   }
-  
+
   function loadInitialState()
   {
     $this->rows->text = $this->component->rows;
     $this->cols->text = $this->component->cols;
     $this->labelAlign->selected = $this->component->labelAlign;
   }
-  
+
   function validate()
   {
     $rows = (int)$this->rows->text;
     $cols = (int)$this->cols->text;
-    
+
     if ($cols < 1)
     {
       $this->errors[] = "The response box should be at least one column wide.";
       $this->cols->broken = true;
     }
-    
+
     return count($this->errors) == 0;
   }
-  
+
   function save()
   {
     $this->component->rows = (int)$this->rows->text;
@@ -124,11 +120,11 @@ class TextResponseEditor extends ComponentEditor
     $this->component->labelAlign = $this->labelAlign->selected;
     ComponentEditor::save();
   }
-  
+
   function printVisible()
   {
     global $server_media;
-    
+
     $this->printErrors();
 ?>
 <table>
@@ -152,7 +148,7 @@ class TextResponseEditor extends ComponentEditor
   <td><? $this->cols->display(); ?></td>
 </tr>
 </table>
-<?    
+<?
   }
 };
 
@@ -160,21 +156,21 @@ class TextResponseWidget extends ComponentWidget
 {
   // widgets
   var $response;
-  
+
   // private
-  var $align = null;  
-  
+  var $align = null;
+
   function TextResponseWidget(&$component, $name, &$parent)
   {
     $this->ComponentWidget($component, $name, $parent);
     $this->response =& new TextBox($component->rows, $component->cols, " wrap=virtual", "response", $this);
   }
-  
+
   function save($parent)
   {
     global $wbes;
     $t = addslashes(trim($this->response->text));
-    
+
     if ($t)
       return (boolean) pg_go("
         INSERT INTO textresponse_responses(revision_id, parent, rtext)
@@ -183,7 +179,7 @@ class TextResponseWidget extends ComponentWidget
     else
       return true;
   }
-  
+
   function printVisible()
   {
     if($this->component->labelAlign)

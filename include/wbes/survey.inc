@@ -2,44 +2,175 @@
 
 require_once("wbes/wbes.inc");
 
-$survey_debug = false;
-
-function get_base($topic_id)
+function get_base($specialization_id)
 {
   global $wces;
   wces_connect();
   for(;;)
   {
-    if ($topic_id == 1)
+    if ($specialization_id == 1)
       return 1;
-    if ($topic_id == 1481)
+    if ($specialization_id == 1481)
       return 609;
-    else if ($topic_id == 1482)
+    else if ($specialization_id == 1482)
       return 611;
-    else if ($topic_id == 1483)
+    else if ($specialization_id == 1483)
       return 612;
-    else if ($topic_id == 3111) // summer chemistry survey
-      return 1;
-      //return 799;
-    else if ($topic_id == 3117)
-      return 873;
-    else if ($topic_id == 3566)
-      return 943;
-    else if ($topic_id == 3567)
-      return 944;
     else
     {
-      $r = pg_go("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT parent FROM specializations WHERE specialization_id = $specialization_id", $wces, __FILE__, __LINE__);
       if (pg_numrows($r) == 0) return 1;
-      $topic_id = (int)pg_result($r, 0, 0);
+      $specialization_id = (int)pg_result($r, 0, 0);
     }
   }
 }
 
-class Survey
+class SurveyGlobals
+{
+  var $user_id;
+  var $factories;
+  var $question_period_id;
+
+  // references to factories indexed by component type number
+  var $cfactories = array();
+
+  // if null, will load the latest version of a survey, if not null
+  var $save_id;
+
+  // array of {arrays of loads}, index by component type number
+  var $loads = array();
+
+  // array of {arrays of indices into the loads arrays indexed by
+  // component_id and specialization_id} indexed by component type
+  // number
+  var $loadIndices = array();
+
+  var $loadComplete = array();
+
+  function SurveyGlobals(&$factories, $user_id, $save_id = null)
+  {
+    $this->factories =& $factories;
+    $this->user_id = $user_id;
+    $this->question_period_id = $question_period_id;
+
+    foreach(array_keys($this->factories) as $i)
+    {
+      $f =& $this->factories[$i];
+      $code = $f->code();
+      $this->cfactories[$code] =& $f;
+      $this->loads[$code] = array();
+      $this->loadIndices[$code] = array();
+      $this->loadComplete[$code] = true;
+    }
+  }
+
+  function & getLoad($type, $component_id, $specialization_id)
+  {
+    $key = "$component_id,$specialization_id";
+    if (isset($this->loadIndices[$type][$key])
+    {
+      $loadIndex = $this->loadIndices[$type][$key];
+      $load =& $this->loads[$type][$loadIndex];
+    }
+    else
+    {
+      $loadComplete[$code] = false;
+      $loadIndex = count($this->loads[$type]);
+      $load =& new SurveyLoad($component_id, $specialization_id);
+      $this->loads[$type][] =& $load;
+      $this->loadIndices[$type][$key] = $loadIndex;
+    }
+    return $load;
+  }
+};
+
+class SurveyLoadTarget
+{
+  var $destArray;
+  var $destIndex;
+  var $revision_id;
+
+  function SurveyLoadTarget(&$destArray, $destIndex, $revision_id)
+  {
+    $this->destArray =& $destArray;
+    $this->destIndex = $destIndex;
+    $this->revision_id;
+  }
+};
+
+class SurveyLoad
+{
+  var $component_id;
+  var $specialization_id;
+  var $component;
+  var $targets = array();
+
+  function SurveyLoad($component_id, $specialization_id)
+  {
+    $this->component_id = $component_id;
+    $this->specialization_id = $specialization_id;
+  }
+
+  function addTarget(&$destArray, $destIndex, $revision_id)
+  {
+    $this->targets[] =& new SurveyLoadTarget($destArray, $destIndex, $revision_id);
+  }
+};
+
+
+function & LoadSurvey($item_id, $specialization_id, &$surveyGlobals)
+{
+  global $wbes;
+  $save_id = $surveyGlobals->save_id ? $surveyGlobals->save_id : 'NULL';
+  $dest = array();
+  $r = pg_go("SELECT branch_latest($item_id, $specialization_id, $save_id)", $wbes, __FILE__, __LINE__);
+  $revision_id = pg_result($r, 0, 0);
+  $r = pg_go("SELECT revision_component($component_id)", $wbes, __FILE__, __LINE__);
+  $component_id = pg_result($r, 0, 0);
+  $load =& surveyGlobals->getLoad($type, $component_id, $specialization_id);
+  $load->addTarget($dest, 0, $revision_id);
+
+  foreach (array_keys($surveyGlobals->loads) as $type)
+    while (!$surveyGlobals->loadsComplete[$type])
+      $cfactories[$type]->load($surveyGlobals->loads[$type], $surveyGlobals);
+
+  foreach (array_reverse(array_keys($surveyGlobals->loads)) as $type)
+  {
+    $loads =& $surveyGlobals->loads[$type];
+    foreach (array_keys($loads) as $lk))
+    {
+      $load =& $loads[$lk];
+      foreach (array_keys($load->targets) as $tk)
+      {
+        $target =& $load->targets[$tk];
+        $dest =& $target->destArray[$target->destIndex];
+        $dest = $load->component; // intentional clone
+        $dest->revision_id = $target->revision_id;
+        $dest->item_id = $load->item_id;
+      }
+    }
+  }
+};
+
+function SaveSurvey(&$survey, $specialization_id, $user_id)
+{
+  $result = pg_go("
+    BEGIN WORK;
+    INSERT INTO saves (user_id) VALUES ($user_id);
+    SELECT currval('save_ids')
+  ", $wbes, __FILE__, __LINE__);
+  $save_id = (int)pg_result($result,0,0);
+
+  $sql = $survey->save($specialization_id, $save_id);
+
+  $r = pg_go("SELECT $sql; COMMIT", $wbes, __FILE__, __LINE__);
+  return pg_result($r, 0, 0);
+}
+
+class Survey extends Component
 {
   var $components = array();
-  var $orig_id = false;
+  var $revision_id = null;
 
   function insert(&$component,$position = 0)
   {
@@ -53,7 +184,7 @@ class Survey
     array_splice($this->components,$componentno,1);
   }
 
-  function movedown($componentno)
+  function moveDown($componentno)
   {
     if ($componentno >= count($this->components) - 1) return;
     $q = $this->components[$componentno];
@@ -61,7 +192,7 @@ class Survey
     $this->insert($q,$componentno + 1);
   }
 
-  function moveup($componentno)
+  function moveUp($componentno)
   {
     if ($componentno < 1) return;
     $q = $this->components[$componentno];
@@ -69,162 +200,14 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
 
-  function load($topic_id, $base_branch_id, &$cfactories, $latest = false)
+  function & getChildren()
   {
-    global $wbes;
-    wbes_connect();
-
-    $factories = array();
-    for(reset($cfactories); list($k) = each($cfactories); )
-      $factories[$cfactories[$k]->code()] = &$cfactories[$k];
-
-    $latest = (int)$latest;
-    if (!$latest) $latest = "NULL";
-
-    $topic_id = (int)$topic_id;
-    $result = pg_go("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
-    $existing_topic = (int)pg_result($result,0,0);
-
-    $result = pg_go("SELECT branch_latest($base_branch_id, $existing_topic, $latest)", $wbes, __FILE__, __LINE__);
-
-    $this->orig_id = (int)pg_result($result,0,0);
-
-    // store the results of branch updates in a temporary table. the temporary
-    // table is needed because the first and second queries can't be combined.
-    // in postgres a select statement will never return rows that are inserted
-    // in the course of the query's execution.
-
-    $result = pg_go("
-
-      CREATE TEMPORARY TABLE tmp$this->orig_id AS
-      SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
-      FROM list_items AS li
-      LEFT JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
-      WHERE li.revision_id = (SELECT revision_contents($this->orig_id));
-
-      SELECT t.ordinal, t.revision_id, r.type
-      FROM tmp$this->orig_id AS t
-      INNER JOIN revisions as r USING (revision_id)
-      ORDER BY type, ordinal;
-
-    ", $wbes, __FILE__, __LINE__);
-
-    pg_go("DROP TABLE tmp$this->orig_id", $wbes, __FILE__, __LINE__);
-
-    $n = pg_numrows($result);
-    $this->components = array_pad(array(), $n, false);
-
-    $lasttype = false;
-    for($i = 0; ; ++$i)
-    {
-      if($i < $n)
-        extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
-      else
-        $type = -1;
-
-      if ($type !== $lasttype && $lasttype !== false)
-      {
-        if (!isset($factories[$lasttype]))
-        {
-          print("<h4>Fatal Error: Can't load component type $lasttype</h4>");
-          print("<p>Either the type doesn't exist and the database is corrupted,"
-            . " or you forgot to include this component's factory in the factories array.</p>");
-          print("<p>Here is a list of factories that were passed:</p>");
-          print("<table>\n");
-          foreach($factories as $k => $v)
-          {
-            print("<tr><td>" . $v->code() . "</td><td>" . get_class($v) . "</td><td>" . $v->name() . "</td></tr>");
-          }
-          print("</table>\n");
-          print("<p>The revision_id of the component being loaded was $revision_id.</p>");
-          die(); 
-        }
-        $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $latest);
-      }
-
-      if ($i >= $n) break;
-
-      if ($type === $lasttype)
-      {
-        $ids[] = (int)$revision_id;
-        $ordinals[] = $ordinal - 1;
-      }
-      else
-      {
-        $ids = array((int)$revision_id);
-        $ordinals = array($ordinal - 1);
-      }
-      $lasttype = $type;
-    }
+    return $this->components;
   }
 
-  function save($topic_id, $user_id, $save_id = false)
+  function saveComponent($children)
   {
-    global $wbes;
-    wbes_connect();
-
-    $this->orig_id = (int)$this->orig_id;
-
-    $result = pg_go("SELECT branch_id FROM revisions WHERE revision_id = $this->orig_id", $wbes, __FILE__, __LINE__);
-    $branch_id = pg_numrows($result) == 1 ? (int)pg_result($result,0,0) : "NULL";
-
-    $components = pg_go("SELECT item_id FROM list_items WHERE revision_id = $this->orig_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
-    $components_num = pg_numrows($components);
-
-    if(!$save_id)
-    {
-      $result = pg_go("
-        BEGIN WORK;
-        INSERT INTO saves (user_id) VALUES ($user_id);
-        SELECT currval('save_ids')
-      ", $wbes, __FILE__, __LINE__);
-      $save_id = (int)pg_result($result,0,0);
-    }
-
-    $i = 0;
-    $ncomponents = array();
-    $list_changed = count($this->components) != $components_num;
-    foreach(array_keys($this->components) as $k)
-    {
-      $cbranch_id = $this->components[$k]->save($topic_id, $save_id);
-      $ncomponents[] = $cbranch_id;
-      if (!$list_changed && $components)
-        if($i >= $components_num)
-        {
-          $components = false;
-          $list_changed = true;
-        }
-        else
-          $list_changed = pg_result($components, $i, 0) != $cbranch_id;
-      ++$i;
-    }
-
-    if ($list_changed || $this->orig_id == 0)
-    {
-      $result = pg_go("SELECT branch_save($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
-      $branch_id = (int)pg_result($result,0,0);
-
-      $o = $this->orig_id ? $this->orig_id : "NULL";
-
-      $result = pg_go("SELECT revision_save_start($branch_id, $o, 1, $save_id)", $wbes, __FILE__, __LINE__);
-      $saved_id = (int)pg_result($result,0,0);
-      $sql = "";
-      foreach($ncomponents as $i => $id)
-      {
-        $ordinal = $i + 1;
-        $sql .= "INSERT INTO list_items(revision_id, ordinal, item_id) VALUES ($saved_id, $ordinal, $id);\n";
-      }
-      $sql .= "SELECT revision_save_end($branch_id, $saved_id)";
-      pg_go($sql, $wbes, __FILE__, __LINE__);
-    }
-    else
-      pg_go("SELECT branch_topics_add($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
-
-    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
-
-    $this->orig_id = 0;
-    $this->components = array();
-    return $branch_id;
+    return "survey_save(revision_component($this->revision_id), $children)";
   }
 };
 
