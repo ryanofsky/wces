@@ -119,8 +119,9 @@ class ImageButton extends Widget
     {
       $ImageButton_dumped = true;
 ?>
+<!-- Begin ImageButton Script -->
 <script>
-<!--  
+<!--
 
   var happyrollover = document.images && window.Image ? true : false;
   var happytree = happyrollover && RegExp && (document.all || document.getElementById) ? true : false;
@@ -183,6 +184,7 @@ class ImageButton extends Widget
   };
 // -->
 </script>
+<!-- End ImageButton Script -->
 <?
     }  
   }
