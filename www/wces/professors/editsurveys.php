@@ -12,7 +12,7 @@
 
   page_top("Professors Page");
 
-print("<p>This function is not available now.</p>");
+print("<p>This function will be available on Friday September 28.</p>");
 page_bottom();
 exit();
 

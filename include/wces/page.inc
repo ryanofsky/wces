@@ -100,9 +100,9 @@ function showhelp(topic)
     {
       page_link("Upcoming Surveys", "professors/editsurveys.php");
       page_link("Survey Results",   "professors/seeresults.php");
-      page_link("Survey Responses", "professors/respond/multiclasses.php");
-      page_link("Past Averages",    "professors/respond/historygraph.php");
-      page_link("Edit Profile",     "professors/infoedit.php");
+      //page_link("Survey Responses", "professors/respond/multiclasses.php");
+      //page_link("Past Averages",    "professors/respond/historygraph.php");
+      //page_link("Edit Profile",     "professors/infoedit.php");
     }
     page_link("Update Association", "login/profsearch.php");
   }
@@ -110,9 +110,10 @@ function showhelp(topic)
   if ($status & login_student)
   {
     if ($nospace) $nospace = false; else page_spacer();
-    page_link("Survey #1",      "students/survey.php?surveyid=1");
-    page_link("Survey #2",      "students/survey.php?surveyid=2");
-    page_link("Email Settings", "students/optout.php");
+    page_link("Survey",      "students/survey.php");
+    //page_link("Survey #1",      "students/survey.php?surveyid=1");
+    //page_link("Survey #2",      "students/survey.php?surveyid=2");
+    //page_link("Email Settings", "students/optout.php");
   }
   
   if ($nospace) $nospace = false; else page_spacer();

@@ -50,9 +50,11 @@ your listing and save the association.</p><p>&nbsp;</p>
 <ul>
   <li><a href="<?=$wces_path?>professors/editsurveys.php<?=$QSID?>">Upcoming Surveys</a> - Edit or preview the questions your students will see in the upcoming question period.</li>
   <li><a href="<?=$wces_path?>professors/seeresults.php<?=$QSID?>">Survey Results</a> - View the results of past surveys</li>
+<? /*
   <li><a href="<?=$wces_path?>professors/respond/multiclasses.php<?=$QSID?>">Survey Responses</a> - Post responses to your survey results</li>
   <li><a href="<?=$wces_path?>professors/respond/historygraph.php<?=$QSID?>">Past Averages</a> - View graphs of past survey averages.</li>
   <li><a href="<?=$wces_path?>professors/infoedit.php<?=$QSID?>">Edit Profile</a> - Edit the information that displayed in the SEAS Oracle. You can update your personal statement, add a link to your homepage, or even upload a new photo.</li>
+*/ ?>  
 </ul>
 <?
     }
