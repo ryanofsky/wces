@@ -2,6 +2,8 @@
 
 require_once("wbes/wbes.inc");
 
+$survey_debug = false;
+
 class SurveyGlobals
 {
   var $factories;
@@ -63,12 +65,17 @@ class SurveyGlobals
   
   function doLoad()
   {
-    foreach (array_keys($this->loads) as $type)
-      while (!$this->loadComplete[$type])
-      {
-        $this->loadComplete[$type] = true;
-        $this->cfactories[$type]->load($this->loads[$type], $this);
-      }
+    for (;;)
+    {
+      foreach (array_keys($this->loads) as $type)
+        if (!$this->loadComplete[$type])
+        {
+          $this->loadComplete[$type] = true;
+          $this->cfactories[$type]->load($this->loads[$type], $this);
+          continue 2;
+        }
+      break;
+    }
   
     foreach (array_reverse(array_keys($this->loads)) as $type)
     {
