@@ -10,27 +10,12 @@ a:visited
   color: #000000;
 }
 
-body.preview
-{
-  font-family: Verdana, Arial, Helvetica, sans-serif;
-  font-size: smaller;
-  background-color: white;
-  color: black;
-}
-
-body.main
+body
 {
   font-family: Verdana, Arial, Helvetica, sans-serif;
   background-color: white;
   color: black;
   margin: 0px;
-}
-
-body.help
-{
-  font-family: Verdana, Arial, Helvetica, sans-serif;
-  background-color: #FFFFEF;
-  color: black;
 }
 
 .pagecontents 
@@ -88,8 +73,6 @@ td.sidelinks
 td.editmenu
 {
   background-color:#EEEEEE;
-  border-color: black;
-  border-style: solid;
   cursor:hand;
 }
 
@@ -97,8 +80,6 @@ td.editmenuhover
 {
   background-color:#AAAAAA;
   cursor:hand;
-  border-color: black;
-  border-style: solid;
   font-family: Verdana, Arial, Helvetica, sans-serif;
 }
 

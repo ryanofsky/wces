@@ -201,9 +201,4 @@ function emailvalid($email)
     eregi("^[^;,]*<[_\.0-9a-z-]+@([0-9a-z][0-9a-z-]+\.)+[a-z]{2,3}>$", $email);
 }
 
-function quot($str)
-{
-  return "'" . addslashes($str) . "'";
-}
-
 ?>
