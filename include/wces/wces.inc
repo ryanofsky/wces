@@ -92,7 +92,7 @@ function wces_Findclasses($db,$temptable)
 function wces_Findquestionsets($db,$temptable,$classid = 0)
 {
   $questionperiods = db_exec("SELECT year, semester, questionperiodid FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC LIMIT 1",$db,__FILE__, __LINE__);
-  $questionperiod = mysql_fetch_array($questionperiods);
+  $questionperiod = mysql_fetch_assoc($questionperiods);
   $year = "'" . addslashes($questionperiod["year"]) . "'";
   $semester = "'" . addslashes($questionperiod["semester"]) . "'";
   $whereclass = $classid > 0 ? " AND cl.classid = '" . addslashes($classid) . "'" : "";
@@ -107,6 +107,28 @@ function wces_Findquestionsets($db,$temptable,$classid = 0)
     WHERE g.linktype = 'subjects' AND cl.year = $year AND cl.semester = $semester $whereclass",$db,__FILE__, __LINE__);
   db_exec("REPLACE INTO $temptable (classid,questionsetid) SELECT cl.classid, g.questionsetid FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.departmentid INNER JOIN classes as cl ON c.courseid = cl.courseid 
     WHERE g.linktype = 'departments' AND cl.year = $year AND cl.semester = $semester $whereclass",$db,__FILE__, __LINE__);
+  return $questionperiod["questionperiodid"];
+}
+
+function wces_Findquestionsetsta($db,$temptable,$classid = 0)
+{
+  $questionperiods = db_exec("SELECT year, semester, questionperiodid FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC LIMIT 1",$db,__FILE__, __LINE__);
+  $questionperiod = mysql_fetch_assoc($questionperiods);
+  $year = "'" . addslashes($questionperiod["year"]) . "'";
+  $semester = "'" . addslashes($questionperiod["semester"]) . "'";
+  $whereclass = $classid > 0 ? " AND cl.classid = '" . addslashes($classid) . "'" : "";
+  db_exec("CREATE TEMPORARY TABLE $temptable (classid INTEGER NOT NULL, questionsetid INTEGER NOT NULL, tarate enum('no','yes') NOT NULL, PRIMARY KEY(classid,questionsetid))",$db,__FILE__, __LINE__);
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.classid
+    WHERE g.linktype = 'classes' AND cl.year = $year AND cl.semester = $semester $whereclass",$db,__FILE__, __LINE__);
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.courseid
+    WHERE g.linktype = 'courses' AND cl.year = $year AND cl.semester = $semester AND NOT (ASCII(cl.section) IN (66,98,78,110,82,114,86,118)) $whereclass",$db);
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN classes AS cl ON g.linkid = cl.professorid
+    WHERE g.linktype = 'professors' AND cl.year = $year AND cl.semester = $semester $whereclass",$db,__FILE__, __LINE__);
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.subjectid INNER JOIN classes as cl ON c.courseid = cl.courseid
+    WHERE g.linktype = 'subjects' AND cl.year = $year AND cl.semester = $semester $whereclass",$db,__FILE__, __LINE__);
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.departmentid INNER JOIN classes as cl ON c.courseid = cl.courseid 
+    WHERE g.linktype = 'departments' AND cl.year = $year AND cl.semester = $semester $whereclass",$db,__FILE__, __LINE__);
+  return $questionperiod["questionperiodid"];
 }
 
 function wces_GetQuestionPeriod($db)
