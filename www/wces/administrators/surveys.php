@@ -42,6 +42,10 @@ require_once("wbes/surveyeditor.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 
+login_protect(login_administrator);
+
+$pagename = $server_url->toString(false, true, false);
+
 param($topic_id);
 
 $factories = array

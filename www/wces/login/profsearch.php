@@ -12,8 +12,8 @@ page_top("Professor Search Page");
 if (!$lastname)
 {
 ?>
-<p>WCES needs to associate your CUNIX id, '<b><?=login_getuni()?></b>' with a professor listing from our database.</p>
-<p>After this has been done once, WCES will remember the association for future logins. Associations can be updated at any time by choosing '<b>Update CUNIX Association</b>' from the professors menu on the left side of WCES pages.</p>
+<p>WCES needs to associate your DND name, '<b><?=login_getuni()?></b>' with a professor listing from our database.</p>
+<p>After this has been done once, WCES will remember the association for future logins. Associations can be updated at any time by choosing '<b>Update DND Association</b>' from the professors menu on the left side of WCES pages.</p>
 <p>Type in your last name in the form below to search for your listing.</p>
 <?
 }

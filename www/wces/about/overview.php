@@ -21,7 +21,7 @@ page_top("System Overview");
   
   <p>Student user names are, however, used to make sure that every student
   evaluates his or her own classes, and does it only once per class. Also, if a
-  student enters something other than his or her CUNIX user name, the
+  student enters something other than his or her DND name, the
   administrator of the system may be notified. This is the only occasion where
   student input is checked, and the student will be identified to the system
   administrator in the case of incorrect input. All other data entered by

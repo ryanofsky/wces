@@ -234,7 +234,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
   $urlargs = "?url=" . urlencode($url) . "&rs=" . urlencode($rs) . $AASID;
 
 ?>  
-  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
+  <p><strong>Enter your DND name and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
   <form method=post action="<?= $de ? $insecuresite : $securesite ?>">
   <input type=hidden name=url value="<?= htmlspecialchars($url) ?>">
   <input type=hidden name=rs value="<?= htmlspecialchars($rs) ?>">
@@ -253,7 +253,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
 ?><font size="-1"><b>Note:</b> The information entered in this form will
 be transmitted using your browser's SSL encryption. If you would like to
 connect with no encryption, click
-<a onclick="alert('Due to security concerns from AcIS, this function has been disabled. Sending your CUNIX username and password over a public network without encryption puts your information and Columbia\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
+<a onclick="alert('Due to security concerns, this function has been disabled. Sending your DND username and password over a public network without encryption puts your information and Dartmouth\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
 If you would like to view a secure version of this page so you can examine
 our site's certificate before entering your password, click
 <a href="<?= $securesite . $urlargs ?>">here</a>. If your browser does not recognize our

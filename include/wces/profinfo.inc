@@ -183,7 +183,7 @@ class ProfessorInfo extends FormWidget
 <thead>
 <tr>
   <td bgcolor=black><font color=white><font color=white><STRONG>Name</STRONG></font></td>
-  <td bgcolor=black><font color=white><STRONG>CUNIX</STRONG></font></td>
+  <td bgcolor=black><font color=white><STRONG>DND</STRONG></font></td>
   <td bgcolor=black><font color=white><STRONG>Email</STRONG></font></td>
   <td bgcolor=black><font color=white><STRONG>Department</STRONG></font></td>
   <td bgcolor=black><font color=white><STRONG>Homepage</STRONG></font></td>
@@ -339,7 +339,7 @@ class ProfessorEditor extends FormWidget
   <table>
     <tr><td valign=top><strong>Display Name:</strong></td><td><? $this->name->display(); ?></td></tr>
   <? if ($this->isadmin) { ?>  
-    <tr><td valign=top><strong>CUNIX ID:</strong></td><td><? $this->cunix->display(); ?></td></tr>
+    <tr><td valign=top><strong>DND Name:</strong></td><td><? $this->cunix->display(); ?></td></tr>
   <? }; ?>  
     <tr><td valign=top><strong>Email:</strong></td><td><? $this->email->display(); ?></td></tr>
     <tr><td valign=top><strong>Department:</strong></td><td>

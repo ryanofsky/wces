@@ -328,7 +328,7 @@ function PrintClassInfo($class_id)
   $stat = array(0 => "Dropped", 1 => "Student", 2 => "TA", 3 => "Professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
-  print("  <tr><td><b>Status</b></td><td><b>UNI</b></td><td><b>Name</b></td></tr>\n");
+  print("  <tr><td><b>Status</b></td><td><b>DND</b></td><td><b>Name</b></td></tr>\n");
   $n = pg_numrows($result);
   for($i = 0; $i < $n; ++$i)
   {

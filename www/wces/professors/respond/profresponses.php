@@ -325,7 +325,7 @@ function generateResult($Question,$list_of_choices,$asID,$name_of_set)
       $start = 5; $sum = 0;
       foreach($array_of_rawnums2 as $RAW) $sum += $start-- * $RAW;
       $lastyear_avg = round(100*$sum/$lastyear_responses)/100;
-      $lastyear_avg_display = "<a href=\"http://oracle.seas.columbia.edu/oracle/oracle_infopane.php?classid=$lastyear_classID\">$lastyear_avg</a>";
+      $lastyear_avg_display = "<a href=\"$server_wcespathoracle/oracle_infopane.php?classid=$lastyear_classID\">$lastyear_avg</a>";
     } //if
     else $lastyear_avg_display = $lastyear_avg = "N/A";
   } //if

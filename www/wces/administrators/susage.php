@@ -169,7 +169,7 @@ flush();
 // }
 // print("</blockquote>");
 
-printtimes($times);
+//printtimes($times);
 
 page_bottom();
 ?>

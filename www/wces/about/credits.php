@@ -1,7 +1,10 @@
+
 <?
 require_once("wces/page.inc");
 page_top("Credits");
 ?>
+
+<p><b>Columbia University School of Engineering and Applied Science</b>
 
 <p><b><i>Faculty Advisors</i></b>
 <p>Dean Morton Friedman
@@ -20,6 +23,11 @@ page_top("Credits");
 <br>e-mail <a href="mailto:jackie@columbia.edu">jackie@columbia.edu</a>
 <br><a href="mailto:jackie@columbia.edu"></a>&nbsp;
 <br><b><i></i></b>&nbsp;
+
+<p>Please send Thayer School related questions or comments to <br>
+<a href="mailto:registrar@thayer.dartmouth.edu">Daryl Laware</a><br>
+Registrar, Thayer School of Engineering<br>
+(603) 646-3801<br>
 
 <p><b><i>Powered by</i></b></p>
 <blockquote>

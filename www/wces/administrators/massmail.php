@@ -73,9 +73,25 @@ class MassEmail extends FormWidget
           $this->from->text = $email;
       }
       $this->to = "";
-      $this->replyto->text = "wces@columbia.edu";
+      $this->replyto->text = "admin@thayer.dartmouth.edu";
       $this->subject->text = "WCES Reminder";
-      $this->text->text = "Dear %studentname%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
+	/*
+      $this->text->text = "Dear %studentname%,\n\nCome to http://eval.thayer.dartmouth.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
+	*/
+
+
+     $default = "You are receiving this message because you are enrolled in one or more courses at Thayer School of Engineering this term.  We would greatly appreciate if you could take a few moments to fill out course evaluations for the classes you are taking with us. \n\n";
+
+	$default = $default . "The course evaluations are available online.  To submit evaluations, simply point your web browser at: http://eval.thayer.dartmouth.edu/ \n\n When you arrive log in and then follow the directions on the page to evaluate your courses. \n\n";
+
+	$default = $default . "In consideration of the time it takes to complete the course evaluations, and in appreciation of your input, Thayer School will be giving away a Palm Pilot (Palm M105).  Every student who completes the course evaluations for all of their Thaye School classes this term will automatically be entered into a drawing for this prize.  The drawing will take place on 11-Mar-2002, and the winner will be notified via email. \n\n";
+
+	$default = $default . "We would greatly appreciate your assistance! Your evaluations are very important to us, since they help us to measure and improve the quality of the courses we offer here at Thayer School.";
+
+
+
+	$this->text->text = $default;
+
     }
 
     if (!emailvalid($this->from->text))
@@ -322,7 +338,7 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          $address = "rey4@columbia.edu"; // debug
+          $address = "admin@thayer.dartmouth.edu"; // debug
           // mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
         }
         else

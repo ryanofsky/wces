@@ -100,7 +100,7 @@ class Report extends FormWidget
       else
       {
         $this->profemail_subject->text = "WCES Evaluation Results";
-        $this->profemail_message->text = "Dear %profname%,\n\nThis automated email contains the results of the WCES evaluations for your classes. Send questions or comments to wces@columbia.edu";
+        $this->profemail_message->text = "Dear %profname%,\n\nThis automated email contains the results of the WCES evaluations for your classes. Send questions or comments to admin@thayer.dartmouth.edu";
         $this->profemail_debug->checked = false;
       }
     }

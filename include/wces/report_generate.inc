@@ -165,7 +165,7 @@ function report_profemail($db,&$wizard,$subject,$message,$debug)
     $email = "";
     if ($message) $email .= wordwrap(str_replace("%profname%", $name, $message),76) . "\n\n$line";
     $email .= "\nA graphical version of this report is available online at\n";
-    $email .= "http://oracle.seas.columbia.edu/wces/professors/\n";
+    $email .= "$server_wcespathprofessors/\n";
 
     $pages = $professor["number"];
     $professorid = $professor["professorid"];
@@ -183,7 +183,7 @@ function report_profemail($db,&$wizard,$subject,$message,$debug)
         $listprofessors, $ratings, $abet, $responses, $tas);      
     }
     
-    $from = "wces@columbia.edu";
+    $from = "admin@thayer.dartmouth.edu";
     
     if (!$address) print("<b><font color=red>No email address found for Professor $name</font></b><br>\n");
 
@@ -195,7 +195,7 @@ function report_profemail($db,&$wizard,$subject,$message,$debug)
     }  
     else
     {
-      $address = "rey4@columbia.edu"; //FOR DEBUGGING
+      $address = "admin@thayer.dartmouth.edu"; //FOR DEBUGGING
       if (mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion()))
       {
         print("<font size=\"-1\">Successfully sent report to Professor $name ($address, $professorid)</font><br>\n");

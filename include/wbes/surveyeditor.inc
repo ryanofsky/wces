@@ -57,7 +57,7 @@ class SurveyEditor extends FormWidget
  
   function loadvalues()
   {
-    $this->survey = @unserialize((string)$this->loadattribute("survey"));
+    $this->survey = @unserialize(urldecode((string)$this->loadattribute("survey")));
     if (get_class($this->survey) != "survey")
       $this->load();
 
@@ -200,7 +200,7 @@ class SurveyEditor extends FormWidget
   {
     global $server_media;
     
-    $this->printattribute("survey", serialize($this->survey));
+    $this->printattribute("survey", urlencode(serialize($this->survey)));
     $q = unserialize(serialize($this->survey));
     $this->printattribute("currentcomponent",$this->currentcomponent);
     if (!$hidden)

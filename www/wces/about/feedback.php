@@ -8,7 +8,7 @@ param($comments);
 if (!$comments)
 {
 ?>
-<p>Thank You for visiting the SEAS Oracle and WCES. In order for us to further improve this site, we would appreciate your feedback.</p>
+<p>Thank you for visiting the Web-based Course Evaluation System (WCES). In order for us to further improve this site, we would appreciate your feedback.</p>
 <form name=mail method=post action="feedback.php">
 <?=$ISID?>
 <table>
@@ -22,7 +22,7 @@ if (!$comments)
 else
 {
   sendfeedback($comments, $email);
-  print('Your comments have been sent to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>. Thank you for taking the time to help us.');
+  print('Your comments have been sent to <a href="mailto:websage@thayer.dartmouth.edu">websage@thayer.dartmouth.edu</a>. Thank you for taking the time to help us.');
 };
 page_bottom();
 ?>

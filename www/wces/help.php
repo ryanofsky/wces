@@ -80,11 +80,8 @@ else if ($frame == "main")
   if ($help == "login")
   {
 ?>
-<p>You need to have a University Network ID (UNI) and password use the course evaluation system.</p>
+<p>You need to have a Dartmouth Name Directory (DND) name and password use the course evaluation system.</p>
 <p align=center><img src="media/help/login.gif"></p>
-<p>Students and professors
-can use the <a href="http://www.columbia.edu/acis/accounts/create/current.html" target="_blank">AcIS Account Maintenance</a>
-page to create and activate their UNI's.</p>
 <?
   }
   else if ($help == "contents")

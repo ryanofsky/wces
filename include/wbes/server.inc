@@ -1,20 +1,20 @@
 <?
   require_once("wbes/general_url.inc");
   
-  define("server_mode","yahweh"); // "oracle" "yahweh"  "yahwehisapi"
+  define("server_mode","oracle"); // "oracle" "yahweh"  "yahwehisapi"
 
-  $server_media = "/wces/media";
+  $server_media = "/media";
   $server_session_name = "session";    
-  //ini_set ('display_startup_errors', 1);
-  //ini_set ('display_errors', 1);
-  //error_reporting (E_ALL);
+  ini_set ('display_startup_errors', 1);
+  ini_set ('display_errors', 1);
+  error_reporting (E_ALL);
 
   if (server_mode == "oracle")
   {
-    $server_isproduction = true;
+    $server_isproduction = false;
     $server_win32 = false;
-    $server_base = "http://oracle.seas.columbia.edu";
-    $server_sbase = "https://oracle.seas.columbia.edu";
+    $server_base = "https://eval.thayer.dartmouth.edu/";
+    $server_sbase = "https://eval.thayer.dartmouth.edu/";
     $server_tempdir = "";
     $server_cheapredirects = false;
     $server_url = new URL
@@ -23,7 +23,7 @@
       $HTTP_SERVER_VARS["SERVER_NAME"],
       $HTTP_SERVER_VARS["SERVER_PORT"],
       $HTTP_SERVER_VARS["SCRIPT_NAME"],
-      $HTTP_SERVER_VARS["PATH_INFO"],
+      isset($HTTP_SERVER_VARS["PATH_INFO"]) ? $HTTP_SERVER_VARS["PATH_INFO"] : "",
       $HTTP_SERVER_VARS["QUERY_STRING"]
     );
         
@@ -34,7 +34,7 @@
     
     function server_pginit($dbname = "wbes")
     {
-      return pg_Connect("host=localhost dbname=$dbname user=www password=------");
+      return pg_Connect("dbname=$dbname user=postgres");
     }
   }
   else if (server_mode == "yahweh")

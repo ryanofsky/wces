@@ -133,7 +133,7 @@ h4                      { font-family: Arial, Helvetica, sans-serif; background-
       <td>&nbsp;</td>
       <td class="foldingmenubody">
         <p><a href="<?=$server_wcespath?>students/survey.php" class="foldingmenulink">Complete a Survey</a></p>
-        <p><a href="http://oracle.seas.columbia.edu/oracle/" class="foldingmenulink">View Survey Results</a></p>
+        <p><a href="<?=$server_wcespath?>oracle/" class="foldingmenulink">View Survey Results</a></p>
       </td>
     </tr>    
     <tr><td><script>foldingmenuhead_init("section2h","section2")</script>&nbsp;</td></tr>
@@ -149,7 +149,7 @@ h4                      { font-family: Arial, Helvetica, sans-serif; background-
         <p><a href="<?=$server_wcespath?>professors/previewsurveys.php" class="foldingmenulink">Preview surveys</a></p>
         <p><a href="<?=$server_wcespath?>professors/editsurveys.php" class="foldingmenulink">Edit your surveys</a></p>
         <p><a href="<?=$server_wcespath?>professors/seeresults.php" class="foldingmenulink">See Survey Results</a></p>
-        <p><a href="<?=$server_wcespath?>login/profsearch.php" class="foldingmenulink">Update CUNIX Association</a></p>
+        <p><a href="<?=$server_wcespath?>login/profsearch.php" class="foldingmenulink">Update DND Association</a></p>
       </td>
     </tr>
     <tr><td><script>foldingmenuhead_init("section3h","section3")</script>&nbsp;</td></tr>

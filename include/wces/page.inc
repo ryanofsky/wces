@@ -78,7 +78,7 @@ function showhelp(topic)
   if ($status & login_administrator)
   {
     if ($nospace) $nospace = false; else page_spacer();
-    page_link("Survey Editor",    "administrators/surveys.php", $QSID);
+    page_link("Survey Editor",    "administrators/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
     page_link("Course Database",  "administrators/info.php", $QSID);
