@@ -9,8 +9,8 @@ $db = wces_connect();
 if ($unilist) $uni = $unilist;
 if ($uni){
   $data = db_getrow($db,"Users",Array("cunix" => $uni),0);  if ($data)
-  {    wces_initcurrentclasses($db);
-    $y = mysql_query("SELECT cl.classid, cl.year, cl.semester, concat(s.code, c.code) AS code, c.name, cl.section, IF(cc.classid,'yes','no') AS survey, e.surveyed FROM Users as u INNER JOIN Enrollments as e USING (userid) INNER JOIN Classes as cl USING (classid) INNER JOIN Courses as c using (courseid) LEFT JOIN Subjects as s using (subjectid) LEFT JOIN currentclasses AS cc ON (cl.classid = cc.classid) WHERE u.cunix = '$uni' ORDER BY cl.year, cl.semester",$db);
+  {    wces_FindClasses($db,"currentclasses");
+    $y = mysql_query("SELECT cl.classid, cl.year, cl.semester, concat(s.code, c.code) AS code, c.name, cl.section, IF(cc.classid,'yes','no') AS survey FROM Users as u INNER JOIN Enrollments as e USING (userid) INNER JOIN Classes as cl USING (classid) INNER JOIN Courses as c using (courseid) LEFT JOIN Subjects as s using (subjectid) LEFT JOIN currentclasses AS cc ON (cl.classid = cc.classid) WHERE u.cunix = '$uni' ORDER BY cl.year, cl.semester",$db);
     $count = mysql_num_rows($y);
     if ($count > 0)
     {
