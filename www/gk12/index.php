@@ -10,8 +10,8 @@ page_top("GK12 Main");
 
 <p align=center><a href="survey.php">Click here to take survey</a></p>
 
-<p align=center><a href="results.php">Click here to see the results (soon)</a></p>
+<p align=center><a href="results.php">Click here to see the results</a></p>
 
-<p align=center><a href="builder.php">Click here to access the survey builder (temporary)</a></p>
+<p align=center><a href="builder.php">Click here to access the survey builder</a></p>
 
 <? page_bottom(); ?>
