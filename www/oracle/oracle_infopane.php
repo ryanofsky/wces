@@ -1,3 +1,12 @@
+<%
+
+require_once("wces/wces.inc");
+require_once("wces/reporting.inc");
+require_once("wces/general.inc");
+
+
+%>
+
 <style type="text/css">
 <!--
 body                    { font-family: Arial, Helvetica, sans-serif; }
@@ -9,9 +18,6 @@ h4                      { font-family: Arial, Helvetica, sans-serif; }
 
 <body bgcolor="#6699CC"><table vspace=20 hspace=20 width=100% height=100% bordercolor=black border=1 cellpadding=5 cellspacing=0><tr>
 <%
-require_once("wces/wces.inc");
-require_once("wces/reporting.inc");
-require_once("wces/general.inc");
 
 param($professorid);
 param($courseid);
@@ -22,6 +28,7 @@ $db = wces_connect();
 if ($professorid && $info = db_getrow($db,"professors",Array("professorid" => $professorid),0))
 {
   print("<td bgcolor=\"#B5CFE8\" valign=top>");
+  $cunix = $userid = $name = $picname = "";
   extract($info);
   $cunix = db_getvalue($db,"users",Array("userid" => $userid),"cunix");
 
@@ -39,13 +46,14 @@ if ($professorid && $info = db_getrow($db,"professors",Array("professorid" => $p
   INNER JOIN answersets AS a USING (classid)
   INNER JOIN courses AS c ON (cl.courseid = c.courseid)
   INNER JOIN subjects AS s USING (subjectid)
-  WHERE cl.professorid = '$professorid' AND a.questionperiodid < 6
+  WHERE cl.professorid = '$professorid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
   GROUP BY cl.classid 
   ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
   while ($class = mysql_fetch_array($classes))
   {
+    $classid = $section = $year = $semester = $code = $name = $scode = "";
     extract($class);
-    print ("  <option value=$classid>" . ucfirst($semester) . "$year  - $scode$code <i>$name</i> (section $section)</option>\n");
+    print ("  <option value=$classid>" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</option>\n");
   }
 %>  
 </select></p>
@@ -73,18 +81,19 @@ else if ($classid || $courseid)
   $infoq = mysql_query(
   "SELECT cl.section, cl.year, cl.semester, cl.students, cl.name as cname, p.name as pname, p.professorid, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname
   FROM classes as cl
-  LEFT JOIN courses as c USING (courseid)
-  LEFT JOIN departments as d USING (departmentid)
-  LEFT JOIN subjects as s ON (c.subjectid = s.subjectid)
+  INNER JOIN courses as c USING (courseid)
+  INNER JOIN subjects as s ON (c.subjectid = s.subjectid)
+  LEFT JOIN departments as d ON (d.departmentid = cl.departmentid)
   LEFT JOIN divisions as dv ON (cl.divisionid = dv.divisionid)
   LEFT JOIN schools as sc ON (c.schoolid = sc.schoolid)
   LEFT JOIN professors as p ON (cl.professorid = p.professorid)
   WHERE cl.classid = '$classid'", $db);
 
-  if ($cname) $name .= " - $cname";
-
   $info = mysql_fetch_array($infoq);
+  $section = $year = $semester = $students = $cname = $pname = $professorid = $code = $name = $information = $dcode = $dname = $scode = $sname = $dvname = $scname = "";
   extract($info);
+  if (isset($cname) && $cname) $name .= " - $cname";
+  
   print("<h3>$name</h3>\n");
 
 %>
@@ -100,7 +109,7 @@ else if ($classid || $courseid)
   SELECT cl.classid, cl.section, cl.year, cl.semester
   FROM classes as cl
   INNER JOIN answersets AS a USING (classid)
-  WHERE cl.courseid = '$courseid' AND a.questionperiodid < 6
+  WHERE cl.courseid = '$courseid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
   GROUP BY cl.classid
   ORDER BY cl.year DESC, cl.semester, cl.section DESC LIMIT 50
 
@@ -131,7 +140,7 @@ else if ($classid || $courseid)
       $sql_columns .= ", a.MC$i$choice";
   };
   
-  $n = mysql_query("SELECT $sql_columns FROM answersets AS a INNER JOIN classes as c USING (classid) LEFT JOIN questionsets as q ON (a.questionsetid = q.questionsetid) WHERE a.questionsetid = '1' AND a.classid = '$classid' ORDER BY a.responses DESC LIMIT 1", $db);
+  $n = db_exec("SELECT $sql_columns FROM answersets AS a INNER JOIN classes as c USING (classid) LEFT JOIN questionsets as q ON (a.questionsetid = q.questionsetid) WHERE a.questionsetid = '1' AND a.classid = '$classid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2) ORDER BY a.responses DESC LIMIT 1", $db, __FILE__, __LINE__);
   
   if (mysql_num_rows($n) > 0)
   {
@@ -142,7 +151,8 @@ else if ($classid || $courseid)
     for($i = 1; $i <= 10; ++$i)
     if ($result["MC$i"])
     {
-      $avg = report_avg($result["MC${i}a"],$result["MC${i}b"],$result["MC${i}c"],$result["MC${i}d"],$result["MC${i}e"]);
+      $scores = array(5 => $result["MC${i}a"], 4 => $result["MC${i}b"], 3=> $result["MC${i}c"], 2=> $result["MC${i}d"], 1=> $result["MC${i}e"]);
+      $avg = report_avg($scores);
       print("<tr><td>" . $result["MC$i"] . "</td><td>" . round($avg,2) . "</td><td nowrap>");
       print(report_meter(round($avg * 20)));
       print("</td></tr>\n");

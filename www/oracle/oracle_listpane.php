@@ -1,3 +1,10 @@
+<%
+
+require_once("wces/wces.inc");
+require_once("wces/reporting.inc");
+require_once("wces/general.inc");
+
+%>
 <head>
 <style>
 <!--
@@ -95,7 +102,7 @@ if ($mode == "professors")
   FROM answersets AS a
   INNER JOIN classes as cl USING (classid)
   INNER JOIN professors AS p USING (professorid)
-  WHERE a.questionperiodid < 6
+  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
   GROUP BY p.professorid
 
   ",$db);
@@ -159,7 +166,7 @@ else if ($mode == "search")
 		  FROM answersets AS a
 		  INNER JOIN classes AS cl USING (classid)
 		  INNER JOIN professors AS p USING (professorid)
-		  WHERE (a.questionperiodid < 6) AND ($search)
+		  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2) AND ($search)
       GROUP BY p.professorid
 		  LIMIT 100",$db,__FILE__,__LINE__);
 		}  
@@ -212,7 +219,7 @@ else // $mode == "courses"
   INNER JOIN courses AS c USING (courseid)
   INNER JOIN departments AS d USING (departmentid)
   LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
-  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND (a.questionperiodid < 6)
+  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
   GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);
 
   $departmentidprev = -1;
