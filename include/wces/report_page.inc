@@ -58,6 +58,7 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   {
     $pwhere = $where ? "  AND " : "WHERE ";
     $pwhere .= "e.user_id IN (" . implode($criteria[PROFESSORS],",") . ")\n    ";
+    $needprof = true;
   }
   else 
     $pwhere = '';
