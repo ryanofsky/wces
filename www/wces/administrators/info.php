@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/general.inc");
 require_once("wces/page.inc");
@@ -332,4 +332,4 @@ else
 page_bottom();
 
 
-%>
+?>
