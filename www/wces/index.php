@@ -14,7 +14,7 @@
 
 <h3>Getting Started</h3>
 
-<p><b>Students.</b> Choose "Complete a survey" under the students section at the left
+<p><b>Students.</b> Choose "Complete a Survey" under the students section at the left
  to evaluate your classes for this semester. Choose "View Survey Results" to see the results
  of past surveys and to learn more about Columbia's classes and professors.</p>
 
@@ -22,8 +22,13 @@
 to WCES. Once you have logged in you will be able to add custom questions to upcoming surveys
 and see results of already completed ones. You can edit questions and log in during non-evaluation period.</p>
 
-<p><b>Macintosh Users!</b> Please note that Internet Explorer for Macs will not accept our security certificate.  You are advised to use Netscape Navigator or Communicator instead
-</p>
+<p><b>Macintosh Users!</b> By default, Internet Explorer for Macintosh will
+refuse to connect to our secure site because its certificate was issued
+by a <a href="http://www.columbia.edu/acis/rad/columbiaca/">nonstandard</a>
+certification authority. You can log on securely using a netscape browser
+or log on without encryption by clicking
+<a href="login/login.php">here</a>.</p>
+
 
 </td></tr></table>
 

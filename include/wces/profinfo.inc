@@ -1,87 +1,5 @@
 <%
 
-//---------------------------------
-require_once("wces/server.inc");
-require_once("widgets/widgets.inc");
-
-$profimages_physical = "j:/server/shares/oracle/oracle/profimages/";
-$profimages_www = "/oracle/prof_images/";
-$profimages_upload = "upload/";
-
-/*
-
-$profimages_physical = "/home/httpd/html/oracle/prof_images/";
-$profimages_www = "/oracle/prof_images/";
-$profimages_upload = "upload/";
-
-*/
-
-//---------------------------------
-
-class ImageUpload extends FormWidget
-{
-  var $fpath, $maxsize;
-
-  var $fname;
-
-  function ImageUpload($fpath, $maxsize, $prefix, $form, $formmethod)
-  {
-    $this->FormWidget($prefix, $form, $formmethod);
-    $this->fpath = $fpath;
-    $this->maxsize = $maxsize;
-  }
-
-  function loadvalues()
-  {
-    $tname = $this->loadattribute("");
-    $fname = $this->loadattribute("name");
-    $extensions = array(1 => ".gif", 2 => ".jpg", 3 => ".png");
-
-    if (is_uploaded_file($tname) && $i = GetImageSize($tname) && $ext = $extensions[$i[2]])
-    {
-      $j = strlen($ext);
- 
-      if (strlen($fname) > $j || strtolower(substr($fname,-$j)) == $ext)
-        $fname = substr($fname,0,-$j);
-
-      $suff = "";
-      while(file_exists($mname = $this->fpath . $fname . $suff . $ext))
-        $suff = "_" . rand(1000,9999);
- 
-      if (move_uploaded_file($this->prefix, $mname))
-        $this->fname = $fname . $suff . $ext;
-      else
-        $this->fname = "";
-    }
-    else
-    {
-      $this->fname = $this->loadattribute("fname");
-      if (!($this->fname && file_exists($fpath . $this->fname)))
-        $this->fname = "";
-    }
-  }
-
-  function display()
-  {
-    print('<input name="' . $this->prefix . '" type=file>');
-    if ($this->fname) $this->printattribute("fname", $this->fname);
-  }
-}
-
-//---------------------------------
-
-//database.inc
-
-function db_count($db, $table, $conditions)
-{
-  $result = db_exec("SELECT COUNT(*) FROM $table " . db_where($conditions), $db, __FILE__, __LINE__);
-  $count = mysql_result($result,0);
-  mysql_free_result($result);
-  return $count;
-}
-
-//---------------------------------
-
 require_once("wces/wces.inc");
 require_once("wces/import.inc");
 require_once("widgets/basic.inc");
@@ -90,7 +8,6 @@ require_once("widgets/basic.inc");
 define("ProfessorEditor_edit",1);
 define("ProfessorEditor_save",2);
 define("ProfessorEditor_cancel",3);
-define("ProfessorEditor_preview",3);
 define("ProfessorInfo_print",1);
 define("ProfessorInfo_back",2);
 
@@ -105,7 +22,8 @@ class ProfessorInfo extends FormWidget
   {
     $this->FormWidget($prefix,$form,$formmethod);
     $this->db = $db;
-
+    $this->professorid = 0;
+    $this->printable = false;
     $this->action = new ActionButton($prefix . "_action",$form,$formmethod);
   }
   
@@ -202,7 +120,7 @@ class ProfessorInfo extends FormWidget
         $cunix = $email = $department = $url = $statement = $profile = $education = $picname = 0;
         extract($row);
         print("<tr>");
-        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$last, $first</a></td>\n");
+        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$last, $first</a></td>\n");
         print("  <td bgcolor=\"$color\">" . ($cunix ? "<a href=\"http://www.columbia.edu/cgi-bin/lookup.pl?$cunix\">$cunix</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">" . ($email ? "<a href=\"mailto:$email\">$email</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">$department</td>");
@@ -228,11 +146,9 @@ class ProfessorEditor extends FormWidget
   var $isadmin; // boolean
   
   var $form,$action,$name,$email,$url,$statement,$profile,$education;
-  var $departmentid;
-
+  
   function ProfessorEditor($db,$professorid,$isadmin,$prefix,$form,$formmethod)
   {
-    global $profimages_physical;
     $this->db = $db;
     $this->professorid = $professorid;
     $this->isadmin = $isadmin;
@@ -248,14 +164,10 @@ class ProfessorEditor extends FormWidget
     $this->education = new TextBox(6,50,"",$prefix . "_education",$form,$formmethod);
     if ($isadmin)
       $this->cunix = new TextBox(0,50,"",$prefix . "_cunix",$form,$formmethod);
-    $this->pictureupload = new ImageUpload($profimages_physical, 250000, $this.prefix . "_picture", $form, $formmethod);
-    $this->departmentid = 0;
   }
   
   function loadvalues()
   {
-    global $profimages_upload;
-
     $this->form->loadvalues();
     $this->action->loadvalues();
 
@@ -269,13 +181,10 @@ class ProfessorEditor extends FormWidget
       $this->education->loadvalues();
       if ($this->isadmin)
         $this->cunix->loadvalues();
-      $this->pictureupload->loadvalues();
-      $this->picture = $this->pictureupload->fname ? $profimages_upload . $this->pictureupload->fname : "";
-      $this->departmentid = $this->loadattribute("departmentid");
     }
     else
     {
-      $r = db_getrow($this->db,"professors",Array("professorid" => $this->professorid),Array("name","url","email","education","statement","profile","userid","departmentid"));
+      $r = db_getrow($this->db,"professors",Array("professorid" => $this->professorid),Array("name","url","email","education","statement","profile","userid"));
       $this->name->text = $r["name"];
       $this->email->text = $r["email"];
       $this->url->text = $r["url"];
@@ -287,15 +196,11 @@ class ProfessorEditor extends FormWidget
         $cunix = db_getvalue($this->db,"users",Array("userid" => $r["userid"]),"cunix");
         if ($cunix) $this->cunix->text = $cunix;
       }    
-      $this->departmentid = $r["departmentid"];
     }  
-
   }
   
   function display()
   {
-    global $profimages_www;
-
     if ($this->action->action == ProfessorEditor_save)
     {
       $save = array
@@ -307,9 +212,6 @@ class ProfessorEditor extends FormWidget
         "profile" => $this->profile->text,
         "education" => $this->education->text
       );  
-
-      if ($this->departmentid && db_count($this->db, "Departments", Array("departmentid" => $this->departmentid)))
-        $save["departmentid"] = $this->departmentid;
 
       if ($this->isadmin)
       {
@@ -340,29 +242,10 @@ class ProfessorEditor extends FormWidget
     <tr><td valign=top><strong>CUNIX ID:</strong></td><td><% $this->cunix->display(); %></td></tr>
   <% }; %>  
     <tr><td valign=top><strong>Email:</strong></td><td><% $this->email->display(); %></td></tr>
-    <tr><td valign=top><strong>Department:</strong></td><td>
-<%
-$departments = db_exec("SELECT departmentid, code, name FROM Departments", $this->db, __FILE__, __LINE__);
-print('<SELECT name=' . $this->prefix . "_departmentid\">\n");
-while($department = mysql_fetch_assoc($departments))
-{
-  $departmentid = $code = $name = "";
-  extract($department);
-  $selected = $departmentid = $this->departmentid ? "" : " SELECTED";
-  print("  <OPTION VALUE=\"$departmentid\"$selected>$code - $name</OPTION>\n");
-}
-print("</SELECT>");
-%>
-    </td></tr>
     <tr><td valign=top><strong>Homepage:</strong></td><td><% $this->url->display(); %></td></tr>
     <tr><td valign=top><strong>Statement:</strong></td><td><% $this->statement->display(); %></td></tr>
     <tr><td valign=top><strong>Profile:</strong></td><td><% $this->profile->display(); %></td></tr>
     <tr><td valign=top><strong>Education:</strong></td><td><% $this->education->display(); %></td></tr>
-    <tr><td valign=top><strong>Picture Upload:</strong></td><td>
-      <% $this->pictureupload->display(); %>
-      <% $this->action->display("Preview New Picture", ProfessorEditor_preview); %><br>
-      <div><img src="<%= $profimages_www . ($this->picture ? $this->picture : "default.gif") %>"></div>
-    </td></tr>
     <tr><td>&nbsp;</td><td><% $this->action->display("Save",ProfessorEditor_save); %> <% if ($this->isadmin) $this->action->display("Cancel",ProfessorEditor_cancel); %></td></tr>
   </table>    
   <% 
