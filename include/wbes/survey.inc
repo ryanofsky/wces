@@ -63,7 +63,7 @@ class Survey
       INNER JOIN revisions as r USING (revision_id)
       ORDER BY type, ordinal;
        
-     ", $wbes, __FILE__, __LINE__);
+    ", $wbes, __FILE__, __LINE__);
      
     pg_query("DROP TABLE tmp$this->orig_id", $wbes, __FILE__, __LINE__);
 
@@ -88,13 +88,13 @@ class Survey
 
       if ($type === $lasttype)
       {
-        $ordinals[] = (int)$ordinal;
+        $ordinals[] = (int)$ordinal - 1;
         $components[] = (int)$revision_id;
       }
       else
       {
         $components = array((int)$revision_id);
-        $ordinals = array((int)$ordinal);
+        $ordinals = array((int)$ordinal - 1);
       }
       $lasttype = $type;
     }
@@ -145,7 +145,10 @@ class Survey
       $saved_id = (int)pg_result($result,0,0);
       $sql = "";
       foreach($ncomponents as $i => $id)
-        $sql .= "INSERT INTO list_items(revision_id, ordinal, item_id) VALUES ($saved_id, $i, $id);\n";
+      {
+        $ordinal = $i + 1;
+        $sql .= "INSERT INTO list_items(revision_id, ordinal, item_id) VALUES ($saved_id, $ordinal, $id);\n";
+      }
       $sql .= "SELECT revision_save_end($branch_id, $saved_id)";
       pg_query($sql, $wbes, __FILE__, __LINE__);
     }
