@@ -5,6 +5,7 @@ define("TOPICS_CLASS", 2);
 define("TOPICS_COURSE", 3);
 
 require_once('widgets/basic.inc');
+require_once('widgets/SqlBox.inc');
 require_once('wbes/surveyeditor.inc');
 require_once('config/topics.inc');
 
@@ -21,22 +22,47 @@ class TopicEditor extends StatefullWidget
   // widgets
   var $editor;
   var $question_period;
+  
+  var $error = '';
 
-  function TopicEditor($name, &$parent)
+  function TopicEditor($professor_mode, $name, &$parent)
   {
     $this->StatefullWidget($name, $parent);
-    $this->question_period =& new QuestionPeriodSelector("Display surveys for", "qps", $this);
-    $this->event->urlShortName('item_id'); 
-    $this->event->urlShortName('specialization_id');
+    if (!$professor_mode)
+      $this->question_period =& new QuestionPeriodSelector("Display surveys for", "qps", $this);
+    $this->urlShortName('item_id'); 
+    $this->urlShortName('specialization_id');
+    $this->professor_mode = (bool)$professor_mode;
   }
 
   function & handleEvent($event, $param, $new)
   {
-    global $user_id;
     if ($event == TopicEditor_choose)
     {
+      $item_id = (int)$param[0];
+      $specialization_id = (int)$param[1];
       SurveyEditor::DumpScript();
-      $this->editor =& new SurveyEditor($param[0], $param[1], $user_id, 'editor', $this);
+      if ($this->professor_mode)
+      {
+        $user_id = (int)login_getuserid();
+        global $wces;
+        wces_connect();
+        $r = pg_result(pg_go("
+          SELECT EXISTS 
+          ( SELECT * FROM enrollments AS e
+            INNER JOIN wces_topics AS t USING (class_id)
+            WHERE e.user_id = $user_id AND e.status = 3
+               AND t.item_id = $item_id
+               AND t.specialization_id = $specialization_id
+          )
+        ", $wces, __FILE__, __LINE__), 0, 0);
+        if ($r != 't')
+        {
+          $this->error = "<p><font color=red>Invalid Survey</font></p>"; 
+          return null;
+        } 
+      }
+      $this->editor =& new SurveyEditor($item_id, $specialization_id, login_getuserid(), 'editor', $this);
       $this->loadChild($this->editor, $new);
       $this->barePage = $this->editor->barePage;
       return $this->editor;
@@ -76,6 +102,7 @@ class TopicEditor extends StatefullWidget
         . "$ASID\">$name</a>$no</li>\n");
     }
     print("</ul>\n");
+    return $n > 0;
   }
 
   function printVisible()
@@ -83,22 +110,43 @@ class TopicEditor extends StatefullWidget
     global $wces;
     wces_connect();
 
-    $this->question_period->display();
+    if ($this->question_period) $this->question_period->display();
 
     if (isset($this->editor) && $this->editor->message)
       print($this->editor->message);
 
+    if ($this->error) print($this->error);
+
     print("<p>Choose a survey to edit.</p>\n");
 
-    $list = topics_list(get_question_period());
+    if (!$this->professor_mode)
+      $list = topics_list(get_question_period());
+    else
+    {
+      $user_id = (int)login_getuserid();
+      $list = array
+      ( array
+        ( "", "
+            SELECT t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
+            FROM enrollments AS e
+            INNER JOIN wces_topics AS t USING (class_id)
+            INNER JOIN semester_question_periods AS s USING (question_period_id)
+            WHERE e.user_id = $user_id AND e.status = 3 AND s.enddate > (SELECT NOW())
+            ORDER BY name
+          ", TOPICS_CLASS
+        )
+      );
+    }
 
+    $printed = false;
     foreach ($list as $row)
     {
       list($heading, $sql, $mode) = $row;
       print($heading);
       $result = pg_go($sql, $wces, __FILE__, __LINE__);
-      $this->printTopics($result, $mode);
+      $printed = $printed || $this->printTopics($result, $mode);
     }
+    if (!$printed) print("<p><i>No surveys found</i></p>\n");
   }
 };
 
