@@ -260,7 +260,7 @@ CREATE OR REPLACE FUNCTION branch_parent(INTEGER) RETURNS INTEGER AS '
 
 -- in lieu of foreign keys, use these functions to quickly see if a branch,
 -- specialization, or revision is being referenced from some table
--- XXX: actually with the rewrite, the use of inheritance is confined to 
+-- XXX: actually with the rewrite, the use of inheritance is confined to
 -- the components tables, foreign keys can actually be used everywhere else
 CREATE OR REPLACE FUNCTION references_branch(INTEGER) RETURNS INTEGER AS '
   SELECT
@@ -595,7 +595,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     i := branch_id_;
     LOOP
 
-      SELECT INTO j revision_id FROM revisions 
+      SELECT INTO j revision_id FROM revisions
       WHERE branch_id = i AND save_id <= save_id_
       ORDER BY save_id DESC LIMIT 1;
 
@@ -608,7 +608,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     END LOOP;
   END;
 ' LANGUAGE 'plpgsql';
-select branch_latest(1, 4338, 1000);
+
 -- this is the same as branch_latest(branch_id_, save_id_) except that
 -- it takes a item_id and specialization_id instead of a branch_id.
 -- order of the arguments are item_id and specialization_id, save_id
@@ -622,7 +622,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER, INTEGER) RETURNS INTE
 
 -- XXX: Postgres 7.2 does not allow SELECT .. FOR UPDATE on specializations
 -- table because it is inherited from. This completely breaks the locking
--- done in this function and others. If this feature isn't added in 7.3, then 
+-- done in this function and others. If this feature isn't added in 7.3, then
 -- I'll have to come up with some workaround (such as doing trivial updates
 -- on rows which need to be locked. For now, though, the FOR UPDATE clauses
 -- are commented out and denoted by ILB (inheritance locking bug)
@@ -646,7 +646,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
     IF FOUND THEN RETURN bid; END IF;
 
     sid := specialization_id_;
-    
+
     --ILB
     --SELECT * FROM specializations WHERE specialization_id = sid FOR UPDATE;
 
@@ -656,7 +656,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
       EXIT WHEN FOUND;
 
       SELECT INTO sid parent FROM specializations WHERE specialization_id = sid
-      --ILB 
+      --ILB
       --FOR UPDATE
       ;
       IF NOT FOUND THEN
@@ -1173,10 +1173,12 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
     INNER JOIN components AS c USING (component_id)
     WHERE r.revision_id = orig_revision_id;
 
+    IF NOT FOUND THEN RAISE EXCEPTION ''revision_save(%,%,%,%,%) failed. orig_revision_id % not found'', $1, $2, $3, $4, $5, orig_revision_id; END IF;
+
     IF component_id_ = orig.component_id THEN
       bid := branch_find(orig_item_id, specialization_id_);
     ELSE
-      bid := branch_make_specialization(orig_item_id, specialization_id_, save_id_);  
+      bid := branch_make_specialization(orig_item_id, specialization_id_, save_id_);
     END IF;
 
     IF bid IS NULL THEN
@@ -1926,3 +1928,86 @@ CREATE OR REPLACE FUNCTION func_last (text[],text[]) RETURNS text[] AS '
 --DROP AGGREGATE first text[];
 CREATE AGGREGATE last ( BASETYPE = text[], SFUNC = func_last, STYPE = text[]);
 CREATE AGGREGATE first ( BASETYPE = text[], SFUNC = func_first, STYPE = text[]);
+
+CREATE TABLE cached_choice_responses
+(
+  topic_id INTEGER NOT NULL,
+  citem_id INTEGER NOT NULL,
+  crevision_id INTEGER NOT NULL,
+  qitem_id INTEGER NOT NULL,
+  qrevision_id INTEGER NOT NULL,
+  dist INTEGER[] NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION cached_choice_responses_update() RETURNS INTEGER AS '
+  DELETE FROM cached_choice_responses;
+  INSERT INTO cached_choice_responses (topic_id, citem_id, crevision_id, qitem_id, qrevision_id, dist)
+  SELECT r.topic_id, cr.item_id, cr.revision_id, qr.item_id,
+    qr.revision_id, choice_dist(qr.answer)
+  FROM survey_responses AS r
+  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+  GROUP BY r.topic_id, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id;
+  SELECT 1;
+' LANGUAGE 'sql'; 
+
+CREATE OR REPLACE FUNCTION cached_choice_responses_add(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_     ALIAS FOR $1;
+    citem_id_     ALIAS FOR $2;
+    crevision_id_ ALIAS FOR $3;
+    qitem_id_     ALIAS FOR $4;
+    qrevision_id_ ALIAS FOR $5;
+    answer_       ALIAS FOR $6;
+    t INTEGER;
+  BEGIN
+    SELECT INTO t topic_id FROM cached_choice_responses 
+    WHERE topic_id = topic_id_ 
+      AND citem_id = citem_id_ AND crevision_id = crevision_id_ 
+      AND qitem_id = qitem_id_ AND qrevision_id = qrevision_id_ FOR UPDATE;
+      
+    IF FOUND THEN
+      UPDATE cached_choice_responses SET
+        dist = dist_insert(dist, answer_)
+      WHERE topic_id = topic_id_ 
+        AND citem_id = citem_id_ AND crevision_id = crevision_id_ 
+        AND qitem_id = qitem_id_ AND qrevision_id = qrevision_id_;
+    ELSE
+      INSERT INTO cached_choice_responses (topic_id, citem_id, crevision_id, qitem_id, qrevision_id, dist)
+      VALUES (topic_id_, citem_id_, crevision_id_, qitem_id_, qrevision_id_, dist_insert(null, answer_));
+    END IF;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql'; 
+
+-- this function body is EXACTLY the same as in the previous one
+-- the only difference is that it accepts an array of integers instead of
+-- an integer for the last parameter
+CREATE OR REPLACE FUNCTION cached_choice_responses_add(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER[]) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_     ALIAS FOR $1;
+    citem_id_     ALIAS FOR $2;
+    crevision_id_ ALIAS FOR $3;
+    qitem_id_     ALIAS FOR $4;
+    qrevision_id_ ALIAS FOR $5;
+    answer_       ALIAS FOR $6;
+    t INTEGER;
+  BEGIN
+    SELECT INTO t topic_id FROM cached_choice_responses 
+    WHERE topic_id = topic_id_ 
+      AND citem_id = citem_id_ AND crevision_id = crevision_id_ 
+      AND qitem_id = qitem_id_ AND qrevision_id = qrevision_id_ FOR UPDATE;
+      
+    IF FOUND THEN
+      UPDATE cached_choice_responses SET
+        dist = dist_insert(dist, answer_)
+      WHERE topic_id = topic_id_ 
+        AND citem_id = citem_id_ AND crevision_id = crevision_id_ 
+        AND qitem_id = qitem_id_ AND qrevision_id = qrevision_id_;
+    ELSE
+      INSERT INTO cached_choice_responses (topic_id, citem_id, crevision_id, qitem_id, qrevision_id, dist)
+      VALUES (topic_id_, citem_id_, crevision_id_, qitem_id_, qrevision_id_, dist_insert(null, answer_));
+    END IF;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql'; 
