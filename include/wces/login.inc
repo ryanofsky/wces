@@ -305,9 +305,9 @@ function login_prompt($url, $rs, $de = false, $uni = "")
   <input type=hidden name=de value="<?= htmlspecialchars($de) ?>">
   <?= $AISID ?>
   <table>
-  <tr><td>Username:</td><td><input name="uni" type="text" value="<?= $uni ?>" size="20"></td></tr>
-  <tr><td>Password:</td><td><input name="pw" type="password" value="" size="20"></td></tr>
-  <tr><td>&nbsp;</td><td><input type="submit" value="Log In" name=submit></td></tr>
+  <tr><td>Username:</td><td><input name=uni type=text value="<?= $uni ?>" size=20></td></tr>
+  <tr><td>Password:</td><td><input name=pw type=password value="" size=20></td></tr>
+  <tr><td>&nbsp;</td><td><input type=submit value="Log In" name=submit> <input type=button value="Help" name=help onclick="showhelp('login')"></td></tr>
   </table>
   </form>
 <?
