@@ -1,10 +1,10 @@
-<%
+<?
 
 require_once("wces/wces.inc");
 require_once("wces/report_help.inc");
 require_once("wces/general.inc");
 
-%>
+?>
 
 <style type="text/css">
 <!--
@@ -16,7 +16,7 @@ h4                      { font-family: Arial, Helvetica, sans-serif; }
 </style>
 
 <body bgcolor="#6699CC"><table vspace=20 hspace=20 width=100% height=100% bordercolor=black border=1 cellpadding=5 cellspacing=0><tr>
-<%
+<?
 
 param($professorid);
 param($courseid);
@@ -33,11 +33,11 @@ if ($professorid && $info = db_getrow($db,"professors",Array("professorid" => $p
 
   print("<h3>$name</h3>");
   if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>");
-%>
+?>
 <h4>Courses Taught</h4>
 <form method=get name=classes>
 <p><select name=classid onchange="this.form.submit()" size=1>
-<%
+<?
   $classes = mysql_query("
 
   SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode
@@ -54,11 +54,11 @@ if ($professorid && $info = db_getrow($db,"professors",Array("professorid" => $p
     extract($class);
     print ("  <option value=$classid>" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</option>\n");
   }
-%>  
+?>  
 </select></p>
-<p><input type=image name=go src="<%=$oracleroot%>media/go.gif"></p>
+<p><input type=image name=go src="<?=$oracleroot?>media/go.gif"></p>
 </form>
-<%
+<?
   if ($statement) print("<h4>Statement</h4>\n<p>$statement</p>\n");
   if ($profile) print("<h4>Profile</h4>\n<p>$profile</p>\n");
   if ($education) print("<h4>Education</h4>\n<p>$education</p>\n");
@@ -95,14 +95,14 @@ else if ($classid || $courseid)
   
   print("<h3>$name</h3>\n");
 
-%>
+?>
 <table width=100% border=0 cellpadding=0 cellspacing=0>
 <tr>
   <td width=50% valign=top>
     <form method=get name=classes>
     <h4>Section</h4>
     <p><select name=classid onchange="this.form.submit()" size=1>
-<%
+<?
   $classes = mysql_query("
 
   SELECT cl.classid, cl.section, cl.year, cl.semester
@@ -116,18 +116,18 @@ else if ($classid || $courseid)
 
   while ($class = mysql_fetch_array($classes))
     print ("      <option value=" . $class['classid'] . ($classid == $class['classid'] ? " selected" : "") . ">" . ucfirst($class['semester']) . " " . $class['year'] . " - Section " . $class['section'] . "</option>\n");
-%>    </select></p>
-    <p><input type=image name=go src="<%=$oracleroot%>media/go.gif"></p>
+?>    </select></p>
+    <p><input type=image name=go src="<?=$oracleroot?>media/go.gif"></p>
     </form>
   </td>
   <td width=50% valign=top>
     <h4>Professor</h4>
-    <p><a href="oracle_infopane.php?professorid=<%=$professorid%>"><%=$pname%></a></p>
+    <p><a href="oracle_infopane.php?professorid=<?=$professorid?>"><?=$pname?></a></p>
   </td>
 </tr>
 </table>    
 
-<%    
+<?    
   
   $sql_columns = "c.students, a.responses";
     
@@ -169,17 +169,17 @@ else if ($classid || $courseid)
 }
 else
 {
-  %>
+  ?>
   <td bgcolor="B5CFE8" valign=center>
   <table align=center width=200 height=200 border=1 cellpadding=0 cellspacing=0 bordercolor=black><tr><td bgcolor="#FFFFFF" valign=middle>
-  <p align=center><img src="<%=$oracleroot%>media/seas_anim.gif" width=100 height=100></p>
+  <p align=center><img src="<?=$oracleroot?>media/seas_anim.gif" width=100 height=100></p>
   <p align=center>Choose a course or professor from the list in the left pane.</p>
   </td></tr>
   </table>
   </td>
-  <%
+  <?
 }
-%>
+?>
 </tr></table></body>
 
 

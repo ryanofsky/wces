@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/wces.inc");
 require_once("wces/general.inc");
@@ -7,7 +7,7 @@ param($mode);
 param($searchfor);
 param($searchin);
 
-%>
+?>
 <head>
 <style>
 <!--
@@ -60,7 +60,7 @@ ul                      { font-family: Arial, Helvetica, sans-serif; list-style-
 -->
 </style>
 
-<%
+<?
 
 function db_makesearch($text,$fields)
 {
@@ -81,15 +81,15 @@ $db = wces_connect();
 if ($mode == "professors")
 {
 
-  %>
+  ?>
   <p align=center>
-  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<%=$oracleroot%>media/courseraised.jpg" name=courses border=0></a>
-  <img src="<%=$oracleroot%>media/profsunk.jpg">
-  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<%=$oracleroot%>media/searchraised.jpg" name=search border=0></a>
+  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracleroot?>media/courseraised.jpg" name=courses border=0></a>
+  <img src="<?=$oracleroot?>media/profsunk.jpg">
+  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracleroot?>media/searchraised.jpg" name=search border=0></a>
   </p>
 
   <script>AttachImage('courses','courselit.jpg'); AttachImage('search','searchlit.jpg');</script>
-  <% 
+  <? 
 
   $y = mysql_query("
 
@@ -127,11 +127,11 @@ print('</font>');
 }
 else if ($mode == "search")
 {
-  %>
+  ?>
   <p align=center>
-  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<%=$oracleroot%>media/courseraised.jpg" name=courses border=0></a>
-  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<%=$oracleroot%>media/profraised.jpg" name=profs border=0></a>
-  <img src="<%=$oracleroot%>media/searchsunk.jpg" name=search border=0>
+  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracleroot?>media/courseraised.jpg" name=courses border=0></a>
+  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<?=$oracleroot?>media/profraised.jpg" name=profs border=0></a>
+  <img src="<?=$oracleroot?>media/searchsunk.jpg" name=search border=0>
   <script>AttachImage('courses','courselit.jpg'); AttachImage('profs','proflit.jpg')</script>
   </p>
   
@@ -140,16 +140,16 @@ else if ($mode == "search")
   <table align=center width="100%">
   <tr>
     <td nowrap><strong>Search for</strong></td>
-    <td colspan=2 width="100%"><input name=searchfor type=text size=18 style="width: 100%" value="<%=htmlspecialchars($searchfor)%>"></td>
+    <td colspan=2 width="100%"><input name=searchfor type=text size=18 style="width: 100%" value="<?=htmlspecialchars($searchfor)?>"></td>
   </tr>
   <tr>
     <td><strong>in</strong></td>
-    <td width="100%"><select name=searchin style="width: 100%"><option value=1<%=$searchin==1?" selected":""%>>Course Names</option><option value=2<%=$searchin==2?" selected":""%>>Professor Names</option></select></td>
+    <td width="100%"><select name=searchin style="width: 100%"><option value=1<?=$searchin==1?" selected":""?>>Course Names</option><option value=2<?=$searchin==2?" selected":""?>>Professor Names</option></select></td>
     <td><input type=submit name=submit value="Go"></td>
   </tr>
   </table>
   </form>
-<%
+<?
   if ($searchfor)
   {
 		if ($searchin == 2)
@@ -198,14 +198,14 @@ else if ($mode == "search")
 }
 else // $mode == "courses"
 {
-  %>
+  ?>
   <p align=center>
-  <img src="<%=$oracleroot%>media/coursesunk.jpg">
-  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<%=$oracleroot%>media/profraised.jpg" name=profs border=0></a>
-  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<%=$oracleroot%>media/searchraised.jpg" name=search border=0></a>
+  <img src="<?=$oracleroot?>media/coursesunk.jpg">
+  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<?=$oracleroot?>media/profraised.jpg" name=profs border=0></a>
+  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracleroot?>media/searchraised.jpg" name=search border=0></a>
   </p>
   <script>AttachImage('profs','proflit.jpg'); AttachImage('search','searchlit.jpg')</script>
-  <%  
+  <?  
 
   $y = mysql_query("
 
@@ -236,7 +236,7 @@ else // $mode == "courses"
 
 }
 
-%>
+?>
 
 </body>
 

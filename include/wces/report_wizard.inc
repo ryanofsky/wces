@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("widgets/basic.inc");
 require_once("widgets/wizard.inc");
@@ -228,28 +228,28 @@ class ReportWizard extends Wizard
         }
         else
         {
-%>
+?>
 <p><b>Choose a report format:</b><br>
-<% $this->output->display(ReportWizard_output_www,   "onclick=\"show('" . $this->prefix . "_wwwoptions" . "')\""); %> <% $this->output->displaylabel(ReportWizard_output_www); %><br>
-<% $this->output->display(ReportWizard_output_email, "onclick=\"hide('" . $this->prefix . "_wwwoptions" . "')\""); %> <% $this->output->displaylabel(ReportWizard_output_email); %>
+<? $this->output->display(ReportWizard_output_www,   "onclick=\"show('" . $this->prefix . "_wwwoptions" . "')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www); ?><br>
+<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('" . $this->prefix . "_wwwoptions" . "')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email); ?>
 </p>
 
 <p><b>Include these sections:</b><br>
-<% $this->includestandard->display(); %> <% $this->includestandard->displaylabel("Standard Questions"); %><br>
-<% $this->includecustom->display(); %> <% $this->includecustom->displaylabel("Custom Questions"); %><br>
-<% $this->includeabet->display(); %> <% $this->includeabet->displaylabel("ABET Questions"); %><br>
-<% $this->includetext->display(); %> <% $this->includetext->displaylabel("Comments"); %><br>
-<% $this->includeta->display(); %> <% $this->includeta->displaylabel("TA Ratings"); %><br>
+<? $this->includestandard->display(); ?> <? $this->includestandard->displaylabel("Standard Questions"); ?><br>
+<? $this->includecustom->display(); ?> <? $this->includecustom->displaylabel("Custom Questions"); ?><br>
+<? $this->includeabet->display(); ?> <? $this->includeabet->displaylabel("ABET Questions"); ?><br>
+<? $this->includetext->display(); ?> <? $this->includetext->displaylabel("Comments"); ?><br>
+<? $this->includeta->display(); ?> <? $this->includeta->displaylabel("TA Ratings"); ?><br>
 </p>
 
-<div id="<%=$this->prefix%>_wwwoptions"<%=$this->output->checked == ReportWizard_output_email ? ' style="display:none"': ''%>>
+<div id="<?=$this->prefix?>_wwwoptions"<?=$this->output->checked == ReportWizard_output_email ? ' style="display:none"': ''?>>
 <p><b>Options for web reports only:</b><br>
-<% $this->printable->display(); %> <% $this->printable->displaylabel("Produce a printable report"); %><br>
-<% $this->includepies->display(); %> <% $this->includepies->displaylabel("Show Pie Graphs in Usage Statistics"); %><br>
-<% $this->bighead->display(); %> <% $this->bighead->displaylabel("Exhaustive Class and Professor listings"); %><br>
+<? $this->printable->display(); ?> <? $this->printable->displaylabel("Produce a printable report"); ?><br>
+<? $this->includepies->display(); ?> <? $this->includepies->displaylabel("Show Pie Graphs in Usage Statistics"); ?><br>
+<? $this->bighead->display(); ?> <? $this->bighead->displaylabel("Exhaustive Class and Professor listings"); ?><br>
 </p>
 </div>
-<%
+<?
         };
       break;      
      case ReportWizard_qperiods:
@@ -390,16 +390,16 @@ class ReportWizard extends Wizard
             print("<p>Aggregation is not available in email reports. Choose a web based report to use this feature.</p>");
           else
           {
-%>
+?>
 <p><font size="-1">Check the survey properties below to determine how results are to be aggregated. Surveys that have the checked properties in common will have their scores added up and averaged together. For example, checking 'Departments' and 'Question Periods' will aggregate all surveys the come from the same department AND question period. To prevent any aggregation, select 'Classes' and 'Question Periods.' To aggregate all surveys together, leave all properties unchecked.</font></p>
 <p>
-<% $this->groupclasses->display(); %> <% $this->groupclasses->displaylabel("Classes"); %><br>
-<% $this->groupcourses->display(); %> <% $this->groupcourses->displaylabel("Courses"); %><br>
-<% $this->groupprofessors->display(); %> <% $this->groupprofessors->displaylabel("Professors"); %><br>
-<% $this->groupdepartments->display(); %> <% $this->groupdepartments->displaylabel("Departments"); %><br>
-<% $this->groupquestionperiods->display(); %> <% $this->groupquestionperiods->displaylabel("Question Periods"); %><br>
+<? $this->groupclasses->display(); ?> <? $this->groupclasses->displaylabel("Classes"); ?><br>
+<? $this->groupcourses->display(); ?> <? $this->groupcourses->displaylabel("Courses"); ?><br>
+<? $this->groupprofessors->display(); ?> <? $this->groupprofessors->displaylabel("Professors"); ?><br>
+<? $this->groupdepartments->display(); ?> <? $this->groupdepartments->displaylabel("Departments"); ?><br>
+<? $this->groupquestionperiods->display(); ?> <? $this->groupquestionperiods->displaylabel("Question Periods"); ?><br>
 </p> 
-<%
+<?
           };
         };
       break;  
@@ -596,4 +596,4 @@ function pcmp($a, $b)
 {
   return strcmp($a["last"],$b["last"]);
 } 
-%>
+?>

@@ -1,4 +1,4 @@
-<%
+<?
  require_once("wces/page.inc");
  require_once("wces/login.inc");
  require_once("wces/report_widget.inc");
@@ -8,10 +8,10 @@
  $report = new Report("report","wiz",WIDGET_POST);
  $report->loadvalues();
  page_top("Administrative Report","001",$report->hidemenus);
-%>
+?>
 
 <form name="wiz" method="post">
-<% $report->display(); %>
+<? $report->display(); ?>
 </form>
 
-<% page_bottom($report->hidemenus); %>
+<? page_bottom($report->hidemenus); ?>
