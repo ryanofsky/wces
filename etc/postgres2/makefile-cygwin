@@ -1,0 +1,13 @@
+OPT=
+INC=/usr/src/postgresql-7.1.3-2/src/include
+LIB=/lib/libpostgres.a
+OUTPUT=scattered_distribution.dll
+
+$(OUTPUT) : scattered_distribution.o
+	g++ -shared -o $(OUTPUT) scattered_distribution.o $(LIB)
+
+scattered_distribution.o : scattered_distribution.cpp
+	g++ $(OPT) -o scattered_distribution.o -c -I$(INC) scattered_distribution.cpp
+
+clean :
+	rm scattered_distribution.o $(OUTPUT)

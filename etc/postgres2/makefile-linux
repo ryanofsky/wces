@@ -1,0 +1,14 @@
+OPT=-fpic
+INC=/usr/include/postgresql
+#INC=/usr/include/pgsql
+LIB=
+OUTPUT=scattered_distribution.so
+
+$(OUTPUT) : scattered_distribution.o
+	g++ -shared -o $(OUTPUT) scattered_distribution.o $(LIB)
+
+scattered_distribution.o : scattered_distribution.cpp
+	g++ $(OPT) -o scattered_distribution.o -c -I$(INC) scattered_distribution.cpp
+
+clean :
+	rm scattered_distribution.o $(OUTPUT)
