@@ -108,7 +108,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
   $order = array(
     QUESTION_PERIODS => "cl.year, cl.semester, t.question_period_id",
-    CLASSES          => "s.code, c.code, cl.section",
+    COURSES          => "s.code, c.code, cl.section",
     DEPARTMENTS      => "d.code",
     PROFESSORS       => "u.lastname, firstname",
     CATEGORIES       => "t.survey_category_id"
@@ -116,7 +116,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
   $orderfields = array(
     QUESTION_PERIODS => "cl.year, cl.semester",
-    CLASSES          => "s.code, c.code, cl.section",
+    COURSES          => "s.code, c.code, cl.section",
     DEPARTMENTS      => "d.code",
     PROFESSORS       => "u.lastname, firstname",
     CATEGORIES       => ""
@@ -124,7 +124,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
   $gorder = array(
     QUESTION_PERIODS => "MIN(t.question_period_id)",
-    CLASSES          => "MIN(s.code)",
+    COURSES          => "MIN(s.code)",
     DEPARTMENTS      => "MIN(d.code)",
     PROFESSORS       => "MIN(u.lastname)",
     CATEGORIES       => "MIN(t.survey_category_id)"
@@ -136,6 +136,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
   $i = 0;
   foreach($groupings as $k => $v)
+  if ($v)
   {
     if ($group_s) $group_s .= ", ";
     $group_s .= "t.$cols[$k]";
@@ -151,60 +152,61 @@ function report_findgroups($topicstable, $groupings, $orderings)
     if ($fcols) $fcols .= ", ";
     $fcols .= "$cols[$k]";
   }
-
-  $joins = $sjoins = 0;
-  $order_s = "";
-
-  foreach($orderings as $o)
+  if (!$group_s)
   {
-    if ($order_s) $order_s .= ", ";
-    $joins |= $o;
-    if ($groupings[$o])
-    {
-      $order_s .= $order[$o];
-      $group_s .= ", $orderfields[$o]";
-      $sjoins |= $o;
-      unset($groupings[$o]);
-      if (count($groupings == 0)) break;
-    }
-    else
-    {
-      $badorder = true;
-      $order_s .= $gorder[$o];
-    }
+    pg_query("UPDATE $topicstable SET ordinal = 1", $wces, __FILE__, __LINE__);
+    return true;
   }
-
-  $tempname = substr(md5(uniqid(rand(),1)),0,20);
-
-  pg_query("
-    CREATE TEMPORARY TABLE tab$tempname AS
-    SELECT $group_s
-    FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
-    LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & CLASSES ? "
-    LEFT JOIN courses AS c ON c.course_id = t.course_id
-    LEFT JOIN subjects AS s ON s.subject_id = c.course_id" : "") . ($joins & PROFESSORS ? "
-    LEFT JOIN users AS u ON u.user_id = t.user_id" : "") . ($joins & DEPARTMENTS ? "
-    LEFT JOIN departments AS d ON d.department_id = t.department_id" : "") ."
-    GROUP BY $group_s
-    ORDER BY $order_s;
-
-    CREATE FUNCTION fun$tempname($fargs) RETURNS INTEGER AS '
-      SELECT oid::integer FROM tab$tempname WHERE $fcond
-    ' LANGUAGE 'sql';
-
-    UPDATE $topicstable SET ordinal = fun$tempname($fcols);
-
-    DROP FUNCTION fun$tempname($fargs);
-    DROP TABLE tab$tempname;
-  ", $wces, __FILE__, __LINE__);
-
-  return !$badorder;
-
-  pg_query("
-    UPDATE $topicstable AS t SET ordinal
-  ", $wces, __FILE__, __LINE__);
-
-
+  else
+  {
+    $joins = $sjoins = 0;
+    $order_s = "";
+    
+    foreach($orderings as $o)
+    {
+      if ($order_s) $order_s .= ", ";
+      $joins |= $o;
+      if ($groupings[$o])
+      {
+        $order_s .= $order[$o];
+        $group_s .= ", $orderfields[$o]";
+        $sjoins |= $o;
+        unset($groupings[$o]);
+        if (count($groupings == 0)) break;
+      }
+      else
+      {
+        $badorder = true;
+        $order_s .= $gorder[$o];
+      }
+    }
+    
+    $tempname = substr(md5(uniqid(rand(),1)),0,20);
+    
+    pg_query("
+      CREATE TEMPORARY TABLE tab$tempname AS
+      SELECT $group_s
+      FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
+      LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & COURSES ? "
+      LEFT JOIN courses AS c ON c.course_id = t.course_id
+      LEFT JOIN subjects AS s ON s.subject_id = c.course_id" : "") . ($joins & PROFESSORS ? "
+      LEFT JOIN users AS u ON u.user_id = t.user_id" : "") . ($joins & DEPARTMENTS ? "
+      LEFT JOIN departments AS d ON d.department_id = t.department_id" : "") ."
+      GROUP BY $group_s
+      ORDER BY $order_s;
+    
+      CREATE FUNCTION fun$tempname($fargs) RETURNS INTEGER AS '
+        SELECT oid::integer FROM tab$tempname WHERE $fcond
+      ' LANGUAGE 'sql';
+    
+      UPDATE $topicstable SET ordinal = fun$tempname($fcols);
+    
+      DROP FUNCTION fun$tempname($fargs);
+      DROP TABLE tab$tempname;
+    ", $wces, __FILE__, __LINE__);
+    
+    return !$badorder;
+  }
 }
 
 //---------------------------------------------------------------------------------------------
@@ -235,11 +237,11 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
   if ($outhtml)
   {
     $pagehtml .= "<h4>On this page</h4>\n";
-    $pagehtml .= "<table border=0>\n";
+    $pagehtml .= "<table border=0 summary=\"Survey Information\">\n";
   }
 
   if ($outtext)
-    $pagetext .= "Included on this page:\n\n";
+    $pagetext .= "Included on this page\n\n";
 
   while($questionperiods->row && $questionperiods->row['ordinal'] == $ordinal)
   {
@@ -262,7 +264,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     {
       extract($professors->row);
       $profname = ($firstname || $lastname) ? "$firstname $lastname" : "Unknown";
-      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($professorid ? "<a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
+      if ($outhtml) $pagehtml .= "<tr><td>Professor:</td><td><b>" . ($user_id ? "<a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$profname</a>" : "<i>$profname</i>") . "</b></td></tr>\n";
       if ($outtext) $pagetext .= " - Professor: $profname\n";
       $professors->advance();
     }
@@ -281,7 +283,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     {
       extract($classes->row);
       $pname = $firstname || $lastname ? " - Professor $firstname $lastname" : "";
-      if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b>$scode $ccode $cname Section $section$pname</b></td></tr>\n";
+      if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b>$scode $ccode $name Section $section$pname</b></td></tr>\n";
       if ($outtext) $pagetext .= " - Class: $scode $ccode $cname Section $section$pname\n";
       $classes->advance();
     }
@@ -291,19 +293,19 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
   //////////////////////////////// RESPONSE STATISTICS /////////////////////////////////
 
-  if ($pagetext)
+  if ($outtext)
   {
-    $pagetext .= "\nResponse Statistics:\n\n";
-    $pagetext .= " - Total Students: $students\n";
-    $pagetext .= " - Students Evaluated: $responses\n\n";
+    $pagetext .= "\nResponse Statistics\n\n";
+    $pagetext .= " - Total Surveys: $students\n";
+    $pagetext .= " - Evaluated Surveys: $responses\n\n";
   }
 
   if ($outhtml)
   {
     $pagehtml .= "<h4>Response Statistics</h4>";
-    $pagehtml .= "<table border=0>\n";
-    $pagehtml .= "<tr><td>Total Students:</td><td><b>$students</b></td></tr>\n";
-    $pagehtml .= "<tr><td>Students Evaluated:</td><td><b>$responses</b></td></tr>\n";
+    $pagehtml .= "<table border=0 summary=\"number of responses\">\n";
+    $pagehtml .= "<tr><td>Total Surveys:</td><td><b>$students</b></td></tr>\n";
+    $pagehtml .= "<tr><td>Evaluated Surveys:</td><td><b>$responses</b></td></tr>\n";
     $pagehtml .= "</table>\n";
     $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$responses) . "&filled=$responses\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
   }
@@ -362,7 +364,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
         if ($flags & FLAG_ISNUMERIC)
           $pagehtml .= "($first_number = $cchoices[0], $last_number = $cchoices[1])<br>";
 
-        $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2>\n";
+        $pagehtml .= "<table border=1 cellspacing=0 cellpadding=2 summary=\"multiple choice response distributions\">\n";
         $pagehtml .= "<thead style=\"page-break-inside: avoid\">\n";
         $pagehtml .= "<tr>\n";
         $pagehtml .= "<td>&nbsp;</td>\n";
@@ -405,11 +407,11 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
             if ($key) $key .= ", ";
             $key .= ($showstats ? $values[$ci] : $ci) . " = $ct";
           }
-          $pagetext .= "($key)";
+          $pagetext .= "($key)\n";
         }
         $key = "";
 
-        $textformat = array(30);
+        $textformat = array(25);
         $textrows = array();
 
         $header = array("Question Text");
@@ -435,7 +437,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
           $textrows[] = $header;
         }
       }
-    } // if ($choices->split[0])
+    } // if ($choices->split[1])
 
     // done with header, print a row
 
@@ -464,6 +466,8 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     if ($outtext) $textrows[] = $row;
 
     $choices->advance();
+
+    $pagehtml .= "<!-- split[1] = " . ((int)$choices->split[1]) . " -->\n";
 
     if ($choices->split[1])
     {
