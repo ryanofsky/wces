@@ -1,9 +1,9 @@
-<?
+<%
  require_once("widgets.inc");
  require_once("page.inc");
  
  page_top("title");
-?>
+%>
 
 <h2>Heading of type 2</h2>
 <h3>Heading of type number three</h3>
@@ -19,6 +19,6 @@
 
 <table bgcolor="#CCCCFF" width="100%"><tr><td><strong>Old School Table</strong></td></tr></table>
 
-<?
+<%
   page_bottom();
-?>
+%>

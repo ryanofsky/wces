@@ -1,7 +1,7 @@
-<?
+<%
 require_once("wces/page.inc");
 page_top("Confidentiality");
-?>
+%>
       <table width=590><tr><td>      <h3>Confidentiality</h3>
       <p>
       WCES securely stores student class evaluations. Student user names are not associated with individual
@@ -15,6 +15,6 @@ page_top("Confidentiality");
       and the student will be identified to the system administrator in the case of incorrect input. All other
       data entered by student is completely anonymous and impossible to track by the system administrator.
       Therefore feel free to evaluate your classes honestly and candidly!
-      </p>      </td></tr></table><?
+      </p>      </td></tr></table><%
 page_bottom();
-?>
+%>
