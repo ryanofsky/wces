@@ -177,12 +177,19 @@ function get_question_period()
     // question periods according to which one begins first
     // then to past question periods according to which ended
     // most recently
-    
+
     $result = pg_go("
-      SELECT question_period_id, begindate < (SELECT NOW()) AS is_past
-      FROM question_periods
-      ORDER BY begindate < (SELECT NOW()), CASE WHEN begindate < (SELECT NOW()) THEN begindate - (SELECT NOW()) 
-        ELSE (SELECT NOW()) - enddate END
+      SELECT question_period_id, begindate, enddate, abs(begindate - (SELECT NOW()))
+      FROM semester_question_periods
+      ORDER BY 
+        CASE WHEN enddate < (SELECT NOW()) THEN 3   -- past
+             WHEN begindate > (SELECT NOW()) THEN 2 -- future
+             ELSE 1                                 -- present
+        END,
+        CASE WHEN enddate < (SELECT NOW()) THEN (SELECT NOW()) - enddate     -- past
+             WHEN begindate > (SELECT NOW()) THEN begindate - (select now()) -- future
+             ELSE ((select now()) - begindate)                               -- present
+        END
       LIMIT 1
     ", $wces, __FILE__, __LINE__);
     
