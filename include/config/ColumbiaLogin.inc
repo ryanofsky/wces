@@ -14,7 +14,7 @@ class ColumbiaLogin extends WcesLogin
     if (!$dump)
     {
       sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
-      $error = "Error: Timeout occurred while trying to contact the AcIS authentication server. Please try again.";
+      $error = "Error: Failed to contact AcIS authentication server. Please try again.";
       return false;
     }
        
