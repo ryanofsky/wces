@@ -1,7 +1,7 @@
 <?
 
 require_once("widgets/widgets.inc");
-require_once("wces/server.inc");
+require_once("wbes/server.inc");
 
 class DynamicList extends FormWidget
 {
@@ -150,7 +150,7 @@ class DynamicList extends FormWidget
   
   function display($hidden = false) // public inherited
   {
-    global $server_wcespath;
+    global $wces_path;
 
 	if ($hidden)
 	{
@@ -199,8 +199,8 @@ class DynamicList extends FormWidget
 <? } ?>          
   </tr>
   <tr><td align=center>
-    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.move(-1)"   onmouseup="button_unpush('<?=$this->prefix?>_moveup')"   onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_moveup"   src="<?=$server_wcespath?>media/dynamiclist/moveup.gif" border=0></a>
-    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.move( 1)" onmouseup="button_unpush('<?=$this->prefix?>_movedown')" onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_movedown" src="<?=$server_wcespath?>media/dynamiclist/movedown.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.move(-1)"   onmouseup="button_unpush('<?=$this->prefix?>_moveup')"   onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_moveup"   src="<?=$wces_path?>media/dynamiclist/moveup.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.move( 1)" onmouseup="button_unpush('<?=$this->prefix?>_movedown')" onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_movedown" src="<?=$wces_path?>media/dynamiclist/movedown.gif" border=0></a>
     <script>
     <!--
       AttachPushed('<?=$this->prefix?>_moveup',"moveup_pushed.gif");

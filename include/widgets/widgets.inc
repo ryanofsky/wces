@@ -122,6 +122,23 @@ class ImageButton extends Widget
 <script>
 <!--  
 
+  var happyrollover = document.images && window.Image ? true : false;
+  var happytree = happyrollover && RegExp && (document.all || document.getElementById) ? true : false;
+  var detect = navigator.userAgent.toLowerCase();
+  var refreshbug =  (detect.indexOf('compatible') < 0 && detect.charAt(8) == '5') ? true : false; // check for mozilla
+
+  // fix for Netscape 3 string object
+  if (happyrollover && !String.prototype.slice) String.prototype.slice = new Function("start","len","if(len<0 || len>this.length) len = this.length; var ret = new String(); for(var i = start; i < len; i++) ret += this.charAt(i); return ret");
+
+  function getImage(oldimage,filename)
+  {
+    var p = oldimage.src.lastIndexOf("/");
+    var q = oldimage.src.lastIndexOf("\\");
+    var i = new Image();
+    i.src = oldimage.src.slice(0,(p>q && p>0) ? p+1 : (q>0)?q+1 : 0) + filename;;
+    return i;
+  }; 
+
   function AttachPushed(img, filename)
   {
     if(happyrollover)

@@ -4,7 +4,7 @@ require_once("wces/report_page.inc");
 
 function makereport($db,&$wizard,$stdout,&$html,&$text)
 {
-  global $server_wcespath;    
+  global $wces_path;    
       
   $sqloptions = array
   (
@@ -81,7 +81,7 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
   }
 }
 
-function report_profemail($db,$wizard,$subject,$message,$debug)
+function report_profemail($db,&$wizard,$subject,$message,$debug)
 {
   $sqloptions = array
   (
