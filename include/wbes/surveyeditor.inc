@@ -46,12 +46,13 @@ class SurveyEditor extends FormWidget
   var $topic_id;
   var $base_branch_id;
   
-  function SurveyEditor($topic_id, $base_branch_id, $factories, $prefix,$form,$formmethod)
+  function SurveyEditor($topic_id, $base_branch_id, $user_id, $factories, $prefix,$form,$formmethod)
   {
     global $server_url;
     $this->FormWidget($prefix,$form,$formmethod);
     $this->topic_id = (int)$topic_id;
     $this->base_branch_id = (int)$base_branch_id;
+    $this->user_id = (int)$user_id;
     $this->factories = $factories;
     $GLOBALS['topic_id'] = $topic_id;
   }
@@ -59,12 +60,12 @@ class SurveyEditor extends FormWidget
   function loadvalues($empty = false)
   {
     if(!$empty)
-	{
-	$this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
+    {
+      $this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
 
-	if (get_class($this->survey) != "survey")
-	    $this->load();
-	}
+      if (get_class($this->survey) != "survey")
+        $this->load();
+    }
 
     $this->state = $this->loadattribute("state");
     $this->currentcomponent = $this->loadattribute("currentcomponent");
@@ -80,7 +81,7 @@ class SurveyEditor extends FormWidget
   
   function save()
   {
-    if ($this->survey->save($this->topic_id,0))
+    if ($this->survey->save($this->topic_id,$this->user_id,0))
       $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
     else
       $this->message = "<h1>Save Error</h1>";
@@ -156,10 +157,7 @@ class SurveyEditor extends FormWidget
         break;
       case SurveyEditor_main:
       default:
-      
-	//print($this->prefix . " Doing default. \n<br>\n");
-	
-	
+        //print($this->prefix . " Doing default. \n<br>\n");
         $this->main_action = new ActionButton("{$this->prefix}_main_action", $this->form, $this->formmethod);
         $this->main_action->loadvalues();
 
@@ -309,12 +307,12 @@ if($component->locked && $component->revision_id)
   $wr = new pg_wrapper($r);
     
   if($wr->row['topic_id'] != $this->topic_id)
-	{
-	  $needNode = false;
+  {
+    $needNode = false;
 ?>
-	<td width=40 valign=center><img src="<?=$server_media?>/editor/grey_node.gif" width=40 height=18 border=0 align=absmiddle alt=locked_node></td>
+    <td width=40 valign=center><img src="<?=$server_media?>/editor/grey_node.gif" width=40 height=18 border=0 align=absmiddle alt=locked_node></td>
 <?
-	}
+  }
 }
 
 if($needNode)
@@ -358,433 +356,67 @@ if($needNode)
   
   function dumpscript()
   {
-    global $SurveyEditor_dumped,$server_media, $SurveyEditor_ns4;
-    if (!isset($SurveyEditor_dumped))
+    global $server_media, $SurveyEditor_ns4;
+    static $dumped = false;
+    if ($dumped) return; else $dumped = true;
+
+    ActionButton::dumpscript();
+    includeScript("$server_media/editor/menus.js");
+
+    $mod = SurveyEditor_main_modify; $del = SurveyEditor_main_delete;
+    $up = SurveyEditor_main_moveup; $down = SurveyEditor_main_movedown;
+    $ins = SurveyEditor_main_insert;
+
+    if (!$SurveyEditor_ns4)
     {
-      ActionButton::dumpscript();
-      $SurveyEditor_dumped = true;
-
-?>
-
-<!-- Begin SurveyEditor Script -->
-
-<? if (!$SurveyEditor_ns4) { ?>
+      $str = <<<EOD
 <div id=SurveyEditor_cmdmenu style="position:absolute; visibility: hidden; z-index: 10"><table border=1 cellspacing=0 cellpadding=3>
-<tr><td id=SurveyEditor_editcmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/edit.gif" width=20 height=20 alt="Edit" align=absmiddle> Edit Component</td></tr>
-<tr><td id=SurveyEditor_deletecmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/delete.gif" width=20 height=20 alt="Delete" align=absmiddle> Delete Component</td></tr>
-<tr><td id=SurveyEditor_moveupcmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/moveup.gif" width=20 height=20 alt="Move Up" align=absmiddle> Move Up</td></tr>
-<tr><td id=SurveyEditor_movedowncmd class=editmenu bgcolor="#EEEEEE"><img src="<?=$server_media?>/editor/movedown.gif" width=20 height=20 alt="Move Down" align=absmiddle> Move Down</td></tr>
+<tr><td id=SurveyEditor_editcmd class=editmenu bgcolor="#EEEEEE"><img src="$server_media/editor/edit.gif" width=20 height=20 alt="Edit" align=absmiddle> Edit Component</td></tr>
+<tr><td id=SurveyEditor_deletecmd class=editmenu bgcolor="#EEEEEE"><img src="$server_media/editor/delete.gif" width=20 height=20 alt="Delete" align=absmiddle> Delete Component</td></tr>
+<tr><td id=SurveyEditor_moveupcmd class=editmenu bgcolor="#EEEEEE"><img src="$server_media/editor/moveup.gif" width=20 height=20 alt="Move Up" align=absmiddle> Move Up</td></tr>
+<tr><td id=SurveyEditor_movedowncmd class=editmenu bgcolor="#EEEEEE"><img src="$server_media/editor/movedown.gif" width=20 height=20 alt="Move Down" align=absmiddle> Move Down</td></tr>
 </table></div>
-
-<div id=SurveyEditor_insert style="position:absolute; visibility:hidden"><img src="<?=$server_media?>/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component"></div>
-<? } else { // SurveyEditor_ns4 ?>
-<layer id=SurveyEditor_cmdmenu visibility=hide z-index=10><table border=1 cellspacing=0 cellpadding=3>
-<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose(<?=SurveyEditor_main_modify?>)"><img src="<?=$server_media?>/editor/edit.gif" width=20 height=20 alt="Edit" align=absmiddle border=0> Edit Component</td></tr>
-<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose(<?=SurveyEditor_main_delete?>)"><img src="<?=$server_media?>/editor/delete.gif" width=20 height=20 alt="Delete" align=absmiddle border=0> Delete Component</td></tr>
-<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose(<?=SurveyEditor_main_moveup?>)"><img src="<?=$server_media?>/editor/moveup.gif" width=20 height=20 alt="Move Up" align=absmiddle border=0> Move Up</td></tr>
-<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose(<?=SurveyEditor_main_movedown?>)"><img src="<?=$server_media?>/editor/movedown.gif" width=20 height=20 alt="Move Down" align=absmiddle border=0> Move Down</td></tr>
-</table></layer>
-
-<layer id=SurveyEditor_mryellow visibility=hide width=2000 height=10 bgcolor="#FFE051" z-index=5></layer>
-
-<layer id=SurveyEditor_insert visibility=hide z-index=5><img src="<?=$server_media?>/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component"></layer>
-<? } // if SurveyEditor_ns4 ?>
-
-<script>
-<!--
-
-  function elem(str)
-  {
-    if (document.all)
-    {
-      return document.all(str);
-    }
-    else if (document.getElementById)
-    {
-      return document.getElementById(str);
-    }
-  }
-  
-  function getoffset(element)
-  {
-    var offset = new Object();
-    if((element.x || element.x == 0) && (element.y || element.y == 0))
-    {
-      offset.x = element.x;
-      offset.y = element.y;
-      return offset;
+<div id=SurveyEditor_insert style="position:absolute; visibility:hidden"><img src="$server_media/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component"></div>
+EOD;
     }
     else
     {
-      offset.x = 0;
-      offset.y = 0;
-      for(;;element = element.offsetParent)
-      {
-        offset.x += element.offsetLeft;
-        offset.y += element.offsetTop;
-        if (!element.offsetParent) return offset;
-      }
-    }
-  }
+      includeScript("$server_media/editor/menus_ns4.js");      
 
-  function SurveyEditor(nodes,prefix,form) // DOM
-  {
-<? if (!$SurveyEditor_ns4) { ?>
-    var actionobject = document.forms[form][prefix + "_main_action"];
-    var marker = elem(prefix + "_insertmarker");
-   
-    for(var i=0;;++i)
+      $str = <<<EOD
+<layer id=SurveyEditor_cmdmenu visibility=hide z-index=10><table border=1 cellspacing=0 cellpadding=3>
+<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose($mod)"><img src="$server_media/editor/edit.gif" width=20 height=20 alt="Edit" align=absmiddle border=0> Edit Component</td></tr>
+<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose($del)"><img src="$server_media/editor/delete.gif" width=20 height=20 alt="Delete" align=absmiddle border=0> Delete Component</td></tr>
+<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose($up)"><img src="$server_media/editor/moveup.gif" width=20 height=20 alt="Move Up" align=absmiddle border=0> Move Up</td></tr>
+<tr><td class=editmenu bgcolor="#EEEEEE"><a href="javascript:ns_choose($down)"><img src="$server_media/editor/movedown.gif" width=20 height=20 alt="Move Down" align=absmiddle border=0> Move Down</td></tr>
+</table></layer>
+<layer id=SurveyEditor_mryellow visibility=hide width=2000 height=10 bgcolor="#FFE051" z-index=5></layer>
+<layer id=SurveyEditor_insert visibility=hide z-index=5><img src="$server_media/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component"></layer>
+EOD;
+    }
+    absolutePrint($str);
+
+    absolutePrint("<script language=javascript>
+SurveyEditor_main_insert = $ins;
+SurveyEditor_main_modify = $mod;
+SurveyEditor_main_delete = $del;
+SurveyEditor_main_moveup = $up;
+SurveyEditor_main_movedown = $down;
+SurveyEditor_menu = SurveyEditor_Menu();
+");
+
+    if ($SurveyEditor_ns4)
     {
-      var insert = elem(prefix + "_insert" + i);
-      insert.onclick = SurveyEditor_insert_onclick;
-      insert.onmouseover = SurveyEditor_insert_onmouseover;
-      insert.onmouseout = SurveyEditor_insert_onmouseout;
-      insert.key = i;
-      insert.actionobject = actionobject;
-      insert.marker = marker;
-      
-      if (i >= nodes) break;
-
-      var node = elem(prefix + "_node" + i);
-
-      if(node == null)
-        {continue;}
-      
-      node.onmouseover = SurveyEditor_node_onmouseover;
-      node.onmouseout = SurveyEditor_node_onmouseout;
-      node.key = i;
-      node.actionobject = actionobject;
-    }  
-<? } else { // SurveyEditor_ns4 ?>
-    var o = new Object();
-    o.nodes = nodes;
-    o.prefix = prefix;
-    o.form = form;
-    window.SurveyEditor_loadpackage.push(o);
-<? } // if SurveyEditor_ns4 ?>
-  }
-
-<? if ($SurveyEditor_ns4) { ?>
-  
-  function SurveyEditor_Spot(x1,y1,x2,y2,obj)
-  {
-    this.x1 = x1;
-    this.y1 = y1;
-    this.x2 = x2;
-    this.y2 = y2;
-    this.obj = obj;
-  }
-  
-  function SurveyEditor_onload(e)
-  {
-    if (window.SurveyEditor_onload_old) window.SurveyEditor_onload_old(e);
-    
-    for (p in window.SurveyEditor_loadpackage)
-    {
-      var o = window.SurveyEditor_loadpackage[p];    
-      var r = document.images[o.prefix + '_insertmarker'].x;
-      var actionobject = document.forms[o.form][o.prefix + "_main_action"];
-         
-      for(var i=0;;++i)
-      {
-        var insert = document.images[o.prefix + '_ns4marker' + i];
-        insert.ns4_onclick = SurveyEditor_insert_onclick;
-        insert.ns4_onmouseover = SurveyEditor_insert_onmouseover;
-        insert.ns4_onmouseout = SurveyEditor_insert_onmouseout;
-        insert.key = i;
-        insert.actionobject = actionobject;
-        insert.right_edge = r;
-        window.SurveyEditor_spots.push(new SurveyEditor_Spot(insert.x, insert.y, r, insert.y + 10, insert)); 
-        
-        if (i >= o.nodes) break;
-        
-        var node = document.images[o.prefix + '_node' + i];
-        
-        if (!node) continue;
-        
-        node.ns4_onmouseover = SurveyEditor_node_onmouseover;
-        node.ns4_onmouseout = SurveyEditor_node_onmouseout;
-        node.key = i;
-        node.actionobject = actionobject;
-        window.SurveyEditor_spots.push(new SurveyEditor_Spot(node.x, node.y, node.x + node.width, node.y + node.height, node));
-      }
+      absolutePrint("
+window.SurveyEditor_loadpackage = new Array();
+window.SurveyEditor_spots = new Array();  
+window.SurveyEditor_onload_old = window.onload;
+window.SurveyEditor_hotspot = 0;
+window.onload = SurveyEditor_onload;
+");  
     }
+    absolutePrint("</script>");
     
-    window.SurveyEditor_loadpackage = false;
-  }
-  
-  function SurveyEditor_mousemove(e)
-  {
-    if (window.SurveyEditor_mousemove_old) window.SurveyEditor_mousemove_old(e);
-    
-    //window.status = "hello from " + e.pageX + "," + e.pageY + (window.hovermenu ? " ON" : " OFF") ;
-   
-    var x = e.pageX;
-    var y = e.pageY;
-    var oldhot = window.SurveyEditor_hotspot;
-
-    var spot = false;
-    window.SurveyEditor_hotspot = 0;
-
-    if (!window.SurveyEditor_menu.hover)
-    for(i in window.SurveyEditor_spots)
-    {
-      var s = window.SurveyEditor_spots[i];
-      if (s.x1 <= x && x <= s.x2 && s.y1 <= y && y <= s.y2)
-      {
-        window.SurveyEditor_hotspot = i - -1; // netscape 4.08 thinks i is a string
-        spot = s.obj;
-        break;
-      }
-    }
-    
-    if(oldhot != window.SurveyEditor_hotspot)
-    {
-      var oldspot = oldhot ? window.SurveyEditor_spots[oldhot - 1].obj : false;
-      
-      if (oldspot && oldspot.ns4_onmouseout)
-        oldspot.ns4_onmouseout(e);
-      
-      if (spot && spot.ns4_onmouseover)
-        spot.ns4_onmouseover(e);
-    }
-  }
-
-  function SurveyEditor_mouseclick(e)
-  {
-    if(window.SurveyEditor_mouseclick_old) window.SurveyEditor_mouseclick_old(e);
-    
-    var spot = window.SurveyEditor_hotspot ? window.SurveyEditor_spots[window.SurveyEditor_hotspot - 1].obj : false;
-    if (spot && spot.ns4_onclick) spot.ns4_onclick(e);
-  }
-
-  function ns_choose(action)
-  {
-    var m = window.SurveyEditor_menu;
-    ActionButton_go(action, m.activenode.key, m.actionobject);
-  }
-
-<? } // if SurveyEditor_ns4 ?>
-
-  function SurveyEditor_node_onmouseover()
-  {
-    this.hover = true;
-    window.SurveyEditor_menu.show(this,this.actionobject);
-  }
-
-  function SurveyEditor_node_onmouseout()
-  {
-    this.hover = false;
-    window.SurveyEditor_menu.timeout();
-  }
-  
-  function SurveyEditor_insert_onmouseover()
-  {
-<? if (!$SurveyEditor_ns4) { ?>
-    this.className = "insertmenuhover";
-    var offset = getoffset(this);
-
-    if (this.clientWidth) // Internet Explorer
-      w = offset.x + this.clientWidth + 4;
-    else // DOM browser workaround
-      w = getoffset(this.marker).x;
-
-    var s = elem("SurveyEditor_insert").style;
-    s.left = w + "px";
-    s.top = (offset.y + -3) + "px";
-    s.visibility = "visible";
-<? } else { // SurveyEditor_ns4 ?>
-
-    var l = document.SurveyEditor_mryellow;
-    l.pageX = this.x;
-    l.pageY = this.y;
-    l.clip.right = this.right_edge - this.x;
-    l.visibility = 'show';
-    
-    var c = document.SurveyEditor_insert 
-    c.pageX = this.right_edge;
-    c.pageY = this.y;
-    c.visibility = 'show';
-<? } // if SurveyEditor_ns4 ?>
-  }
-
-  function SurveyEditor_insert_onmouseout()
-  {
-<? if (!$SurveyEditor_ns4) { ?>
-    this.className = "insertmenu";
-    var s = elem("SurveyEditor_insert").style;
-    s.visibility = "hidden";
-<? } else { // SurveyEditor_ns4 ?>    
-    var l = document.SurveyEditor_mryellow;
-    l.visibility = 'hide';
-    var c = document.SurveyEditor_insert ;
-    c.visibility = 'hide';
-<? } // if SurveyEditor_ns4 ?>
-  }
-
-  function SurveyEditor_insert_onclick()
-  {
-    ActionButton_go("<?=SurveyEditor_main_insert?>",this.key,this.actionobject);
-  }
-
-  function SurveyEditor_Menu() // extender
-  {
-<? if (!$SurveyEditor_ns4) { ?>
-    var a = elem("SurveyEditor_cmdmenu");
-    a.TDinit = SurveyEditor_Menu_TDinit;
-    a.TDinit("<?=SurveyEditor_main_modify?>", "SurveyEditor_editcmd");
-    a.TDinit("<?=SurveyEditor_main_delete?>", "SurveyEditor_deletecmd");
-    a.TDinit("<?=SurveyEditor_main_moveup?>", "SurveyEditor_moveupcmd");
-    a.TDinit("<?=SurveyEditor_main_movedown?>", "SurveyEditor_movedowncmd");
-<? } else { // SurveyEditor_ns4 ?>
-    var a = document.SurveyEditor_cmdmenu;
-
-    window.captureEvents(Event.MOUSEMOVE);
-    window.SurveyEditor_mousemove_old = window.onmousemove;
-    window.onmousemove = SurveyEditor_mousemove;
-    
-    window.captureEvents(Event.MOUSEUP);
-    window.SurveyEditor_mouseclick_old = window.onmouseup;
-    window.onmouseup = SurveyEditor_mouseclick;
-   
-<? } // if SurveyEditor_ns4 ?>
-    a.onmouseout = SurveyEditor_Menu_onmouseout;
-    a.onmouseover = SurveyEditor_Menu_onmouseover;
-    a.timeout = SurveyEditor_Menu_timeout;
-    a.show = SurveyEditor_Menu_show;
-    a.hide = SurveyEditor_Menu_hide;
-    a.hover = a.activenode = a.actionobject = false; //state variables
-    return a;    
-  }
-
-  function SurveyEditor_Menu_TDinit(action, tdname)
-  {
-    var t = elem(tdname);
-    t.table = this;
-    t.onmouseover = SurveyEditor_Menu_TD_onmouseover;
-    t.onmouseout = SurveyEditor_Menu_TD_onmouseout;
-    t.onclick = SurveyEditor_Menu_TD_onclick;
-    t.action = action;
-  }
-
-  function SurveyEditor_Menu_TD_onclick()
-  {
-    ActionButton_go(this.action, this.table.activenode.key, this.table.actionobject);
-  }
-
-  function SurveyEditor_Menu_TD_onmouseover()
-  {
-    this.className = "editmenuhover";
-  }
-
-  function SurveyEditor_Menu_TD_onmouseout()
-  {
-    this.className = "editmenu";
-  }
-
-  function SurveyEditor_Menu_onmouseover()
-  {
-    this.hover = true;
-  }
-
-  function SurveyEditor_Menu_onmouseout()
-  {
-    this.hover = false;
-    this.timeout();
-  }
-
-  function SurveyEditor_Menu_timeout()
-  {
-    window.setTimeout("window.SurveyEditor_menu.hide()",100);
-  }
-
-  function SurveyEditor_Menu_show(activenode,actionobject)
-  {
-    this.activenode = activenode;
-    this.actionobject = actionobject;
-<? if (!$SurveyEditor_ns4) { ?>
-    var offset = getoffset(activenode);
-
-    if(window.event && window.event.clientX && navigator.userAgent.indexOf("mac") != -1)
-	{
-	xDiff = Math.abs(window.event.clientX + window.screenLeft - offset.x);
-	yDiff = Math.abs(window.event.clientY + window.screenTop - offset.y);
-
-	if(xDiff > 5)
-	    {offset.x = window.event.clientX;}
-    
-	if(yDiff > 5)
-	    {offset.y = window.event.clientY;}
-	}
-
-    this.style.left = (offset.x + 9) + "px";
-    this.style.top  = (offset.y + 9) + "px";
-    this.style.visibility = "visible";
-<? } else { // SurveyEditor_ns4 ?>    
-    this.pageX = activenode.x + 9;
-    this.pageY = activenode.y + 9;
-    this.visibility = 'show';
-<? } // if SurveyEditor_ns4 ?>    
-  }
-
-  function SurveyEditor_Menu_hide()
-  {
-    if (!this.hover && !this.activenode.hover)
-<? if (!$SurveyEditor_ns4) { ?>    
-      this.style.visibility = "hidden";
-<? } else { // SurveyEditor_ns4 ?>
-      this.visibility = "hide";
-<? } // if SurveyEditor_ns4 ?>      
-  }
-
-  window.SurveyEditor_menu = SurveyEditor_Menu();
-<? if ($SurveyEditor_ns4) { ?>
-  window.SurveyEditor_loadpackage = new Array();
-  window.SurveyEditor_spots = new Array();  
-  window.SurveyEditor_onload_old = window.onload;
-  window.SurveyEditor_hotspot = 0;
-  window.onload = SurveyEditor_onload;
-<? } // if SurveyEditor_ns4 ?>
-
-  function SurveyEditor_preview(form,actionelement,state)
-  {
-    var ns4bug = navigator.appName == "Netscape" && parseFloat(navigator.appVersion) < 5;
-    
-    if(!ns4bug) // race condition in netscape 4, most of these commands are not serialized and execute out of turn
-    {
-      var w = window.open("about:blank", "previewwin", "width=500,height=410,status=0,toolbar=0,menubar=0,scrollbars=1,screenX=5,screeny=5,left=0,top=0,resizable=1",true);
-      form.target = "previewwin";
-      ActionButton_go(state,0,form[actionelement]);
-      form.target = "_self";
-      form[actionelement].value = "";
-      w.focus();
-    }
-    else // yet another cumbersome workaround
-    {
-      window.SurveyEditor_form = form;
-      
-      var w = window.open("about:blank", "previewwin", "width=500,height=410,status=0,toolbar=0,menubar=0,scrollbars=1,screenX=5,screeny=5,left=0,top=0,resizable=1",true);
-      w.opener = window;
-
-      var d = w.document;
-      d.open();
-      d.write("<script>\n");
-      d.write("window.opener.SurveyEditor_form.target = 'previewwin';\n");
-      d.write("window.opener.ActionButton_sgo(" + state + ", 0, '" + form.name + "', '" + actionelement + "');\n");
-      d.write("window.opener.SurveyEditor_form.target = '_self';\n");
-      d.write("window.opener.SurveyEditor_form['" + actionelement + "'].value = '';\n");
-      d.write("</script>\n");
-      d.close();
-      w.focus();
-    }
-  }
-// -->
-</script>
-
-<!-- End SurveyEditor Script -->
-<?
-
-    }
   }
 }
 ?>

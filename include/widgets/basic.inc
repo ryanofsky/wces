@@ -206,11 +206,10 @@ class ActionButton extends FormWidget
 
   function dumpscript()
   {
-     global $ActionButton_dumpscript;
-     if (!isset($ActionButton_dumpscript))
-     {
-       $ActionButton_dumpscript = true;
-?>
+    static $dumped = false;
+    if ($dumped) return; else $dumped = true;
+    
+    $str = <<<EOD
 <!-- Begin ActionButton Script -->
 <script>
 <!--
@@ -231,8 +230,8 @@ class ActionButton extends FormWidget
 // -->
 </script>
 <!-- End ActionButton Script -->
-<?
-     }
+EOD;
+    headprint($str);
   }
 
   function display($label = false, $action = false, $object = false, $attribs = "")

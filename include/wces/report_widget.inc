@@ -38,6 +38,7 @@ class Report extends FormWidget
   function Report($prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
+    ActionButton::dumpscript();
   }
 
   function loadvalues()
@@ -117,8 +118,6 @@ class Report extends FormWidget
 
     if ($this->state == Report_email || $this->state == Report_profemail || $this->state == Report_results)
     {
-      ActionButton::dumpscript();
-
       print("<table><tr><td height=50>\n");
       $this->action->display(false,"","");
       ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->action->gethref(Report_revivewizard,0)?>"><img src="<?=$wces_path?>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a></span> <?

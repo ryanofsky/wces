@@ -163,7 +163,9 @@ class SubsurveyEditor extends ComponentEditor
       new SubsurveyFactory()
     );
 
-	$this->sub_survey = new SurveyEditor($this->c->our_topic_id, $this->c->base_branch, $factories, $this->p . "_sub", $this->f, $this->fm);
+	// XXX: factories array for subsurvey should be a parameter SubsurveyFactory
+	// XXX: user_id should be taken from parent surveyeditor
+	$this->sub_survey = new SurveyEditor($this->c->our_topic_id, $this->c->base_branch, 0, $factories, $this->p . "_sub", $this->f, $this->fm);
 	
 	
 	$this->sub_survey->survey = $this->c->survey;

@@ -35,6 +35,7 @@ class Wizard extends FormWidget
     $this->sated = false;
     $this->visited = Array();
     $this->showstep = 0;
+    $this->dumpscript();
   }
   
   function drawstep($stepno,$hidden) // abstract virtual public
@@ -98,8 +99,7 @@ class Wizard extends FormWidget
   function display($hidden)
   {
     global $wces_path;
-    $this->dumpscript();
-    
+   
     $visited = $this->visited; //extract
     $showstep = $this->showstep;
 
@@ -200,12 +200,10 @@ if (!$hidden)
 
   function dumpscript()
   {
-    global $Wizard_dumped;
-    if (!$Wizard_dumped)
-    {
-      $Wizard_dumped = true;
-      ImageButton::dumpscript();
-?>
+    static $dumped = false;
+    if ($dumped) return; else $dumped = true;
+    ImageButton::dumpscript();
+    $str = <<<EOS
 <script>
 <!--
 
@@ -232,8 +230,8 @@ function hide(id)
 
 //-->
 </script>
-<?      
-    }
+EOS;
+    headPrint($str);  
   }
 }
 ?>

@@ -45,41 +45,41 @@ class Survey
       $factories[$cfactories[$k]->code()] = &$cfactories[$k];
 
     $latest = (int)$latest;
-    if (!$latest) $latest = "NULL";    
+    if (!$latest) $latest = "NULL";
 
     $topic_id = (int)$topic_id;
     $result = pg_query("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
     $existing_topic = (int)pg_result($result,0,0);
 
     $result = pg_query("SELECT branch_latest($base_branch_id, $existing_topic, $latest)", $wbes, __FILE__, __LINE__);
-    
+
     $this->orig_id = (int)pg_result($result,0,0);
-   
+
     // store the results of branch updates in a temporary table. the temporary
     // table is needed because the first and second queries can't be combined.
     // in postgres a select statement will never return rows that are inserted
     // in the course of the query's execution.
-    
+
     $result = pg_query("
- 
+
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
       SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
       FROM list_items AS li
       INNER JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
       WHERE li.revision_id = (SELECT revision_contents($this->orig_id));
-      
+
       SELECT t.ordinal, t.revision_id, r.type
       FROM tmp$this->orig_id AS t
       INNER JOIN revisions as r USING (revision_id)
       ORDER BY type, ordinal;
-       
+
     ", $wbes, __FILE__, __LINE__);
-    
+
     pg_query("DROP TABLE tmp$this->orig_id", $wbes, __FILE__, __LINE__);
 
     $n = pg_numrows($result);
     $this->components = array_pad(array(), $n, false);
-    
+
     $lasttype = false;
     for($i = 0; ; ++$i)
     {
@@ -121,14 +121,14 @@ class Survey
     $components_num = pg_numrows($components);
 
     if(!$save_id)
-	{
-	$result = pg_query("
-	BEGIN WORK;
-	INSERT INTO saves (user_id) VALUES ($user_id);
-	SELECT currval('save_ids')
-	", $wbes, __FILE__, __LINE__);
-	$save_id = (int)pg_result($result,0,0);
-	}
+    {
+      $result = pg_query("
+        BEGIN WORK;
+        INSERT INTO saves (user_id) VALUES ($user_id);
+        SELECT currval('save_ids')
+      ", $wbes, __FILE__, __LINE__);
+      $save_id = (int)pg_result($result,0,0);
+    }
 
     $i = 0;
     $ncomponents = array();
@@ -142,7 +142,7 @@ class Survey
         {
           $components = false;
           $list_changed = true;
-        }  
+        }
         else
           $list_changed = pg_result($components, $i, 0) != $cbranch_id;
       ++$i;
@@ -152,9 +152,9 @@ class Survey
     {
       $result = pg_query("SELECT branch_save($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
       $branch_id = (int)pg_result($result,0,0);
-      
+
       $o = $this->orig_id ? $this->orig_id : "NULL";
-      
+
       $result = pg_query("SELECT revision_save_start($branch_id, $o, 1, $save_id)", $wbes, __FILE__, __LINE__);
       $saved_id = (int)pg_result($result,0,0);
       $sql = "";
@@ -168,13 +168,13 @@ class Survey
     }
     else
       pg_query("SELECT branch_topics_add($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
-    
+
     pg_query("COMMIT", $wbes, __FILE__, __LINE__);
 
     $this->orig_id = 0;
     $this->components = array();
     return $branch_id;
   }
-}
+};
 
 ?>

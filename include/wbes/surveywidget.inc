@@ -101,7 +101,7 @@ class SurveyWidget extends FormWidget
 
   function save()
   {
-    global $wbes, $HTTP_POST_VARS;
+    global $wbes, $HTTP_POST_VARS, $server_feedback;
     
     $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
@@ -159,7 +159,7 @@ class SurveyWidget extends FormWidget
     if ($failure)  
     {
       $this->failure = true;
-      print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
+      print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:' . $server_feedback . '">' . $server_feedback . '</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
     }
     $this->finished = true;
   }

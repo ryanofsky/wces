@@ -213,6 +213,7 @@ function makeall($stdout,&$html,&$text,&$groups)
 
 function report_profemail($db,&$wizard,$subject,$message,$debug)
 {
+  global $server_feedback;
   $sqloptions = array
   (
     "standard" => $wizard->includestandard->checked || ($wizard->includetext->checked && !$wizard->includecustom->checked),
@@ -271,7 +272,7 @@ function report_profemail($db,&$wizard,$subject,$message,$debug)
         $listprofessors, $ratings, $abet, $responses, $tas);
     }
 
-    $from = "wces@columbia.edu";
+    $from = $server_feedback;
 
     if (!$address) print("<b><font color=red>No email address found for Professor $name</font></b><br>\n");
 
