@@ -21,6 +21,7 @@ class UsageOptions extends Widget
   {
     if (empty($new)) 
     {
+      $this->sort = $this->readValue('sort');
       $this->category_id = $this->readValue('category_id');
       $this->question_period_id = $this->readValue('question_period_id');
     }
