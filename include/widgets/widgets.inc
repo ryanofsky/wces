@@ -1,8 +1,5 @@
 <?
 
-define("WIDGET_POST",1);
-define("WIDGET_GET",2);
-
 /*
 
 The widget separator should have the following properties
@@ -26,10 +23,11 @@ The widget separator should have the following properties
 */
 
 define("WIDGET_SEPARATOR", "-");
-define("WIDGET_FORM",    0x1);
-define("WIDGET_URL",     0x2);
-define("WIDGET_BIGURL",  0x4);
+define("WIDGET_GET",     0x1);
+define("WIDGET_POST",    0x2);
+define("WIDGET_URL",     0x4);
 define("WIDGET_SESSION", 0x8);
+define("WIDGET_FORM",    WIDGET_GET | WIDGET_POST);
 
 function quote($str)
 {
@@ -48,13 +46,7 @@ class Widget
     $parent->addChild($this);
   }
 
-  function urlShortName($name, $shortName = null)
-  {
-    if (!isset($shortName)) $shortName = $name;
-    $this->form->formShortName($this->fullName($name), $shortName);
-  }
-
-  function joinName($str1, $str2)
+  function joinName($str1, $str2) // static
   {
     if (strlen($str1) == 0)
       return $str2;
@@ -64,50 +56,52 @@ class Widget
       return $str1 . WIDGET_SEPARATOR . $str2;
   }
 
-  function getUrl($vars = null)
+  function shortName($name, $shortName = null)
+  {
+    if (!isset($shortName)) $shortName = $name;
+    $this->shortNames[$name] = $shortName;
+  }
+
+  function name($str = '')
+  {
+    if (isset($this->shortNames[$str]))
+      return $this->shortNames[$str];
+    return $this->joinName($this->name, $str);
+  }
+
+  // just a convenient wrapper around Form::getUrl()
+  // calls name() automatically on $vars keys or accepts a scalar $vars
+  function getUrl($vars = null, $pageName = null)
   {
     $fvars = array();
     if (is_array($vars))
     {
       foreach ($vars as $k => $v)
-        $fvars[$this->fullName($k)] = $v;
+        $fvars[$this->name($k)] = $v;
     }
     else if (isset($vars))
-      $fvars[$this->name] = $vars;
-      
-    return $this->form->pageName . $this->form->getUrlVars($fvars);
-  }
+      $fvars[$this->name()] = $vars;
 
+    return $this->form->getUrl($fvars, $pageName);
+  }
+    
   function scriptName($str)
   {
     static $i = 0;
     ++$i;
-    $s = $this->fullName($str);
+    $s = $this->joinName($this->name, $str);
     return str_replace(WIDGET_SEPARATOR, '_', $s) . '_' . $i;
-  }
-
-  function fullName($str)
-  {
-    return $this->joinName($this->name, $str);
   }
 
   function readValue($name = "", $type = WIDGET_FORM)
   {
-    $full = $this->fullName($name);
-    if ($type & WIDGET_FORM)
-    {
-      if (isset($_POST[$full]))
-        return $_POST[$full];
-      else if (isset($_GET[$full]))
-        return $_GET[$full];
-    }
-
-    if ($type & WIDGET_URL && isset($this->form->shortNames[$full]))
-    {
-      $sn = $this->form->shortNames[$full];
-      if (isset($_GET[$sn])) return $_GET[$sn];
-    }
-
+    $n = $this->name($name);
+    
+    if ($type & WIDGET_POST && isset($_POST[$n]))
+      return $_POST[$n];
+    else if ($type & (WIDGET_GET | WIDGET_URL) && isset($_GET[$n]))
+      return $_GET[$n];      
+    
     return NULL;
   }
 
@@ -115,37 +109,40 @@ class Widget
   {
     if (!isset($value)) return;
 
-    $full = $this->fullName($name);
+    $n = $this->name($name);
     if ($type & WIDGET_FORM)
-      print('<input type=hidden name=' . $full . ' value="'
+      print('<input type=hidden name=' . $n . ' value="'
         . htmlspecialchars($value) . '">');
 
     if ($type & WIDGET_URL)
     {
-      $this->form->addUrlVar($full, $value);
+      $this->form->addUrlVar($n, $value);
     }
-
-    if ($type & WIDGET_BIGURL)
-      die("Feature Not Implemented Yet at " . __FILE__ . ":" . __LINE__);
 
     if ($type & WIDGET_SESSION)
       die("Feature Not Implemented Yet at " . __FILE__ . ":" . __LINE__);
-
   }
 
   function printArrayValue($name, $value)
   {
     if (!is_array($value)) return;
-    $full = $this->fullName($name) . '[]';
+    $n = $this->name($name) . '[]';
     foreach($value as $v)
-      print('<input type=hidden name=' . $full . ' value="'
+      print('<input type=hidden name=' . $n . ' value="'
         . htmlspecialchars($v) . '">');
   }
 
-  function loadInitialState()
-  {}
-
-  function loadState()
+  // $new may be true, false, or null
+  //   true means the widget has been displayed in a previous load
+  //     and state may be read from form variables
+  //   false means that the widget is newly created and its state
+  //     can't be read from form variables
+  //   null means that the caller doesn't know whether the widget
+  //     is new or not. Certain widgets may need non-null values
+  //     to load correctly. One way to automatically provide this
+  //     information to them is to make them children of an 
+  //     InitializerWidget.
+  function loadState($new)
   {}
 
   function displayHidden()
@@ -173,22 +170,16 @@ class ParentWidget extends Widget
     $this->children[] =& $child;
   }
 
-  function loadChild(&$child, $new)
+  function loadChild(&$child, $new = null)
   {
-    if ($new) $child->loadInitialState(); else $child->loadState();
-    if (isset($child->modal) && $child->modal) $this->modalChild = &$child;
+    $child->loadState($new);
+    if (!empty($child->modal)) $this->modalChild = &$child;
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
     foreach(array_keys($this->children) as $k)
-      $this->loadChild($this->children[$k], true);
-  }
-
-  function loadState()
-  {
-    foreach(array_keys($this->children) as $k)
-      $this->loadChild($this->children[$k], false);
+      $this->loadChild($this->children[$k], $new);
   }
 
   function display()
@@ -222,6 +213,7 @@ class ParentWidget extends Widget
     }
     $this->printHidden();
   }
+  
   function printState()
   {}
 
@@ -233,89 +225,81 @@ class ParentWidget extends Widget
 
 };
 
+class InitializerWidget extends ParentWidget
+{
+  function InitializerWidget($name, &$parent)
+  {
+    $this->ParentWidget($name, $parent);
+  }
+  
+  function loadState($new)
+  {
+    if (!isset($new)) $new = !$this->readValue();
+    ParentWidget::loadState($new);
+    $this->modal = isset($this->modalChild);
+  }
+  
+  function printState()
+  {
+    $this->printValue('', 1);
+  }
+}
+
 class Form extends ParentWidget
 {
   var $formName; // name of form, used for javascripting
   var $pageName; // name of current page, used for linking
-  var $isStale = false; // true if this page load is not the first
-  var $shortNames = array();
   var $urlVars = array();
-
-  function addUrlVar($name, $value)
-  {
-    $this->urlVars[$name] = $value;
-  }
-
-  function formShortName($long, $short)
-  {
-    $this->shortNames[$long] = $short;
-  }
-
-  function getUrlVars($overrides = array())
-  {
-    $url = ''; $shorted = false;
-
-    foreach ($this->urlVars as $name => $value)
-    {
-      if (isset($overrides[$name]) || $value === false) continue;
-      if ($url) $url .= '&'; else $url .= '?';
-      if (isset($this->shortNames[$name]))
-      {
-        $shorted = true;
-        $name = $this->shortNames[$name];
-      }
-      $url .= $name;
-      $url .= '=';
-      $url .= $value;
-    }
-
-    foreach ($overrides as $name => $value)
-    {
-      if ($value === false) continue;
-      if ($url) $url .= '&'; else $url .= '?';
-      if (isset($this->shortNames[$name]))
-      {
-        $shorted = true;
-        $name = $this->shortNames[$name];
-      }
-      $url .= $name;
-      $url .= '=';
-      $url .= $value;
-    }
-
-    if (!$shorted && $url)
-      $url .= '&isStale=1';
-
-    return $url;
-  }
 
   function Form($formName = null, $pageName = null)
   {
     global $server_url;
     $this->form = &$this;
-    $this->name = "";
     $this->formName = $formName;
     $this->pageName = isset($pageName) ? $pageName : $server_url->toString(false, true, false);
   }
 
-  function loadState($isStale = null)
+  function addUrlVar($name, $value)
   {
-    $this->isStale = $this->readValue('isStale')
-      || (count(array_intersect($this->shortNames,array_keys($_GET)))!= 0);
-    if ($this->isStale)
-      ParentWidget::loadState();
-    else
-      ParentWidget::loadInitialState();
+    $this->urlVars[$name] = $value;
+  }
+  
+  function getUrl($overrides = array(), $pageName = null)
+  {
+    $params = '';
+
+    foreach ($this->urlVars as $name => $value)
+    {
+      if (isset($overrides[$name]) || $value === false) continue;
+      if (strlen($params)) $params .= '&'; else $params .= '?';
+      $params .= urlencode($name);
+      $params .= '=';
+      $params .= urlencode($value);
+    }
+
+    foreach ($overrides as $name => $value)
+    {
+      if ($value === false) continue;
+      if (strlen($params)) $params .= '&'; else $params .= '?';
+      $params .= urlencode($name);
+      $params .= '=';
+      $params .= urlencode($value);
+    }
+
+    global $QSID, $ASID;
+    $params .= strlen($params) ? $ASID : $QSID;
+
+    if (!isset($pageName))
+      $pageName = $this->form->pageName;
+
+    return $pageName . $params;
   }
 
-  function displayHidden()
+  function loadState()
   {
-    $this->printValue('isStale', 1);
-  }
-
-  function display()
-  {
-    $this->printValue('isStale', 1);
+    // other loadState methods accept a parameter, but this one shouldn't
+    assert(func_num_args() == 0);
+    ParentWidget::loadState(null);
   }
 };
 
