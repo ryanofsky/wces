@@ -24,7 +24,7 @@ class SurveyWidget extends FormWidget
 
   var $action; // ActionButton widget
   var $form; // Form widget
-  var $showerrors; // boolean
+  var $showerrors = false; 
   var $survey = NULL;
   var $questionwidgets;
   var $page = 0;
@@ -42,12 +42,12 @@ class SurveyWidget extends FormWidget
 
     $this->action = new ActionButton("${prefix}_action",$form,$formmethod);
     $this->form = new Form("${prefix}_form",$form,$formmethod);
-    $this->showerrors = false;
   }
 
   function loadvalues()
   {
     $this->page = (int)$this->loadattribute("page");
+    $this->showerrors = (bool)$this->loadattribute("showerrors");
     $this->sawlastpage = (bool)$this->loadattribute("sawlastpage");
     if (!$this->survey)
     {
@@ -184,7 +184,7 @@ class SurveyWidget extends FormWidget
     $this->action->display();
 
     $this->printattribute("survey",serialize($this->survey));
-
+    $this->printattribute("showerrors",(int)$this->showerrors);
     if ($this->form->isstale) $this->optionbar();
     if ($this->showerrors)
     {
