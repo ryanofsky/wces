@@ -80,7 +80,7 @@ function printproflist($title,$result,$count)
   {
     extract($row);
     if (!$name) $name = "** Unknown **";
-    print("<li><a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$name</a> ($students students)</li>");
+    print("<li><a href=\"info.php?professorid=$professorid&surveys=1\">$name</a> ($students students)</li>");
   }
 print("</ul>");
 }
