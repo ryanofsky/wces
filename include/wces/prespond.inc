@@ -9,19 +9,58 @@ CREATE TABLE presps
   data TEXT
 );
 
-//TODO: use widget name functions to give images and javascript variables unique names
-
 */
 
 require_once("wces/SimpleResults.inc");
 require_once("widgets/basic.inc");
-require_once("wces/report_generate.inc");
-require_once("wces/report_page.inc");
 require_once("wces/report_help.inc");
 require_once("jpgraph/jpgraph.php");
 
 $graph_media = $server_media;
 //$graph_media = "http://oracle.seas.columbia.edu/wces/media";
+
+function putJava1()
+{
+?>
+<script language="JavaScript">
+<!--
+var happy = document.images && window.Image;
+var GraphSources = new Array();
+var GraphImages = new Array();
+
+function cacheImage(number, src)
+{
+  if(!happy) return;
+  GraphSources[number] = src;
+}
+
+function showImage(name, number)
+{
+  if (!happy) return;
+  var i = document.images[name];
+  i.src = GraphSources[number];
+}
+// -->
+</script>
+<? 
+}
+
+function putJava2()
+{
+?>
+<script>
+<!--
+if (happy)
+for(i in GraphSources)
+{
+  var img = new Image();
+  img.src = GraphSources[i];
+  GraphImages[i] = img;
+};
+// -->
+</script>
+<?
+}
 
 function GetParams(&$results, &$classes)
 {
@@ -29,7 +68,7 @@ function GetParams(&$results, &$classes)
 
   $params = array();
   LineGraphSize($params, $classes);
-
+  
   $params2 = array();
   LineGraphSize($params2, $results->base_choices);
 
@@ -86,382 +125,137 @@ function MakeBarGraph(&$params, $datax, $datay, $title)
     . "&width=$params[width]&height=$params[height]";
 }
 
-define('ProfResponse_save', 1);
-define('ProfResponse_cancel', 2);
-
-class ProfResponse extends ParentWidget
+function saveResults($user_id, $course_id)
 {
-  var $course_id;
-  var $user_id;
-  var $readOnly;
-  var $done = false;
-  var $event;
-  var $data = null;
+  global $wces, $HTTP_POST_VARS;
+    
+  wces_connect();
   
-  // array of class_id's for this course sorted by semester
-  var $classes;
+  $where = "WHERE user_id = $user_id AND course_id = $course_id";
   
-  // SimpleResults object for current course
-  var $simpleResults = null;
+  $data = addslashes(serialize($HTTP_POST_VARS));
   
-  // class_id's of this course's classes which were taught by other professors
-  var $otherClasses;
-  
-  // Information about classes
-  var $classInfo;
-  
-  // array of for responses indexed by SimpleResults question key 
-  var $responses = array();
-  var $responseBoxes = array();  
-  
-  function ProfResponse($course_id, $user_id, $readOnly, $name, &$parent)
+  $r = pg_go("SELECT EXISTS (SELECT * FROM presps $where)", $wces, __FILE__, __LINE__);
+  if (pg_result($r,0,0) == 't')
   {
-    $this->ParentWidget($name, $parent);    
-    $this->course_id = (int)$course_id;
-    $this->user_id = (int)$user_id;
-    $this->readOnly = (bool)$readOnly;
-    $this->event =& new EventWidget('event', $this);
-    $this->userOnly =& new CheckBox('userOnly', $this);
+    $sql = "UPDATE presps SET data = '$data' $where";
   }
-    
-  function saveResponses()
+  else
   {
-    global $wces;
+    $sql = "INSERT INTO presps (user_id, course_id, data) VALUES ($user_id, $course_id, '$data')";
+  }
+  
+  pg_go($sql, $wces, __FILE__, __LINE__);
+  
+  print("<font color=blue>Changes saved.</font>");
+  
+};
+
+function showResults($user_id, $course_id, $collect)
+{
+  global $wces, $select_classes;
+  wces_connect();
+  
+  $r = pg_go("SELECT data FROM presps WHERE user_id = $user_id AND course_id = $course_id", $wces, __FILE__, __LINE__);
+  $data = pg_numrows($r) == 1 ? unserialize(pg_result($r, 0, 0)) : array();
+  
+  print("<table><tr><td>");
+  
+  print("<form method=post>\n");
+  
+  putJava1();
+  
+  $r = pg_go("SELECT get_course($course_id)", $wces, __FILE__, __LINE__);
+  $course = pg_result($r, 0, 0);
+  print("<h2>" . format_course($course) . "</h2>\n");
+
+  $r = pg_go("
+    SELECT cl.class_id, get_class(cl.class_id) AS cl, get_profs(cl.class_id) AS profs
+    FROM classes AS cl
+    INNER JOIN ($select_classes) AS l USING (class_id)
+    WHERE cl.course_id = $course_id
+    ORDER BY cl.year DESC, cl.semester DESC
+  ", $wces, __FILE__, __LINE__);
+
+  $profinfo = array();
+  $classinfo = array();
+
+  $n = pg_numrows($r);
+  for($i = 0; $i < $n; ++$i)
+  {
+    extract(pg_fetch_array($r, $i, PGSQL_ASSOC));
+    $classes[] = (int)$class_id;
+    $classinfo[$class_id] = explode_class($cl);
+    $profinfo[$class_id] = format_profs($profs, true, "", "", ",");
+  };
+
+  print("<p>Past Professors:</p>\n<ul>\n");
+  foreach($classes as $cl)
+    print("  <li>" . format_class($classinfo[$cl], "%t Section %s") . ": " . $profinfo[$cl] .  "</li>\n");
+  print("</ul>");
+  
+  $s = new SimpleResults($classes, true);
+  $linex = array();
+  foreach(array_reverse($classes) as $class_id)
+    $linex[] = format_class($classinfo[$class_id], "%t");
+
+  $params = GetParams($s, $linex);
+  
+  $gn = 0;
+  foreach($s->base_questions as $key => $value)
+  {
+    print("<hr>\n");
+    print("<h3>$value</h3>\n");
+    $lc = count($s->base_choices) - 1;
+    printf("<p>%s = %.1f, %s = %.1f</p>\n", $s->base_choices[0], $s->base_values[0], $s->base_choices[$lc], $s->base_values[$lc]);
+
+    print("<script>\n<!--\n");
+    $datax = $s->base_choices;
+    foreach(array_reverse($classes) as $class_id)
+    {
+       $title = format_class($classinfo[$class_id], "%t Section %s");
+       $datay = $s->distributions[$class_id][$key];
+       $grs = addslashes(MakeBarGraph($params, $datax, $datay, $title));
+       print("cacheImage($gn, '$grs');\n");
+       ++$gn;
+    }
+    print("// -->\n</script>\n");
     
-    $data = array();
-    foreach (array_keys($this->simpleResults->base_questions) as $key)
-      $data["respond$key"] = $this->responseBoxes[$key]->text;
-    $data = addslashes(serialize($data));
+    $liney = array();
     
-    $where = "WHERE user_id = $this->user_id AND course_id = $this->course_id";
+    foreach(array_reverse($classes) as $class_id)
+    {
+       $dist = &$s->distributions[$class_id][$key];
+       $vdist = array();
+       foreach($s->base_values as $k => $v)
+         $vdist[$v] = $dist[$k];
+       $liney[] = report_avg($vdist);
+    }     
+
+    print(GetLineGraph($params, $linex, $liney, "Past Averages", $key, $grs));
+    print("<br>");
     
-    $r = pg_go("SELECT EXISTS (SELECT * FROM presps $where)", $wces, __FILE__, __LINE__);
-    if (pg_result($r,0,0) == 't')
-      $sql = "UPDATE presps SET data = '$data' $where";
+    $text = isset($data["respond$key"]) ? $data["respond$key"] : "";
+    if ($collect)
+    {
+      print("<div align=center><textarea rows=4 cols=60 name=respond$key>$text</textarea></div>");
+    }
     else
-      $sql = "INSERT INTO presps (user_id, course_id, data) VALUES ($this->user_id, $this->course_id, '$data')";
-    
-    return (bool)pg_go($sql, $wces, __FILE__, __LINE__);
-  }
- 
-  function getResults($isNew)
-  {
-    global $wces, $select_classes;
-    wces_connect();
-    
-    if (isset($this->simpleResults)) return;
-    
-    $r = pg_go("
-      SELECT cl.class_id, get_class(cl.class_id) AS cl, 
-        EXISTS (SELECT * FROM enrollments AS e WHERE e.user_id = $this->user_id 
-          AND class_id = l.class_id AND status = 3) as prof
-      FROM classes AS cl
-      INNER JOIN ($select_classes) AS l USING (class_id)
-      WHERE cl.course_id = $this->course_id
-      ORDER BY cl.year DESC, cl.semester DESC
-    ", $wces, __FILE__, __LINE__);
-    
-    // Gather information into arrays
-    
-    $this->classInfo = array();
-    $this->otherClasses = array();
-    
-    $n = pg_numrows($r);
-    for($i = 0; $i < $n; ++$i)
     {
-      extract(pg_fetch_array($r, $i, PGSQL_ASSOC));
-      if ($prof == 't')
-        $add = true;
-      else
-      {
-        $this->otherClasses[] = (int)$class_id;
-        $add = !$this->userOnly->checked;
-      }      
-      
-      if ($add)
-      {
-        $classes[] = (int)$class_id;
-        $this->classInfo[$class_id] = explode_class($cl);
-      }
+      if (!$text) $text = "<i>none</i>";
+      print("<p><b>Comments from professor:</b> $text</p>");
     };
-    $this->simpleResults =& new SimpleResults($classes, true);        
-    $this->classes = $classes;
-    
-    if ($this->readOnly || $isNew)
-    {
-      $r = pg_go("
-        SELECT data FROM presps 
-        WHERE user_id = $this->user_id AND course_id = $this->course_id
-      ", $wces, __FILE__, __LINE__);
-      
-      $data = pg_numrows($r) == 1 ? unserialize(pg_result($r, 0, 0)) : array();
-    }
-     
-    foreach (array_keys($this->simpleResults->base_questions) as $key)
-    {
-      $name = "respond$key";
-      if ($this->readOnly)
-        $this->responses[$key] = $data[$name];
-      else
-      {
-        $c =& new TextBox(4, 60, '', $name, $this);
-        $this->loadChild($c, $isNew);
-        if ($isNew) $c->text = isset($data[$name]) ? $data[$name] : '';
-        $this->responseBoxes[$key] =& $c;
-      }
-    }          
-  }
-  
-  function loadInitialState()
-  {
-    ParentWidget::loadInitialState();
-    $this->getResults(true);
-  }
-  
-  function loadState()
-  {
-    ParentWidget::loadState();
-    $event = $this->event->event;
-    if ($event == ProfResponse_save)
-    {
-      $this->done = true;
-      $this->getResults(false);
-      if ($this->saveResponses())
-        $this->message = "<font color=blue>Responses saved.</font>";
-      else
-        $this->message = "<font color=red>Error saving responses.</font>";
-    }
-    else if ($event == ProfResponse_cancel)
-    {     
-      $this->message = "<font color=red>No changes saved.</font>";
-      $this->done = true; 
-    }    
-    
-    if (!$this->done) $this->getResults(false);
-  }
-  
-  function printSummary()
-  {
-    global $wces, $wces_semesters;
-    wces_connect();
-    
-    $sr =& $this->simpleResults;
-    
-    // figure out which classes to scan
-    $result = pg_go("
-      SELECT class_id, year, semester FROM classes 
-      WHERE class_id in (" . implode(',', $sr->class_ids) .") 
-      ORDER BY year DESC, semester DESC
-    ", $wces, __FILE__, __LINE__);
-    
-    $classes = array();
-    $year = $semester = null;
-    $n = pg_numrows($result);
-    for($i = 0; $i < $n; ++$i)
-    {
-      $row = pg_fetch_row($result, $i, PGSQL_ASSOC);
-      if ($i == 0) 
-      { $year = $row['year']; 
-        $semester = $row['semester'];
-      }
-      else if ($year != $row['year'] || $semester != $row['semester'])
-        break;
-      $classes[] = $row['class_id'];
-    }
-    
-    print("<h4>Summary of results for $wces_semesters[$semester] $year:</h4>\n");
-    
-    $l = count($sr->base_choices) - 1;
-    printf("<p><i>%.1f = %s, %.1f = %s</i></p>\n", $sr->base_values[0],
-      $sr->base_choices[0], $sr->base_values[$l], $sr->base_choices[$l]);
-    print("<table>\n");
-    foreach ($sr->base_questions as $i => $qtext)
-    {
-      $vdist = array();
-      foreach ($sr->base_values as $k => $v)
-        $vdist[$v] = 0;
-      foreach ($classes as $class_id)
-      {
-        $dist = &$sr->distributions[$class_id][$i];
-        foreach($sr->base_values as $k => $v)
-          $vdist[$v] += $dist[$k];
-      }
-      $avg = report_avg($vdist);
-      printf("<tr><td>$qtext</td><td>%.2f</td><td nowrap>", $avg);
-      print(report_meter(round($avg * 20)));
-      print("</td></tr>\n");
-    }
-    print("</table>");
-  }
-  
-  function printVisible()
-  {
-    global $wces, $select_classes;
-    
-    // get information from database
-    wces_connect();
-  
-    $r = pg_go("SELECT get_course($this->course_id)", $wces, __FILE__, __LINE__);
-    $course = pg_result($r, 0, 0);
-
-    $r = pg_go("
-      SELECT firstname, lastname FROM users WHERE user_id = $this->user_id
-    ", $wces, __FILE__, __LINE__);
-    extract(pg_fetch_row($r, 0, PGSQL_ASSOC));
-    
-    print("<h3>" . format_course($course) . "<br>Professor $firstname $lastname</h3>\n");
-    
-    // Begin output
-    $this->printSummary();
-    
-    print("<h4>Past Results and Professor Comments</h4>");
-    print("<table><tr><td>");
-    print("<p><i>FIXME: Add instructions for this section here.</i></p>");
-    
-    if (count($this->otherClasses) > 0)
-    {
-      if (!$this->userOnly->checked)
-      {
-        print("<font size=-1>");
-        print("<p><i>Note:</i> The following class sections for <i>"  
-          . format_course($course)
-          . "</i> were taught by other professors:</p>\n");
-        print("<ul>\n");
-        foreach($this->otherClasses as $clid)
-          print("  <li>" . format_class($this->classInfo[$clid],
-            "%t Section %s") . "</li>\n"); 
-        print("</ul>\n");
-        print("</font>\n");
-      }
-      print("<div>");
-      $this->userOnly->display('onclick="this.form.submit();"');
-      print("&nbsp;");
-      if ($this->readOnly)
-        $this->userOnly->displayLabel("Hide class sections not taught by $firstname $lastname");
-      else
-        $this->userOnly->displayLabel("Hide class sections not taught by me.");
-        
-        
-      print("&nbsp;");
-      $this->event->displayNoJavascriptRefresh("Go");
-      print("</div>\n");
-    }
-    
-    $linex = array();
-    foreach(array_reverse($this->classes) as $class_id)
-      $linex[] = format_class($this->classInfo[$class_id], "%t");
-
-    $s =& $this->simpleResults;
-    $params = GetParams($s, $linex);
-    $gn = 0;
-
-    print("<table><tr><td>\n");
-    foreach($s->base_questions as $key => $value)
-    {
-      print("<hr>\n");
-      print("<h3>$value</h3>\n");
-      $lc = count($s->base_choices) - 1;
-      printf("<p>%s = %.1f, %s = %.1f</p>\n", $s->base_choices[0], $s->base_values[0], $s->base_choices[$lc], $s->base_values[$lc]);
-    
-      print("<script>\n<!--\n");
-      $datax = $s->base_choices;
-      foreach(array_reverse($this->classes) as $class_id)
-      {
-        $title = format_class($this->classInfo[$class_id], "%t Section %s");
-        $datay = $s->distributions[$class_id][$key];
-        $grs = addslashes(MakeBarGraph($params, $datax, $datay, $title));
-        print("cacheImage($gn, '$grs');\n");
-        ++$gn;
-      }
-      print("// -->\n</script>\n");
-      
-      $liney = array();
-      
-      foreach(array_reverse($this->classes) as $class_id)
-      {
-         $dist = &$s->distributions[$class_id][$key];
-         $vdist = array();
-         foreach($s->base_values as $k => $v)
-           $vdist[$v] = $dist[$k];
-         $liney[] = report_avg($vdist);
-      }     
-    
-      print(GetLineGraph($params, $linex, $liney, "Past Averages", $key, $grs));
-      print("<br>");
-      
-      $text = isset($data["respond$key"]) ? $data["respond$key"] : "";
-      if (!$this->readOnly)
-      {
-        print("<div>Comments:</div>\n");
-        print("<div align=center>");
-        $this->responseBoxes[$key]->display();
-        print("</div>");
-      }
-      else
-      {
-        $text = $this->responses[$key];
-        if (!$text) $text = "<i>none</i>";
-        print("<p><b>Comments from professor:</b> $text</p>");
-      };
-    }
-    
-    $this->printImageLoad();
-    
-    if (!$this->readOnly)
-    {
-      print("<div>");
-      $this->event->displayButton("Save", ProfResponse_save);
-      $this->event->displayButton("Cancel", ProfResponse_cancel);
-      print("</div>\n");    
-    }
-    
-    print("</td></tr></table>");
   }
 
-  function DumpScript()
-  {
-    static $printed = false;
-    if ($printed) return; else $printed = true;
-?>
-<script language="JavaScript">
-<!--
-var happy = document.images && window.Image;
-var GraphSources = new Array();
-var GraphImages = new Array();
-
-function cacheImage(number, src)
-{
-  if(!happy) return;
-  GraphSources[number] = src;
-}
-
-function showImage(name, number)
-{
-  if (!happy) return;
-  var i = document.images[name];
-  i.src = GraphSources[number];
-}
-// -->
-</script>
-<? 
-  } 
+  putJava2();
   
-  function printImageLoad()
-  {
-?>
-<script>
-<!--
-if (happy)
-for(i in GraphSources)
-{
-  var img = new Image();
-  img.src = GraphSources[i];
-  GraphImages[i] = img;
+  if ($collect)
+    print("<hr><p align=center><input type=submit name=save value=\"Save Changes\"></p>\n");
+  
+  print("</td></tr></table>");
+
+  print("</form>\n");
+
 };
-// -->
-</script>
-<?
-  }  
-};
-  
+
 ?>
