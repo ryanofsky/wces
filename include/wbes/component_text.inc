@@ -14,7 +14,7 @@ class TextFactory extends ComponentFactory
 
   function loadComponents(&$components)
   {
-    ComponentFactory::loadTextComponents($components, 5);
+    ComponentFactory::loadTextComponents($components, 'Text');
   }
 };
 

@@ -57,22 +57,17 @@ class TextResponse extends Component
      return new TextResponseWidget($this, $name, $parent);
   }
 
-  function save($specialization_id, $save_id)
+  function saveComponent($component_id, $children)
   {
-    global $wbes;
-
-    $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
+    $ctext = addslashes($this->text);
     $ctext        = addslashes($this->text);
     $rows         = (int) $this->rows;
     $cols         = (int) $this->cols;
-
-    $flagGroup = 0;
-    if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
-    if ($this->locked)      $flagGroup |= FLAG_LOCKED;
+    $flags = 0;
+    if ($this->is_html) $flags |= FLAG_ISHTML;
+    if ($this->locked)  $flags |= FLAG_LOCKED;
     if ($this->labelAlign)  $flagGroup |= FLAG_ALIGN;
-
-    $result = pg_go("SELECT textresponse_component_save($specialization_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
-    return (int) pg_result($result, 0, 0);
+    return "textresponse_component_save($component_id, '$ctext', $flags, $rows, $cols)";
   }
 };
 

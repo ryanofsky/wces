@@ -106,9 +106,11 @@ class SurveyEditor extends StatefullWidget
       break;
 
       case SurveyEditor_save:
-        $this->done = true;
-        if ($this->survey->save($this->specialization_id, $this->user_id,0))
+        if (SaveSurvey($this->survey, $this->specialization_id, $this->user_id))
+        {
           $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
+          $this->done = true;
+        }
         else
           $this->message = "<h1>Save Error</h1>";
       break;
@@ -122,7 +124,7 @@ class SurveyEditor extends StatefullWidget
 
   function loadInitialState()
   {
-    $surveyGlobals =& new SurveyGlobals(&$this->factories, &$specializationGroups, $user_id, $question_period_id = null, $latest = null)
+    $surveyGlobals =& new SurveyGlobals($this->factories, $this->user_id);
     $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $surveyGlobals);
   }
 
@@ -173,8 +175,8 @@ by clicking above and below existing components.</p>
 <tr><td colspan=1><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->fullName("insert$i")?>" class=insertmenu><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]" name=<?=$this->fullName("ns4marker$i")?>></td></tr>
 <?
         if ($i >= $ncomponents) break;
-        $component = &$this->survey->components[$i];
-        $w = $component->getwidget("main_qwidget_$i", $this);
+        $component =& $this->survey->components[$i];
+        $w = $component->getWidget("main_qwidget_$i", $this);
         $this->loadChild($w, true);
 
         $readOnly = false;
@@ -345,9 +347,11 @@ class SurveyEditorInsert extends ParentWidget
     $first = true;
     foreach($this->factories as $key => $f)
     {
+      $name = $f->name();
+      if (!isset($name)) continue;
       if ($first) $first = false; else print("<br>\n");
       $this->choices->display($key);
-      $this->choices->displayLabel($key, $f->name());
+      $this->choices->displayLabel($key, $name);
     }
 
     print("\n<p>");

@@ -43,8 +43,9 @@ class ComponentFactory
   // function & create();
   // function loadComponents(&$components);
 
-  function load(&$loads, $surveyGlobals)
+  function load(&$loads, &$surveyGlobals)
   {
+    global $wbes;
     $components = array();
     $loadKeys = array();
     foreach (array_keys($loads) as $key)
@@ -60,15 +61,16 @@ class ComponentFactory
     foreach ($loadKeys as $key)
     {
       $load =& $loads[$key];
-      $load->component =& $components[$loads->component_id];
+      $load->component =& $components[$load->component_id];
     }
-
-    $loadChildren = isset($loads[0]->component->getChildren());
+    
+    $ch =& $loads[0]->component->getChildren();
+    $loadChildren = isset($ch);
 
     if ($loadChildren)
     {
       $save_id = $surveyGlobals->save_id ? $surveyGlobals->save_id : 'NULL';
-      $table = "load" . md5(rand());
+      $table = substr("load" . md5(rand()), 0, 28);
       $sql = '';
       foreach ($loadKeys as $key)
       {
@@ -80,43 +82,43 @@ class ComponentFactory
           // table because postgres's concurrency model would prevent components
           // created during the execution of branch_latest() from showing up in
           // the resultset.
-          $sql .= "CREATE TEMPORARY TABLE $table AS"
-          $sql .= "SELECT $key AS load, ordinal, branch_latest(li.item_id, $load->specialization_id, $save_id) AS revision_id FROM list_items WHERE component = $load->component_id";
+          $sql .= "CREATE TEMPORARY TABLE $table AS ";
+          $sql .= "SELECT $key AS load, ordinal, item_id, branch_latest(item_id, $load->specialization_id, $save_id) AS revision_id FROM list_items WHERE component_id = $load->component_id";
         }
         else
-          $sql .= "\nUNION SELECT $key, ordinal, branch_latest(item_id, $load->specialization_id, $save_id) FROM list_items WHERE component = $load->component_id";
-        ++$n;
+          $sql .= "\nUNION SELECT $key, ordinal, item_id, branch_latest(item_id, $load->specialization_id, $save_id) FROM list_items WHERE component_id = $load->component_id";
       }
 
       $sql .= ";
-        SELECT t.load, t.ordinal, t.revision_id, c.component_id, c.type
+        SELECT t.load, t.ordinal, t.revision_id, t.item_id, c.component_id, c.type
         FROM $table AS t
-        INNER JOIN revision AS r USING (revision_id)
+        INNER JOIN revisions AS r USING (revision_id)
         INNER JOIN components AS c USING (component_id)
-        ORDER t.load, t.ordinal;
+        ORDER BY t.load, t.ordinal;
       ";
 
-      $r = pg_query($sql, $wbes, __FILE__, __LINE__);
-      $result =& new pg_segment_wrapper($r, 'load');
+      $r = pg_go($sql, $wbes, __FILE__, __LINE__);
+      
+      $result =& new pg_segmented_wrapper($r, 'load');
 
       unset($load);
       while ($result->row)
       {
         if ($result->split)
         {
-          $load =& $loads[$row['load']];
-          $children &= $load->component->getChildren();
+          $load =& $loads[$result->row['load']];
+          $children =& $load->component->getChildren();
           $i = 0;
         }
 
-        $newLoad =& $surveyGlobals->getLoad($result->row['type'], $result->row['component_id'], $load->specialization_id)
-        $newLoad->addTarget($children, $i, $result->row['revision_id']);
+        $children[] = false;
+        $newLoad =& $surveyGlobals->getLoad($result->row['type'], $result->row['component_id'], $load->specialization_id);
+        $newLoad->addTarget($children, $i, $result->row['revision_id'], $result->row['item_id']);
+        
         ++$i;
 
         $result->advance();
 
-        if ($result->split)
-          $children = array_pad($children, $i, false);
       }
     }
   }
@@ -132,8 +134,7 @@ class ComponentFactory
       $components[$wr->row['component_id']] = unserialize($wr->row['data']);
   }
 
-  //
-  function loadTextComponents(&$components, $ids, $ordinals, $specialization_id, $cn)
+  function loadTextComponents(&$components, $cn)
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
@@ -141,11 +142,10 @@ class ComponentFactory
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = & new $cn;
-
-      $c->text        = $wr->row['ctext'];
-      $flagGroup      = $wr->row['flags'];
-      $c->locked      = (bool)($flagGroup & FLAG_LOCKED);
-      $c->is_html     = (bool)($flagGroup & FLAG_ISHTML);
+      $c->text    = $wr->row['ctext'];
+      $flagGroup  = $wr->row['flags'];
+      $c->locked  = (bool)($flagGroup & FLAG_LOCKED);
+      $c->is_html = (bool)($flagGroup & FLAG_ISHTML);
       $components[$wr->row['component_id']] =& $c;
     }
   }
@@ -153,11 +153,12 @@ class ComponentFactory
 
 class Component
 {
-  var $text = "";      // string, component text
-  var $is_html = false;   // boolean html allowed
-  var $revision_id = 0;
+  var $revision_id;
+  var $item_id;
 
   var $locked = false;
+  var $is_html = false;   // boolean html allowed
+  var $text = "";      // string, component text
 
   function Component()
   {
@@ -180,20 +181,19 @@ class Component
 
   function saveChildren($specialization_id, $save_id)
   {
+    $children =& $this->getChildren();
+    if (!is_array($children)) return null;
+
     $list = "array_integer_cast('{'";
-    foreach (array_keys($this->components) as $key)
+    foreach (array_keys($children) as $key)
     {
-      $c =& $this->components[$key];
+      $c =& $children[$key];
       $list .= "||";
       $list .= $c->save($specialization_id, $save_id);
       $list .= "::text";
     }
     $list .= "||'}')";
     return $list;
-    $iid = $this->item_id ? $this->item_id : 'NULL';
-    $rid = $this->revision_id ? $this->revision_id : 'NULL';
-    $sql = "save(survey_save(revision_component($this->revision_id), $list), $specialization_id, $save_id, $rid, $iid)";
-    return $sqlrevision;
   }
 
   function saveComponent($component_id, $children)
@@ -206,7 +206,9 @@ class Component
   function save($specialization_id, $save_id)
   {
     $cid = $this->revision_id ? "revision_component($this->revision_id)" : 'NULL';
-    $component = $this->saveComponent($cid, $this->saveChildren);
+    $rid = $this->revision_id ? $this->revision_id : 'NULL';
+    $iid = $this->item_id ? $this->item_id : 'NULL';
+    $component = $this->saveComponent($cid, $this->saveChildren($specialization_id, $save_id));
     return "revision_save($component, $specialization_id, $save_id, $rid, $iid)";
   }
 
@@ -216,7 +218,7 @@ class Component
     $flags = 0;
     if ($this->is_html) $flags |= FLAG_ISHTML;
     if ($this->locked)  $flags |= FLAG_LOCKED;
-    return "SELECT text_component_save($component_id, $code, '$text', $flags)"
+    return "text_component_save($component_id, $code, '$text', $flags)";
   }
 };
 

@@ -51,7 +51,6 @@ class SurveyGlobals
   {
     $this->factories =& $factories;
     $this->user_id = $user_id;
-    $this->question_period_id = $question_period_id;
 
     foreach(array_keys($this->factories) as $i)
     {
@@ -67,14 +66,14 @@ class SurveyGlobals
   function & getLoad($type, $component_id, $specialization_id)
   {
     $key = "$component_id,$specialization_id";
-    if (isset($this->loadIndices[$type][$key])
+    if (isset($this->loadIndices[$type][$key]))
     {
       $loadIndex = $this->loadIndices[$type][$key];
       $load =& $this->loads[$type][$loadIndex];
     }
     else
     {
-      $loadComplete[$code] = false;
+      $this->loadComplete[$type] = false;
       $loadIndex = count($this->loads[$type]);
       $load =& new SurveyLoad($component_id, $specialization_id);
       $this->loads[$type][] =& $load;
@@ -89,12 +88,14 @@ class SurveyLoadTarget
   var $destArray;
   var $destIndex;
   var $revision_id;
+  var $item_id;
 
-  function SurveyLoadTarget(&$destArray, $destIndex, $revision_id)
+  function SurveyLoadTarget(&$destArray, $destIndex, $revision_id, $item_id)
   {
     $this->destArray =& $destArray;
     $this->destIndex = $destIndex;
-    $this->revision_id;
+    $this->revision_id = $revision_id;
+    $this->item_id = $item_id;
   }
 };
 
@@ -111,9 +112,9 @@ class SurveyLoad
     $this->specialization_id = $specialization_id;
   }
 
-  function addTarget(&$destArray, $destIndex, $revision_id)
+  function addTarget(&$destArray, $destIndex, $revision_id, $item_id)
   {
-    $this->targets[] =& new SurveyLoadTarget($destArray, $destIndex, $revision_id);
+    $this->targets[] =& new SurveyLoadTarget($destArray, $destIndex, $revision_id, $item_id);
   }
 };
 
@@ -121,50 +122,76 @@ class SurveyLoad
 function & LoadSurvey($item_id, $specialization_id, &$surveyGlobals)
 {
   global $wbes;
+  wbes_connect();
   $save_id = $surveyGlobals->save_id ? $surveyGlobals->save_id : 'NULL';
-  $dest = array();
+  $dest = array(false);
   $r = pg_go("SELECT branch_latest($item_id, $specialization_id, $save_id)", $wbes, __FILE__, __LINE__);
-  $revision_id = pg_result($r, 0, 0);
-  $r = pg_go("SELECT revision_component($component_id)", $wbes, __FILE__, __LINE__);
-  $component_id = pg_result($r, 0, 0);
-  $load =& surveyGlobals->getLoad($type, $component_id, $specialization_id);
-  $load->addTarget($dest, 0, $revision_id);
+  $revision_id = (int)pg_result($r, 0, 0);
+  $r = pg_go("SELECT revision_component($revision_id)", $wbes, __FILE__, __LINE__);
+  $component_id = (int)pg_result($r, 0, 0);
+  $load =& $surveyGlobals->getLoad(1, $component_id, $specialization_id);
+  $load->addTarget($dest, 0, $revision_id, $item_id);
 
   foreach (array_keys($surveyGlobals->loads) as $type)
-    while (!$surveyGlobals->loadsComplete[$type])
-      $cfactories[$type]->load($surveyGlobals->loads[$type], $surveyGlobals);
+    while (!$surveyGlobals->loadComplete[$type])
+    {
+      $surveyGlobals->loadComplete[$type] = true;
+      $surveyGlobals->cfactories[$type]->load($surveyGlobals->loads[$type], $surveyGlobals);
+    }
 
   foreach (array_reverse(array_keys($surveyGlobals->loads)) as $type)
   {
     $loads =& $surveyGlobals->loads[$type];
-    foreach (array_keys($loads) as $lk))
+    foreach (array_keys($loads) as $lk)
     {
       $load =& $loads[$lk];
       foreach (array_keys($load->targets) as $tk)
       {
         $target =& $load->targets[$tk];
-        $dest =& $target->destArray[$target->destIndex];
-        $dest = $load->component; // intentional clone
-        $dest->revision_id = $target->revision_id;
-        $dest->item_id = $load->item_id;
+        $d =& $target->destArray[$target->destIndex];
+        
+        $d = $load->component; // intentional clone
+        $d->revision_id = $target->revision_id;
+        $d->item_id = $target->item_id;
       }
     }
   }
+  return $dest[0];
 };
 
 function SaveSurvey(&$survey, $specialization_id, $user_id)
 {
+  global $wbes;
+  wbes_connect();
   $result = pg_go("
-    BEGIN WORK;
+    --BEGIN WORK;
     INSERT INTO saves (user_id) VALUES ($user_id);
     SELECT currval('save_ids')
   ", $wbes, __FILE__, __LINE__);
   $save_id = (int)pg_result($result,0,0);
 
+  debugout($save_id, 'save_id = ');
+
   $sql = $survey->save($specialization_id, $save_id);
 
-  $r = pg_go("SELECT $sql; COMMIT", $wbes, __FILE__, __LINE__);
+  $r = pg_go("SELECT $sql", $wbes, __FILE__, __LINE__);
+  
+  pg_go("COMMIT", $wbes, __FILE__, __LINE__);
+  
   return pg_result($r, 0, 0);
+  
+}
+
+class SurveyFactory extends ComponentFactory
+{
+  function code() { return 1; }
+  function name() { return null; }
+  
+  function loadComponents(&$components)
+  {
+    foreach(array_keys($components) as $i)
+      $components[$i] =& new Survey; 
+  }
 }
 
 class Survey extends Component
@@ -205,9 +232,9 @@ class Survey extends Component
     return $this->components;
   }
 
-  function saveComponent($children)
+  function saveComponent($component_id, $children)
   {
-    return "survey_save(revision_component($this->revision_id), $children)";
+    return "survey_save($component_id, $children)";
   }
 };
 

@@ -3,7 +3,7 @@
 require_once("wbes/component.inc");
 
 class PageBreakFactory extends ComponentFactory
-{b
+{
   function code() { return 9; }
   function name() { return "Page Break Component"; }
 
@@ -44,15 +44,7 @@ class PageBreak extends Component
   function saveComponent($component_id, $children)
   {
     $renumber = $this->renumber ? "'t'" : "'f'";
-    return "SELECT text_component_save($component_id, $renumber)";
-  }
-
-  function save($specialization_id, $save_id)
-  {
-
-    $revision_id = $this->revision_id ? $this->revision_id : 'NULL';
-    $result = pg_go("SELECT pagebreak_component_save($specialization_id, $revision_id, $save_id, $renumber)", $wbes, __FILE__, __LINE__);
-    return (int) pg_result($result, 0, 0);
+    return "pagebreak_component_save($component_id, $renumber)";
   }
 };
 

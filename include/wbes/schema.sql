@@ -1,7 +1,11 @@
-DROP AGGREGATE choice_dist INTEGER;
-DROP AGGREGATE choice_dist INTEGER[];
-DROP AGGREGATE last text[];
-DROP AGGREGATE first text[];
+CREATE SEQUENCE item_ids INCREMENT 1 START 100;
+CREATE SEQUENCE specialization_ids INCREMENT 1 START 200;
+CREATE SEQUENCE branch_ids INCREMENT 1 START 300;
+CREATE SEQUENCE revision_ids INCREMENT 1 START 400;
+CREATE SEQUENCE component_ids INCREMENT 1 START 500;
+CREATE SEQUENCE save_ids INCREMENT 1 START 600;
+CREATE SEQUENCE question_period_ids INCREMENT 1 START 700;
+CREATE SEQUENCE response_ids INCREMENT 1 START 800;
 
 CREATE TABLE revisions
 (
@@ -15,8 +19,6 @@ CREATE TABLE revisions
   UNIQUE(parent, branch_id, revision)
 );
 
-CREATE SEQUENCE revision_ids INCREMENT 1 START 200;
-
 CREATE TABLE branches
 (
   branch_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('branch_ids'),
@@ -26,7 +28,6 @@ CREATE TABLE branches
   outdated BOOLEAN DEFAULT 'f',
   latest_id INTEGER
 );
-CREATE SEQUENCE branch_ids INCREMENT 1 START 300;
 
 CREATE TABLE specializations
 (
@@ -34,18 +35,16 @@ CREATE TABLE specializations
   parent INTEGER
 );
 
-CREATE SEQUENCE specialization_ids INCREMENT 1 START 500;
-
 CREATE TABLE list_items
 (
-  component_id INTEGER NOT NULL
+  component_id INTEGER NOT NULL,
   ordinal SMALLINT NOT NULL,
   item_id INTEGER NOT NULL
 );
 
 CREATE TABLE item_specializations
 (
-  item_id INTEGER NOT NULL
+  item_id INTEGER NOT NULL,
   specialization_id INTEGER NOT NULL,
   branch_id INTEGER NOT NULL,
   PRIMARY KEY(item_id, specialization_id)
@@ -66,9 +65,9 @@ CREATE TABLE item_specializations
 CREATE TABLE components
 (
   component_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('component_ids'),
-  type INTEGER NOT NULL,
+  type INTEGER NOT NULL
 );
-CREATE SEQUENCE component_ids;
+
 
 CREATE TABLE generic_components
 (
@@ -127,7 +126,7 @@ CREATE TABLE saves
   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE SEQUENCE save_ids INCREMENT 1 START 100;
+
 
 -- this entire table is redundant
 CREATE TABLE branch_ancestor_cache
@@ -144,7 +143,7 @@ CREATE TABLE question_periods
   enddate TIMESTAMP
 );
 
-CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
+
 
 CREATE TABLE responses
 (
@@ -153,7 +152,7 @@ CREATE TABLE responses
   parent INTEGER
 );
 
-CREATE SEQUENCE response_ids INCREMENT 1 START 700;
+
 
 CREATE TABLE survey_responses
 (
@@ -240,7 +239,7 @@ CREATE OR REPLACE FUNCTION neq(INTEGER, INTEGER) RETURNS BOOLEAN AS '
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION revision_branch(INTEGER) RETURNS INTEGER AS '
-  SELECT branch_id FROM revision_id = $1;
+  SELECT branch_id FROM revisions WHERE revision_id = $1;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION revision_component(INTEGER) RETURNS INTEGER AS '
@@ -253,7 +252,8 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER) RETURNS INTEGER AS '
 
 -- in lieu of foreign keys, use these functions to quickly see if a branch,
 -- specialization, or revision is being referenced from some table
-
+-- XXX: actually with the rewrite, the use of inheritance is confined to 
+-- the components tables, foreign keys can actually be used everywhere else
 CREATE OR REPLACE FUNCTION references_branch(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM revisions WHERE branch_id = $1)                   THEN 1 ELSE 0 END |
@@ -270,9 +270,7 @@ CREATE OR REPLACE FUNCTION references_revisions(INTEGER) RETURNS INTEGER AS '
   CASE WHEN EXISTS (SELECT * FROM revisions WHERE parent = $1)       THEN 1 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM revisions WHERE merged = $1)       THEN 2 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM branches WHERE latest_id = $1)     THEN 4 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM list_items WHERE revision_id = $1) THEN 8 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM components WHERE revision_id = $1) THEN 16 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM responses WHERE revision_id = $1)  THEN 32 ELSE 0 END;
+  CASE WHEN EXISTS (SELECT * FROM responses WHERE revision_id = $1)  THEN 8 ELSE 0 END;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION references_specialization(INTEGER) RETURNS INTEGER AS '
@@ -285,6 +283,12 @@ CREATE OR REPLACE FUNCTION references_specialization(INTEGER) RETURNS INTEGER AS
 CREATE OR REPLACE FUNCTION references_question_period(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE question_period_id = $1) THEN 1 ELSE 0 END;
+' LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION references_component(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM revisions WHERE component_id = $1)  THEN 1 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM list_items WHERE component_id = $1) THEN 2 ELSE 0 END;
 ' LANGUAGE 'sql';
 
 -- update redundant fields in branches table
@@ -383,7 +387,8 @@ CREATE OR REPLACE FUNCTION branch_find(INTEGER, INTEGER) RETURNS INTEGER AS '
     branch_id_ INTEGER;
     s INTEGER;
   BEGIN
-    s := specialization_id;
+    --RAISE NOTICE ''branch_find(%,%) called.'', $1, $2;
+    s := specialization_id_;
     LOOP
       SELECT INTO branch_id_ branch_id FROM item_specializations WHERE item_id = item_id_ AND specialization_id = s;
       IF FOUND THEN
@@ -391,10 +396,10 @@ CREATE OR REPLACE FUNCTION branch_find(INTEGER, INTEGER) RETURNS INTEGER AS '
       ELSE
         SELECT INTO s parent FROM specializations WHERE specialization_id = s;
         IF NOT FOUND THEN
-          RAISE EXCEPTION ''branch_find(%,%) failed. % is not a valid specialization for item %'', $1, $2, specialization_id, item_id_;
+          RAISE EXCEPTION ''branch_find(%,%) failed. % is not a valid specialization for item %'', $1, $2, specialization_id_, item_id_;
         END IF;
       END IF;
-    END IF;
+    END LOOP;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -408,7 +413,8 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
     arrays RECORD;
     array_length INTEGER;
     parent RECORD;
-    bid := INTEGER;
+    bid INTEGER;
+    type_ INTEGER;
   BEGIN
     -- get information about the branch
     SELECT INTO branch_info outdated, latest_id
@@ -417,7 +423,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
       RAISE EXCEPTION ''branch_latest(%) called with invalid branch_id'', $1;
     END IF;
 
-    IF NOT branch_info.outdated THEN RETURN info.latest_id; END IF;
+    IF NOT branch_info.outdated THEN RETURN branch_info.latest_id; END IF;
 
     -- loop to lock and gather information about ancestor branches
     array_length := 0;
@@ -435,18 +441,18 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
       --
       -- alternately, this code could be rewritten to use recursion instead of loops
       -- and array storage, since the arrays are really only used as stacks. The reason
-      -- I didn't do this is that it would require the recursive functions to return
-      -- two integer values and currently there isn't a clean way of returning
+      -- I didn''t do this is that it would require the recursive functions to return
+      -- two integer values and currently there isn''t a clean way of returning
       -- multiple values from postgres functions.
 
       s_bids  TEXT := '''';  -- stringed array of branch_ids for each branch level
       s_rids  TEXT := '''';  -- stringed array of latest revision ids for each branch
-      s_prids TEXT := '''';  -- stringed array of latest revisions' parents for each branch
+      s_prids TEXT := '''';  -- stringed array of latest revisions'' parents for each branch
       s_cids  TEXT := '''';  -- stringed array of component ids for each branch
-      s_types TEXT := '''';  -- stringed array of component revision's type for each branch level
+      s_types TEXT := '''';  -- stringed array of component revision''s type for each branch level
       sep     TEXT := '''';
     BEGIN
-      -- loop through branch_id_'s ancestors accumulating information
+      -- loop through branch_id_''s ancestors accumulating information
       -- about latest revisions. stop loop when an ancestor is found
       -- which is not outdated.
       LOOP
@@ -525,7 +531,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
     BEGIN
       FOR j IN REVERSE array_length..1 LOOP
         bid := arrays.bids[j];
-        type := arrays.types[j];
+        type_ := arrays.types[j];
         common_id := arrays.prids[j];
         primary_id := arrays.rids[j];
         secondary_id := parent.latest_id;
@@ -537,7 +543,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
         -- be a just link to a preexisting component instead of a merge.
 
         parent.component_id := component_merge(common_component_id,
-          primary_component_id, secondary_component_id, type);
+          primary_component_id, secondary_component_id, type_);
 
         -- helpful revision numbering convention, not at all neccessary
         IF parent.component_id = second_component_id THEN
@@ -548,7 +554,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
 
         INSERT INTO revisions (parent, branch_id, revision, save_id, merged, component_id)
         VALUES (secondary_id, bid, revision_, revision_save(secondary_id), primary_id, parent.component_id);
-        parent.latest_id := currval('revision_ids');
+        parent.latest_id := currval(''revision_ids'');
 
         UPDATE branches SET
           outdated = false, latest_id = parent.latest_id, component_id = parent.component_id
@@ -567,9 +573,10 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     branch_id_ ALIAS FOR $1;
     save_id_ ALIAS FOR $2;
-    i INTEGER:
+    i INTEGER;
     j INTEGER;
   BEGIN
+    RAISE NOTICE ''branch_latest(%,%) called.'', $1, $2;
     IF save_id_ IS NULL THEN
       RETURN branch_latest(branch_id_);
     END IF;
@@ -604,7 +611,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER, INTEGER) RETURNS INTE
 -- find or create a branch for the given specialization and item_id
 -- returns NULL if item is not specialized for for specialization_id_ or
 -- any of it's ancestors.
-CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER) RETURNS INTEGER '
+CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     item_id_ ALIAS FOR $1;
     specialization_id_ ALIAS FOR $2;
@@ -614,8 +621,6 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
     pbid INTEGER;
     sibling RECORD;
   BEGIN
-    bid := revision_branch(revision_id_);
-
     -- this preliminary check is not neccessary for correctness, but
     -- avoids unneccessary locking in most cases
 
@@ -1020,7 +1025,7 @@ CREATE OR REPLACE FUNCTION revision_make_parent_clone_i(INTEGER, INTEGER, INTEGE
 -- revision number than any other child
 
 -- implementation of revision_make_ancestor_clone, takes redundant parameters
-CREATE OR REPLACE FUNCTION revision_make_ancestor_clone_i(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION revision_make_ancestor_clone_i(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     base_revision_id $1;
     branch_id_ ALIAS FOR $2;
@@ -1047,8 +1052,8 @@ CREATE OR REPLACE FUNCTION revision_make_ancestor_clone_i(INTEGER, INTEGER, INTE
 -- points to the same component as $1 and which has a lower
 -- revision number than any other descendants on the same branch
 CREATE OR REPLACE FUNCTION revision_make_ancestor_clone(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
-  SELECT revision_make_ancestor_clone($1, $2, $3, revision_component($1), revision_branch($1));
-' LANGUAGE 'sql'
+  SELECT revision_make_ancestor_clone_i($1, $2, $3, revision_component($1), revision_branch($1));
+' LANGUAGE 'sql';
 
 -- save a new revision of a new item
 CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
@@ -1064,7 +1069,7 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER) RETURNS INTE
       RAISE EXCEPTION ''revision_save(%,%,%) called with invalid arguments'', $1, $2, $3;
     END IF;
 
-    iid := nextval(''list_item_ids'');
+    iid := nextval(''item_ids'');
     bid := nextval(''branch_ids'');
     rid := nextval(''revision_ids'');
 
@@ -1137,7 +1142,7 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
     latest    RECORD;
   BEGIN
     IF orig_revision_id IS NULL AND orig_item_id IS NULL THEN
-      RETURN revision_save(component_id_, specialization_id_, save_id_)
+      RETURN revision_save(component_id_, specialization_id_, save_id_);
     ELSIF component_id_ IS NULL OR specialization_id_ IS NULL or save_id_ IS NULL OR orig_revision_id IS NULL OR orig_item_id IS NULL THEN
       RAISE EXCEPTION ''revision_save(%,%,%,%,%) called with invalid arguments'', $1, $2, $3, $4, $5;
     END IF;
@@ -1202,7 +1207,7 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
 
       -- set descendant branches to be outdated if they are not already
       IF NOT latest.outdated THEN
-        PERFORM branch_descendants_set_, save_id_id);
+        PERFORM branch_descendants_set_outdated(bid);
       END IF;
     END IF;
 
@@ -1278,15 +1283,17 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION branch_descendants_set_outdated(INTEGER)
+CREATE OR REPLACE FUNCTION branch_descendants_set_outdated(INTEGER) RETURNS INTEGER AS '
   UPDATE branches SET outdated = ''t'' WHERE branch_id IN
     (SELECT descendant_id FROM branch_ancestor_cache WHERE ancestor_id = $1);
+  SELECT 1;
 ' LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION branch_set_outdated(INTEGER)
+CREATE OR REPLACE FUNCTION branch_set_outdated(INTEGER) RETURNS INTEGER AS '
   UPDATE branches SET outdated = ''t'' WHERE branch_id = $1;
   UPDATE branches SET outdated = ''t'' WHERE branch_id IN
     (SELECT descendant_id FROM branch_ancestor_cache WHERE ancestor_id = $1);
+  SELECT 1;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
@@ -1326,8 +1333,6 @@ CREATE OR REPLACE FUNCTION component_merge(INTEGER, INTEGER, INTEGER, INTEGER) R
   END;
 ' LANGUAGE 'plpgsql';
 
-
-
 CREATE OR REPLACE FUNCTION list_changed(INTEGER, INTEGER[]) RETURNS BOOLEAN AS '
   DECLARE
     component_id_ ALIAS FOR $1;
@@ -1363,13 +1368,27 @@ CREATE OR REPLACE FUNCTION list_insert(INTEGER, INTEGER[]) RETURNS INTEGER AS '
   BEGIN
     i := 1;
     LOOP
-      j := component_ids[i];
-      EXIT WHEN component_ids[i] IS NULL;
+      j := numbers[i];
+      EXIT WHEN j IS NULL;
       INSERT INTO list_items (component_id, ordinal, item_id)
       VALUES (component_id_, i, j);
       i := i + 1;
     END LOOP;
     RETURN component_id_;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION survey_save(INTEGER, INTEGER[]) RETURNS INTEGER AS '
+  DECLARE
+    component_id_ ALIAS FOR $1;
+    item_ids      ALIAS FOR $2;
+  BEGIN
+    IF list_changed(component_id_, item_ids) THEN
+      INSERT INTO components (type) VALUES (1);
+      RETURN list_insert(currval(''component_ids''), item_ids);
+    ELSE
+      RETURN component_id_;
+    END IF;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1445,7 +1464,7 @@ CREATE OR REPLACE FUNCTION text_component_save(INTEGER, INTEGER, TEXT, INTEGER) 
     INSERT INTO choice_components(type, ctext, flags)
     VALUES (type_, ctext_, flags_);
 
-    RETURN currval(''component_ids'');;
+    RETURN currval(''component_ids'');
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -1477,7 +1496,6 @@ CREATE OR REPLACE FUNCTION textresponse_component_save(INTEGER, TEXT, INTEGER, I
   END;
 ' LANGUAGE 'plpgsql';
 
--- type = 9
 CREATE OR REPLACE FUNCTION pagebreak_component_save(INTEGER, BOOLEAN) RETURNS INTEGER AS '
   DECLARE
     component_id_ ALIAS FOR $1;
@@ -1839,18 +1857,6 @@ CREATE OR REPLACE FUNCTION bitmask_merge(INTEGER, INTEGER, INTEGER) RETURNS INTE
   SELECT (~ $1 & ($2 | $3)) | ($2 & $3)
 ' LANGUAGE 'sql';
 
-CREATE AGGREGATE choice_dist (
-    basetype = INTEGER,
-    stype = INTEGER[],
-    sfunc = int_distf
-);
-
-CREATE AGGREGATE choice_dist (
-    basetype = INTEGER[],
-    stype = INTEGER[],
-    sfunc = int_mdistf
-);
-
 CREATE OR REPLACE FUNCTION func_first (text[],text[]) RETURNS text[] AS '
   SELECT CASE WHEN $1 IS NOT NULL THEN $1 ELSE $2 END;
 ' LANGUAGE 'sql' WITH ( iscachable );
@@ -1859,6 +1865,8 @@ CREATE OR REPLACE FUNCTION func_last (text[],text[]) RETURNS text[] AS '
   SELECT $2;
 ' language 'sql' WITH ( iscachable );
 
+--DROP AGGREGATE last text[];
+--DROP AGGREGATE first text[];
 CREATE AGGREGATE last ( BASETYPE = text[], SFUNC = func_last, STYPE = text[]);
 CREATE AGGREGATE first ( BASETYPE = text[], SFUNC = func_first, STYPE = text[]);
 

@@ -14,15 +14,12 @@ class HeadingFactory extends ComponentFactory
 
   function loadComponents(&$components)
   {
-    ComponentFactory::loadTextComponents($components, 4);
+    ComponentFactory::loadTextComponents($components, 'Heading');
   }
 };
 
 class Heading extends Component
 {
-  function Heading()
-  {}
-
   function & getEditor($name, &$parent)
   {
     return new HeadingEditor($this, $name, $parent);
@@ -36,11 +33,6 @@ class Heading extends Component
   function saveComponent($component_id, $children)
   {
     return $this->saveTextComponent($component_id, HeadingFactory::code());
-  }
-
-  function save($specialization_id, $save_id)
-  {
-    return $this->textsave($specialization_id, $save_id, HeadingFactory::code());
   }
 }
 
