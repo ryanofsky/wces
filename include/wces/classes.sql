@@ -181,12 +181,12 @@ CREATE SEQUENCE user_ids INCREMENT 1 START 1;
 
 COMMENT ON COLUMN users.flags IS '
 Bitmask    | Nonzero when the user...
-
 0x00000001 | is an administrator
 0x00000002 | is an administrator within his/her department
 0x00000004 | is a professor
 0x00000008 | is a student
-0x00000010 | is a ta';
+0x00000010 | is a ta
+';
 
 CREATE TABLE enrollments
 (
@@ -365,6 +365,10 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
     END IF; END IF; END IF;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
+  SELECT course_find($1, 't');
+' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION course_find(TEXT, BOOLEAN) RETURNS INTEGER AS '
   DECLARE
