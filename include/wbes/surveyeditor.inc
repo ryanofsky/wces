@@ -35,6 +35,7 @@ function cell($width = false, $height = false, $color = false, $tdattr = '', $im
 }
 
 $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
+$survey_nolock = false;
 
 class SurveyEditor extends StatefullWidget
 {
@@ -209,7 +210,8 @@ by clicking above and below existing components.</p>
         $this->loadChild($w, true);
 
         $readOnly = false;
-        if($component->locked && $component->item_id)
+        global $survey_nolock;
+        if(!$survey_nolock && $component->locked && $component->item_id)
         {
           wbes_connect();
           $r = pg_go("
