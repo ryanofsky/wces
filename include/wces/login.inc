@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/server.inc");
 require_once("wces/wces.inc");
@@ -317,4 +317,4 @@ function login_saveprofid($profid)
   };  
 };
 
-%>
+?>
