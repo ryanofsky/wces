@@ -23,21 +23,20 @@ function wces_oldconnect()
 // the order of data out of the get_profs and get_class functions
 
 define("FORMAT_CLASS_SUBJECT_CODE",  0);
-define("FORMAT_CLASS_DIVISION_CODE", 1);
-define("FORMAT_CLASS_NUMBER",        2);
-define("FORMAT_CLASS_SECTION",       3);
-define("FORMAT_CLASS_YEAR",          4);
-define("FORMAT_CLASS_SEMESTER",      5);
-define("FORMAT_CLASS_NAME",          6);
-define("FORMAT_CLASS_SNAME",         7);
-define("FORMAT_CLASS_CLASS_ID",      8);
-define("FORMAT_CLASS_COURSE_ID",     9);
-
+define("FORMAT_CLASS_NUMBER",        1);
+define("FORMAT_CLASS_SECTION",       2);
+define("FORMAT_CLASS_YEAR",          3);
+define("FORMAT_CLASS_SEMESTER",      4);
+define("FORMAT_CLASS_NAME",          5);
+define("FORMAT_CLASS_SNAME",         6);
+define("FORMAT_CLASS_CLASS_ID",      7);
+define("FORMAT_CLASS_COURSE_ID",     8);
+define("FORMAT_CLASS_LEN",           9);
+                                      
 define("FORMAT_COURSE_SUBJECT_CODE",  0);
-define("FORMAT_COURSE_DIVISION_CODE", 1);
-define("FORMAT_COURSE_NUMBER",        2);
-define("FORMAT_COURSE_NAME",          3);
-define("FORMAT_COURSE_COURSE_ID",     4);
+define("FORMAT_COURSE_NUMBER",        1);
+define("FORMAT_COURSE_NAME",          2);
+define("FORMAT_COURSE_COURSE_ID",     3);
 
 define("FORMAT_PROF_COUNT",          3);
 define("FORMAT_PROF_USER_ID",        0);
@@ -55,7 +54,9 @@ function explode_class($class)
   global $wces_semesters;
   
   $c = explode("\n", $class);
-  $courseCode = "{$c[FORMAT_CLASS_SUBJECT_CODE]} {$c[FORMAT_CLASS_DIVISION_CODE]}" . (int) $c[FORMAT_CLASS_NUMBER];
+  if (count($c) != FORMAT_CLASS_LEN) return $class;
+  
+  $courseCode = "{$c[FORMAT_CLASS_SUBJECT_CODE]} {$c[FORMAT_CLASS_NUMBER]}";
   $courseName = $className = $c[FORMAT_CLASS_NAME];
   if ($c[FORMAT_CLASS_SNAME]) $className .= ": {$c[FORMAT_CLASS_SNAME]}";
   $section = $c[FORMAT_CLASS_SECTION];
@@ -71,7 +72,7 @@ function explode_class($class)
 function explode_course($course)
 {
   $c = explode("\n", $course);
-  $courseCode = "{$c[FORMAT_COURSE_SUBJECT_CODE]} {$c[FORMAT_COURSE_DIVISION_CODE]}" . (int) $c[FORMAT_COURSE_NUMBER];
+  $courseCode = "{$c[FORMAT_COURSE_SUBJECT_CODE]} {$c[FORMAT_COURSE_NUMBER]}";
   $courseName = $c[FORMAT_COURSE_NAME];
   $course_id = (int)$c[FORMAT_COURSE_COURSE_ID];
   return compact("courseCode", "courseName", "course_id");
@@ -81,6 +82,8 @@ function format_class($c, $format = "%c %n Section %s", $link = false)
 {
   global $wces_path, $ASID;
   if (!is_array($c)) $c = explode_class($c);
+  if (!is_array($c)) return $c;
+  
   $str = str_replace(
     array("%c", "%n", "%N", "%s", "%t"),
     array($c['courseCode'], $c['courseName'], $c['className'], $c['section'], $c['term']),
@@ -134,6 +137,10 @@ function format_profs($profs, $link = false, $before = "", $after = "", $between
   
   for ($i = 0; $i < count($c); $i += FORMAT_PROF_COUNT)
   {
+    if (!strlen($c[$i + FORMAT_PROF_FIRSTNAME]) 
+      && !strlen($c[$i + FORMAT_PROF_LASTNAME]))
+      continue;
+      
     if ($str) $str .= $between;
     $str .= $before;
     if (is_string($link)) $str .= "<a href=\"$link" . $c[$i + FORMAT_PROF_USER_ID] . '">';
@@ -152,11 +159,11 @@ function registrar_clean(&$str)
 
 function picture_src($id)
 {
-  global $wces, $server_www_upload;
+  global $wces, $WCES_CONFIG_UPLOAD_PATH;
   if (!$id) return false;
   wces_connect();
   $r = pg_go("SELECT name FROM pictures WHERE file_id = $id", $wces, __FILE__, __LINE__);
-  return $server_www_upload . pg_result($r, 0, 0);
+  return $WCES_CONFIG_UPLOAD_PATH . pg_result($r, 0, 0);
 };
 
 function set_question_period($question_period_id)
@@ -197,5 +204,17 @@ function get_question_period()
     return $_SESSION['wces/question_period_id'] = (int)pg_result($result, 0, 0);
   }
 }
+
+function get_question_periods()
+{
+  global $wces;
+  wces_connect();
+  return pg_select_array("
+    SELECT q.question_period_id, q.displayname
+    FROM semester_question_periods AS q
+    WHERE EXISTS (SELECT * FROM wces_topics AS t WHERE t.question_period_id = q.question_period_id AND NOT cancelled)
+    ORDER BY begindate
+  ", $wces, __FILE__, __LINE__);
+}  
 
 ?>
