@@ -1,6 +1,6 @@
 <%
-require_once("oracle.inc");
-oracle_top("SEAS Oracle Homepage - About Us","aboutus.gif");
+require_once("oracle/page.inc");
+page_top("SEAS Oracle Homepage - About Us","aboutus.gif");
 %>
       <center><FONT face="Verdana,Trebuchet MS" size=+1>Oracle 00-01 Team</FONT></center>
       <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Project 
@@ -29,5 +29,5 @@ oracle_top("SEAS Oracle Homepage - About Us","aboutus.gif");
       Advisor</I></B> <BR>Dean Morton Friedman <BR>Dean Jack McGourty
       </FONT></P>
 <%
-oracle_bottom();
+page_bottom();
 %>

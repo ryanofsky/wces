@@ -1,6 +1,6 @@
 <%
-require_once("oracle.inc");
-oracle_top("SEAS Oracle Homepage","home.gif");
+require_once("oracle/page.inc");
+page_top("SEAS Oracle Homepage","home.gif");
 %>
       <P>
       <FONT face="Verdana,Trebuchet MS" size=-1>
@@ -53,5 +53,5 @@ oracle_top("SEAS Oracle Homepage","home.gif");
       <P align=center><FONT size=2>the <A 
       href="mailto:jz137@columbia.edu">webmaster</A>.</FONT></P>
 <%
-oracle_bottom();
+page_bottom();
 %>
