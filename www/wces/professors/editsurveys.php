@@ -1,4 +1,4 @@
-<%
+<?
   require_once("wces/page.inc");
   require_once("wces/database.inc");
   require_once("wces/oldquestions.inc");
@@ -114,28 +114,28 @@ exit();
     $questionset = $questionsetid ? 
       db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid),0) : 
       array("displayname" => ("Custom Questions from Professor " . db_getvalue($db,"professors",Array("professorid" => $profid),"name")));
-%>
+?>
 
 <form action="editsurveys.php" method="get" name=form>
-<input name=editclass type="hidden" value="<%=$editclass%>">
+<input name=editclass type="hidden" value="<?=$editclass?>">
 
-<h2>Custom Questions For <%=$classname%></h2>
+<h2>Custom Questions For <?=$classname?></h2>
 
-<% if ($editclass != "all") { %>
+<? if ($editclass != "all") { ?>
 
 <h3>ABET Questions</h3>
 <p>The ABET questions accept a rating from 1-5. You should check off any questions that are applicable to your class so they can be included in the surveys students fill out.</p>
 <p>Students will be asked, "<b>To what degree did this course enhance your ability to:</b>"</p>
 <table cellpadding=0 cellspacing=2>
-<%
+<?
   $a = isset($questionset["ABET"]) ? explode(",",$questionset["ABET"]) : array();
   foreach($ABETQUESTIONS as $k => $v)
     print('  <tr><td bgcolor="#DDDDDD" background="' . $server_wcespath . 'media/0xDDDDDD.gif" width="100%"><p style="margin-left: 30px; text-indent: -30px"><input id="ABET' . $k . '" name="ABET' . $k . '" value=1 type=checkbox style="width: 30px"' . (is_array($a) && in_array($k,$a) ? " checked" : "") . '><label for="ABET' . $k . '"><b>' . $v . "</b></label></p></td></tr>\n");
-%>
+?>
 </table>
 <hr>
 <h3>Custom Questions</h3>
-<% } %>
+<? } ?>
 
 <p>From this page, you can edit the text of up to 10 ratings
 style questions and up to 2 free response questions. On the ratings questions,
@@ -146,25 +146,25 @@ of text in response to your questions.</p>
 <table>
 <tr>
   <td valign=top>Heading:</td>
-  <% if (!$questionset["displayname"]) $questionset["displayname"] = "Custom Question from Professor " . $profname; %>
-  <td><textarea name=heading wrap=virtual rows=3 cols=80><%=htmlspecialchars($questionset["displayname"])%></textarea></td>
+  <? if (!$questionset["displayname"]) $questionset["displayname"] = "Custom Question from Professor " . $profname; ?>
+  <td><textarea name=heading wrap=virtual rows=3 cols=80><?=htmlspecialchars($questionset["displayname"])?></textarea></td>
 </tr>
-<% for($i=1; $i<=10; ++$i) { %>
+<? for($i=1; $i<=10; ++$i) { ?>
 <tr>
-  <td valign=top>Ratings Question <%=$i%>:</td>
-  <td><textarea name=ratings<%=$i%> wrap=virtual rows=3 cols=80><%=isset($questionset["MC$i"]) ? htmlspecialchars($questionset["MC$i"]) : ""%></textarea></td>
+  <td valign=top>Ratings Question <?=$i?>:</td>
+  <td><textarea name=ratings<?=$i?> wrap=virtual rows=3 cols=80><?=isset($questionset["MC$i"]) ? htmlspecialchars($questionset["MC$i"]) : ""?></textarea></td>
 </tr>
-<% } %>
-<% for($i=1; $i<=2; ++$i) { %>
+<? } ?>
+<? for($i=1; $i<=2; ++$i) { ?>
 <tr>
-  <td valign=top>Free Response <%=$i%>:</td>
-  <td><textarea name=freeresponse<%=$i%> wrap=virtual rows=3 cols=80><%=isset($questionset["FR$i"]) ? htmlspecialchars($questionset["FR$i"]) : ""%></textarea></td>
+  <td valign=top>Free Response <?=$i?>:</td>
+  <td><textarea name=freeresponse<?=$i?> wrap=virtual rows=3 cols=80><?=isset($questionset["FR$i"]) ? htmlspecialchars($questionset["FR$i"]) : ""?></textarea></td>
 </tr>
-<% } %>
+<? } ?>
 <tr><td colspan=2><input type=submit name=save value="Submit Changes"> <input type=submit name=cancel value="Cancel"><td></tr>
 </table>
 </form>
-    <%
+    <?
   };
 
   function savequestions()
@@ -316,4 +316,4 @@ of text in response to your questions.</p>
     listclasses();
   
   page_bottom();
-%>
+?>
