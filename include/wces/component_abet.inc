@@ -113,6 +113,8 @@ class Abet extends Component
     // does not make copies of object or array member that have
     // been assigned by reference (only normal variables
     $p = unserialize(serialize($this->prototype));
+    $p->revision_id = $this->revision_id;
+    $p->item_id = $this->item_id;
     foreach (array_keys($p->questions) as $k)
       if (!($this->which & (1 << $k)))
         unset($p->questions[$k]);
