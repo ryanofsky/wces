@@ -164,7 +164,7 @@ class Component
 
   function & getEditor($name, &$parent)
   {
-    return new ComponentEditor($this,$name,$parent);
+    return new ComponentEditor($this, $name, $parent);
   }
 
   function & getWidget($name, &$parent)
@@ -236,10 +236,10 @@ class ComponentEditor extends ParentWidget
   function ComponentEditor(&$component, $name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->component = &$component;
-    $this->is_html = & new CheckBox("usehtml", $this);
-    $this->locking = & new CheckBox("locked", $this);
-    $this->text = & new TextBox(4, 40, "wrap=virtual", "text", $this);
+    $this->component =& $component;
+    $this->is_html =& new CheckBox("is_html", $this);
+    $this->locking =& new CheckBox("locked", $this);
+    $this->text =& new TextBox(4, 40, "wrap=virtual", "text", $this);
     $this->text->broken = false;
   }
 
