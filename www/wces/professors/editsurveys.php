@@ -12,7 +12,7 @@
 
   page_top("Professors Page","0010");
 
-print("<p>This function is not available during the evaluation period</p>");
+print("<p>This function is not available now.</p>");
 page_bottom();
 exit();
 
