@@ -249,6 +249,11 @@ CREATE OR REPLACE FUNCTION eq(INTEGER, INTEGER) RETURNS BOOLEAN AS '
   SELECT ($1 IS NULL AND $2 IS NULL) OR ($1 IS NOT NULL AND $2 IS NOT NULL AND $1 = $2)
 ' LANGUAGE 'sql';
 
+CREATE OR REPLACE FUNCTION eq(TEXT, TEXT) RETURNS BOOLEAN AS '
+  SELECT ($1 IS NULL AND $2 IS NULL) OR ($1 IS NOT NULL AND $2 IS NOT NULL AND $1 = $2)
+' LANGUAGE 'sql';
+
+
 CREATE OR REPLACE FUNCTION neq(INTEGER, INTEGER) RETURNS BOOLEAN AS '
   SELECT ($1 IS NOT NULL OR $2 IS NOT NULL) AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
 ' LANGUAGE 'sql';
@@ -1273,7 +1278,7 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
       RAISE EXCEPTION ''revision_save(%,%,%,%,%,%) called with invalid arguments'', $1, $2, $3, $4, $5, $6;
     END IF;
 
-    iid := nextval(''list_item_ids'');
+    iid := nextval(''item_ids'');
 
     SELECT INTO orig component_id, branch_id FROM revision WHERE revision_id = orig_revision_id;
 
@@ -2009,5 +2014,52 @@ CREATE OR REPLACE FUNCTION cached_choice_responses_add(INTEGER, INTEGER, INTEGER
       VALUES (topic_id_, citem_id_, crevision_id_, qitem_id_, qrevision_id_, dist_insert(null, answer_));
     END IF;
     RETURN 1;
+  END;
+' LANGUAGE 'plpgsql'; 
+
+CREATE OR REPLACE FUNCTION base_survey_create(INTEGER, INTEGER) RETURNS VOID AS '
+  DECLARE
+    user_id_ ALIAS FOR $1;
+    specialization_id_ ALIAS FOR $2;
+    save_id_ INTEGER;
+    cid INTEGER;
+    bid INTEGER;
+    rid INTEGER;
+    iid INTEGER;
+    sid INTEGER;
+  BEGIN
+    save_id_ := nextval(''save_ids'');
+
+    INSERT INTO saves (save_id, user_id)
+    VALUES (save_id_, user_id_);
+
+    IF specialization_id_ IS NULL THEN
+      sid := nextval(''specialization_ids'');
+
+      INSERT INTO specializations (specialization_id, parent)
+      VALUES (sid, NULL);
+    ELSE
+      sid := specialization_id_;
+    END IF;
+
+    iid := nextval(''item_ids'');
+    bid := nextval(''branch_ids'');
+    rid := nextval(''revision_ids'');
+    cid := nextval(''component_ids'');
+
+    INSERT INTO branches (branch_id, parent, outdated, latest_id)
+    VALUES (bid, NULL, ''f'', rid);
+
+    INSERT INTO item_specializations (item_id, specialization_id, branch_id)
+    VALUES (iid, sid, bid);
+
+    INSERT INTO survey_components (component_id, type, ctext, flags)
+    VALUES (cid, 1, '''', 0);
+  
+    INSERT INTO revisions (revision_id, parent, branch_id, revision, save_id, merged, component_id)
+    VALUES (rid, NULL, bid, 1, save_id_, NULL, cid);
+    
+    RAISE NOTICE ''item_id = %, specialization_id = %'', iid, sid;
+    RETURN;
   END;
 ' LANGUAGE 'plpgsql'; 

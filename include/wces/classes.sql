@@ -135,8 +135,12 @@ CREATE TABLE enrollments
 -- and enrollment_update_status() functions instead of
 -- updating or inserting into the enrollments table
 -- directly
-
 CREATE TABLE enrollments_p () INHERITS (enrollments);
+ALTER TABLE enrollments ADD CONSTRAINT enrollments_status CHECK (status IN (0,1,2,3,4));
+ALTER TABLE enrollments_p ADD CONSTRAINT enrollments_p_only CHECK (status = 4);
+ALTER TABLE users ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
+ALTER TABLE professor_hooks ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
+ALTER TABLE enrollments_p ADD CONSTRAINT enrollments_p_only CHECK (status = 4);
 
 COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - ta and student, 4 - professor, 0 - dropped class';
 
@@ -233,6 +237,8 @@ CREATE TABLE wces_topics
   cancelled BOOLEAN NOT NULL
 );
 
+
+
 CREATE TABLE survey_categories
 (
   survey_category_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('survey_category_ids'),
@@ -307,14 +313,15 @@ CREATE OR REPLACE FUNCTION references_question_period(INTEGER) RETURNS INTEGER A
   CASE WHEN EXISTS (SELECT * FROM wces_topics WHERE question_period_id = $1)        THEN 1 ELSE 0 END
 ' LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
   DECLARE
     name_       ALIAS FOR $1;
     firstname_  ALIAS FOR $2;
     middle_     ALIAS FOR $3;
     lastname_   ALIAS FOR $4;
     pid_        ALIAS FOR $5;
-    source_     ALIAS FOR $6;
+    uni_        ALIAS FOR $6;
+    source_     ALIAS FOR $7;
     i INTEGER := NULL;
     j INTEGER := NULL;
     rec RECORD;
@@ -356,11 +363,24 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER)
 
       RETURN i;
     ELSE IF source_ = 3 OR source_ = 4 THEN
-      SELECT INTO i user_id FROM professor_hooks WHERE source = source_ AND firstname = firstname_ AND lastname = lastname_;
+      SELECT INTO i user_id FROM professor_hooks 
+      WHERE source = source_ AND firstname = firstname_ 
+        AND lastname = lastname_ AND eq(uni::text, uni_);
+
       IF FOUND THEN RETURN i; END IF;
 
-      SELECT INTO i user_id FROM professor_hooks WHERE source IN (3,4) AND firstname = firstname_ AND lastname = lastname_;
+      IF uni_ IS NOT NULL THEN
+        SELECT INTO i user_id FROM professor_hooks WHERE uni = uni_;
+        
+        IF i IS NULL THEN
+          SELECT INTO i user_id FROM users WHERE uni = uni_;
+        END IF;
+      END IF;
 
+      IF i IS NULL THEN
+        SELECT INTO i user_id FROM professor_hooks WHERE source IN (3,4) AND firstname = firstname_ AND lastname = lastname_;
+      END IF;
+      
       IF i IS NULL THEN
         FOR rec IN SELECT user_id FROM professor_hooks WHERE source = 2 AND firstname = firstname_ AND lastname = lastname_ GROUP BY user_id LOOP
           IF i IS NULL THEN i := rec.user_id; ELSE i := NULL; EXIT; END IF;
@@ -368,11 +388,11 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER)
       END IF;
 
       IF i IS NULL THEN
-        INSERT INTO users (firstname, lastname, flags, lastlogin) VALUES (firstname_, lastname_, 4, NULL);
+        INSERT INTO users (uni, firstname, lastname, flags, lastlogin) VALUES (uni_, firstname_, lastname_, 4, NULL);
         i := currval(''user_ids'');
       END IF;
 
-      INSERT INTO professor_hooks(user_id, source, firstname, lastname) VALUES (i, source_, firstname_, lastname_);
+      INSERT INTO professor_hooks(user_id, source, firstname, lastname, uni) VALUES (i, source_, firstname_, lastname_, uni_);
       RETURN i;
     ELSE
       RAISE EXCEPTION ''profesor_replace(%,%,%,%,%) fails. unknown source'', $1, $2, $3, $4, $5;
@@ -380,10 +400,9 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER)
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
-  SELECT course_find($1, ''t'');
-' LANGUAGE 'sql';
-
+BEGIN;
+SELECT professor_find('Perwez Shahabuddin', 'Perwez', NULL, 'Shahabuddin', NULL, 'ps147', 4);
+ROLLBACK;
 CREATE OR REPLACE FUNCTION course_find(TEXT, BOOLEAN) RETURNS INTEGER AS '
   DECLARE
     ccode ALIAS FOR $1;
