@@ -67,7 +67,7 @@ function importRegCsv($filename, $onlyYear = false, $onlySemester = false)
       // script will skip over them:
       if (!is_numeric($data[COURSECODE]))
       {
-         bprint("<i>Skipping $data[SUBJECTCODE] $data[DIVISIONSCODE] $data[COURSECODE]</i>\n");
+         bprint("<i>Skipping {$data[SUBJECTCODE]} {$data[DIVISIONSCODE]} {$data[COURSECODE]}</i>\n");
          continue;
       }
 
@@ -295,7 +295,7 @@ function importregpid($filename)
 * @access public
 */
 
-function importDeanCsv($userfile, $year, $semester, $parent_topic, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
+function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id, $fieldorder = array("cunix", "coursecode", "section", "lastname", "firstname", "students"))
 {
   global $wces;
   
@@ -339,10 +339,10 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $fieldorder =
       {
         $firstname = $data[$fields["firstname"]];
         $lastname = $data[$fields["lastname"]];
-      	
-      	if ($firstname || $lastname)
-      	{
-      	  pg_query("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__); 	
+        
+        if ($firstname || $lastname)
+        {
+          pg_query("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__);       
 
           $fullname = quot(trim("$firstname $lastname"));
           $firstname = quot($firstname);
@@ -351,20 +351,32 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $fieldorder =
           $user_id = (int)pg_result(pg_query("SELECT professor_find($fullname, $firstname, NULL, $lastname, NULL, 4)", $wces, __FILE__, __LINE__),0,0) ;   
           if (!$user_id) die("user_id not found for professor $fullname on row $row");
           pg_query("SELECT enrollment_update($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
-      	}
-      	
+        }
+        
       }
 
       if (isset($fields["cunix"]))
         pg_query("UPDATE enrollments SET status = 0 WHERE class_id = $class_id AND status = 1", $wces, __FILE__, __LINE__);
-      	
+        
       $students = isset($fields["cunix"]) ? (int)$data[$fields["students"]] : 0;
       if ($students)
         pg_query("UPDATE classes set students = $students WHERE class_id = $class_id", $wces, __FILE__, __LINE__);
         
       $GLOBALS['db_debug'] = true;
+
       if ($parent_topic)
-      	pg_query("INSERT INTO wces_topics(parent, class_id) values ($parent_topic, $class_id)", $wces, __FILE__, __LINE__);
+      {
+        $result = pg_query("SELECT topic_id FROM wces_topics WHERE parent = $parent_topic AND class_id = $class_id", $wces, __FILE__, __LINE__);
+        if (pg_numrows($result) == 1)
+        {
+          $topic_id = (int)pg_result($result, 0, 0);
+          pg_query("UPDATE wces_topics SET category_id = $category_id WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
+        }
+        else
+        {        
+          pg_query("INSERT INTO wces_topics(parent, class_id, category_id) values ($parent_topic, $class_id, $category_id)", $wces, __FILE__, __LINE__);
+        }
+      }
       $GLOBALS['db_debug'] = false;
       bprint("<p>$classcode added (class_id = $class_id, prof user_id = $user_id)</p>\n");
     }
@@ -396,7 +408,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $fieldorder =
 
 function importProfessors($userfile, $fieldorder = array("lastname", "firstname", "email", "cunix"))
 {
-  global $wces;
+  global $wces, $wces_path;
   
   $fields = array_flip(array_values($fieldorder));
   
@@ -432,7 +444,9 @@ function importProfessors($userfile, $fieldorder = array("lastname", "firstname"
       if ($cunix_user_id != $user_id) 
       {
         if ($cunix_user_id)
-          pg_query("SELECT cunix_associate($cunix_user_id, $user_id)");
+        {
+          bprint("Conflict between users <a href=\"{$wces_path}administrators/info.php?user_id=$user_id\" target=w1>$user_id</a>, <a href=\"{$wces_path}administrators/info.php?user_id=$cunix_user_id\" target=w2>$cunix_user_id</a> . they might need to be merged <br>");
+        }
         else
           pg_query("UPDATE users SET uni = '" . addslashes($cunix) . "' WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
       }
