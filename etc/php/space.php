@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/wces.inc");
 
@@ -40,4 +40,4 @@ while($row = mysql_fetch_assoc($result))
 
 
 
-%>
+?>
