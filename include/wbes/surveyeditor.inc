@@ -143,17 +143,18 @@ class SurveyEditor extends StatefullWidget
     }
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
     global $survey_factories;
-    if (!isset($this->survey))
-      $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
-  }
+    
+    $survey = empty($new) ? $this->readValue("survey") : null;
 
-  function loadState()
-  {
-    $this->survey = unserialize($this->readValue("survey"));
-    StatefullWidget::loadState();
+    if ($new = !isset($survey)) // assigment is intentional
+      $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+    else
+      $this->survey = unserialize($survey);   
+    
+    StatefullWidget::loadState($new);
   }
 
   function printState()
@@ -179,7 +180,7 @@ class SurveyEditor extends StatefullWidget
     }
     else // $ncomponents != 1
     { 
-      $insertMarker = $this->fullname("insertMarker");
+      $insertMarker = $this->name("insertMarker");
       $horizontalBorder = '<tr>' . cell(false, 1) . cell(false, 1, '000000', ' colspan=2') . "</tr>\n";
 ?>
 <p>This page shows a WYSIWYG view of your survey. You can modify, delete, and
@@ -198,8 +199,8 @@ by clicking above and below existing components.</p>
 <?
       for($i=0;;++$i)
       {
-        $id = $this->fullName("insert$i");
-        $ns4name = $this->fullName("ns4marker$i");
+        $id = $this->name("insert$i");
+        $ns4name = $this->name("ns4marker$i");
         print('<tr>');
         print(cell(false, 10));
         print(cell(false, 10, false, " colspan=2 id=$id class=insertmenu", "name=$ns4name"));
@@ -222,7 +223,7 @@ by clicking above and below existing components.</p>
           
           $readOnly = pg_result($r, 0, 0) != 't';
         }
-        $name = $this->fullName($readOnly ? "lockedNode$i" : "node$i");
+        $name = $this->name($readOnly ? "lockedNode$i" : "node$i");
         $image = $readOnly ? "grey_node.gif" : "node.gif";
         
         print($horizontalBorder);
@@ -239,12 +240,12 @@ by clicking above and below existing components.</p>
   <td align=center>
     <? $this->event->displayButton("Save Survey", SurveyEditor_save, null, 'class="tinybutton"'); ?>
     <? $this->event->displayButton("Cancel", SurveyEditor_cancel, null, 'class="tinybutton"'); ?>
-    <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->event->name?>',<?=SurveyEditor_preview?>)">
+    <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->event->name()?>',<?=SurveyEditor_preview?>)">
   </td>
 </tr>
 </table>
 
-<script>SurveyEditor(<?=count($this->survey->components)?>, "<?=$this->name?>", "<?=$this->form->formName?>");</script>
+<script>SurveyEditor(<?=count($this->survey->components)?>, "<?=$this->name()?>", "<?=$this->form->formName?>");</script>
 <?
     } // if $ncomponents == 0
   }
@@ -338,9 +339,12 @@ class SurveyEditorInsert extends ParentWidget
     $this->choices =& new RadioButton(true, "choices", $this);
   }
 
-  function loadState()
+  function loadState($new)
   {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) return;
+    
     switch($this->event->event)
     {
       case SurveyEditorInsert_create:
@@ -413,9 +417,12 @@ class SurveyEditorModify extends ParentWidget
     $this->editor =& $component->getEditor("editor", $this);
   }
   
-  function loadState()
+  function loadState($new)
   {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) return;
+    
     switch($this->event->event)
     {
       case SurveyEditorModify_save:
@@ -457,8 +464,8 @@ class SurveyEditorModify extends ParentWidget
       $this->event->displayButton("Save", SurveyEditorModify_save, null, 'class="tinybutton"');
       $this->event->displayField();
       print('<input type=button class=tinybutton value=Preview onclick="'
-        . "return SurveyEditor_preview(this.form,'{$this->event->name}', "
-        . SurveyEditorModify_preview . ")\">");
+        . "return SurveyEditor_preview(this.form,'" . $this->event->name()
+        . "', " . SurveyEditorModify_preview . ")\">");
       $this->event->displayButton("Cancel", SurveyEditorModify_cancel, null, 'class="tinybutton"');
     }
   }

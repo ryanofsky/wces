@@ -170,10 +170,11 @@ class SubsurveyEditor extends ComponentEditor
     $this->sub_survey = & new SurveyEditor($component->our_specialization_id, $component->base_branch, 0, $factories, "sub", $this);
   }
 
-  function loadState()
+  function loadState($new)
   {
     //print("Load 2.<br>");
-    ComponentEditor::loadState();
+    assert(isset($new));
+    ComponentEditor::loadState($new);
 
     $this->event = $this->sub_editor->event;
     $this->component->mode = $this->readValue("SUBmode");
@@ -183,7 +184,7 @@ class SubsurveyEditor extends ComponentEditor
     {
       $this->component->mode = 1;
       $this->sub_survey->survey = $this->c->survey;
-      $this->sub_survey->loadState();
+      $this->sub_survey->loadState($new);
     }
   }
 

@@ -51,15 +51,16 @@ class Report extends TabbedWidget
     };
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    TabbedWidget::loadInitialState();
-    $this->eventLoop(Report_wizard, null, true, true);
-  }
-
-  function loadState()
-  {
-    TabbedWidget::loadState(Report_wizard);
+    assert(isset($new));
+    TabbedWidget::loadState($new);
+    if ($new)
+    {
+      $this->eventLoop(Report_wizard, null, true, true);
+      return;
+    }
+    
     $this->hideMenus = !isset($this->currentEvent) && $this->wizard->output->printable->checked;
     if (isset($this->email) && $this->currentEvent == Report_wizard)
       $this->email->generate = true;
@@ -248,9 +249,12 @@ class ReportEmail extends ParentWidget
       "{$wces_path}media/report/back.gif", 20, 20));
   }
 
-  function loadState()
+  function loadState($new)
   {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) return;
+    
     $this->generate = (bool)$this->readValue('generate');
     if ($this->email_event->event == Report_email_cancel)
       $this->done = true;
@@ -288,7 +292,7 @@ class ReportEmail extends ParentWidget
        print("<strong>Subject: $subject</strong>\n\n");
        print($email);
        print("</pre>");
-       mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion());
+       mail($address,$subject,$email, "From: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion());
        print("<h3>Done.</h3>");
     }
     else

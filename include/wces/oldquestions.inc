@@ -131,10 +131,13 @@ class TaWidget extends ParentWidget
     $taRating = $this->taRating;
   }
 
-  function loadState()
+  function loadState($new)
   {
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) return;
+
     global $TAQUESTIONS, $TAVALUES;
-    ParentWidget::loadState();
 
     $this->taRating->comments  = $this->readValue('comments');
     $this->taRating->name = $this->readValue('name');
@@ -182,7 +185,7 @@ class TaWidget extends ParentWidget
       print("</ul>\n");
     }
 
-    print("<p><strong>Enter a TA Name:</strong> <input name=\"" . $this->fullName("name") . "\" size=25 value=\"" . htmlspecialchars($this->taRating->name) . "\"><br>\n");
+    print("<p><strong>Enter a TA Name:</strong> <input name=\"" . $this->name("name") . "\" size=25 value=\"" . htmlspecialchars($this->taRating->name) . "\"><br>\n");
     print("<font size=-1>(Leave blank to rate all TA's together)</font></p>");
 
     foreach($TAQUESTIONS AS $key => $text)
@@ -193,12 +196,12 @@ class TaWidget extends ParentWidget
       foreach($TAVALUES AS $vkey => $vtext)
       {
         $selected = isset($this->taRating->answers[$key]) && $vkey == $this->taRating->answers[$key] ? " checked" : "";
-        print("<input type=radio name=\"" . $this->fullName("ta$key") . "\" id=\"" . $this->fullName("ta$key$vkey") . "\" value=\"$vkey\"$selected><label for=\"" . $this->fullname("ta$key$vkey") . "\">$vtext</label>\n");
+        print("<input type=radio name=\"" . $this->name("ta$key") . "\" id=\"" . $this->name("ta$key$vkey") . "\" value=\"$vkey\"$selected><label for=\"" . $this->name("ta$key$vkey") . "\">$vtext</label>\n");
       }
       print("</blockquote>\n");
     }
     print("<p><b>Comments</b></p>\n");
-    print("<blockquote><textarea name=\"" . $this->fullName("comments") . "\" rows=8 cols=50 wrap=virtual>" . htmlspecialchars($this->taRating->comments) . "</textarea></blockquote>\n");
+    print("<blockquote><textarea name=\"" . $this->name("comments") . "\" rows=8 cols=50 wrap=virtual>" . htmlspecialchars($this->taRating->comments) . "</textarea></blockquote>\n");
     print("<p>");
     $this->event->displayButton("Save",TAWidget_save); print(" ");
     $this->event->displayButton("Save and rate another TA",TAWidget_saveand); print(" ");
@@ -254,11 +257,14 @@ class TaSurvey extends StatefullWidget
     }
   }
 
-  function loadState()
+  function loadState($new)
   {
+    assert(isset($new));
+    StatefullWidget::loadState($new);
+    if ($new) return;
+    
     $this->tas = unserialize($this->readValue('tas'));
     assert(is_array($this->tas));
-    StatefullWidget::loadState();
   }
 
   function save($parent)

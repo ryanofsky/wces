@@ -26,15 +26,16 @@ class Textbox extends Widget
     $r = $this->rows;
     $c = $this->cols;
     $s = strlen($this->params > 0) ? " $this->params" : "";
-
+    $n = $this->name();
     if ($this->rows == 0)
-      print("<input type=text name=$this->name value=\"$t\" size=$c$s>");
+      print("<input type=text name=$n value=\"$t\" size=$c$s>");
     else
-      print("<textarea name=$this->name rows=$r cols=$c$s>$t</textarea>");
+      print("<textarea name=$n rows=$r cols=$c$s>$t</textarea>");
   }
 
-  function loadState()
+  function loadState($new)
   {
+    if ($new) return;
     $this->text = $this->readValue();
   }
 };
@@ -56,17 +57,20 @@ class CheckBox extends Widget
   function display($params = "")
   {
     if ($params) $params = " $params";
-    print("<input type=checkbox name=$this->name id=$this->name value=1"
+    $name = $this->name();
+    print("<input type=checkbox name=$name id=$name value=1"
       . ($this->checked ? " checked" : "") . "$params>");
   }
 
   function displayLabel($label, $params = "")
   {
-    print("<label for=$this->name $params>$label</label>");
+    $name = $this->name();
+    print("<label for=$name $params>$label</label>");
   }
 
-  function loadState()
+  function loadState($new)
   {
+    if ($new) return;
     $this->checked = (bool)$this->readValue();
   }
 }
@@ -93,8 +97,8 @@ class RadioButton extends Widget
 
   function display($index, $params='')
   {
-    $n = $this->exclusive ? $this->name : ($this->name . '[]');
-    $i = $this->fullName($index);
+    $n = $this->exclusive ? $this->name() : ($this->name() . '[]');
+    $i = $this->name($index);
 
     if ($this->exclusive)
     {
@@ -113,13 +117,14 @@ class RadioButton extends Widget
 
   function displayLabel($index, $text, $params = "")
   {
-    $i = $this->fullName($index);
+    $i = $this->name($index);
     if (strlen($params) > 0) $params = " $params";
     print("<label for=$i$params>$text</label>");
   }
 
-  function loadState()
+  function loadState($new)
   {
+    if ($new) return;
     $this->checked = $this->readValue();
     if (!$this->exclusive && !is_array($this->checked))
       $this->checked = array();
@@ -145,8 +150,9 @@ class DropBox extends Widget
   function display($params = "")
   {
     if (strlen($params) > 0) $params = " $params";
+    $name = $this->name();
 
-    print("<select name=$this->name$params>\n");
+    print("<select name=$name$params>\n");
     foreach($this->items as $k => $v)
     {
       if ($k == $this->selected)
@@ -157,8 +163,9 @@ class DropBox extends Widget
     print("</select>");
   }
 
-  function loadState()
+  function loadState($new)
   {
+    if ($new) return;
     $this->selected = $this->readValue();
   }
 };
@@ -214,8 +221,10 @@ class EventWidget extends Widget
       return $param;
   }
 
-  function loadState() // public abstract
+  function loadState($new)
   {
+    if ($new) return;
+    
     $v = $this->readValue();
     if(isset($v) && strlen($v) > 0)
     {
@@ -225,7 +234,7 @@ class EventWidget extends Widget
 
     $search = array(&$_POST, &$_GET);
 
-    $prefix = $this->name . WIDGET_SEPARATOR;
+    $prefix = $this->name() . WIDGET_SEPARATOR;
     $length = strlen($prefix);
 
     foreach(array_keys($search) as $i)
@@ -249,7 +258,7 @@ class EventWidget extends Widget
 
   function displayButton($label, $event, $param = null, $attribs = "")
   {
-    $n = $this->fullName($this->makeEvent($event, $param));
+    $n = $this->name($this->makeEvent($event, $param));
     $l = '"' . htmlspecialchars($label) . '"';
     if (strlen($attribs) > 0) $attribs = " $attribs";
     print("<input type=submit name=$n value=$l$attribs>");
@@ -270,7 +279,8 @@ class EventWidget extends Widget
   function gethref($event,$param)
   {
     $p = $this->makeParam($param);
-    return "javascript:EventWidget_sgo('$event','$param','{$this->form->formName}','$this->name');";
+    $n = $this->name();
+    return "javascript:EventWidget_sgo('$event','$param','{$this->form->formName}','$n');";
   }
 
   function DumpScript()
@@ -361,9 +371,10 @@ class StatefullWidget extends ParentWidget
     $this->event =& new EventWidget("event", $this);
   }
 
-  function loadState()
+  function loadState($new)
   {
-    ParentWidget::loadState();
+    ParentWidget::loadState($new);
+    if ($new) return;
     $this->eventLoop($this->readValue("currentEvent"), $this->event->parseParam($this->readValue("currentParam")), false);
     $this->eventLoop($this->event->event, $this->event->param, true);
   }
@@ -502,13 +513,18 @@ class TabbedWidget extends ParentWidget
     }
   }
 
-  function loadState()
+  function loadState($new)
   {
-    ParentWidget::loadState();
-    $this->seen = unserialize($this->readValue('seen'));
+    $seen = empty($new) ? $this->readValue('seen') : null;
+    $new = !isset($seen);
+
+    ParentWidget::loadState($new);
+    if ($new) return;
+
+    $this->seen = unserialize($seen);
 
     foreach($this->seen as $k => $v)
-      $this->eventLoop($k, null, false, $v);
+       $this->eventLoop($k, null, false, $v);
 
     $this->eventLoop($this->event->event, $this->event->param, true, true);
   }
@@ -546,7 +562,8 @@ class ImageButton extends Widget
   function display($hidden = false)
   {
     if ($hidden) return;
-    ?><a onmousedown="button_push('<?=$this->name?>')" onmouseup="button_unpush('<?=$this->name?>')" onmouseout="button_unpush('<?=$this->name?>')" <?=$this->aparams?>"><img name="<?=$this->name?>" src="<?=$this->raisedsrc?>" border=0 <?=$this->iparams?>"></a><script>AttachPushed('<?=$this->name?>','<?=$this->pushedsrc?>')</script><?
+    $name = $this->name();
+    ?><a onmousedown="button_push('<?=$name?>')" onmouseup="button_unpush('<?=$name?>')" onmouseout="button_unpush('<?=$name?>')" <?=$this->aparams?>"><img name="<?=$name?>" src="<?=$this->raisedsrc?>" border=0 <?=$this->iparams?>"></a><script>AttachPushed('<?=$name?>','<?=$this->pushedsrc?>')</script><?
   }
 
   function dumpScript()

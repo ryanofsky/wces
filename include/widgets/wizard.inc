@@ -81,9 +81,12 @@ class Wizard extends ParentWidget
     while(isset($skipsteps[$this->showStep]) && $skipsteps[$this->showStep]);
   }
 
-  function loadState($crawl = true)
+  function loadState($new, $crawl = true)
   {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) return;
+    
     $this->showStep = $this->readValue("showStep");
     $this->done = (bool)$this->readValue("done");
 
@@ -128,7 +131,7 @@ class Wizard extends ParentWidget
     $visited = $this->visited; //extract
     $showStep = $this->showStep;
 
-    $wizardx = $this->fullName("wizardx");
+    $wizardx = $this->name("wizardx");
 ?>
 <table align=center border=0 cellspacing=0 cellpadding=0>
 <tr>
@@ -159,7 +162,7 @@ class Wizard extends ParentWidget
 
     foreach($this->steps as $key => $value)
     {
-      $showStepName = $this->fullName('showStep');
+      $showStepName = $this->name('showStep');
       if (isset($this->hidesteps[$key]) && $this->hidesteps[$key]) continue;
       $href = "javascript:document.forms['{$this->form->formName}']['$showStepName'].value = $key; void(document.forms['" . $this->form->formName . "'].submit())";
       $suffix = ($key == $showStep ? "a" : (isset($visited[$key]) && $visited[$key] ? "v" : ""));
@@ -182,10 +185,10 @@ class Wizard extends ParentWidget
       $this->printStep($key, !$hidden, $hidden);
     }
 
-    $cancelName = $this->fullName('cancel');
-    $backName = $this->fullName('back');
-    $nextName = $this->fullName('next');
-    $doneName = $this->fullName('done');
+    $cancelName = $this->name('cancel');
+    $backName = $this->name('back');
+    $nextName = $this->name('next');
+    $doneName = $this->name('done');
 ?>
       </td>
       <td bgcolor="#D6D3CE" background="<?=$wces_path?>media/0xD6D3CE.gif" width=8 valign=top><img src="<?=$wces_path?>media/nada.gif" width=8 height=1></td>

@@ -38,8 +38,11 @@ class DynamicList extends Widget
     return implode("\t", $array);
   }
   
-  function loadState($strongchecking = true) // public inherited
+  function loadState($new, $strongchecking = true) // public inherited
   {
+    assert(isset($new));
+    if ($new) return;
+    
     if (!$this->orderOnly)
     {
       $this->items = $this->loadStringArray("items");
@@ -79,11 +82,11 @@ class DynamicList extends Widget
     $controller = $this->scriptName("controller");
     $doWidth = $this->width > 0 && count($this->items) <= 0;
 ?>  
-<!-- begin FormWidget <?=$this->name?> -->
+<!-- begin FormWidget <?=$this->name()?> -->
 <table border="0" cellpadding="2" cellspacing="0">
   <tr>
     <td align=center>
-      <select size="<?=$this->height?>" name="<?=$this->fullName("box")?>" multiple>
+      <select size="<?=$this->height?>" name="<?=$this->name("box")?>" multiple>
 <?
   if ($doWidth)
     print("<option>" . str_repeat('-',$this->width) . "</option>\n");
@@ -99,40 +102,40 @@ class DynamicList extends Widget
     </td>
 <? if (!$this->orderOnly) { ?>
     <td>
-      <input type="button" value="Add..." name="<?=$this->fullName("additem")?>" style="width: 75px"><br>
-      <input type="button" value="Modify..." name="<?=$this->fullName("modifyitem")?>" style="width: 75px"><br>
-      <input type="button" value="Remove" name="<?=$this->fullName("removeitem")?>" style="width: 75px"><br>
+      <input type="button" value="Add..." name="<?=$this->name("additem")?>" style="width: 75px"><br>
+      <input type="button" value="Modify..." name="<?=$this->name("modifyitem")?>" style="width: 75px"><br>
+      <input type="button" value="Remove" name="<?=$this->name("removeitem")?>" style="width: 75px"><br>
     </td>
 <? } ?>          
   </tr>
   <tr><td align=center>
-    <a onmousedown="button_push('<?=$this->fullName('moveup')?>'); <?=$controller?>.moveup();"
-       onmouseup="button_unpush('<?=$this->fullName('moveup')?>')"
-       onmouseout="button_unpush('<?=$this->fullName('moveup')?>')"
+    <a onmousedown="button_push('<?=$this->name('moveup')?>'); <?=$controller?>.moveup();"
+       onmouseup="button_unpush('<?=$this->name('moveup')?>')"
+       onmouseout="button_unpush('<?=$this->name('moveup')?>')"
        href="javascript:void(<?=$controller?>.moveup())"
        onclick="return false;"
-    ><img name="<?=$this->fullName('moveup')?>" src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
-    <a onmousedown="button_push('<?=$this->fullName('movedown')?>'); <?=$controller?>.movedown();"
-       onmouseup="button_unpush('<?=$this->fullName('movedown')?>')"
-       onmouseout="button_unpush('<?=$this->fullName('movedown')?>')"
+    ><img name="<?=$this->name('moveup')?>" src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->name('movedown')?>'); <?=$controller?>.movedown();"
+       onmouseup="button_unpush('<?=$this->name('movedown')?>')"
+       onmouseout="button_unpush('<?=$this->name('movedown')?>')"
        href="javascript:void(<?=$controller?>.movedown())"
        onclick="return false;"
-    ><img name="<?=$this->fullName('movedown')?>" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
+    ><img name="<?=$this->name('movedown')?>" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
     <script>
     <!--
-      AttachPushed('<?=$this->fullName('moveup')?>',  "moveup_pushed.gif");
-      AttachPushed('<?=$this->fullName('movedown')?>',"movedown_pushed.gif"); 
+      AttachPushed('<?=$this->name('moveup')?>',  "moveup_pushed.gif");
+      AttachPushed('<?=$this->name('movedown')?>',"movedown_pushed.gif"); 
     //-->
     </script>
   </td><? if (!$this->orderOnly) { ?><td>&nbsp;</td><? } ?></tr>  
 </table>
 <script language="javascript">
 <!--
-    <?=$controller?> = DynamicList('<?=$this->form->formName?>','<?=$this->name?>');
+    <?=$controller?> = DynamicList('<?=$this->form->formName?>','<?=$this->name()?>');
     <? if($doWidth) print("$controller.selectedIndex = 0;\n    $controller.mremove();\n"); ?> 
 // -->
 </script>
-<!-- end FormWidget <?=$this->name?> -->
+<!-- end FormWidget <?=$this->name()?> -->
 <?
   }
  

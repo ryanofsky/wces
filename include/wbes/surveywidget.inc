@@ -50,18 +50,19 @@ class SurveyWidget extends ParentWidget
     $this->event =& new EventWidget("event", $this);
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    ParentWidget::loadInitialState();
-    $this->isStale = false;
-    global $survey_factories;
-    if (!$this->survey) $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
-    $this->makeWidgets(true);
-  }
-
-  function loadState()
-  {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    if ($new) 
+    {
+      $this->isStale = false;
+      global $survey_factories;
+      if (!$this->survey) $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+      $this->makeWidgets(true);
+      return;
+    }
+    
     $this->survey = unserialize((string)$this->readValue("survey"));
     $this->showErrors= (bool)$this->readValue("showErrors");
     $this->page = (int)$this->readValue("page");

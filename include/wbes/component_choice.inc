@@ -330,9 +330,13 @@ class ChoiceEditor extends ComponentEditor
     $this->orientation->selected = $this->component->vertical ? "vertical" : "horiz";
   }
 
-  function loadState()
+  function loadState($new)
   {
-    ComponentEditor::loadState();
+    assert(isset($new));
+    ComponentEditor::loadState($new);
+    
+    if ($new) $this->loadInitialState();
+    
     $this->question_id = (int)$this->readValue("question_id");
   }
 
@@ -524,20 +528,20 @@ class ChoiceEditor extends ComponentEditor
 <script>
 function <?=$refreshFunction?>(form)
 {
-  var qtype = form['<?=$this->qtype->name?>'].value;
-  var ctype = form['<?=$this->ctype->name?>'].value;
-  var other = form['<?=$this->other->name?>'].checked;
-  var controls = form['<?=$this->controls->name?>'].value;
-  elem('<?=$this->fullName("sing")?>').style.display = qtype == 'single' ? 'block' : 'none';
-  elem('<?=$this->fullName("mult")?>').style.display = qtype == 'multiple' ? 'block' : 'none';
-  elem('<?=$this->fullName("clst")?>').style.display = ctype == 'text' || ctype == 'ntext' ? 'block' : 'none';
-  elem('<?=$this->fullName("txto")?>').style.display = ctype == 'text' ? 'block' : 'none';
-  elem('<?=$this->fullName("othr")?>').style.display = other ? 'block' : 'none';
-  elem('<?=$this->fullName("numr")?>').style.display = ctype == 'ntext' || ctype == 'num' ? 'block' : 'none';
-  elem('<?=$this->fullName("nlab")?>').style.display = ctype == 'num' ? 'block' : 'none';
-  elem('<?=$this->fullName("coun")?>').style.display = qtype == 'multiple' ? 'block' : 'none';
-  elem('<?=$this->fullName("srow")?>').style.display = controls == 'select' ? 'inline' : 'none';
-  elem('<?=$this->fullName("ornt")?>').style.display = controls == 'buttons' ? 'inline' : 'none';
+  var qtype = form['<?=$this->qtype->name()?>'].value;
+  var ctype = form['<?=$this->ctype->name()?>'].value;
+  var other = form['<?=$this->other->name()?>'].checked;
+  var controls = form['<?=$this->controls->name()?>'].value;
+  elem('<?=$this->name("sing")?>').style.display = qtype == 'single' ? 'block' : 'none';
+  elem('<?=$this->name("mult")?>').style.display = qtype == 'multiple' ? 'block' : 'none';
+  elem('<?=$this->name("clst")?>').style.display = ctype == 'text' || ctype == 'ntext' ? 'block' : 'none';
+  elem('<?=$this->name("txto")?>').style.display = ctype == 'text' ? 'block' : 'none';
+  elem('<?=$this->name("othr")?>').style.display = other ? 'block' : 'none';
+  elem('<?=$this->name("numr")?>').style.display = ctype == 'ntext' || ctype == 'num' ? 'block' : 'none';
+  elem('<?=$this->name("nlab")?>').style.display = ctype == 'num' ? 'block' : 'none';
+  elem('<?=$this->name("coun")?>').style.display = qtype == 'multiple' ? 'block' : 'none';
+  elem('<?=$this->name("srow")?>').style.display = controls == 'select' ? 'inline' : 'none';
+  elem('<?=$this->name("ornt")?>').style.display = controls == 'buttons' ? 'inline' : 'none';
 }
 </script>
 <?
@@ -569,13 +573,13 @@ function <?=$refreshFunction?>(form)
     <a href="javascript:showhelp('choice_mult')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
 
     <? if (!$SurveyEditor_ns4 || $show_sing) { ?>
-    <div id=<?=$this->fullName("sing")?> style="display: <?= $show_sing ? "block" : "none" ?>">
+    <div id=<?=$this->name("sing")?> style="display: <?= $show_sing ? "block" : "none" ?>">
     <?$this->question->display(); $this->printValue("question_id", $this->question_id); ?>
     </div>
     <? } else $this->question->displayHidden(); ?>
 
     <? if (!$SurveyEditor_ns4 || $show_mult) { ?>
-    <div id=<?=$this->fullName("mult")?> style="display: <?= $show_mult ? "block" : "none" ?>">
+    <div id=<?=$this->name("mult")?> style="display: <?= $show_mult ? "block" : "none" ?>">
     <?$this->questions->display();?>
     </div>
     <? } else $this->questions->displayHidden(); ?>
@@ -588,13 +592,13 @@ function <?=$refreshFunction?>(form)
     <?= $this->ctype->display("onchange=\"$refreshFunction(this.form)\""); ?>
     <a href="javascript:showhelp('choice_type')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
     <? if (!$SurveyEditor_ns4 || $show_clst) { ?>
-    <div id=<?=$this->fullName("clst")?> style="display: <?= $show_clst ? "block" : "none" ?>">
+    <div id=<?=$this->name("clst")?> style="display: <?= $show_clst ? "block" : "none" ?>">
     <? $this->choices->display(); ?>
     </div>
     <? } else $this->choices->displayHidden(); ?>
 
     <? if (!$SurveyEditor_ns4 || $show_txto) { ?>
-    <table id=<?=$this->fullName("txto")?> style="display: <?= $show_txto ? "block" : "none" ?>">
+    <table id=<?=$this->name("txto")?> style="display: <?= $show_txto ? "block" : "none" ?>">
     <tr>
       <td><? $this->select_many->display(); ?></td>
       <td>
@@ -612,14 +616,14 @@ function <?=$refreshFunction?>(form)
     <? if (!$SurveyEditor_ns4 || $show_othr) { ?>
     <tr>
       <td></td>
-      <td><div id=<?=$this->fullName("othr")?> style="display: <?= $show_othr ? "block" : "none" ?>"><? $this->other_label->display(); ?></div></td>
+      <td><div id=<?=$this->name("othr")?> style="display: <?= $show_othr ? "block" : "none" ?>"><? $this->other_label->display(); ?></div></td>
     </tr>
     <? } else $this->other_label->displayHidden(); ?>
     </table>
     <? } else { $this->select_many->displayHidden(); $this->other->displayHidden(); $this->other_label->displayHidden(); } ?>
 
     <? if (!$SurveyEditor_ns4 || $show_numr) { ?>
-    <table id=<?=$this->fullName("numr")?> style="display: <?= $show_numr ? "block" : "none" ?>">
+    <table id=<?=$this->name("numr")?> style="display: <?= $show_numr ? "block" : "none" ?>">
     <tr>
       <td>First Value:</td>
       <td><? $this->first_number->display(); ?></td>
@@ -632,7 +636,7 @@ function <?=$refreshFunction?>(form)
     <? } else { $this->first_number->displayHidden(); $this->last_number->displayHidden(); } ?>
 
     <? if (!$SurveyEditor_ns4 || $show_nlab) { ?>
-    <table id=<?=$this->fullName("nlab")?> style="display: <?= $show_nlab ? "block" : "none" ?>">
+    <table id=<?=$this->name("nlab")?> style="display: <?= $show_nlab ? "block" : "none" ?>">
     <tr>
       <td>First Label:</td>
       <td><? $this->first_label->display(); ?></td>
@@ -657,7 +661,7 @@ function <?=$refreshFunction?>(form)
   <td valign=top><strong>Appearance:</strong></td>
   <td>
     <? if (!$SurveyEditor_ns4 || $show_coun) { ?>
-    <div id=<?=$this->fullName("coun")?> style="display: <?= $show_coun ? "block" : "none" ?>">
+    <div id=<?=$this->name("coun")?> style="display: <?= $show_coun ? "block" : "none" ?>">
     Question Numbering: <? $this->numbering_scheme->display(); ?>
     </div>
     <? } else { $this->numbering_scheme->displayHidden(); } ?>
@@ -675,7 +679,7 @@ function <?=$refreshFunction?>(form)
         <? $this->controls->display("onchange=\"$refreshFunction(this.form)\""); ?>
 
         <? if (!$SurveyEditor_ns4 || $show_srow) { ?>
-        <span id=<?=$this->fullName("srow")?> style="display: <?= $show_srow ? "inline" : "none" ?>">
+        <span id=<?=$this->name("srow")?> style="display: <?= $show_srow ? "inline" : "none" ?>">
         with
         <? $this->rows->display(); ?>
         rows
@@ -683,7 +687,7 @@ function <?=$refreshFunction?>(form)
         <? } else $this->rows->displayHidden(); ?>
 
         <? if (!$SurveyEditor_ns4 || $show_ornt) { ?>
-        <span id=<?=$this->fullName("ornt")?> style="display: <?= $show_ornt ? "inline" : "none" ?>">
+        <span id=<?=$this->name("ornt")?> style="display: <?= $show_ornt ? "inline" : "none" ?>">
         oriented
         <? $this->orientation->display(); ?>
         </span>
@@ -755,9 +759,13 @@ class ChoiceWidget extends ComponentWidget
     }
   }
 
-  function loadState()
+  function loadState($new)
   {
-    ComponentWidget::loadState();
+    assert(isset($new));
+    ComponentWidget::loadState($new);
+    
+    if ($new) return;
+    
     foreach ($this->questions as $i => $text)
     {
       $c = &$this->component;
@@ -833,7 +841,7 @@ class ChoiceWidget extends ComponentWidget
   {
     $c = &$this->component;
     $a = &$this->answers[$questionno];
-    $name = $mname = $this->fullName("q$questionno");
+    $name = $mname = $this->name("q$questionno");
     if ($c->select_many) $mname .= "[]";
 
     if ($c->stacked && !$c->vertical) print("<td $tdparams>");
