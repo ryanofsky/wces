@@ -164,11 +164,13 @@ flush();
 $cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
 
 $students = pg_query("
-  SELECT i.user_id, u.uni, CASE WHEN i.responses = 0 THEN 0 WHEN i.classes <= i.responses THEN 2 ELSE 1 END AS level
+  SELECT i.user_id, u.firstname, u.lastname, 
+    CASE WHEN i.responses = 0 THEN 0 WHEN i.classes <= i.responses THEN 2 ELSE 1 END AS level
   FROM
     (SELECT e.user_id, COUNT (DISTINCT t.topic_id) AS classes, COUNT(DISTINCT s.topic_id) AS responses
     FROM wces_topics AS t
-    INNER JOIN enrollments AS e ON e.class_id = t.class_id AND e.status = 1
+    INNER JOIN classes AS cl ON cl.class_id = t.class_id AND cl.year = $year AND cl.semester = $semester
+    INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = 1
     LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id
     WHERE t.class_id IS NOT NULL $cat
     GROUP BY e.user_id) AS i
@@ -199,7 +201,7 @@ for($i = 0; $i < $n; ++$i)
     $first = true;
   }
   if ($first) $first = false; else print(", ");
-  print("\n  <a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$uni</a>");
+  print("\n  <a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$firstname $lastname</a>");
   $oldlevel = $level;
 }
 print("</blockquote>");
