@@ -173,6 +173,7 @@ class ReportWizard extends Wizard
       $this->groupQuestionPeriods->checked = true;
       $this->groupDepartments->checked = true;
       $this->makeCriteria(false, false, $this->depts, false, false);      
+      return;
     }
     
     Wizard::loadState($new, false);
@@ -213,8 +214,7 @@ class ReportWizard extends Wizard
     if (!is_array($q) || !(count($q) > 0))
     {
       wces_connect();
-      //todo: restore this default $q = array((int)pg_result(pg_go("SELECT MAX(question_period_id) FROM question_periods", $wces, __FILE__, __LINE__),0,0));
-      $q = false;
+      $q = array(get_question_period());
     }
     else if (in_array("all",$q)) $q = false;
 
