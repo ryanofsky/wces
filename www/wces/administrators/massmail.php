@@ -80,19 +80,12 @@ class MassEmail extends FormWidget
       $this->text->text = "Dear %name%,\n\nCome to http://eval.thayer.dartmouth.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
 	*/
 
-
-     $default = "You are receiving this message because you are enrolled in one or more courses at Thayer School of Engineering this term.  We would greatly appreciate if you could take a few moments to fill out course evaluations for the classes you are taking with us. \n\n";
-
-	$default = $default . "The course evaluations are available online.  To submit evaluations, simply point your web browser at: http://eval.thayer.dartmouth.edu/ \n\n When you arrive log in and then follow the directions on the page to evaluate your courses. \n\n";
-
-	$default = $default . "In consideration of the time it takes to complete the course evaluations, and in appreciation of your input, Thayer School will be giving away a Palm Pilot (Palm M105).  Every student who completes the course evaluations for all of their Thayer School classes this term will automatically be entered into a drawing for this prize.  The drawing will take place on 11-Mar-2002, and the winner will be notified via email. \n\n";
-
-	$default = $default . "We would greatly appreciate your assistance! Your evaluations are very important to us, since they help us to measure and improve the quality of the courses we offer here at Thayer School.";
-
-
-
-	$this->text->text = $default;
-
+     $default = "You are receiving this message because you are enrolled in one or more courses at Thayer School of Engineering this term.  We would greatly appreciate if you could take a few moments to fill out course evaluations for the classes you are taking with us.\n\n";
+     $default .= "The course evaluations are available online.  To submit evaluations, simply point your web browser at: http://eval.thayer.dartmouth.edu/ \n\n";
+     $default .= "When you arrive log in and then follow the directions on the page to evaluate your courses.\n\n";
+     $default .= "In consideration of the time it takes to complete the course evaluations, and in appreciation of your input, Thayer School will be giving away a %prize%.  Every student who completes the course evaluations for all of their Thayer School classes this term will automatically be entered into a drawing for this prize.  The drawing will take place on %pdate%, and the winner will be notified via email.\n\n";
+     $default .= "We would greatly appreciate your assistance! Your evaluations are very important to us, since they help us to measure and improve the quality of the courses we offer here at Thayer School.";
+     $this->text->text = $default;
     }
 
     if (!emailvalid($this->from->text))
@@ -148,12 +141,16 @@ class MassEmail extends FormWidget
 ?>
 <p>From this page you can send customized emails to students and professors in classes being surveyed this semester.</p>
 <p>Use the <strong>To:</strong> drop down box to select who the recipients will be.</p>
-<p>The following variables can be used in the subject and message body. They will be replaced by with user information taken from the WCES database:</p>
+<p>The following variables can be used in the subject and message body. They will be replaced by with up current information taken from the WCES database:</p>
 <div style="background: #EEEEEE">
 <pre>
   <strong>%name%</strong>             - The full name of the recipient.
   <strong>%classes%</strong>          - A list of the recipient's classes that have surveys available.
   <strong>%nclasses%</strong>         - The number of the recipient's classes that have surveys available.
+  <strong>%bdate%</strong>            - The date when the current question period begins.
+  <strong>%edate%</strong>            - The date when the current question period ends.
+  <strong>%pdate%</strong>            - The date of the prize drawing for the current question period.
+  <strong>%prize%</strong>            - The name of the prize.
 </pre>
 </div>  
 <p>These variables work for emails to students only, not professors:</p>  
@@ -196,7 +193,7 @@ class MassEmail extends FormWidget
       {
         extract(pg_fetch_array($survey_categories,$i,PGSQL_ASSOC));
         $selected = $survey_category_id == $this->survey_category_id ? " selected" : "";
-        print("<option value=\"$survey_category_id\"$selected>$name Students</option>");
+        print("<option value=\"$survey_category_id\"$selected>$name</option>");
       }
       print("</select>\n");
     ?></td>
@@ -240,13 +237,18 @@ class MassEmail extends FormWidget
       ", $wces, __FILE__, __LINE__); 
       
     }
-    
+
     $result = pg_query("
-      SELECT question_period_id, displayname, year, semester
-      FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_question_period())
+      SELECT question_period_id, displayname, year, semester, prize, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, EXTRACT(EPOCH FROM prizedate) AS prizedate
+      FROM dartmouth_question_periods
+      WHERE question_period_id = (SELECT get_next_question_period())
     ", $wces, __FILE__, __LINE__);
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+    
+    $s_prize = $prize;
+    $s_pdate = date("l, F j", $prizedate);
+    $s_bdate = date("l, F j", $begindate);
+    $s_edate = date("l, F j", $enddate);
     
     $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
 
@@ -353,8 +355,9 @@ class MassEmail extends FormWidget
         $s_classes .= $s_missingclasses;
       }
 
-      $names = array("%name%", "%classes%", "%nclasses%", "%missingclasses%", "%finishedclasses%", "%nmissingclasses%", "%nfinishedclasses%");
-      $vals = array($s_name, $s_classes, $s_nclasses, $s_missingclasses, $s_finishedclasses, $s_nmissingclasses, $s_nfinishedclasses);
+      $names = array("%name%", "%classes%", "%nclasses%", "%missingclasses%", "%finishedclasses%", "%nmissingclasses%", "%nfinishedclasses%", "%prize%", "%pdate%", "%bdate%", "%edate%");
+      $vals = array($s_name, $s_classes, $s_nclasses, $s_missingclasses, $s_finishedclasses, $s_nmissingclasses, $s_nfinishedclasses, $s_prize, $s_pdate, $s_bdate, $s_edate);
+
       $text = wordwrap(str_replace($names, $vals, $this->text->text), 75);
 
       ++$sofar;
@@ -368,7 +371,7 @@ class MassEmail extends FormWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          //$email = "rey4@columbia.edu"; // debug
+          $email = "rey4@columbia.edu"; // debug
           mail($email, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nTo: $address\nX-Mailer: PHP/" . phpversion());
         }
         else
