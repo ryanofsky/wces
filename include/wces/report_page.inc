@@ -336,7 +336,8 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       }
       else
       {
-        $showstats = is_numeric($first_number) && is_numeric($last_number);
+        $showstats = is_numeric($first_number) && is_numeric($last_number) && $first_number != $last_number;
+        
         $headings = $cchoices;
 
         foreach($cchoices as $ci => $ct)
