@@ -3,7 +3,7 @@
 require_once("wbes/general.inc");
 require_once("wbes/server.inc");
 $page = $server_url->path;
-param($frame); param($help);
+param('frame'); param('help');
 
 ?>
 <html>
