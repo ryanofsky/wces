@@ -65,7 +65,7 @@ function makereport(&$wizard,$stdout,&$html,&$text)
   makeall($stdout, $html, $text, $groups);
 }
 
-function makeall($stdout,&$html,&$text,&$groups)
+function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
   global $wces_path, $wces;
   
@@ -135,7 +135,7 @@ function makeall($stdout,&$html,&$text,&$groups)
     $classes = new pg_segmented_wrapper($result, "ordinal");
 
     $result = pg_query("
-      SELECT t.ordinal, t.user_id, u.firstname, u.lastname
+      SELECT DISTINCT t.ordinal, t.user_id, u.firstname, u.lastname
       FROM rwtopics AS t
       INNER JOIN users AS u USING (user_id)
       ORDER BY t.ordinal
@@ -146,7 +146,7 @@ function makeall($stdout,&$html,&$text,&$groups)
   else
   {
     $result = pg_query("
-      SELECT DISTINCT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
+      SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
       FROM rwtopics AS t
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN courses AS c ON c.course_id = cl.course_id
@@ -171,6 +171,22 @@ function makeall($stdout,&$html,&$text,&$groups)
   
   $textresponses = new pg_segmented_wrapper($result, array("ordinal", "revision_id"));
 
+  if (isset($options['taresponses']) && $options['taresponses'])
+  {
+    $result = pg_query("
+      SELECT DISTINCT t.ordinal, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
+        tr.approachability, tr.availability, tr.communication, tr.comments
+      FROM rwtopics AS t
+      INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
+      INNER JOIN ta_ratings AS tr ON tr.parent = r.response_id
+      ORDER BY t.ordinal, name, tr.response_id
+    ", $wces, __FILE__, __LINE__);
+    
+    $taresponses = new pg_segmented_wrapper($result, array("ordinal", "revision_id"));
+  }
+  else
+    $taresponses = NULL;
+  
   $result = pg_query("
     SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS cchoices,
       c.flags, c.first_number, c.last_number, c.other_choice,
@@ -219,7 +235,7 @@ function makeall($stdout,&$html,&$text,&$groups)
     else
       $pagehtml = false;
 
-    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords);
+    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords, $taresponses);
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;

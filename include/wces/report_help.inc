@@ -47,7 +47,37 @@ function report_sd($distribution, $avg)
     $sum += $people;
     $wsum += $people * pow(($score - $avg),2);
   }
-  return $sum == 0 ? 0 : sqrt($wsum/$sum);
+  return $sum <= 1 ? 0 : sqrt($wsum/($sum - 1));
+}
+
+function report_median($distribution)
+{
+  $sum = 0;
+  foreach($distribution as $score => $people)
+    $sum += $people;
+
+  // $i1 and $i2 are one-based indices into sorted lists of results
+  if ($sum % 2 == 1)
+    $i1 = $i2 = ($sum + 1) / 2;
+  else
+  {
+    $i1 = $sum / 2;
+    $i2 = $i1 + 1; 
+  }
+
+  $v1 = $v2 = NULL;
+  $psum = 0;
+  foreach($distribution as $score => $people)
+  {
+    $psum += $people;
+    if (!isset($v1) && $psum >= $i1)
+      $v1 = $score;
+    if (!isset($v2) && $psum >= $i2)
+      $v2 = $score;
+      
+    if (isset($v1) && isset($v2)) break;
+  }
+  return ($v1 + $v2) / 2.0;
 }
 
 ?>
