@@ -43,12 +43,12 @@ class ReportWizard extends Wizard
 
   function ReportWizard($prefix,$form,$formmethod)
   {
-    global $server_wcespath;
+    global $wces_path;
     
     $this->Wizard
     ( 
       array("Start","Output","Question Periods","Departments","Professors","Courses","Aggregation","Order","Finish"),
-      $server_wcespath,
+      $wces_path,
       $prefix,$form,$formmethod
     );
     
