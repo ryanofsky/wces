@@ -102,7 +102,7 @@ function pg_explode($sa)
   for($i = 1; ; ++$i)
   {
     if ($i >= $l)
-      $end = $i;
+      $end = $i - 1;
     else
     {
       $c = $sa[$i];
@@ -115,10 +115,7 @@ function pg_explode($sa)
       else if ($is_quote)  
       {
         if ($quoted && !$escaped)
-        {
           $end = $i;
-          $quoted = false;
-        }
         else if (!$quoted)
         {
           $started = $i + 1;
@@ -134,8 +131,8 @@ function pg_explode($sa)
     
     if ($end)
     {
-      if ($i > $started) $ret[] = stripslashes(substr($sa, $started, $i - $started));
-      $started = $i + 1;
+      if ($end >= $started) $ret[] = stripslashes(substr($sa, $started, $end - $started));
+      if ($quoted) { $quoted = false; $started = $i + 2; } else $started = $i + 1;
       $end = false;
     }
     
