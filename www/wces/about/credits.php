@@ -10,8 +10,9 @@ page_top("Credits");
 <br>Dean Jack McGourty
 <br><b><i></i></b>&nbsp;
 <p><b><i>WCES Development Team</i></b>
-<p>Russell Edward Yanofsky
-<br>Takahiro Mark Kuba
+<p>Russ Yanofsky
+<br>Mark Kuba
+<br>Tyler Ward
 <p>Please send questions or comments to :&nbsp;<a href="mailto:jackie@columbia.edu"></a>
 <p>Jackie O. Pavlik&nbsp;&nbsp;
 <br>Staff Associate for Information Technology
