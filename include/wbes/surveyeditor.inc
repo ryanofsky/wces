@@ -45,22 +45,23 @@ class SurveyEditor extends FormWidget
   var $currentcomponent;
   var $barepage = false;
   var $message = "";
-  var $component_types = array();;
+  var $component_types = array();
+  var $branch_id;
   
-  function SurveyEditor($component_types, $prefix,$form,$formmethod)
+  function SurveyEditor($branch_id, $component_types, $prefix,$form,$formmethod)
   {
     global $server_url;
     $this->FormWidget($prefix,$form,$formmethod);
-    $index = array();                             // Put this in a more appropriate place...
+    $this->branch_id = (int)$branch_id;
     foreach($component_types as $c)
-      $this->component_types[$GLOBALS["{$c}_code"] = $c;
+      $this->component_types[$GLOBALS["{$c}_code"]] = $c;
   }
  
   function loadvalues()
   {
     $this->survey = unserialize($this->loadattribute("survey"));
     if (get_class($this->survey) != "survey")
-      $this->survey = false;
+      $this->load();
 
     $this->state = $this->loadattribute("state");
     $this->currentcomponent = $this->loadattribute("currentcomponent");
@@ -69,23 +70,24 @@ class SurveyEditor extends FormWidget
 
   function load()
   {
+    wbes_connect();
     $this->survey = new Survey();
+    $this->survey->load($this->branch_id,$this->component_types);
   }
   
   function save()
   {
-    //global $db;
-    //
-    //$e = $this->editclass;
-    //
-    //db_exec("DELETE FROM cheesyclasses WHERE classid = $e", $db, __FILE__, __LINE__);
-    //
-    //$d = addslashes(serialize($this->survey));
-    //
-    //db_exec("INSERT INTO cheesyclasses(classid, dump) VALUES('$e', '$d')", $db, __FILE__, __LINE__);
-    //
-    //$this->message = "<i><font color=blue>Survey Builder: Changes have been saved.</font></i><hr>";
+    wbes_connect();    
     
+    if ($this->survey->save($this->branch_id))
+    {
+      $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font><hr>";
+      $this->state = SurveyEditor_done;
+    }
+    else
+    {
+      $this->message = "<h1>Save Error</h1>";
+    }
   }
 
   function handleaction()
@@ -185,11 +187,10 @@ class SurveyEditor extends FormWidget
           break;
           case SurveyEditor_main_save:
             $this->save();
-            $this->state = SurveyEditor_done;
           break;
           case SurveyEditor_main_cancel:
             $this->state = SurveyEditor_done;
-            $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font><hr>";
+            $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font><hr>";          
           break;
           default:
           break;
@@ -268,11 +269,9 @@ by clicking above and below existing components.</p>
 ?>
 <tr><td colspan=1><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->prefix?>_insert<?=$i?>" class=insertmenu><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]" name=<?=$this->prefix?>_ns4marker<?=$i?>></td></tr>
 <?
-              if ($i >= $ncomponents)
-                break;
-              else
-                $component = &$this->survey->components[$i];
-              $w = $component->getwidget("{$this->prefix}_main_qwidget_" . $i, $this->form, $this->formmethod);
+              if ($i >= $ncomponents) break;
+              $component = &$this->survey->components[$i];
+              $w = $component->getwidget("{$this->prefix}_main_qwidget_$i", $this->form, $this->formmethod);
               $w->loadvalues();
 ?>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
@@ -301,7 +300,7 @@ by clicking above and below existing components.</p>
           } // if $ncomponents == 0      
         break;
         case SurveyEditor_done:
-          print("The survey has been saved.");
+          print("Bye Bye");
         break;
       } // switch
     } // if hidden

@@ -5,6 +5,11 @@ require_once("wbes/component.inc");
 $Text_code = 4;                
 $Text_name = "Text Component";
 
+function Text_Factory(&$components, $ids, $ordinals, $revision)
+{
+  Component_Factory($components, $ids, $ordinals, $revision);
+}
+
 class Text extends Component
 {
   function Text()

@@ -3,10 +3,8 @@
 class Survey
 {
   var $components = array();
-  var $survey_id = false;
-  var $branch = false;
-  var $revision = false;
-  
+  var $orig_id = false;
+ 
   function insert($component,$position = 0)
   {
     $position = ((int)$position < 0) ? count($this->components) + (int)$position + 1 : (int)$position;
@@ -35,101 +33,101 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
   
+  function load($branch_id, $component_types)
+  { 
+    global $wbes;
 
-  function load($survey_id, $index)
-  {
-    SELECT $branches, $depth FROM surveys WHERE survey_id = $survey_id;
-    $revision = list_getrevision($branches);
-    
-    $list_id = $revision[$depth*3 + 1];
-    
-    $result = 
-      SELECT c.component_id, c.type
-      FROM list_items AS li
+    $result = pg_query("SELECT list_update($branch_id)", $wbes, __FILE__, __LINE__);
+    $this->orig_id = pg_result($result, 0, 0);
+
+    $revision = false; // todo: sublist support    
+    //todo: also, fix hazard that occurs if a new revision is saved between last
+    // query and the next. it will retrieve new list contents and use the same
+    // old orig_id
+
+    $result = pg_query("
+      SELECT li.ordinal, c.component_id, c.type
+      FROM list_branch_cache AS lbc
+      INNER JOIN list_items AS li ON li.list_id = lbc.content_id
       INNER JOIN components AS c ON c.component_id = li.item_id
-      WHERE list_id = $list_id
-      ORDER BY type,ordinal;
+      WHERE lbc.branch_id = $branch_id
+      ORDER BY type, ordinal
+    ", $wbes, __FILE__, __LINE__);
     
     $n = pg_numrows($result);
-    $lasttype = false;
-    $ordinals = $components = $array();
-    $this->components = array_fill(0, $n, false);
-    for($i = 0; $i < $n; ++$i)
+    $type = $lasttype = false;
+    $ordinals = $components = array();
+    $this->components = array_pad(array(), $n, false);
+    for($i = 0; ; ++$i)
     {
-      extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
+      if($i < $n)
+        extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
+      else
+        $type = -1;
+
+      if ($type !== $lasttype && $lasttype !== false)
+      {
+        $factory = $component_types[$lasttype] . '_Factory';
+        $factory($this->components, $components, $ordinals, $revision);
+      }
       
+      if ($i >= $n) break;
+
       if ($type === $lasttype)
       {
-        $ordinals[] = $ordinal;
-        $components[] = $component_id;
+        $ordinals[] = (int)$ordinal;
+        $components[] = (int)$component_id;
       }
       else
       {
-        if ($lasttype !== false)
-          $component_factory($this->components, $ids, $ordinals, $revision);
-        $components = array($component_id);
-        $ordinals = array($ordinal);
+        $components = array((int)$component_id);
+        $ordinals = array((int)$ordinal);
       }
       $lasttype = $type;
     }
-    
-    if ($lasttype !== false)
-      $component_factory($this->components, $ids, $ordinals, $revision);
   }
   
-  function save($link_id, $depth);
+  function save($branch_id)
   {
-    $revision = SELECT list_getrevision($this->list_id);
+    global $wbes;
     
-    SELECT $branches FROM links WHERE link_id = $link;
-    foreach($branches AS $k => $v)
-      if ($v != $revision[$k * 3 + 1])
-        return false;                        // security breach (invalid $this->list_id)
- 
-    if (count($revision) + 3 == $depth * 3)  // might need to add new branch
-      $b = list_newbranch($depth);           // get a new branch number
-    else if (count($revision) == $depth * 3) // proper depth
-      $b = false;
-    else                                    
-      return false;                          // security breach
+    $this->orig_id = (int)$this->orig_id;
     
+    $result = pg_query("BEGIN WORK", $wbes, __FILE__, __LINE__);
+      if (!$result) return false;
 
-    BEGIN TRANSACTION;
-    SELECT $branches FROM links WHERE link = $link_id FOR UPDATE; // lock
-
-    if (!$b || count($branches) == $depth) // branch already added
+    $result = pg_query("
+      SELECT list_save_start($branch_id, $this->orig_id)
+    ", $wbes, __FILE__, __LINE__);
+    
+    $save_id = (int)pg_result($result, 0, 0);
+    
+    $changed = false;
+    $i = 0;
+    foreach(array_keys($this->components) as $k)
     {
-      primary = secondary = list_getrevision($branches);
-      primary[-1] += 1;
+      $id = $this->components[$k]->save();
+      $changed = $changed || $id != $this->components[$k]->component_id;
+      pg_query("INSERT INTO list_items(list_id, ordinal, item_id) VALUES ($save_id, $i, $id)", $wbes, __FILE__, __LINE__);
+      ++$i;
     }
-    else if (count($branches) == $depth - 1)) // need to add a new branch
-    {
-      $branches[] = $b;
-      UPDATE links SET branches = $branches;
+   
+   if ($changed)
+   {
+     $result = pg_query("
+       SELECT list_save_end($branch_id, $save_id)
+     ", $wbes, __FILE__, __LINE__);
+     
+     $status = pg_result($result,0,0);
+     $result = pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+     return $status && $result;
+   }
+   else
+   {
+     debugout("No changes");
+     return (boolean) pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
+   }
 
-      primary = secondary = $revision;
-      primary[] = 0;
-      primary[] = $b; 
-      primary[] = 1;
-    }
-    else // this should never happen  
-    { 
-      ROLLBACK; return false;
-    } 
-
-    INSERT INTO lists (parent, branch, revision) VALUES (primary[-6], primary[-2], primary[-1]);
-    primary[-3] := currval(list_ids);
-    reset($this->components);
-    while(list($k) = $each($this->components))
-      $this->components->save(primary);
-
-    IF (revision[-3] != secondary[-3]) THEN
-      INSERT INTO lists (parent, branch, revision) VALUES (primary[-6], primary[-2], primary[-1] + 1);          
-      merge(revision[-3],primary[-3],secondary[-3],currval(list_ids));
-    END IF;
-    
-    COMMIT;
-    return true;    
   }
 }
 

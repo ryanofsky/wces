@@ -5,6 +5,11 @@ require_once("wbes/component.inc");
 $Heading_code = 3;                
 $Heading_name = "Heading Component";
 
+function Heading_Factory(&$components, $ids, $ordinals, $revision)
+{
+  Component_Factory($components, $ids, $ordinals, $revision);
+}
+
 class Heading extends Component
 {
   function Heading()

@@ -5,6 +5,11 @@ require_once("wbes/component.inc");
 $TextResponse_code = 2;                
 $TextResponse_name = "Text Response Question";
 
+function TextResponse_Factory(&$components, $ids, $ordinals, $revision)
+{
+  Component_Factory($components, $ids, $ordinals, $revision);
+}
+
 class TextResponse extends Component
 {
   var $rows, $cols;

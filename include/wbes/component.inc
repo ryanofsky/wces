@@ -4,11 +4,25 @@ require_once("wbes/survey.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/dynamiclist.inc");
 
+function Component_Factory(&$components, $ids, $ordinals, $revision)
+{
+  global $wbes;
+  $sids = implode($ids, ", ");
+  $rids = array_flip($ids);
+  $r = pg_query("SELECT component_id, data FROM generic_components WHERE component_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+  for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+  {
+    $ord = $ordinals[$rids[$wr->row['component_id']]];
+    $components[$ord] = unserialize($wr->row['data']);
+    $components[$ord]->component_id = (int)$wr->row['component_id'];
+  }
+}
+
 class Component
 {
   var $text = "";      // string, component text
   var $is_html = false;   // boolean html allowed
-  var $component_id;
+  var $component_id = 0;
   var $type = 0;
   var $visibility = 0;
 
@@ -25,13 +39,38 @@ class Component
   {
     return new ComponentWidget($this,$prefix,$form,$formmethod);
   }
-  
-  function load()
-  {
-  }
-  
+    
   function save()
   {
+    global $wbes;
+    $cn = get_class($this);
+    $cn = $cn == "textresponse" ? "TextResponse" : ucwords($cn);
+    $cn = $GLOBALS["{$cn}_code"];
+    $s = addslashes(serialize($this));
+    
+    $changed = true;
+    if ($this->component_id)
+    {
+      $r = pg_query("SELECT data FROM generic_components WHERE component_id = $this->component_id", $wbes, __FILE__, __LINE__);
+      if (pg_numrows($r) == 1)
+      {
+        $d = unserialize(pg_result($r, 0, 0));
+        $d->component_id = $this->component_id;
+        $sd = addslashes(serialize($d));
+        $changed = $s != $sd;
+      }
+    }
+    
+    if (!$changed)
+    {
+      return $this->component_id;
+    }
+    else
+    {
+      pg_query("INSERT INTO generic_components(type, data) VALUES ($cn, '$s')", $wbes, __FILE__, __LINE__);
+      $r = pg_query("SELECT currval('component_ids')", $wbes, __FILE__, __LINE__);
+      return pg_result($r, 0, 0);
+    }
   }
 };
 

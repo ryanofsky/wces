@@ -1,8 +1,30 @@
+CREATE TABLE components
+(
+  component_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('component_ids'),
+  type INTEGER NOT NULL
+);
+CREATE SEQUENCE component_ids INCREMENT 1 START 1;
+
+CREATE TABLE generic_components
+(
+  data TEXT
+) INHERITS (components);
+
+CREATE TABLE major_components
+(
+  is_html BOOLEAN NOT NULL
+  component_text TEXT
+  visibility INTEGER
+)
+INHERITS(components);
+
+----------------------------------------------------------------------
+
 CREATE TABLE surveys
 (
   survey_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('survey_ids'),
-  topic_id
-  branches INTEGER[],
+  topic_id INTEGER NOT NULL,
+  branches INTEGER[] NOT NULL,
   depth SMALLINT
 );
 
@@ -20,7 +42,13 @@ CREATE SEQUENCE component_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE components IS 'Abstract table inherited by other tables which store information about survey components. Survey components include questions as well as display items like headings, pictures and blocks of text.';
 
-COMMENT ON COLUMN components.component_type IS 'Integer identifier for different component types.';
+COMMENT ON COLUMN components.type IS 'Integer identifier for different component types.';
+
+CREATE TABLE generic_components
+(
+  data TEXT
+)
+INHERITS(components);
 
 CREATE TABLE major_components
 (

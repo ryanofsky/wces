@@ -2,59 +2,61 @@
 
 require_once("wbes/component.inc");
 
-$Choice_code = 1;                
+$Choice_code = 1;
 $Choice_name = "Multiple Choice Question Set";
 
-function Choice_Factory($components, $ids, $ordinals, $revision)
+function Choice_Factory(&$components, $ids, $ordinals, $revision)
 {
-  global $wbes;
+  Component_Factory($components, $ids, $ordinals, $revision);
   
-  $sqlt = "SELECT first_number, last_number, list_branch1, ... FROM choices WHERE compoinent_id = %i;\n";
-  
-  $first = false;
-  foreach($ids as $id)
-  {
-    if ($first) $first = false; else $sql .= "UNION ALL ";
-    $sql .= wsprintf($sqlt, $id);
-  }  
-    
-  $result = pg_query($sql, $wbes, __FILE__, __LINE__);
-  
-  $n = pg_numrows($result);
-  for($i=0; $i<$n; ++$i)
-  {
-    extract(pg_fetch_array($result, $i, PG_ASSOC));
-    
-    $c = new Choice();
-    $c->first_number = (int)$first_number;
-    $c->last_number  = (int)$last_number;
-    
-    .
-    .
-    .
-    
-    $choices = pg_query("
-      SELECT c.choice_id, c.text, ...
-      FROM list_items AS li
-      INNER JOIN choice_items AS c ON choice_item_id = list_item_id
-      WHERE list_id = (SELECT (list_sublist($list_branch1, $revision)))
-    ", $wbes, __FILE__, __LINE__);
-    
-    .
-    .
-    .
-    
-    load the choices into an array
-    $c->choices = [ . . . ] 
-    
-    .
-    .
-    .
-    $components[$ordinal] = $c;
-  }
-  
-
-  
+  //global $wbes;
+  //
+  //$sqlt = "SELECT first_number, last_number, list_branch1, ... FROM choices WHERE compoinent_id = %i;\n";
+  //
+  //$first = false;
+  //foreach($ids as $id)
+  //{
+  //  if ($first) $first = false; else $sql .= "UNION ALL ";
+  //  $sql .= wsprintf($sqlt, $id);
+  //}  
+  //  
+  //$result = pg_query($sql, $wbes, __FILE__, __LINE__);
+  //
+  //$n = pg_numrows($result);
+  //for($i=0; $i<$n; ++$i)
+  //{
+  //  extract(pg_fetch_array($result, $i, PG_ASSOC));
+  //  
+  //  $c = new Choice();
+  //  $c->first_number = (int)$first_number;
+  //  $c->last_number  = (int)$last_number;
+  //  
+  //  .
+  //  .
+  //  .
+  //  
+  //  $choices = pg_query("
+  //    SELECT c.choice_id, c.text, ...
+  //    FROM list_items AS li
+  //    INNER JOIN choice_items AS c ON choice_item_id = list_item_id
+  //    WHERE list_id = (SELECT (list_sublist($list_branch1, $revision)))
+  //  ", $wbes, __FILE__, __LINE__);
+  //  
+  //  .
+  //  .
+  //  .
+  //  
+  //  load the choices into an array
+  //  $c->choices = [ . . . ] 
+  //  
+  //  .
+  //  .
+  //  .
+  //  $components[$ordinal] = $c;
+  //}
+  //
+  //
+  //
 }
 
 class Choice extends Component
@@ -89,12 +91,6 @@ class Choice extends Component
   {
     return new ChoiceWidget($this,$prefix,$form,$formmethod);
   }
-  
-  function save(...)
-  {
-  
-  }
-  
 };
 
 class ChoiceEditor extends ComponentEditor
