@@ -5,6 +5,7 @@ require_once("wces/page.inc");
 require_once("wces/wces.inc");
 require_once("wces/login.inc");
 require_once("wces/oldquestions.inc");
+require_once("wbes/surveyeditor.inc");
 
 param($classid);
 param($courseid);
@@ -58,7 +59,7 @@ function PrintLoginInfo($db, &$cunix, &$userid, &$professorid)
 
 function PrintEnrollments($db, $userid)
 {
-  global $surveys, $questionperiodid;
+  global $surveys, $questionperiodid, $year, $semester;
   
   if (mysql_result(db_exec("SELECT COUNT(*) FROM enrollments WHERE userid = '$userid'", $db, __FILE__, __LINE__),0) == 0)
     return false;
@@ -73,19 +74,18 @@ function PrintEnrollments($db, $userid)
 
   $y = db_exec(
     "SELECT p.professorid, p.name AS pname, c.courseid, cl.classid, cl.year, cl.semester, concat(s.code, c.code) AS code, c.name, cl.section " .
-    ($surveys ? ", IF(qs.classid,IF(cs.userid,'yes','no'),'n/a') AS surveyed " : "") .
+    ($surveys ? ", IF(qs.linkid,IF(a.userid,'yes','no'),'n/a') AS surveyed " : "") .
     "FROM enrollments as e
     INNER JOIN classes as cl USING (classid)
     INNER JOIN courses as c using (courseid)
     INNER JOIN subjects as s using (subjectid)
-    LEFT JOIN professors AS p ON cl.professorid = p.professorid " . 
-    ($surveys ? 
-    "LEFT JOIN qsets AS qs ON (qs.classid = cl.classid)
-    LEFT JOIN answersets AS a ON (a.classid = e.classid AND a.questionperiodid = '$questionperiodid' AND a.questionsetid = qs.questionsetid)
-    LEFT JOIN completesurveys AS cs ON (cs.userid = e.userid AND cs.answersetid = a.answersetid) " : "") . 
-    "WHERE e.userid = '$userid'
+    LEFT JOIN professors AS p ON cl.professorid = p.professorid " . ($surveys ? "
+    LEFT JOIN groupings AS qs ON (qs.linkid = cl.classid)
+    LEFT JOIN cheesyresponses AS a ON (a.userid = e.userid AND a.classid = e.classid) " : "") . "
+    WHERE e.userid = '$userid' " . ($surveys ? "
+      AND cl.year = '$year' AND cl.semester = '$semester'" : "") . "
     GROUP BY classid ORDER BY cl.year DESC, cl.semester DESC", $db, __FILE__, __LINE__);
-    
+  
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
   print("  <tr><td><b>Year</b></td><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Section</b></td><td><b>Course Name</b></td><td><b>Professor</b></td>" . ($surveys ? "<td><b>Surveyed</b></td>" : "") . "</tr>\n");
   while($result = mysql_fetch_array($y))
@@ -150,19 +150,19 @@ function PrintProfessorInfo($db, $professorid)
   } 
 
   print ("<h4>Classes Taught</h4>\n<UL>\n");
-
   $classes = db_exec("
 
   SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode"
-  . ($surveys ? ", COUNT(qs.classid) AS cnt " : ""). "
+  . ($surveys ? ", COUNT(qs.linkid) AS cnt " : ""). "
   FROM classes as cl
   LEFT JOIN courses AS c USING (courseid)
   LEFT JOIN subjects AS s USING (subjectid)
-  " . ($surveys ? "LEFT JOIN qsets AS qs ON (qs.classid = cl.classid) " : "") . "
+  " . ($surveys ? "LEFT JOIN groupings AS qs ON (qs.linkid = cl.classid) " : "") . "
   WHERE cl.professorid = '$professorid'
   GROUP BY cl.classid
   ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db,__FILE__,__LINE__);
-  
+
+ 
   while ($class = mysql_fetch_assoc($classes))
   {
     $cnt = $classid = $section = $year = $scode = $code = $name = $section = "";
@@ -216,7 +216,7 @@ function PrintClassInfo($db, $classid)
   
   if ($surveys)
   {
-    $result = db_exec("SELECT COUNT(*) FROM qsets WHERE classid = '" . addslashes($classid) . "'", $db, __FILE__, __LINE__);
+    $result = db_exec("SELECT COUNT(*) FROM groupings WHERE linkid = '" . addslashes($classid) . "'", $db, __FILE__, __LINE__);
     if (mysql_result($result,0) > 0)
       print("<p align=center><strong> &gt; <a href=\"info.php?surveyid=$classid$back\">Preview Survey Questions</a> &lt; </strong></p>");
   }    
@@ -276,10 +276,10 @@ function PrintCourseInfo($db, $courseid)
   
   $infoq = db_exec(
   
-  "SELECT cl.classid, cl.name, cl.section, cl.year, cl.semester, p.professorid, p.name AS pname" . ($surveys ? ", COUNT(qs.classid) AS cnt" : "") . "
+  "SELECT cl.classid, cl.name, cl.section, cl.year, cl.semester, p.professorid, p.name AS pname" . ($surveys ? ", COUNT(qs.linkid) AS cnt" : "") . "
   FROM classes AS cl
   LEFT JOIN professors AS p USING (professorid)
-  " . ($surveys ? "LEFT JOIN qsets AS qs ON (qs.classid = cl.classid)" : "") . "
+  " . ($surveys ? "LEFT JOIN groupings AS qs ON (qs.linkid = cl.classid)" : "") . "
   WHERE cl.courseid = '" . addslashes($courseid) . "'
   GROUP BY cl.classid
   ORDER BY cl.year DESC, cl.semester DESC, cl.section", $db, __FILE__, __LINE__);
@@ -297,22 +297,37 @@ function PrintCourseInfo($db, $courseid)
 
 function ShowSurvey($db, $classid, $back)
 {
+  global $questionperiodid;
   print('<strong><a href="' . htmlspecialchars($back ? $back : "info.php?classid=$classid") . "\">Back</a></strong><hr>\n");
   print("<form method=post>\n");
-  $s = new OldSurvey($db, $classid, false, false, "preview", "f", WIDGET_POST);
+
+  $e = new SurveyEditor("prefix","f",WIDGET_POST);
+  $e->editclass = $classid;
+  $e->load();
+  foreach(array_keys($e->survey->components) as $i)
+  {
+    $c = &$e->survey->components[$i];
+    $w = $c->getwidget("survey_$i","f", WIDGET_POST);
+    $widgets[] = $w;
+  }
+  $s = new TSurvey($db, $questionperiodid, $classid, false, false, "preview", "f", WIDGET_POST);
+  $s->questionwidgets = $widgets;
   $s->loadvalues();
-  $s->display();
+  $s->display();  
+  //$s = new OldSurvey($db, $classid, false, false, "preview", "f", WIDGET_POST);
+  //$s->loadvalues();
+  //$s->display();
   print("</form>\n");
 }
 
 page_top("Information Viewer");
 $db = wces_connect();
-
-if ($surveys && !$surveyid)
+if ($surveys || $surveyid)
 {
-  $questionperiodid = wces_Findquestionsetsta($db,"qsets");
+  wces_GetCurrentQuestionPeriod($db, $questionperiodid, $description, $year, $semester);
+}
+if ($surveys && !$surveyid)
   $back = "&back=" . urlencode($server_url->toString(false,true,true));
-}  
 
 if ($cunix || $userid || $professorid) 
 {
