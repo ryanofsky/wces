@@ -9,166 +9,273 @@ require_once("wces/report_generate.inc");
 define("Report_wizard",1); // state
 define("Report_results",2); // state
 define("Report_profemail",3); // state
-define("Report_email",4); // state and action
-define("Report_print",5); // action
-define("Report_revivewizard",6); // action
+define("Report_email",4); // state and event
+define("Report_print",5); // event
+define("Report_revivewizard",6); // event
 define("Report_email_send",1);
 define("Report_email_cancel",2);
-define("Report_email_topcancel",3);
-class Report extends FormWidget
+
+class Report extends TabbedWidget
 {
   var $wizard;
-  var $hidemenus;
-  var $state;
-  var $action;
+  var $hideMenus = false;
+  var $currentEvent = null;
 
-  var $email_form;
-  var $email_to;
-  var $email_from;
-  var $email_subject;
-  var $email_text;
-  var $email_action;
-
-  var $profemail_form;
-  var $profemail_subject;
-  var $profemail_message;
-  var $profemail_debug;
-  var $profemail_action;
-
-  function Report($prefix,$form,$formmethod)
+  function Report($name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
-    ActionButton::dumpscript();
+    $this->TabbedWidget($name, $parent);
+    EventWidget::DumpScript();
+    $this->wizard =& new ReportWizard('wizard', $this);
   }
 
-  function loadvalues()
+  function & handleEvent($event, $param, $new)
   {
-    $this->action = new ActionButton($this->prefix . "_action",$this->form,$this->formmethod);
-    $this->action->loadvalues();
-
-    $this->wizard = new ReportWizard($this->prefix . "_wizard",$this->form,$this->formmethod);
-    $this->wizard->loadvalues();
-
-    if (!$this->wizard->isfinished() || $this->action->action == Report_revivewizard)
-      $this->state = Report_wizard;
-    else
+    switch($event)
     {
-      if ($this->wizard->output->checked == ReportWizard_output_www)
-      {
-        $this->email_action = new ActionButton($this->prefix . "_email_action",$this->form,$this->formmethod);
-        $this->email_action->loadvalues();
-        if ($this->action->action == Report_email && $this->email_action->action != Report_email_cancel && $this->email_action->action != Report_email_topcancel)
-          $this->state = Report_email;
-        else
-          $this->state = Report_results;
-      }
-      else
-        $this->state = Report_profemail;
-    }
+      case Report_print:
+        $this->wizard->output->printable->checked = true;
+      break;
 
-    if ($this->action->action == Report_print) $this->wizard->printable->checked = true;
+      case Report_wizard;
+      return $this->wizard;
 
-    $this->hidemenus = ($this->state == Report_results && ($this->wizard->printable->checked || $this->action->action == Report_print));
+      case Report_profemail:
+        $this->profemail =& new ProfessorEmail($this->wizard, "profemail", $this);
+        $this->loadChild($this->profemail, $new);      
+      return $this->profemail;
+      
+      case Report_email:
+        $this->email =& new ReportEmail($this->wizard, "reportemail", $this);
+        $this->loadChild($this->email, $new);
+      return $this->email;
+    };
+  }
 
-    if ($this->state == Report_email)
-    {
-      $this->email_form = new Form($this->prefix . "_email_form", $this->form, $this->formmethod);
-      $this->email_to = new TextBox(1,40,"",$this->prefix . "_email_to",$this->form,$this->formmethod);
-      $this->email_from = new TextBox(1,40,"",$this->prefix . "_email_from",$this->form,$this->formmethod);
-      $this->email_subject = new TextBox(1,80,"",$this->prefix . "_email_subject",$this->form,$this->formmethod);
-      $this->email_text = new TextBox(15,80,"",$this->prefix . "_email_text",$this->form,$this->formmethod);
-      $this->email_form->loadvalues();
-      $this->email_to->loadvalues();
-      $this->email_from->loadvalues();
-      $this->email_subject->loadvalues();
-      $this->email_text->loadvalues();
-    }
-    else if ($this->state == Report_profemail)
-    {
-      $this->profemail_form = new Form($this->prefix . "_profemail_form", $this->form, $this->formmethod);
-      $this->profemail_subject = new TextBox(1,76,"",$this->prefix . "_profemail_subject", $this->form, $this->formmethod);
-      $this->profemail_message = new TextBox(8,76,"",$this->prefix . "_profemail_message", $this->form, $this->formmethod);
-      $this->profemail_debug = new CheckBox($this->prefix . "_profemail_debug", $this->form, $this->formmethod);
-      $this->profemail_action = new ActionButton($this->prefix . "_profemail_action", $this->form, $this->formmethod);
-      $this->profemail_form->loadvalues();
-      if ($this->profemail_form->isstale)
-      {
-        $this->profemail_subject->loadvalues();
-        $this->profemail_message->loadvalues();
-        $this->profemail_debug->loadvalues();
-        $this->profemail_action->loadvalues();
-      }
-      else
-      {
-        $this->profemail_subject->text = "WCES Evaluation Results";
-        $this->profemail_message->text = "Dear %profname%,\n\nThis automated email contains the results of the WCES evaluations for your classes. Send questions or comments to wces@columbia.edu";
-        $this->profemail_debug->checked = false;
-      }
-    }
+  function loadInitialState()
+  {
+    TabbedWidget::loadInitialState();
+    $this->eventLoop(Report_wizard, null, true, true);
+  }
+
+  function loadState()
+  {
+    TabbedWidget::loadState(Report_wizard);
+    $this->hideMenus = !isset($this->currentEvent) && $this->wizard->output->printable->checked;
+    if (isset($this->email) && $this->currentEvent == Report_wizard)
+      $this->email->generate = true;
+  }
+
+  function navigationButton($text, $href, $icon, $width, $height)
+  {
+    return "<a class=blank href=\"$href\">"
+     . "<img src=\"$icon\" border=0 width=$width height=$height alt=\"$text\">"
+     . " $text</a> ";
   }
 
   function display()
   {
-    global $wces_path,$db;
+    $this->printNavigation();
+    TabbedWidget::display();      
+  }
 
-    if ($this->state == Report_wizard)
-      $this->wizard->display(false);
-    else
-      $this->wizard->display(true);
-
-    if ($this->state == Report_email || $this->state == Report_profemail || $this->state == Report_results)
-    {
-      print("<table><tr><td height=50>\n");
-      $this->action->display(false,"","");
-      ?><a class=blank href="<?=$this->action->gethref(Report_revivewizard,0)?>"><img src="<?=$wces_path?>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a><?
-      if ($this->state == Report_results)
-      {
-?>
-<script>
-<!--
-  if (window.print)
+  function printNavigation()
   {
-    document.write(' <a class=blank href="<?=$this->wizard->printable->checked ? "javascript:void(window.print())" : $this->action->gethref(Report_print,0) ?>"><img src="<?=$wces_path?>media/report/print.gif" border=0 width=20 height=20 alt="Printer"><?=$this->wizard->printable->checked ? "Print this report" : "Printable version of this Report"?></a>');
-  }
-// -->
-</script>
+    global $wces_path;
+    
+    if ($this->currentEvent == Report_wizard) return; 
 
-<a class=blank href="<?=$this->action->gethref(Report_email,0)?>"><img src="<?=$wces_path?>media/report/email.gif" border=0 width=20 height=20 alt="Email a copy of this report"> Email this Report</a>
-
-<?
-      }
-      if ($this->state == Report_profemail && $this->profemail_action->action)
-      {
-        $this->profemail_action->display(false,"","");
-        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->profemail_action->gethref(0,0)?>"><img src="<?=$wces_path?>media/report/back.gif" border=0 width=20 height=20 alt="Back">Back to Professor Email</span> <?
-      }
-      if ($this->state == Report_email)
-      {
-        $this->email_action->display(false,"","");
-        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->email_action->gethref(Report_email_topcancel,0)?>"><img src="<?=$wces_path?>media/report/back.gif" border=0 width=20 height=20 alt="Back">Back to Results</span> <?
-      }
-      print("</td></tr></table>\n");
-    }
-
-    switch($this->state)
+    $this->event->displayField();
+    print($this->navigationButton("Back to the Reporting Wizard",
+      $this->event->gethref(Report_wizard,0),  
+      "{$wces_path}media/report/wizard.gif", 24, 22));
+    
+    if (isset($this->modalChild))
+      $this->modalChild->displayNavigation($this);
+    else
     {
-      case Report_results:
-        $html = $text = false;
-        makereport($this->wizard,true,$html,$text,array('taresponses' => 1));
-        break;
-      case Report_email:
-        $this->emailreport();
-      break;
-      case Report_profemail:
-         $this->profemail();
-      break;
+      if ($this->wizard->output->printable->checked)
+      {
+        $str = addslashes($this->navigationButton("Print this report",
+          "javascript:void(window.print())",
+          "{$wces_path}media/report/print.gif", 20, 20));
+  
+        print("<script>\n<!--\nif (window.print) document.write('$str');\n"
+          . "// -->\n</script>");
+      }
+      else
+        print($this->navigationButton("Printable version of this Report",
+          $this->event->gethref(Report_print,0), 
+          "{$wces_path}media/report/print.gif", 20, 20));
     }
+
+    print($this->navigationButton("Email this Report",
+      $this->event->gethref(Report_email,0),  
+      "{$wces_path}media/report/email.gif", 20, 20)); 
+    
+    print("<br>\n");   
   }
 
-  function emailreport()
+  function printVisible()
+  {
+    global $wces_path, $db;
+    TabbedWidget::printVisible();
+    $html = $text = false;
+    makereport($this->wizard,true,$html,$text,array('taresponses' => 1));
+  }
+};
+
+class ProfessorEmail extends ParentWidget
+{
+  var $profemail_subject;
+  var $profemail_message;
+  var $profemail_debug;
+  var $profemail_event;
+  var $done = false;
+  var $wizard;
+  
+  function ProfessorEmail(&$wizard, $name, &$parent)
+  {
+    $this->ParentWidget($name, $parent);
+    $this->wizard =& $wizard;
+    $this->profemail_form = new Form($this->prefix . "_profemail_form", $this->form, $this->formmethod);
+    $this->profemail_subject = new TextBox(1,76,"",$this->prefix . "_profemail_subject", $this->form, $this->formmethod);
+    $this->profemail_message = new TextBox(8,76,"",$this->prefix . "_profemail_message", $this->form, $this->formmethod);
+    $this->profemail_debug = new CheckBox($this->prefix . "_profemail_debug", $this->form, $this->formmethod);
+    $this->profemail_event = new EventButton($this->prefix . "_profemail_event", $this->form, $this->formmethod);
+  }
+  
+  function loadInitialState()
+  {
+    $this->profemail_subject->text = "WCES Evaluation Results";
+    $this->profemail_message->text = "Dear %profname%,\n\nThis automated email contains the results of the WCES evaluations for your classes. Send questions or comments to wces@columbia.edu";
+    $this->profemail_debug->checked = false;
+  }
+  
+  function displayNavigation(&$widget)
+  {
+    if ($this->profemail_event->event)
+    {
+      $this->profemail_event->displayField();
+      print($widget->navigationButton("Back to Professor Email", 
+        $this->profemail_event->gethref(0,0),
+        "{$wces_path}media/report/back.gif",20, 20));
+    }
+    print("</td></tr></table>\n");        
+  }
+  
+  function printVisible()
+  {
+    global $wces_path, $db;
+    if (!$db) $db = wces_connect();
+
+    $this->profemail_form->display();
+
+    if ($this->profemail_event->event)
+    {
+      $this->profemail_subject->displayHidden();
+      $this->profemail_message->displayHidden();
+      $this->profemail_debug->displayHidden();
+      report_profemail($db, $this->wizard, $this->profemail_subject->text, $this->profemail_message->text, $this->profemail_debug->checked);
+      return;
+    }
+
+    print("<h3>Email Report</h3>\n");
+    print("<h4>Professors Included</h4>\n");
+    $q = $this->wizard->query;
+    $q->addcolumn("p.professorid, p.name AS pname, IFNULL(p.email,u.email) AS email, COUNT(DISTINCT cl.classid, qp.questionperiodid) AS pages");
+    $q->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
+    $q->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
+    $q->addjoin("users AS u",db_SelectMonster_left,"u.userid","p.userid");
+    $q->addgroup("p.professorid");
+    $q->execute($db);
+    print("<ul>\n");
+    while($q->advance())
+    {
+      $email = "Unknown"; $name="Unknown";
+      extract($q->row);
+      if (!$email) $email = "Unknown";
+      print("Professor <a href=\"{$wces_path}administrators/info.php?professorid=$professorid\">$pname</a> - email <a href=\"mailto:$email\">$email</a> - $pages classes<br>");
+    };
+    print("</ul>\n");
+?>
+<h4>Message</h4>
+<table>
+<tr>
+  <td valign=top align=right><strong>Subject:</strong></td><td valign=top><? $this->profemail_subject->display(); ?></td>
+</tr>
+<tr>
+  <td valign=top align=right><STRONG>Custom Message:</STRONG></td><td valign=top><? $this->profemail_message->display(); ?></td>
+</tr>
+<tr>
+  <td>&nbsp;</td><td><? $this->profemail_debug->display(); ?> <? $this->profemail_debug->displayLabel("Debug Mode (doesn't actually send emails)"); ?></td>
+</tr>
+<tr>
+  <td>&nbsp;</td><td><? $this->profemail_event->displayButton("Submit",1,0); ?></td>
+</tr>
+</table>
+<?
+  }
+};
+
+class ReportEmail extends ParentWidget
+{
+  var $email_to;
+  var $email_from;
+  var $email_subject;
+  var $email_text;
+  var $email_event;
+  var $generate = true;
+  var $done = false;
+
+  function ReportEmail(&$wizard, $name, &$parent)
+  {
+    $this->wizard =& $wizard;
+    $this->ParentWidget($name, $parent);
+    $this->email_form    =& new Form("email_form", $this);
+    $this->email_to      =& new TextBox(1, 40, "","email_to", $this);
+    $this->email_from    =& new TextBox(1, 40, "","email_from", $this);
+    $this->email_subject =& new TextBox(1, 80,"","email_subject", $this);
+    $this->email_text    =& new TextBox(15, 80,"","email_text", $this);
+    $this->email_event   =& new EventWidget("email_event", $this);
+  }
+
+  function displayNavigation(&$widget)
+  {
+    global $wces_path;
+    $this->email_event->displayField();
+    print($widget->NavigationButton("Back to Results",
+      $this->email_event->gethref(Report_email_cancel, null),
+      "{$wces_path}media/report/back.gif", 20, 20));
+  }
+
+  function loadState()
+  {
+    ParentWidget::loadState();
+    $this->generate = (bool)$this->readValue('generate');
+    if ($this->email_event->event == Report_email_cancel)
+      $this->done = true;
+    if ($this->generate)      
+      $this->email_text->text = null;
+  }
+  
+  function printState()
+  {
+    if ($this->generate) $this->printValue('generate', 1);
+  }
+
+  function printVisible()
   {
     global $db;
-    if ($this->email_action->action == Report_email_send)
+    
+    if ($this->generate)
+    {
+      $html = false; $text = "";
+      makereport($this->wizard,false,$html,$text,array('taresponses' => 1));
+      $this->email_text->text = $text;
+      $this->generate = false;
+    }    
+    
+    if ($this->email_event->event == Report_email_send)
     {
        $from = $this->email_from->text;
        $address = $this->email_to->text;
@@ -186,12 +293,6 @@ class Report extends FormWidget
     }
     else
     {
-       if (!$this->email_form->isstale)
-       {
-         $html = false; $text = "";
-         makereport($this->wizard,false,$html,$text);
-         $this->email_text->text = $text;
-       }
 ?>
 <table>
   <tr>
@@ -212,65 +313,12 @@ class Report extends FormWidget
   </tr>
   <tr>
     <td>&nbsp;</td>
-    <td><? $this->email_action->display("Send",Report_email_send,0); ?> <? $this->email_action->display("Cancel",Report_email_cancel,0); ?></td>
+    <td><? $this->email_event->displayButton("Send",Report_email_send,0); ?> <? $this->email_event->displayButton("Cancel",Report_email_cancel,0); ?></td>
   </tr>
 </table>
 <?
     }
   }
-
-  function profemail()
-  {
-    global $wces_path,$db;
-    if (!$db) $db = wces_connect();
-
-    $this->profemail_form->display();
-
-    if ($this->profemail_action->action)
-    {
-      $this->profemail_subject->display(true); // true means hidden
-      $this->profemail_message->display(true);
-      $this->profemail_debug->display(true);
-      report_profemail($db,$this->wizard, $this->profemail_subject->text, $this->profemail_message->text, $this->profemail_debug->checked);
-    }
-    else
-    {
-      print("<h3>Email Report</h3>\n");
-      print("<h4>Professors Included</h4>\n");
-      $q = $this->wizard->query;
-      $q->addcolumn("p.professorid, p.name AS pname, IFNULL(p.email,u.email) AS email, COUNT(DISTINCT cl.classid, qp.questionperiodid) AS pages");
-      $q->addjoin("questionperiods AS qp",db_SelectMonster_inner,"qp.questionperiodid","a.questionperiodid");
-      $q->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
-      $q->addjoin("users AS u",db_SelectMonster_left,"u.userid","p.userid");
-      $q->addgroup("p.professorid");
-      $q->execute($db);
-      print("<ul>\n");
-      while($q->advance())
-      {
-        $email = "Unknown"; $name="Unknown";
-        extract($q->row);
-        if (!$email) $email = "Unknown";
-        print("Professor <a href=\"{$wces_path}administrators/info.php?professorid=$professorid\">$pname</a> - email <a href=\"mailto:$email\">$email</a> - $pages classes<br>");
-      };
-      print("</ul>\n");
-?>
-<h4>Message</h4>
-<table>
-<tr>
-  <td valign=top align=right><strong>Subject:</strong></td><td valign=top><? $this->profemail_subject->display(); ?></td>
-</tr>
-<tr>
-  <td valign=top align=right><STRONG>Custom Message:</STRONG></td><td valign=top><? $this->profemail_message->display(); ?></td>
-</tr>
-<tr>
-  <td>&nbsp;</td><td><? $this->profemail_debug->display(); ?> <? $this->profemail_debug->displaylabel("Debug Mode (doesn't actually send emails)"); ?></td>
-</tr>
-<tr>
-  <td>&nbsp;</td><td><? $this->profemail_action->display("Submit",1,0); ?></td>
-</tr>
-</table>
-<?
-    };
-  }
 };
+
 ?>

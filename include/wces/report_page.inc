@@ -348,7 +348,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       extract($classes->row);
       $pname = $firstname || $lastname ? " - Professor $firstname $lastname" : "";
       if ($outhtml) $pagehtml .= "<tr><td>Class:</td><td><b>$scode $ccode $name Section $section$pname</b></td></tr>\n";
-      if ($outtext) $pagetext .= " - Class: $scode $ccode $cname Section $section$pname\n";
+      if ($outtext) $pagetext .= " - Class: $scode $ccode $name Section $section$pname\n";
       $classes->advance();
     }
   }
@@ -500,31 +500,36 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
         }
         $key = "";
 
-        $textformat = array(25);
+        $columnWidths = array(null);
         $textrows = array();
+        $columnFormats = array(0);
 
         $header = array("Question Text");
 
-        foreach ($cchoices as $ci => $ct)
+        foreach ($headings as $ci => $ct)
         {
           $textformat[] = "center";
           if ($showstats)
           {
             if ($values[$ci] === false)
-              $header[] = $ct;
+              $label = $ct;
             else
-              $header[] = sprintf("%.1f", $values[$ci]);
+              $label = sprintf("%.1f", $values[$ci]);
           }
           else
-            $header[] = $ci;
+            $label = $ci;
+          $header[] = $label;
+          $columnWidths[] = 4;
+          $columnFormats[] = ALIGN_CENTER;
         }
 
         if ($showstats)
         {
-          array_push($textformat, "center", "center", "center");
+          array_push($columnFormats, ALIGN_CENTER, ALIGN_CENTER, ALIGN_CENTER);
+          array_push($columnWidths, 4, 4, 4);
           array_push($header, "Avg", "Mode", "SD");
-          $textrows[] = $header;
         }
+        $textrows[] = $header;
       }
     } // if ($choices->split[1])
 
@@ -599,7 +604,7 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       if ($outhtml && !$is_single_question) $sectionhtml .= "</table>\n";
       if ($outtext)
       {
-        $sectiontext .= texttable($textrows,$textformat);
+        $sectiontext .= TextTable($textrows, $columnFormats, 76, $columnWidths);
         $sectiontext .= "\n\n";
       }
       $sections->addSection($branch_id, $sectiontext, $sectionhtml);
@@ -657,7 +662,7 @@ $TAVALUES = array
   "0" => "n/a"
 );
 
-  while(isset($taresponses->row) && $taresponses->row['ordinal'] == $ordinal)
+  while (isset($taresponses->row) && $taresponses->row['ordinal'] == $ordinal)
   {
     extract($taresponses->row);
 
@@ -682,7 +687,8 @@ $TAVALUES = array
         $avg = array();
         $num = array();
       }
-      if ($outtext) $pagetext .= "TA Ratings\n\n";
+      if ($outtext)
+        $pagetext .= "TA Ratings\n\n";
     }
 
     if ($outhtml)

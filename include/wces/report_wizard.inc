@@ -21,155 +21,87 @@ define("ReportWizard_output_www",0);
 define("ReportWizard_output_email",1);
 define("ReportWizard_output_pemail",1);
 
+class ReportOutput extends ParentWidget
+{
+  function ReportOutput($name, &$parent)
+  {
+    $this->ParentWidget($name, $parent);
+    $this->output          =& new RadioButton(true, "output", $this);
+    $this->includeText     =& new CheckBox("includeText", $this);
+    $this->includeTa       =& new CheckBox("includeTa", $this);
+    // for html output only
+    $this->printable       =& new CheckBox("printable", $this);
+    $this->includePies     =& new CheckBox("includePies", $this);
+    $this->bigHead         =& new CheckBox("bigHead", $this);    
+  }
+  
+  function loadInitialState()
+  {
+    $this->output->checked = ReportWizard_output_www;
+    $this->includeText->checked = true;
+    $this->includeTa->checked = true;
+
+    $this->printable->checked = true;
+    $this->includePies->checked = false;
+    $this->bigHead->checked = true;        
+  }
+  
+  function printVisible()
+  {
+    $wwwo = $this->fullName('wwwoptions');
+?>
+<p><b>Choose a report format:</b><br>
+<? $this->output->display(ReportWizard_output_www, "onclick=\"show('$wwwo')\""); ?> <? $this->output->displayLabel(ReportWizard_output_www, "Display Report on Web Page"); ?><br>
+<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('$wwwo')\""); ?> <? $this->output->displayLabel(ReportWizard_output_email, "Email Report to one or people"); ?><br>
+<? $this->output->display(ReportWizard_output_pemail, "onclick=\"hide('$wwwo')\""); ?> <? $this->output->displayLabel(ReportWizard_output_pemail, "Email professor reports"); ?>
+</p>
+
+<p><b>Include these sections:</b><br>
+<? $this->includeText->display(); ?> <? $this->includeText->displayLabel("Comments"); ?><br>
+<? $this->includeTa->display(); ?> <? $this->includeTa->displayLabel("TA Ratings"); ?><br>
+</p>
+
+<div id="<?=$wwwo?>"<?=$this->output->checked == ReportWizard_output_email ? ' style="display:none"': ''?>>
+<p><b>Options for web reports only:</b><br>
+<? $this->printable->display(); ?> <? $this->printable->displayLabel("Produce a printable report"); ?><br>
+<? $this->includePies->display(); ?> <? $this->includePies->displayLabel("Show Pie Graphs in Usage Statistics"); ?><br>
+<? $this->bigHead->display(); ?> <? $this->bigHead->displayLabel("Exhaustive Class and Professor listings"); ?><br>
+</p>
+</div>
+<?
+  }
+};
+
 class ReportWizard extends Wizard
 {
-  var $output;
-
-  var $includestandard;
-  var $includecustom;
-  var $includeabet;
-  var $includetext;
-  var $includeta;
-  var $includepies;
-  var $printable;
-  var $bighead;
-
-  var $groupclasses;
-  var $groupcourses;
-  var $groupprofessors;
-  var $groupdepartments;
-  var $groupquestionperiods;
+  var $groupClasses;
+  var $groupCourses;
+  var $groupProfessors;
+  var $groupDepartments;
+  var $groupQuestionPeriods;
 
   var $depts = NULL;
 
-  function ReportWizard($prefix,$form,$formmethod)
+  function ReportWizard($name, &$parent)
   {
     global $wces_path;
-
-    $this->Wizard
-    (
-      array("Start","Output","Question Periods","Departments","Professors","Courses","Aggregation","Order","Finish"),
-      $wces_path,
-      $prefix,$form,$formmethod
-    );
+    $steps = array("Start","Output","Question Periods","Departments","Professors","Courses","Aggregation","Order","Finish"); 
+    $this->Wizard($steps, $wces_path, $name, $parent);
 
     if (!(login_getstatus() & login_administrator))
       $this->depts = login_getdepts();
 
-    $this->output = new RadioButton(true, $this->prefix . "_output",$this->form,$this->formmethod);
-    $this->includestandard = new CheckBox("{$prefix}_includestandard", $this->form, $this->formmethod);
-    $this->includecustom = new CheckBox("{$prefix}_includecustom", $this->form, $this->formmethod);
-    $this->includeabet = new CheckBox("{$prefix}_includeabet", $this->form, $this->formmethod);
-    $this->includetext = new CheckBox("{$prefix}_includetext", $this->form, $this->formmethod);
-    $this->includeta = new CheckBox("{$prefix}_includeta", $this->form, $this->formmethod);
-    $this->printable = new CheckBox("{$prefix}_printable",$this->form,$this->formmethod);
-    $this->includepies = new CheckBox("{$prefix}_includepies", $this->form, $this->formmethod);
-    $this->bighead = new CheckBox("{$prefix}_bighead",$this->form,$this->formmethod);
-
-    $this->groupclasses = new CheckBox("{$prefix}_groupclasses", $this->form, $this->formmethod);
-    $this->groupcourses = new CheckBox("{$prefix}_groupcourses", $this->form, $this->formmethod);
-    $this->groupprofessors = new CheckBox("{$prefix}_groupprofessors", $this->form, $this->formmethod);
-    $this->groupdepartments = new CheckBox("{$prefix}_groupdepartments", $this->form, $this->formmethod);
-    $this->groupquestionperiods = new CheckBox("{$prefix}_groupquestionperiods", $this->form, $this->formmethod);
-  }
-
-  function loadvalues()
-  {
-    global $wces;
-    Wizard::loadvalues(false);
-
-    //////////////////////////////// WIDGET SETUP ////////////////////////////////////////
-
-    if ($this->visited[ReportWizard_output])
-    {
-      $this->output->loadvalues();
-      $this->includestandard->loadvalues();
-      $this->includecustom->loadvalues();
-      $this->includeabet->loadvalues();
-      $this->includetext->loadvalues();
-      $this->includeta->loadvalues();
-      $this->printable->loadvalues();
-      $this->includepies->loadvalues();
-      $this->bighead->loadvalues();
-    }
-    else
-    {
-      $this->output->checked = ReportWizard_output_www;
-      $this->includestandard->checked = true;
-      $this->includecustom->checked = true;
-      $this->includeabet->checked = true;
-      $this->includetext->checked = true;
-      $this->includeta->checked = true;
-      $this->printable->checked = true;
-      $this->includepies->checked = false;
-      $this->bighead->checked = true;
-    }
-
-    if ($this->visited[ReportWizard_aggreg])
-    {
-      $this->groupclasses->loadvalues();
-      $this->groupcourses->loadvalues();
-      $this->groupprofessors->loadvalues();
-      $this->groupdepartments->loadvalues();
-      $this->groupquestionperiods->loadvalues();
-    }
-    else
-    {
-      $this->groupclasses->checked = true;
-      $this->groupquestionperiods->checked = true;
-      $this->groupdepartments->checked = true;
-    }
-
-    //////////////////////////////// WIZARD SETUP ////////////////////////////////////////
-
-    $this->crawl
-    (
-      array
-      (
-        ReportWizard_aggreg => $this->output->checked == ReportWizard_output_email,
-        ReportWizard_order =>  $this->output->checked == ReportWizard_output_email,
-        ReportWizard_output =>  true
-      )
-    );
-
-    //////////////////////////////// CRITERIA SETUP //////////////////////////////////////
-
-    $t = $this->loadattribute("categories");
-    $q = $this->loadattribute("questionperiods");
-    $d = $this->depts ? $this->depts : $this->loadattribute("departments");
-    $p = $this->loadattribute("professors");
-    $c = $this->loadattribute("courses");
-
-    if (!is_array($t) || !(count($t) > 0))
-    {
-      wces_connect();
-      if ($this->depts)
-        $t = false;
-      else
-        $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
-    }
-    else if (in_array("all",$t)) $t = false;
-
-    if (!is_array($q) || !(count($q) > 0))
-    {
-      wces_connect();
-      //todo: restore this default $q = array((int)pg_result(pg_query("SELECT MAX(question_period_id) FROM question_periods", $wces, __FILE__, __LINE__),0,0));
-      $q = false;
-    }
-    else if (in_array("all",$q)) $q = false;
-
-    if (!is_array($p) || !(count($p) > 0) || in_array("all",$p)) $p = false;
-    if (!is_array($d) || !(count($d) > 0) || in_array("all",$d)) $d = false;
-    if (!is_array($c) || !(count($c) > 0) || in_array("all",$c)) $c = false;
-
-    $this->criteria = array(QUESTION_PERIODS => $q, DEPARTMENTS => $d, PROFESSORS => $p, COURSES => $c, CATEGORIES => $t, CLASSES => false);
-    unset($q,$d,$p,$c,$t);
+    $this->output               =& new ReportOutput("output", $this);
+    $this->groupClasses         =& new CheckBox("groupClasses", $this);
+    $this->groupCourses         =& new CheckBox("groupCourses", $this);
+    $this->groupProfessors      =& new CheckBox("groupProfessors", $this);
+    $this->groupDepartments     =& new CheckBox("groupDepartments", $this);
+    $this->groupQuestionPeriods =& new CheckBox("groupQuestionPeriods", $this);
+    
+    $labels = array(QUESTION_PERIODS => "Question Period", DEPARTMENTS => "Department", PROFESSORS => "Professor", COURSES => "Course");
+    $this->order =& new DynamicList(25, 4, $labels, "order", $this);    
 
     /////////////////////////////// ORDERING SETUP ///////////////////////////////////////
-
-    $labels = array(QUESTION_PERIODS => "Question Period", DEPARTMENTS => "Department", PROFESSORS => "Professor", COURSES => "Course");
-    $this->order = new DynamicList(25,4,$labels, $this->prefix . "_order", $this->form, $this->formmethod);
-    $this->order->loadvalues();
 
     if ($this->depts)
       $dwhere = "\nWHERE department_id in (" . implode($this->depts, ",") . ")";
@@ -202,7 +134,69 @@ class ReportWizard extends Wizard
     );
   }
 
-  function selectquery($which, $sql, $needstemp = false, $block = true, $needprof = false)
+  function loadInitialState()
+  {
+    Wizard::loadInitialState();
+    $this->groupClasses->checked = true;
+    $this->groupQuestionPeriods->checked = true;
+    $this->groupDepartments->checked = true;
+    $this->makeCriteria(false, false, $this->depts, false, false);
+  }
+  
+  function loadState()
+  {
+    Wizard::loadState(false);
+
+    //////////////////////////////// WIZARD SETUP ////////////////////////////////////////
+
+    $this->crawl
+    ( array
+      ( ReportWizard_aggreg => $this->output->output->checked == ReportWizard_output_email,
+        ReportWizard_order =>  $this->output->output->checked == ReportWizard_output_email,
+        ReportWizard_output => true
+      )
+    );
+
+    //////////////////////////////// CRITERIA SETUP //////////////////////////////////////
+
+    $t = $this->readValue("categories");
+    $q = $this->readValue("questionperiods");
+    $d = $this->depts ? $this->depts : $this->readValue("departments");
+    $p = $this->readValue("professors");
+    $c = $this->readValue("courses");
+    $this->makeCriteria($t, $q, $d, $p, $c);
+  }
+  
+  function makeCriteria($t, $q, $d, $p, $c)
+  {
+    global $wces;
+
+    if (!is_array($t) || !(count($t) > 0))
+    {
+      wces_connect();
+      if ($this->depts)
+        $t = false;
+      else
+        $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
+    }
+    else if (in_array("all",$t)) $t = false;
+
+    if (!is_array($q) || !(count($q) > 0))
+    {
+      wces_connect();
+      //todo: restore this default $q = array((int)pg_result(pg_query("SELECT MAX(question_period_id) FROM question_periods", $wces, __FILE__, __LINE__),0,0));
+      $q = false;
+    }
+    else if (in_array("all",$q)) $q = false;
+
+    if (!is_array($p) || !(count($p) > 0) || in_array("all",$p)) $p = false;
+    if (!is_array($d) || !(count($d) > 0) || in_array("all",$d)) $d = false;
+    if (!is_array($c) || !(count($c) > 0) || in_array("all",$c)) $c = false;
+
+    $this->criteria = array(QUESTION_PERIODS => $q, DEPARTMENTS => $d, PROFESSORS => $p, COURSES => $c, CATEGORIES => $t, CLASSES => false);
+  }
+
+  function selectQuery($which, $sql, $needstemp = false, $block = true, $needprof = false)
   {
     global $wces;
     wces_connect();
@@ -217,13 +211,15 @@ class ReportWizard extends Wizard
     return pg_query($sql, $wces, __FILE__, __LINE__);
   }
 
-  function selectshow($which, $result, $name, $all)
+  function printSelect($which, $result, $name, $all)
   {
     $criteria = $this->criteria[$which];
     if (!$criteria) $criteria = array("all");
     $hash = array_bflip($criteria);
 
-    print("<select name=\"{$this->prefix}_{$name}[]\" size=5 multiple>\n");
+    $full = $this->fullName($name) . '[]';
+
+    print("<select name=\"$full\" size=5 multiple>\n");
     print("<option value=all" . (isset($hash["all"]) ? " selected" : "") . ">$all</option>\n");
 
     $n = pg_numrows($result);
@@ -236,7 +232,7 @@ class ReportWizard extends Wizard
     print("</select>\n");
   }
 
-  function critshow($sql, &$report, $name)
+  function printCriteria($sql, &$report, $name)
   {
     global $wces;
 
@@ -249,132 +245,97 @@ class ReportWizard extends Wizard
     }
   }
 
-  function drawstep($stepno,$hidden)
+  function printStep($stepno, $hidden, $hiddenChildren)
   {
     switch($stepno)
     {
       case ReportWizard_start:
         if ($hidden)
-          $this->preservearrayattribute("categories");
+          $this->printArrayValue('categories', $this->criteria[CATEGORIES]);
         else
         {
-          $result = $this->selectquery(CATEGORIES, $this->queries[CATEGORIES]);
+          $result = $this->selectQuery(CATEGORIES, $this->queries[CATEGORIES]);
           print("<p>Welcome to the reporting wizard. This wizard will allow you to display results or send out professor emails for one or more of the survey groups listed below.</p>\n");
-          $this->selectshow(CATEGORIES, $result, "categories", "--- All Survey Categories ---");
+          $this->printSelect(CATEGORIES, $result, 'categories', '--- All Survey Categories ---');
         };
       break;
       case ReportWizard_output:
-        if ($hidden)
-        {
-          $this->output->display(true);
-          $this->includestandard->display(true);
-          $this->includecustom->display(true);
-          $this->includeabet->display(true);
-          $this->includetext->display(true);
-          $this->includeta->display(true);
-          $this->includepies->display(true);
-          $this->printable->display(true);
-          $this->bighead->display(true);
-        }
-        else
-        {
-?>
-<p><font color=red>These options aren't working right now.</font></p>
-<p><b>Choose a report format:</b><br>
-<? $this->output->display(ReportWizard_output_www,   "onclick=\"show('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_www, "Display Report on Web Page"); ?><br>
-<? $this->output->display(ReportWizard_output_email, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_email, "Email Report to one or people"); ?><br>
-<? $this->output->display(ReportWizard_output_pemail, "onclick=\"hide('{$this->prefix}_wwwoptions')\""); ?> <? $this->output->displaylabel(ReportWizard_output_pemail, "Email professor reports"); ?>
-</p>
-
-<p><b>Include these sections:</b><br>
-<? $this->includestandard->display(); ?> <? $this->includestandard->displaylabel("Standard Questions"); ?><br>
-<? $this->includecustom->display(); ?> <? $this->includecustom->displaylabel("Custom Questions"); ?><br>
-<? $this->includeabet->display(); ?> <? $this->includeabet->displaylabel("ABET Questions"); ?><br>
-<? $this->includetext->display(); ?> <? $this->includetext->displaylabel("Comments"); ?><br>
-<? $this->includeta->display(); ?> <? $this->includeta->displaylabel("TA Ratings"); ?><br>
-</p>
-
-<div id="<?=$this->prefix?>_wwwoptions"<?=$this->output->checked == ReportWizard_output_email ? ' style="display:none"': ''?>>
-<p><b>Options for web reports only:</b><br>
-<? $this->printable->display(); ?> <? $this->printable->displaylabel("Produce a printable report"); ?><br>
-<? $this->includepies->display(); ?> <? $this->includepies->displaylabel("Show Pie Graphs in Usage Statistics"); ?><br>
-<? $this->bighead->display(); ?> <? $this->bighead->displaylabel("Exhaustive Class and Professor listings"); ?><br>
-</p>
-</div>
-<?
-        };
+        if (!$hidden)
+          $this->output->display();
+        else if ($hiddenChildren)
+          $this->output->displayHidden();
       break;
-     case ReportWizard_qperiods:
+      case ReportWizard_qperiods:
         if ($hidden)
-          $this->preservearrayattribute("questionperiods");
+          $this->printArrayValue('questionperiods', $this->criteria[QUESTION_PERIODS]);
         else
         {
-          $result = $this->selectquery(QUESTION_PERIODS, $this->queries[QUESTION_PERIODS]);
+          $result = $this->selectQuery(QUESTION_PERIODS, $this->queries[QUESTION_PERIODS]);
           print("<p>Surveys included in the report must come from the following question period(s):</p>\n");
-          $this->selectshow(QUESTION_PERIODS, $result, "questionperiods", "--- Any Question Period ---");
+          $this->printSelect(QUESTION_PERIODS, $result, 'questionperiods', '--- Any Question Period ---');
         };
       break;
       case ReportWizard_depts:
         if ($hidden)
-          $this->preservearrayattribute("departments");
+          $this->printArrayValue('departments', $this->criteria[DEPARTMENTS]);
         else
         {
-          $result = $this->selectquery(DEPARTMENTS, $this->queries[DEPARTMENTS], true);
+          $result = $this->selectQuery(DEPARTMENTS, $this->queries[DEPARTMENTS], true);
           print("<p>Surveys included in the report must come from classes in these departments:</p>\n");
-          $this->selectshow(DEPARTMENTS, $result, "departments", "--- Any Department ---");
+          $this->printSelect(DEPARTMENTS, $result, 'departments', '--- Any Department ---');
         }
       break;
       case ReportWizard_courses:
         if ($hidden)
-          $this->preservearrayattribute("courses");
+          $this->printArrayValue('courses', $this->criteria[COURSES]);
         else
         {
-          $result = $this->selectquery(COURSES, $this->queries[COURSES], true);
+          $result = $this->selectQuery(COURSES, $this->queries[COURSES], true);
           print("<p>Surveys included in the report must come from these courses:</p>\n");
-          $this->selectshow(COURSES, $result, "courses", "--- Any Course ---");
+          $this->printSelect(COURSES, $result, 'courses', '--- Any Course ---');
         }
       break;
       case ReportWizard_profs:
         if ($hidden)
-          $this->preservearrayattribute("professors");
+          $this->printArrayValue('professors', $this->criteria[PROFESSORS]);
         else
         {
-          $result = $this->selectquery(PROFESSORS, $this->queries[PROFESSORS], true, true, true);
+          $result = $this->selectQuery(PROFESSORS, $this->queries[PROFESSORS], true, true, true);
           print("<p>Surveys included in the report must come from classes with these professors:</p>\n");
-          $this->selectshow(PROFESSORS, $result, "professors", "--- Any Professor ---");
+          $this->printSelect(PROFESSORS, $result, 'professors', '--- Any Professor ---');
         }
       break;
       case ReportWizard_aggreg:
-        if ($hidden || $this->output->checked == ReportWizard_output_email)
+        if ($hidden) break;
+        
+        if ($this->output->checked == ReportWizard_output_email)
         {
-          $this->groupclasses->display(true);
-          $this->groupcourses->display(true);
-          $this->groupprofessors->display(true);
-          $this->groupdepartments->display(true);
-          $this->groupquestionperiods->display(true);
+          $this->groupClasses->displayHidden();
+          $this->groupCourses->displayHidden();
+          $this->groupProfessors->displayHidden();
+          $this->groupDepartments->displayHidden();
+          $this->groupQuestionPeriods->displayHidden();
         }
-        if (!$hidden)
+        
+        if ($this->output->checked == ReportWizard_output_email)
+          print("<p>Aggregation is not available in email reports. Choose a web based report to use this feature.</p>");
+        else
         {
-          if ($this->output->checked == ReportWizard_output_email)
-            print("<p>Aggregation is not available in email reports. Choose a web based report to use this feature.</p>");
-          else
-          {
 ?>
 <p><font size="-1">Check the survey properties below to determine how results are to be aggregated. Surveys that have the checked properties in common will have their scores added up and averaged together. For example, checking 'Departments' and 'Question Periods' will aggregate all surveys the come from the same department AND question period. To prevent any aggregation, select 'Classes' and 'Question Periods.' To aggregate all surveys together, leave all properties unchecked.</font></p>
 <p>
-<? $this->groupclasses->display(); ?> <? $this->groupclasses->displaylabel("Classes"); ?><br>
-<? $this->groupcourses->display(); ?> <? $this->groupcourses->displaylabel("Courses"); ?><br>
-<? $this->groupprofessors->display(); ?> <? $this->groupprofessors->displaylabel("Professors"); ?><br>
-<? $this->groupdepartments->display(); ?> <? $this->groupdepartments->displaylabel("Departments"); ?><br>
-<? $this->groupquestionperiods->display(); ?> <? $this->groupquestionperiods->displaylabel("Question Periods"); ?><br>
+<? $this->groupClasses->display(); ?> <? $this->groupClasses->displayLabel("Classes"); ?><br>
+<? $this->groupCourses->display(); ?> <? $this->groupCourses->displayLabel("Courses"); ?><br>
+<? $this->groupProfessors->display(); ?> <? $this->groupProfessors->displayLabel("Professors"); ?><br>
+<? $this->groupDepartments->display(); ?> <? $this->groupDepartments->displayLabel("Departments"); ?><br>
+<? $this->groupQuestionPeriods->display(); ?> <? $this->groupQuestionPeriods->displayLabel("Question Periods"); ?><br>
 </p>
 <?
-          };
         };
       break;
       case ReportWizard_order:
         if ($hidden || $this->output->checked == ReportWizard_output_email)
-          $this->order->display(true);
+          $this->order->displayHidden();
 
         if (!$hidden)
         {
@@ -408,26 +369,23 @@ class ReportWizard extends Wizard
 
     $report = "------------------------\nREPORT OPTIONS\n\n";
 
-    $report .= "Output: " . ($this->output->checked == ReportWizard_output_email ? "Professor Email" : "Web Report") . "\n";
-    $report .= "Standard Questions: " . ($this->includestandard->checked ? "Yes" : "No") . "\n";
-    $report .= "Custom Questions: " . ($this->includecustom->checked ? "Yes" : "No") . "\n";
-    $report .= "ABET Questions: " . ($this->includeabet->checked ? "Yes" : "No") . "\n";
-    $report .= "Comments: " . ($this->includetext->checked ? "Yes" : "No") . "\n";
-    $report .= "TA Ratings: " . ($this->includeta->checked ? "Yes" : "No") . "\n";
+    $report .= "Output: " . ($this->output->output->checked == ReportWizard_output_email ? "Professor Email" : "Web Report") . "\n";
+    $report .= "Comments: " . ($this->output->includeText->checked ? "Yes" : "No") . "\n";
+    $report .= "TA Ratings: " . ($this->output->includeTa->checked ? "Yes" : "No") . "\n";
 
-    if ($this->output->checked == ReportWizard_output_www)
+    if ($this->output->output->checked == ReportWizard_output_www)
     {
-      $report .= "Pie Graphs: " . ($this->includepies->checked ? "Yes" : "No") . "\n";
-      $report .= "Printable: " . ($this->printable->checked ? "Yes" : "No") . "\n";
-      $report .= "Exhaustive Listings: " . ($this->bighead->checked ? "Yes" : "No") . "\n";
+      $report .= "Pie Graphs: " . ($this->output->includePies->checked ? "Yes" : "No") . "\n";
+      $report .= "Printable: " . ($this->output->printable->checked ? "Yes" : "No") . "\n";
+      $report .= "Exhaustive Listings: " . ($this->output->bigHead->checked ? "Yes" : "No") . "\n";
 
       $first = true;
       $report .= "Group by: ";
-      if ($this->groupclasses->checked) { if ($first) $first = false; else $report.=", "; $report.="Classes"; }
-      if ($this->groupcourses->checked)  { if ($first) $first = false; else $report.=", "; $report.="Courses"; }
-      if ($this->groupprofessors->checked)  { if ($first) $first = false; else $report.=", "; $report.="Professors"; }
-      if ($this->groupdepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="Departments"; }
-      if ($this->groupquestionperiods->checked) { if ($first) $first = false; else $report.=", "; $report.="Question Periods"; }
+      if ($this->groupClasses->checked) { if ($first) $first = false; else $report.=", "; $report.="Classes"; }
+      if ($this->groupCourses->checked)  { if ($first) $first = false; else $report.=", "; $report.="Courses"; }
+      if ($this->groupProfessors->checked)  { if ($first) $first = false; else $report.=", "; $report.="Professors"; }
+      if ($this->groupDepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="Departments"; }
+      if ($this->groupQuestionPeriods->checked) { if ($first) $first = false; else $report.=", "; $report.="Question Periods"; }
       if ($first) $report .= "None";
       $report .= "\n";
 
@@ -447,7 +405,7 @@ class ReportWizard extends Wizard
     if ($list)
     {
       $group = db_set($list);
-      $this->critshow("SELECT survey_category_id AS id, name FROM survey_categories WHERE survey_category_id IN $group ORDER BY survey_category_id", $report, "Category");
+      $this->printCriteria("SELECT survey_category_id AS id, name FROM survey_categories WHERE survey_category_id IN $group ORDER BY survey_category_id", $report, "Category");
     }
     else
       $report .= "Category: ANY\n";
@@ -456,23 +414,23 @@ class ReportWizard extends Wizard
     if ($list)
     {
       $group = db_set($list);
-      $this->critshow("SELECT question_period_id AS id, displayname AS name FROM question_periods WHERE question_period_id IN $group ORDER BY question_period_id DESC", $report, "Question Period");
+      $this->printCriteria("SELECT question_period_id AS id, displayname AS name FROM question_periods WHERE question_period_id IN $group ORDER BY question_period_id DESC", $report, "Question Period");
     }
     else
       $report .= "Question Period: ANY\n";
 
     if ($this->criteria[DEPARTMENTS])
-      $this->critshow($this->queries[DEPARTMENTS], $report, "Department");
+      $this->printCriteria($this->queries[DEPARTMENTS], $report, "Department");
     else
       $report .= "Department: ANY\n";
 
     if ($this->criteria[PROFESSORS])
-      $this->critshow($this->queries[PROFESSORS], $report, "Professor");
+      $this->printCriteria($this->queries[PROFESSORS], $report, "Professor");
     else
       $report .= "Professor: ANY\n";
 
     if ($this->criteria[COURSES])
-      $this->critshow($this->queries[COURSES], $report, "Course");
+      $this->printCriteria($this->queries[COURSES], $report, "Course");
     else
       $report .= "Course: ANY\n";
 

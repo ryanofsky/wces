@@ -2,36 +2,32 @@
 
 require_once("wces/report_page.inc");
 
+$line = "---------------------------------------------------------------------------\n";
+
 function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 {
-  global $wces_path, $wces;
+  global $wces_path, $wces, $line;
 
   $outhtml = is_string($html);
   $outtext = is_string($text);
 
-  $sqloptions = array
-  (
-    "standard" => $wizard->includestandard->checked || ($wizard->includetext->checked && !$wizard->includecustom->checked),
-    "custom" => $wizard->includecustom->checked
-  );
-
   $groups = Array
   (
-    CLASSES => $wizard->groupclasses->checked,
-    COURSES => $wizard->groupcourses->checked,
-    PROFESSORS => $wizard->groupprofessors->checked,
-    DEPARTMENTS => $wizard->groupdepartments->checked,
-    QUESTION_PERIODS => $wizard->groupquestionperiods->checked
+    CLASSES => $wizard->groupClasses->checked,
+    COURSES => $wizard->groupCourses->checked,
+    PROFESSORS => $wizard->groupProfessors->checked,
+    DEPARTMENTS => $wizard->groupDepartments->checked,
+    QUESTION_PERIODS => $wizard->groupQuestionPeriods->checked
   );
 
   $header = true;
-  $ratings = ($wizard->includestandard->checked || $wizard->includecustom->checked) ? true : false;
-  $listclasses = ($wizard->groupclasses->checked || $wizard->bighead->checked) ? true : false;
-  $listprofessors = ($wizard->groupprofessors->checked || $wizard->bighead->checked) ? true : false;
+  $ratings = true;
+  $listclasses = ($wizard->groupClasses->checked || $wizard->output->bigHead->checked) ? true : false;
+  $listprofessors = ($wizard->groupProfessors->checked || $wizard->output->bigHead->checked) ? true : false;
 
-  $abet = $wizard->includeabet->checked ? true : false;
-  $responses = $wizard->includetext->checked ? true : false;
-  $tas = $wizard->includeta->checked ? true : false;
+  $abet = true;
+  $responses = $wizard->output->includeText->checked ? true : false;
+  $tas = $wizard->output->includeTa->checked ? true : false;
   $sort = $wizard->order->keys;
 
   report_findtopics("rwtopics", $wizard->criteria);
@@ -39,7 +35,7 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 
   $pages = pg_result(pg_query("SELECT COUNT(DISTINCT ordinal) FROM rwtopics", $wces, __FILE__,__LINE__),0,0);
 
-  $displayoptions = array("pies" => $wizard->includepies->checked);
+  $displayoptions = array("pies" => $wizard->output->includePies->checked);
 
   $page = 0;
   if ($stdout || $outhtml)
@@ -53,10 +49,9 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
     if ($stdout) print ($head);
   }
 
-  $line = "---------------------------------------------------------------------------\n";
   if ($outtext)
   {
-    $text = "${line}[ $page / $pages ]\n\n";
+    $text = "{$line}[ $page / $pages ]\n\n";
     $text .= "Report Information\n\n";
     $text .= " - Administrator ID: " . login_getuni() . "\n";
     $text .= " - Date: " . date("l, F j, Y") . "\n";
@@ -67,7 +62,7 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
-  global $wces_path, $wces;
+  global $wces_path, $wces, $line;
 
   $result = pg_query("
     SELECT s.ordinal, s.students, r.responses
@@ -228,7 +223,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
   for($page = 1; $page <= $pages; ++$page)
   {
-    if ($outtext) $text .= "\n${line}[ $page / $pages ]\n\n";
+    if ($outtext) $text .= "\n{$line}[ $page / $pages ]\n\n";
 
     if ($outhtml || $stdout)
     {
@@ -247,23 +242,19 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
 
 function report_profemail($db,&$wizard,$subject,$message,$debug)
 {
-  global $server_feedback;
-  $sqloptions = array
-  (
-    "standard" => $wizard->includestandard->checked || ($wizard->includetext->checked && !$wizard->includecustom->checked),
-    "custom" => $wizard->includecustom->checked
-  );
+  global $server_feedback, $line;
+  $sqloptions = array();
   $displayoptions = array("pies" => false);
   $groups = array("classes" => true, "courses" => false, "professors" => true, "departments" => true, "questionperiods" => true);
   $sort = array("professors","questionperiods","classes");
 
   $header = true;
-  $ratings = ($wizard->includestandard->checked || $wizard->includecustom->checked) ? true : false;
+  $ratings = ($wizard->includeStandard->checked || $wizard->includeCustom->checked) ? true : false;
   $listclasses = true;
   $listprofessors = true;
-  $abet = $wizard->includeabet->checked ? true : false;
-  $responses = $wizard->includetext->checked ? true : false;
-  $tas = $wizard->includeta->checked ? true : false;
+  $abet = $wizard->includeAbet->checked ? true : false;
+  $responses = $wizard->includeText->checked ? true : false;
+  $tas = $wizard->includeTa->checked ? true : false;
 
   report_makequeries($db, $sqloptions, $wizard->criteria, $groups,
     $sort, $header, $listclasses, $listprofessors, $ratings, $abet,
@@ -277,7 +268,6 @@ function report_profemail($db,&$wizard,$subject,$message,$debug)
     GROUP BY ml.professorid
     ORDER BY ml.masterid", $db, __FILE__, __LINE__);
 
-  $line = "---------------------------------------------------------------------------\n";
   $html = false;
   if (!$debug) print("<h3>Sending Email...</h3>");
   print("<p>");
