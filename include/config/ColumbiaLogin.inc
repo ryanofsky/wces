@@ -2,7 +2,7 @@
 
 class ColumbiaLogin extends WcesLogin
 {
-  function validate($uni, $password)
+  function validate($uni, $password, &$error)
   {
     global $wces;
    
@@ -14,13 +14,13 @@ class ColumbiaLogin extends WcesLogin
     if (!$dump)
     {
       sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
-      $this->error = "Error: Timeout occurred while trying to contact the AcIS authentication server. Please try again.";
+      $error = "Error: Timeout occurred while trying to contact the AcIS authentication server. Please try again.";
       return false;
     }
        
     if (strpos($dump,"no soup for you") !== false)
     {
-      $this->error = "Invalid username or password.";    
+      $error = "Invalid username or password.";    
       return false; // BAD PASSWORD
     }
     
@@ -75,14 +75,13 @@ class ColumbiaLogin extends WcesLogin
     wces_connect();
     
     $result = pg_go("
-      SELECT u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
+      SELECT u.uni, btrim(u.firstname || ' ' || u.lastname) AS name,
+        u.flags, COALESCE(u.department_id,0) AS dept, 
+        CASE WHEN EXISTS 
+          (SELECT * FROM enrollments_p AS e WHERE e.user_id = u.user_id)
+        THEN 1 ELSE 0 END AS known
       FROM users AS u
-      LEFT JOIN enrollments AS e ON 
-        u.user_id = e.user_id
-        AND
-        e.status = 3
       WHERE u.user_id = $user_id
-      GROUP BY u.user_id, u.flags, u.department_id, u.firstname, u.lastname, u.uni
     ", $wces, __FILE__, __LINE__);  
   
     if (pg_numrows($result) == 1)
@@ -92,24 +91,25 @@ class ColumbiaLogin extends WcesLogin
     
     $status = 0;
     if ($row['flags'] & 8)
-      $status |= login_student;
+      $status |= LOGIN_STUDENT;
   
     if ($row['flags'] & 4)
-      $status |= login_professor;
+      $status |= LOGIN_PROFESSOR;
   
     if ($row['flags'] & 2)
-      $status |= login_deptadmin;
+      $status |= LOGIN_DEPT_ADMIN;
     
     if ($row['known'])
-      $status |= login_knownprofessor;
+      $status |= LOGIN_KNOWN_PROFESSOR;
       
     if ($row['flags'] & 1)
-      $status |= login_administrator;
+      $status |= LOGIN_ADMIN;
       
     $p['user_id'] = $user_id;
     
     $this->setup($user_id, $row['uni'], $status, $row['name'],
       (int)$row['dept'], $fake_id, $fake_uni);
+      
   }
   
   function setup($user_id, $uni, $status, $name, $dept_id, $fake_id, $fake_uni)
@@ -130,32 +130,26 @@ function acisget($uni,$pw)
 {
   global $server_win32, $server_tempdir;
   
-  if ($server_win32)
-  {
-    $grabber = new COM("Oracle.AffilGrabber");
-    $grabber->Validate((string)$uni,(string)$pw,"https://www1.columbia.edu/~rey4/info.html");
-    return $grabber->rawoutput;
-  }
-  else
-  {
-    $fname = tempnam($server_tempdir, "booty");
+  $fname = tempnam($server_tempdir, "booty");
 
-    $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
-    $fp = fopen($fname, "w");
-    curl_setopt($ch, CURLOPT_FILE, $fp);
-    curl_setopt($ch, CURLOPT_USERPWD, "$uni:$pw");
-    curl_setopt($ch, CURLOPT_HEADER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    curl_exec($ch);
-    curl_close($ch);
-    fclose($fp);
+  $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
+  $fp = fopen($fname, "w");
+  curl_setopt($ch, CURLOPT_FILE, $fp);
+  curl_setopt($ch, CURLOPT_USERPWD, "$uni:$pw");
+  curl_setopt($ch, CURLOPT_HEADER, 1);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+  curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);  
+  $r = curl_exec($ch);
+  curl_close($ch);
+  fclose($fp);
 
-    $fp = fopen($fname,"r");
-    $result = fread($fp, filesize($fname));
-    fclose($fp);
-    unlink($fname);
-    return $result;
-  }
+  $fp = fopen($fname,"r");
+  $result = fread($fp, filesize($fname));
+  fclose($fp);
+  unlink($fname);
+  return $result;
 };
 
 ?>
