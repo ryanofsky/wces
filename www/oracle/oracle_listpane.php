@@ -12,15 +12,35 @@ param($searchfor);
 param($searchin);
 
 ?>
+<!--
+
+-->
+
 <head>
 <style>
 <!--
+
+body
+{
+  scrollbar-3dlight-color: #6699CC; 
+  scrollbar-darkshadow-color:black;
+  scrollbar-face-color: #6699CC;
+  scrollbar-arrow-color:black;
+  scrollbar-highlight-color:#AFD2F5;
+  scrollbar-shadow-color: #3D5C7A;
+  scrollbar-base-color:tomato;
+  scrollbar-track-color: #B5CFE8; 
+}
+
 a { text-decoration: none; }
 a:hover { text-decoration: underline; ) 
+
+
+
 -->
 </style>
 </head>
-<body bgcolor="#6699CC" link="#000000" vlink="#9C6531">
+<body bgcolor="#6699CC" link="#000000" alink="#444444" vlink="#444444"">
 <base target=info>
 <script language="JavaScript">
 <!--
@@ -224,7 +244,7 @@ else // $mode == "courses"
       $dept = $department_id ? "$name ($code)" : "<i>Unknown</i>"; 
       print("<h5>$dept</h5>\n<ul>\n");
     }
-    print("  <li><a href=\"oracle_infopane.php?course_id=$course_id\">" . format_course($course_info) . "</a></li>\n");
+    print("  <li><a href=\"oracle_infopane.php?course_id=$course_id\">" . format_ccourse($course_info, "<i>%c</i><br>%n") . "</a></li>\n");
     $classes->advance();
     if ($classes->split) print("</ul>\n");
   }
