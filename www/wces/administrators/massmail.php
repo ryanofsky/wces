@@ -71,8 +71,8 @@ class MassEmail extends ParentWidget
     global $wces;
     
     ParentWidget::loadState();
-    $this->to = $this->readValue("to");
-    $this->survey_category_id = $this->readValue("survey_category_id");
+    $this->to = (int)$this->readValue("to");
+    $this->survey_category_id = (int)$this->readValue("survey_category_id");
 
     if ($this->event->event == MassEmail_load && $this->event->param)
     {
@@ -116,7 +116,6 @@ class MassEmail extends ParentWidget
   function printVisible()
   {
     global $MassEmail_students, $wces;
-    $prefix = $this->name;
 
     $go = $this->event->event == MassEmail_preview || $this->event->event == MassEmail_send;
 
@@ -137,6 +136,13 @@ class MassEmail extends ParentWidget
     }
     else if ($this->event->event == MassEmail_choose)
     {
+      $this->from->displayHidden();
+      $this->replyto->displayHidden();
+      $this->subject->displayHidden();
+      $this->text->displayHidden();
+      $this->printValue("to", $this->to);
+      $this->printValue("survey_category_id", $this->survey_category_id);
+
       print('Open a previously sent message to edit and resend it, or choose '
         .  '"Cancel" to return to the mass mailing form.');
       print("<p>");
@@ -169,12 +175,13 @@ class MassEmail extends ParentWidget
       for($i = 0; $i < $n; ++$i)
       {
         $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
+        
         $toa = explode(" ", $row['mail_to']);
         assert(count($toa) == 2);
         
         $cat = (int)$toa[1];
         $to = isset($cats[$cat]) ? "$cats[$cat] " : '';
-        $to .= $MassEmail_students[$toa[0]];
+        @$to .= $MassEmail_students[$toa[0]];
         
         print("<hr>\n");
         print("<p>");
@@ -240,7 +247,7 @@ class MassEmail extends ParentWidget
   <tr>
     <td valign=top align=right><STRONG>To:</STRONG></td>
     <td><?
-      print("<select name=\"${prefix}_to\">");
+      print("<select name=\"" . $this->fullName('to') . "\">");
       foreach($MassEmail_students as $key => $label)
       {
         $selected = $key == $this->to ? " selected" : "";
@@ -252,7 +259,7 @@ class MassEmail extends ParentWidget
       $survey_categories = pg_go("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
       $n = pg_numrows($survey_categories);
 
-      print("<select name=\"${prefix}_survey_category_id\">");
+      print("<select name=\"" . $this->fullName('survey_category_id') . "\">");
       print("<option value=0$selected>All Class Categories</option>");
       for($i=0; $i<$n; ++$i)
       {
@@ -309,13 +316,12 @@ class MassEmail extends ParentWidget
     $result = pg_go("
       CREATE TEMPORARY TABLE studclasses AS
       SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
-      FROM question_periods_topics AS qt
-      INNER JOIN wces_topics AS t USING (topic_id)
+      FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status = $status 
       INNER JOIN users AS u ON u.user_id = e.user_id AND u.flags & 128 = 0" . ($status == 1 ? "
-      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = qt.question_period_id)" : "") . "
-      WHERE qt.question_period_id = 23 $cat
+      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id)" : "") . "
+      WHERE t.question_period_id = 23 $cat
       GROUP BY e.class_id, e.user_id
     ", $wces, __FILE__, __LINE__);      
 
