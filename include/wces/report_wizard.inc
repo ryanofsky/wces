@@ -393,7 +393,7 @@ class ReportWizard extends Wizard
     if (!$initialized)
     {
       wces_connect();
-      report_findtopics("rwtopics", $this->criteria, true);
+      report_findtopics("rwtopics", $this->criteria, $this->criteria[PROFESSORS]);
     }
 
     $report = "------------------------\nREPORT OPTIONS\n\n";
