@@ -9,6 +9,55 @@ param('sort');
 
 wces_connect();
 
+/*
+
+class QuestionPeriodSelector extends SqlBox
+{
+  function QuestionPeriodSelector($name, &$parent)
+  {
+    $this->SqlBox("
+      SELECT displayname AS name, question_period_id AS id
+      FROM semester_question_periods AS q
+      WHERE EXISTS (SELECT * FROM question_periods_topics AS qt WHERE qt.question_period_id = q.question_period_id)
+    ", false, $name, $parent);
+  }
+  
+  function loadInitialState()
+  {
+    $this->id = getQuestionPeriod();
+  }
+  
+  function getQuestionPeriod()
+  {
+    if (isset($_SESSION['question_period_id']))
+      return $_SESSION['question_period_id'];
+    else
+    {
+      global $wces;
+      wces_connect();      
+      $result = pg_go("
+        curtime := NOW();
+        SELECT INTO question_period_id, CASE WHEN begindate > (SELECT NOW()) < begindate THEN 1 ELSE 0 END AS future
+        FROM question_periods
+        WHERE enddate > (SELECT NOW())
+        ORDER BY future DESC, begindate DESC
+        RETURN i;
+      ", $wces, __FILE__, __LINE__);
+      $q = (int)pg_result($result, 0, 0);
+      if (!$q) return NULL;
+      $_SESSION['question_period_id'] = $q;
+      return $q;
+    }
+  }
+}
+
+
+$f =& new Form("f");
+$question_period =& new SqlBox($user_id, "ue", $f);
+$f->loadState();
+
+*/
+
 $question_period_id = 23; // SELECT get_question_period()
 
 $result = pg_go("
@@ -19,6 +68,14 @@ $result = pg_go("
 extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
 page_top("Student Usage Data for $displayname");
+
+$f->display();
+
+if (!$q->done)
+  $q->display();
+else
+  print($q->message);
+
 
 ///////////////////////////////////////////////////////////////////////////////
 $ssid = $survey_category_id = (int) $survey_category_id;
