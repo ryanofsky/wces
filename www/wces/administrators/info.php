@@ -137,7 +137,7 @@ function PrintEnrollments($user_id)
     {
       print("<td>");
       //debugout((!$row['topic_id'] ? 1 : 0),"topic_id  ");
-      print((!$row['topic_id'] ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
+      print(($row['response'] == 't' ? "yes" : ($row['topic_id'] && $row['status'] == 1 ? "no" : "&nbsp;")) . "</td>");
     }
     print("</tr>\n");
   }
