@@ -269,8 +269,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
       <td>&nbsp;</td>
       <td class="treebody">
         <p><a href="<%=$server_wcespath%>professors/index.php" class="treelink">Home</a></p>
-        <p><a href="<%=$server_wcespath%>professors/previewsurveys.php" class="treelink">Preview surveys</a></p>
-        <p><a href="<%=$server_wcespath%>professors/editsurveys.php" class="treelink">Edit your surveys</a></p>
+        <p><a href="<%=$server_wcespath%>professors/editsurveys.php" class="treelink">Upcoming Surveys</a></p>
         <p><a href="<%=$server_wcespath%>professors/seeresults.php" class="treelink">See Survey Results</a></p>
         <p><a href="<%=$server_wcespath%>login/profsearch.php" class="treelink">Update CUNIX Association</a></p>
       </td>
