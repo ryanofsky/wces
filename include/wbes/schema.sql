@@ -183,10 +183,14 @@ CREATE TABLE textresponse_responses
   rtext TEXT
 ) INHERITS (responses);
 
--- TODO: add indicies and foreign key constraints
+-- TODO: add indices and foreign key constraints
 
 -- drastically speeds up mass mailing
 CREATE INDEX survey_response_m ON survey_responses(specialization_id, question_period_id, user_id);
+
+CREATE INDEX response_topic_idx ON survey_responses (topic_id);
+CREATE UNIQUE INDEX choice_component_idx ON choice_components(component_id);
+CREATE UNIQUE INDEX choice_question_idx ON choice_questions(component_id);
 
 CREATE INDEX text_responses_parent_idx ON textresponse_responses (parent);
 CREATE INDEX choice_responses_parent_idx ON choice_responses (parent);
@@ -1572,10 +1576,11 @@ CREATE OR REPLACE FUNCTION choice_question_save(INTEGER, TEXT) RETURNS INTEGER A
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION abet_component_save(INTEGER, INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     component_id_ ALIAS FOR $1;
-    which_        ALIAS FOR $2;
+    type_         ALIAS FOR $2;
+    which_        ALIAS FOR $3;
     changed       BOOLEAN;
     rec RECORD;
   BEGIN
@@ -1592,7 +1597,7 @@ CREATE OR REPLACE FUNCTION abet_component_save(INTEGER, INTEGER) RETURNS INTEGER
     IF NOT changed THEN RETURN component_id_; END IF;
 
     INSERT INTO abet_components(type, which)
-    VALUES (10, which_);
+    VALUES (type_, which_);
 
     RETURN currval(''component_ids'');
   END;
