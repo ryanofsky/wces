@@ -13,6 +13,7 @@ param($uni);
 param($surveyid);
 param($fake);
 param($nofake);
+param($delete_enrollment);
 
 function PrintUser(&$uni, &$user_id)
 {
@@ -84,9 +85,20 @@ function PrintUser(&$uni, &$user_id)
   //PrintLDAP($uni);     
 }
 
+function DeleteEnrollment($user_id, $class_id)
+{
+  global $wces;
+  wces_connect();
+  if (login_getstatus() & login_administrator)
+  {
+    $user_id = (int)$user_id; $class_id = (int)$class_id; 
+    pg_query("UPDATE enrollments SET status = 0 WHERE status = 1 AND user_id = $user_id and class_id = $class_id", $wces, __FILE__, __LINE__); 
+  }
+}
+
 function PrintEnrollments($user_id)
 {
-  global $wces, $wces_path, $server_url, $ASID;
+  global $wces, $wces_path, $server_url, $ASID, $PHP_SELF;
   
   print("<h3>Known Enrollments</h3>");
   
@@ -110,7 +122,7 @@ function PrintEnrollments($user_id)
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
     LEFT JOIN wces_topics AS t ON t.class_id = e.class_id" : "") . "
     WHERE e.user_id = $user_id" . ($restricted ? "
-    AND (e.status > 1 OR myx.class_id IS NOT NULL)" : "") . "
+    AND (e.status > 1 OR my.class_id IS NOT NULL)" : "") . "
     ORDER BY cl.year DESC, cl.semester DESC, class"
   ,$wces,__FILE__,__LINE__);
 
@@ -118,7 +130,7 @@ function PrintEnrollments($user_id)
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
   print("  <tr><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Section</b></td><td><b>Name</b></td><td><b>Professor</b></td><td><b>Status</b></td>");
-  if ($surveys) print("<td><b>Surveyed?</b></td>");
+  if ($surveys) print("<td><b>Surveyed?</b></td><td>&nbsp;</td>");
   print("</tr>\n");
   $n = pg_numrows($classes);
   for($i = 0; $i < $n; ++$i)
@@ -136,8 +148,14 @@ function PrintEnrollments($user_id)
       . "<td>$c[className]</td><td>$p</td><td>$status</td>");
     if ($surveys)
     {
-      print("<td>");
-      print(($row['survey'] != 't' ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
+      $delete = "<a href=\"$PHP_SELF?user_id=$user_id&delete_enrollment=$c[class_id]\" " 
+        . "onclick=\"return confirm('Click OK to drop this enrollment:\\n\\n   " 
+        . addslashes(format_class($c, "%c Section %s $c[className]")) 
+        . "\\n\\nClick Cancel to return without saving changes.')\">Drop</a>"
+
+;
+      print("<td>" . ($row['survey'] != 't' ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
+      print("<td>" . ($row['status'] != 1 ? "&nbsp;" : $delete) . "</td>");
     }
     print("</tr>\n");
   }
@@ -633,6 +651,8 @@ if ($uni || $user_id || $class_id || $course_id)
 
 if ($uni || $user_id) 
 {
+  if ($user_id && $delete_enrollment)
+    DeleteEnrollment($user_id, $delete_enrollment);
   PrintUser($uni, $user_id);
 }
 else if ($class_id)
