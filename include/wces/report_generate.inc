@@ -187,10 +187,14 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   else
     $taresponses = NULL;
   
-  $result = pg_query("
+  $tab = substr(uniqid('tab'), 0, 31);
+  
+  pg_query("
+    CREATE TEMPORARY TABLE $tab AS
     SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS cchoices,
       c.flags, c.first_number, c.last_number, c.other_choice,
-      q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist, c.branch_id
+      q.revision_id AS qrevision_id, c.ctext, q.qtext, choice_dist(qr.answer) AS dist,
+      c.branch_id AS cbranch_id, q.branch_id AS qbranch_id
     FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
     INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
     INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
@@ -198,11 +202,38 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
     INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
     GROUP BY t.ordinal, c.revision_id, q.revision_id, c.flags, c.first_number,
-      c.last_number, c.other_choice, c.branch_id, q.qtext
-    ORDER BY t.ordinal, c.revision_id, q.revision_id
+      c.last_number, c.other_choice, c.branch_id, q.branch_id, c.ctext, q.qtext
   ", $wces, __FILE__, __LINE__);
 
+  pg_query("
+    INSERT INTO $tab
+    SELECT t.ordinal, c.revision_id AS crevision_id, first(c.choices) AS cchoices,
+      c.flags, c.first_number, c.last_number, c.other_choice,
+      q.revision_id AS qrevision_id, c.ctext, q.qtext, choice_dist(qr.answer) AS dist, 
+      c.branch_id AS cbranch_id, q.branch_id AS qbranch_id
+    FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
+    INNER JOIN survey_responses AS r USING (topic_id, question_period_id)
+    INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+    INNER JOIN mchoice_question_responses AS qr ON qr.parent = cr.response_id
+    INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
+    INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
+    GROUP BY t.ordinal, c.revision_id, q.revision_id, c.flags, c.first_number,
+      c.last_number, c.other_choice, c.branch_id, q.branch_id, c.ctext, q.qtext
+  ", $wces, __FILE__, __LINE__);
+
+  $result = pg_query("SELECT * FROM $tab ORDER BY ordinal, crevision_id, qrevision_id", $wces, __FILE__, __LINE__);
+
   $choices = new pg_segmented_wrapper($result, array("ordinal", "crevision_id"));
+
+  
+  $result = pg_query("
+    SELECT t.ordinal, t.crevision_id, l.item_id AS branch_id, l.ordinal AS iordinal
+    FROM $tab AS t
+    INNER JOIN list_items AS l ON l.revision_id = t.crevision_id  
+    ORDER BY t.ordinal, t.crevision_id, t.qrevision_id
+  ", $wces, __FILE__, __LINE__);
+
+  $choiceOrd = new pg_wrapper($result);
   
   $tab = substr(uniqid('tab'), 0, 31);
   pg_query("  
@@ -240,7 +271,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     else
       $pagehtml = false;
 
-    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $ords, $taresponses);
+    report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices, $choiceOrd, $ords, $taresponses);
 
     if ($stdout) print($pagehtml);
     if ($outhtml) $html .= $pagehtml;
