@@ -64,7 +64,7 @@ function showhelp(topic)
   if ($user_id)
   {
     page_link("Log off","login/logout.php$QSID",true);
-    if ($fake = login_getfakeuni())
+    if ($fake = login_getfake())
       page_link("Log off fake", "administrators/info.php?nofake=1$ASID", true);
   }
   else
@@ -78,6 +78,7 @@ function showhelp(topic)
   if ($status & login_administrator)
   {
     if ($nospace) $nospace = false; else page_spacer();
+    page_link("Survey Editor",    "administrators/surveys.php", $QSID);
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
     page_link("Course Database",  "administrators/info.php", $QSID);
