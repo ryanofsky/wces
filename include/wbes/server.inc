@@ -39,7 +39,7 @@
     $server_massreply = "registrar@thayer.dartmouth.edu";
     $server_feedback = "admin@thayer.dartmouth.edu";
     $server_admin = "websage@thayer.dartmouth.edu";
-    $server_dev = "admin@thayer.dartmouth.edu";
+    $server_dev = "admin@thayer.dartmouth.edu, rey4@columbia.edu";
 
     function server_mysqlinit()
     {
