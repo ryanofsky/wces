@@ -9,11 +9,10 @@ class TaRegister extends ParentWidget
   function TaRegister($name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->event =& new EventWidget('event', $this);
-    $this->search =& new TextBox(0, 30, '', 'search', $this);
     $this->shortName('drop_class');
     $this->shortName('add_class');
-    $this->shortName('search');
+    $this->search =& new TextBox(0, 30, '', 'search', $this);
+    $this->search->shortName('','search');
   }
 
   function loadState($new)
@@ -21,21 +20,20 @@ class TaRegister extends ParentWidget
     ParentWidget::loadState($new);
     if ($new) return;
     global $wces;
-    $user_id = (int)LoginValue('user_id');
-    $drop = (int)$this->readValue('drop_class');
-    $add = (int)$this->readValue('add_class');
-    if ($add)
+    
+    if ($add = (int)$this->readValue('add_class'))
     {
       wces_connect();
+      $user_id = (int)LoginValue('user_id');
       pg_go("
         SELECT enrollment_add_ta($user_id, $add)
       ", $wces, __FILE__, __LINE__);
     }
-    $add = (int)$this->readValue('add_class');
 
-    if ($drop)
+    if ($drop = (int)$this->readValue('drop_class'))
     {
       wces_connect();
+      $user_id = (int)LoginValue('user_id');
       pg_go("
         SELECT enrollment_drop_ta($user_id, $drop)
       ", $wces, __FILE__, __LINE__);
@@ -46,8 +44,8 @@ class TaRegister extends ParentWidget
   {
     global $wces;
     wces_connect();
-    
-    $this->form->addUrlVar($this->search->name(), $this->search->text);
+    if (isset($this->search->text))
+      $this->form->addUrlVar($this->search->name(), $this->search->text);
     
     $user_id = (int)LoginValue('user_id');
     $r = pg_go("
@@ -90,9 +88,10 @@ class TaRegister extends ParentWidget
     print(" <input type=submit value=\"Search Classes\">\n");
 
     $question_period_id = get_question_period();
-    $terms = parse_search($this->search->text);
     
-    if (!count($terms)) return;
+    if (!isset($this->search->text)) return;
+    
+    $terms = parse_search($this->search->text);
     
     if (!count($terms))
       $where = "";
@@ -131,9 +130,6 @@ class TaRegister extends ParentWidget
         . "\">Register as a TA for this Class</a></p>\n");
     }
     print("</ul>");
-    
-    
-    
   }
 }
 
