@@ -1,7 +1,7 @@
 <?
 
 require_once("wces/wces.inc");
-require_once("wces/general.inc");
+require_once("wbes/general.inc");
 
 param($mode);
 param($searchfor);
@@ -83,9 +83,9 @@ if ($mode == "professors")
 
   ?>
   <p align=center>
-  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracleroot?>media/courseraised.jpg" name=courses border=0></a>
-  <img src="<?=$oracleroot?>media/profsunk.jpg">
-  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracleroot?>media/searchraised.jpg" name=search border=0></a>
+  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracle_root?>media/courseraised.jpg" name=courses border=0></a>
+  <img src="<?=$oracle_root?>media/profsunk.jpg">
+  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracle_root?>media/searchraised.jpg" name=search border=0></a>
   </p>
 
   <script>AttachImage('courses','courselit.jpg'); AttachImage('search','searchlit.jpg');</script>
@@ -129,9 +129,9 @@ else if ($mode == "search")
 {
   ?>
   <p align=center>
-  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracleroot?>media/courseraised.jpg" name=courses border=0></a>
-  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<?=$oracleroot?>media/profraised.jpg" name=profs border=0></a>
-  <img src="<?=$oracleroot?>media/searchsunk.jpg" name=search border=0>
+  <a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<?=$oracle_root?>media/courseraised.jpg" name=courses border=0></a>
+  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<?=$oracle_root?>media/profraised.jpg" name=profs border=0></a>
+  <img src="<?=$oracle_root?>media/searchsunk.jpg" name=search border=0>
   <script>AttachImage('courses','courselit.jpg'); AttachImage('profs','proflit.jpg')</script>
   </p>
   
@@ -200,9 +200,9 @@ else // $mode == "courses"
 {
   ?>
   <p align=center>
-  <img src="<?=$oracleroot?>media/coursesunk.jpg">
-  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<?=$oracleroot?>media/profraised.jpg" name=profs border=0></a>
-  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracleroot?>media/searchraised.jpg" name=search border=0></a>
+  <img src="<?=$oracle_root?>media/coursesunk.jpg">
+  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<?=$oracle_root?>media/profraised.jpg" name=profs border=0></a>
+  <a href="oracle_listpane.php?mode=search" target="_self" onmouseover="swap('search')" onmouseout="swap('search')"><img src="<?=$oracle_root?>media/searchraised.jpg" name=search border=0></a>
   </p>
   <script>AttachImage('profs','proflit.jpg'); AttachImage('search','searchlit.jpg')</script>
   <?  
