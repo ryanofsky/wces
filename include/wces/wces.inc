@@ -179,7 +179,7 @@ function get_question_period()
     // most recently
 
     $result = pg_go("
-      SELECT question_period_id, begindate, enddate, abs(begindate - (SELECT NOW()))
+      SELECT question_period_id, begindate, enddate
       FROM semester_question_periods
       ORDER BY 
         CASE WHEN enddate < (SELECT NOW()) THEN 3   -- past
