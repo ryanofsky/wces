@@ -33,7 +33,7 @@ class SurveyWidget extends ParentWidget
   var $questionWidgets = array();
 
   // private
-  var $isStale = true;
+  var $isStale;
   var $pages = 0;
 
   // to add a ta section to the survey, assign an instance of TASurvey to $this->ta:
@@ -51,24 +51,26 @@ class SurveyWidget extends ParentWidget
   }
 
   function loadState($new)
-  {
-    assert(isset($new));
-    ParentWidget::loadState($new);
-    if ($new) 
-    {
-      $this->isStale = false;
-      global $survey_factories;
-      if (!$this->survey) $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
-      $this->makeWidgets(true);
-      return;
+  {    
+    global $survey_factories;
+    $survey = empty($new) ? $this->readValue("survey") : null;
+
+    if ($new = !isset($survey)) // assignment is intentional
+    {  
+      if (!isset($this->survey)) // survey could be pre-assigned
+        $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
     }
+    else
+      $this->survey = unserialize($survey);   
     
-    $this->survey = unserialize((string)$this->readValue("survey"));
-    $this->showErrors= (bool)$this->readValue("showErrors");
+    ParentWidget::loadState($new);
+    $this->makeWidgets($new);
+    $this->isStale = !$new;
+    if ($new) return;
+    
+    $this->showErrors = (bool)$this->readValue("showErrors");
     $this->page = (int)$this->readValue("page");
     $this->sawLastPage = (bool)$this->readValue("sawLastPage");
-    $this->isStale = true;
-    $this->makeWidgets(false);
 
     if ($this->event->event == SurveyWidget_save)
       $this->saveResponses();
