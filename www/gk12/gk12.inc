@@ -71,7 +71,7 @@ function showhelp(topic)
 
 function page_bottom($minimal = false)
 {
-  global $gk_path, $oracle_root;
+  global $gk_path, $oracle_root, $server_media;
 ?>
 
 <!-- END PAGE CONTENT -->
@@ -107,13 +107,13 @@ function page_link($caption,$link,$islink = 0)
 
 function page_spacer()
 {
-  global $gk_path;
+  global $gk_path, $server_media;
   print("    <p><img src=\"$server_media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
 }
 
 function page_showhelp($topic)
 {
-  global $gk_path;
+  global $gk_path, $server_media;
   print("<a href=\"javascript:showhelp('$topic')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a>");
 }
 
