@@ -10,7 +10,7 @@ function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
   
   if ($db_debug) $t = microtime();
   
-  $result = pg_exec($db,$sql);
+  $result = @pg_exec($db,$sql);
   if ($db_debug) $time = gettime(microtime()) - gettime($t);
   
   if ($db_debug || !$result)
