@@ -122,11 +122,17 @@ class ComponentEditor extends FormWidget
 class ComponentWidget extends FormWidget
 {
   var $component;
+  var $errors = array();
   
   function ComponentWidget(&$component,$prefix,$form,$formmethod)
   {
     $this->FormWidget($prefix,$form,$formmethod);
     $this->component = &$component;
+  }
+  
+  function validate()
+  {
+    return true;
   }
   
   function display()
