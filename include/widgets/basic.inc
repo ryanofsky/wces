@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("widgets/widgets.inc");
 
@@ -190,4 +190,4 @@ class Form extends FormWidget
 };
 
 
-%>
+?>
