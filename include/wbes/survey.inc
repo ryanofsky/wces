@@ -110,7 +110,7 @@ class Survey
     }
   }
 
-  function save($topic_id, $base_branch_id, $user_id)
+  function save($topic_id, $base_branch_id, $user_id, $save_id = false)
   {
     global $wbes;
     wbes_connect();
@@ -123,12 +123,15 @@ class Survey
     $components = pg_query("SELECT item_id FROM list_items WHERE revision_id = $this->orig_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
     $components_num = pg_numrows($components);
 
-    $result = pg_query("
-      BEGIN WORK;
-      INSERT INTO saves (user_id) VALUES ($user_id);
-      SELECT currval('save_ids')
-    ", $wbes, __FILE__, __LINE__);
-    $save_id = (int)pg_result($result,0,0);
+    if(!$save_id)
+	{
+	$result = pg_query("
+	BEGIN WORK;
+	INSERT INTO saves (user_id) VALUES ($user_id);
+	SELECT currval('save_ids')
+	", $wbes, __FILE__, __LINE__);
+	$save_id = (int)pg_result($result,0,0);
+	}
 
     $i = 0;
     $ncomponents = array();
@@ -148,12 +151,14 @@ class Survey
       ++$i;
     }
 
-    if ($list_changed)
+    if ($list_changed || $this->orig_id == 0)
     {
       $result = pg_query("SELECT branch_save($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
       $branch_id = (int)pg_result($result,0,0);
       
-      $result = pg_query("SELECT revision_save_start($branch_id, $this->orig_id, 1, $save_id)", $wbes, __FILE__, __LINE__);
+      $o = $this->orig_id ? $this->orig_id : "NULL";
+      
+      $result = pg_query("SELECT revision_save_start($branch_id, $o, 1, $save_id)", $wbes, __FILE__, __LINE__);
       $saved_id = (int)pg_result($result,0,0);
       $sql = "";
       foreach($ncomponents as $i => $id)
@@ -171,7 +176,7 @@ class Survey
 
     $this->orig_id = 0;
     $this->components = array();
-    return true;
+    return $branch_id;
   }
 }
 

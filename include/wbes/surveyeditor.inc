@@ -53,16 +53,22 @@ class SurveyEditor extends FormWidget
     $this->topic_id = (int)$topic_id;
     $this->base_branch_id = (int)$base_branch_id;
     $this->factories = $factories;
+    $GLOBALS['topic_id'] = $topic_id;
   }
  
-  function loadvalues()
+  function loadvalues($empty = false)
   {
-    $this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
-    if (get_class($this->survey) != "survey")
-      $this->load();
+    if(!$empty)
+	{
+	$this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
+
+	if (get_class($this->survey) != "survey")
+	    $this->load();
+	}
 
     $this->state = $this->loadattribute("state");
     $this->currentcomponent = $this->loadattribute("currentcomponent");
+    //print($this->prefix . " values loaded, now handling action.\n<br>\n");
     $this->handleaction();
   }
 
@@ -83,6 +89,8 @@ class SurveyEditor extends FormWidget
 
   function handleaction()
   {
+    $GLOBALS['topic_id'] = $this->topic_id;
+
     switch ($this->state)
     {
       case SurveyEditor_insert:
@@ -152,6 +160,10 @@ class SurveyEditor extends FormWidget
         break;
       case SurveyEditor_main:
       default:
+      
+	//print($this->prefix . " Doing default. \n<br>\n");
+	
+	
         $this->main_action = new ActionButton("{$this->prefix}_main_action", $this->form, $this->formmethod);
         $this->main_action->loadvalues();
 
@@ -205,6 +217,7 @@ class SurveyEditor extends FormWidget
     $this->printattribute("currentcomponent",$this->currentcomponent);
     if (!$hidden)
     {
+    //print("Now displaying: " . $this->state);
       switch ($this->state)
       {
         case SurveyEditor_insert:
