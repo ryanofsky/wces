@@ -6,25 +6,43 @@ require_once("wces/page.inc");
 login_protect(login_administrator);
 page_top("Enrollment Viewer"); 
 $db = wces_connect();
+
+param($unilist);
+param($uni);
+
 if ($unilist) $uni = $unilist;
 if ($uni)
 {
   $data = db_getrow($db,"users",Array("cunix" => $uni),0);
   if ($data)
   {
-    wces_Findclasses($db,"currentclasses");
-    $y = mysql_query("SELECT cl.classid, cl.year, cl.semester, concat(s.code, c.code) AS code, c.name, cl.section, IF(cc.classid,'yes','no') AS survey FROM users as u INNER JOIN enrollments as e USING (userid) INNER JOIN classes as cl USING (classid) INNER JOIN courses as c using (courseid) LEFT JOIN subjects as s using (subjectid) LEFT JOIN currentclasses AS cc ON (cl.classid = cc.classid) WHERE u.cunix = '$uni' ORDER BY cl.year, cl.semester",$db);
+    $questionperiodid = wces_Findquestionsetsta($db,"qsets");
+    $y = db_exec(
+    
+    "SELECT c.courseid, cl.classid, cl.year, cl.semester, concat(s.code, c.code) AS code, c.name, cl.section, IF(qs.classid,'yes','no') AS survey, IF(cs.userid,'yes','no') AS surveyed
+    FROM users as u
+    INNER JOIN enrollments as e USING (userid)
+    INNER JOIN classes as cl USING (classid)
+    INNER JOIN courses as c using (courseid)
+    INNER JOIN subjects as s using (subjectid)
+    LEFT JOIN qsets AS qs ON (qs.classid = cl.classid)
+    LEFT JOIN answersets AS a ON (a.classid = e.classid AND a.questionperiodid = '$questionperiodid' AND a.questionsetid = qs.questionsetid)
+    LEFT JOIN completesurveys AS cs ON (cs.userid = u.userid AND cs.answersetid = a.answersetid)
+    WHERE u.cunix = '$uni'
+    GROUP BY classid
+    ORDER BY cl.year DESC, cl.semester DESC",$db,__FILE__,__LINE__);
+    
     $count = mysql_num_rows($y);
     if ($count > 0)
     {
-      print ("<p><b>classes for '$uni'</b></p>");
+      print ("<p><b>Classes for '<a href=\"${server_wcespath}info/ldap.php?uni=$uni\">$uni</a>'</b></p>");
       print("<table border=1 cellspacing=0 cellpadding=2>\n");
       print("  <tr><td><b>Year</b></td><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Course Name</b></td><td><b>Section</b></td><td><b>Survey Available?</b></td><td><b>Survey Complete?</b></td></tr>\n");
       while($result = mysql_fetch_array($y))
       {
-        $classid = ""; $year = ""; $semester = ""; $code = ""; $name = "??????"; $section = ""; $survey = ""; $surveyed = "";
+        $courseid = $classid = ""; $year = ""; $semester = ""; $code = ""; $name = "??????"; $section = ""; $survey = ""; $surveyed = "";
         extract($result);
-        print("  <tr><td>$year</td><td>$semester</td><td>$code</td><td><a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$name</a></td><td>$section</td><td>$survey</td><td>$surveyed</td></tr>\n");
+        print("  <tr><td>$year</td><td>$semester</td><td><a href=\"${server_wcespath}info/courseinfo.php?courseid=$courseid\">$code</a></td><td>$name</td><td><a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$section</a></td><td>$survey</td><td>$surveyed</td></tr>\n");
       };
       print("</table>\n<p><a href=\"?\">Back</a></p>");    
     }  
