@@ -120,15 +120,15 @@ class ProfessorInfo extends FormWidget
         $cunix = $email = $department = $url = $statement = $profile = $education = $picname = 0;
         extract($row);
         print("<tr>");
-        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$last, $first</a></td>\n");
-        print("  <td bgcolor=\"$color\">" . ($cunix ? "<a href=\"http://www.columbia.edu/cgi-bin/lookup.pl?$cunix\">$cunix</a>" : "?") . "</td>\n");
+        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}notfound.html#${server_wcespath}administrators/info.php?professorid=$professorid\">$last, $first</a></td>\n");
+        print("  <td bgcolor=\"$color\">" . ($cunix ? "<a href=\"${server_wcespath}notfound.html#http://www.columbia.edu/cgi-bin/lookup.pl?$cunix\">$cunix</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">" . ($email ? "<a href=\"mailto:$email\">$email</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">$department</td>");
         print("  <td bgcolor=\"$color\">" . ($url ? "<a href=\"$url\">yes</a>" : "no") . "</td>\n");
         print("  <td bgcolor=\"$color\">$statement</td>\n");
         print("  <td bgcolor=\"$color\">$profile</td>\n");
         print("  <td bgcolor=\"$color\">$education</td>\n");
-        print("  <td bgcolor=\"$color\">" . ($picname ? "<a href=\"/oracle/prof_images/$picname\">yes</a>" : "no") . "</td>\n");
+        print("  <td bgcolor=\"$color\">" . ($picname ? "<a href=\"${server_wcespath}notfound.html#/oracle/prof_images/$picname\">yes</a>" : "no") . "</td>\n");
         print("  <td bgcolor=\"$color\">" . '<input type=submit name="' . $this->prefix . '_editbutton_' . $professorid . '" value="Edit..." class="tinybutton" style="width:100%; BACKGROUND:' . $color . '; COLOR: #000090;"></td>' . "\n");
         print("</tr>\n");
       }
