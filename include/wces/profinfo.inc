@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/wces.inc");
 require_once("wces/import.inc");
@@ -90,9 +90,9 @@ class ProfessorInfo extends FormWidget
       
       $this->action->display(false,ProfessorInfo_print,0);
       $this->action->display(false,ProfessorInfo_back,0);
-%>
+?>
 <table><tr><td height=50>
-<span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%= $this->action->gethref($this->printable ? ProfessorInfo_back : ProfessorInfo_print , 0) %>"><img src="<%=$server_wcespath%>media/report/<%= $this->printable ? "back" : "print"%>.gif" border=0 width=20 height=20 alt="Icon"><%=$this->printable ? "Back" : "Printable version of this page"%></a></span> 
+<span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?= $this->action->gethref($this->printable ? ProfessorInfo_back : ProfessorInfo_print , 0) ?>"><img src="<?=$server_wcespath?>media/report/<?= $this->printable ? "back" : "print"?>.gif" border=0 width=20 height=20 alt="Icon"><?=$this->printable ? "Back" : "Printable version of this page"?></a></span> 
 </td></tr></table>
 
 <form id=form1 name=form1>
@@ -112,7 +112,7 @@ class ProfessorInfo extends FormWidget
 </tr>
 </thead>
 <tbody>
-<%
+<?
       $i = 0;
       while($row = mysql_fetch_assoc($result))
       {
@@ -235,25 +235,25 @@ class ProfessorEditor extends FormWidget
     else if ($this->action->action != ProfessorEditor_cancel)
     {
       $this->form->display();
-  %>
+  ?>
   <table>
-    <tr><td valign=top><strong>Display Name:</strong></td><td><% $this->name->display(); %></td></tr>
-  <% if ($this->isadmin) { %>  
-    <tr><td valign=top><strong>CUNIX ID:</strong></td><td><% $this->cunix->display(); %></td></tr>
-  <% }; %>  
-    <tr><td valign=top><strong>Email:</strong></td><td><% $this->email->display(); %></td></tr>
-    <tr><td valign=top><strong>Homepage:</strong></td><td><% $this->url->display(); %></td></tr>
-    <tr><td valign=top><strong>Statement:</strong></td><td><% $this->statement->display(); %></td></tr>
-    <tr><td valign=top><strong>Profile:</strong></td><td><% $this->profile->display(); %></td></tr>
-    <tr><td valign=top><strong>Education:</strong></td><td><% $this->education->display(); %></td></tr>
-    <tr><td>&nbsp;</td><td><% $this->action->display("Save",ProfessorEditor_save); %> <% if ($this->isadmin) $this->action->display("Cancel",ProfessorEditor_cancel); %></td></tr>
+    <tr><td valign=top><strong>Display Name:</strong></td><td><? $this->name->display(); ?></td></tr>
+  <? if ($this->isadmin) { ?>  
+    <tr><td valign=top><strong>CUNIX ID:</strong></td><td><? $this->cunix->display(); ?></td></tr>
+  <? }; ?>  
+    <tr><td valign=top><strong>Email:</strong></td><td><? $this->email->display(); ?></td></tr>
+    <tr><td valign=top><strong>Homepage:</strong></td><td><? $this->url->display(); ?></td></tr>
+    <tr><td valign=top><strong>Statement:</strong></td><td><? $this->statement->display(); ?></td></tr>
+    <tr><td valign=top><strong>Profile:</strong></td><td><? $this->profile->display(); ?></td></tr>
+    <tr><td valign=top><strong>Education:</strong></td><td><? $this->education->display(); ?></td></tr>
+    <tr><td>&nbsp;</td><td><? $this->action->display("Save",ProfessorEditor_save); ?> <? if ($this->isadmin) $this->action->display("Cancel",ProfessorEditor_cancel); ?></td></tr>
   </table>    
-  <% 
+  <? 
     } 
   }
 }
 
-%>
+?>
 
 
 
