@@ -486,7 +486,7 @@ class MassEmail extends ParentWidget
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
           //$email = $address = "rey4@columbia.edu"; // debug
-          //mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
+          mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
         }
         else
         {
