@@ -1,14 +1,12 @@
-OPT=-fpic
-INC=/usr/include/postgresql
-#INC=/usr/include/pgsql
-LIB=
-OUTPUT=distribution.so
+CXXFLAGS = -fpic -O2 -Wall -I/usr/include/postgresql/server -I/usr/include/postgresql
 
-$(OUTPUT) : distribution.o
-	g++ -shared -o $(OUTPUT) distribution.o $(LIB)
+%.so: %.o
+	$(CXX) $(LDFLAGS) $(TARGET_ARCH) -shared $^ $(LOADLIBES) $(LDLIBS) -o $@
 
+distribution.so : distribution.o
 distribution.o : distribution.cpp
-	g++ $(OPT) -o distribution.o -c -I$(INC) distribution.cpp
 
 clean :
-	rm distribution.o $(OUTPUT)
+	rm -f distribution.so distribution.o
+
+.PHONY : clean
