@@ -1,9 +1,9 @@
 object RegRipper: TRegRipper
-  Left = 317
-  Top = 158
+  Left = 349
+  Top = 202
   Width = 637
   Height = 533
-  Caption = 'Registrar Ripper'
+  Caption = 'Registrar Ripper 1.1'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -13,16 +13,17 @@ object RegRipper: TRegRipper
   OldCreateOrder = False
   OnClose = OnClose
   OnCreate = OnCreate
+  OnResize = OnResize
   PixelsPerInch = 96
   TextHeight = 13
   object Source: TGroupBox
     Left = 8
     Top = 8
     Width = 617
-    Height = 81
+    Height = 80
     Caption = 'Source'
     TabOrder = 2
-    object Label1: TLabel
+    object SubjectsLabel: TLabel
       Left = 8
       Top = 16
       Width = 69
@@ -53,7 +54,7 @@ object RegRipper: TRegRipper
     TabOrder = 1
     Text = 'http://www.columbia.edu/cu/bulletin/uwb/sel/'
   end
-  object GroupBox1: TGroupBox
+  object DestBox: TGroupBox
     Left = 8
     Top = 96
     Width = 617
@@ -84,7 +85,7 @@ object RegRipper: TRegRipper
       OnClick = browseClick
     end
   end
-  object GroupBox2: TGroupBox
+  object StatusBox: TGroupBox
     Left = 8
     Top = 224
     Width = 617
@@ -102,7 +103,7 @@ object RegRipper: TRegRipper
     object autoscroll: TCheckBox
       Left = 8
       Top = 248
-      Width = 601
+      Width = 225
       Height = 17
       Caption = 'Enable Auto-Scroll'
       Checked = True
