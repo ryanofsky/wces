@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("wces/server.inc");
 require_once("wces/database.inc");
@@ -232,4 +232,4 @@ function class_find($db,$code,$courseid = false)
 }
 
 
-?>
+%>

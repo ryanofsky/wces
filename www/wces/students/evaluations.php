@@ -1,4 +1,4 @@
-<?
+<%
   require_once("wces/page.inc");
   require_once("wces/login.inc");
   require_once("wces/wces.inc");
@@ -30,7 +30,7 @@
   print("</ul>");
   
   mysql_query("DROP TABLE currentclasses",$db);
-?>
+%>
 
 
 

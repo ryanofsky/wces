@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("wces/general.inc");
 require_once("wces/wces.inc");
@@ -37,4 +37,4 @@ foreach($names as $name)
   print("<hr>");
 }
 
-?>
+%>

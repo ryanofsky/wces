@@ -1,3 +1,9 @@
+CREATE TABLE admins (
+  departmentid int(11) NOT NULL default '0',
+  userid int(11) NOT NULL default '0',
+  PRIMARY KEY (departmentid,userid)
+);
+
 CREATE TABLE answersets (
   answersetid int(11) NOT NULL auto_increment,
   questionsetid int(11) NOT NULL default '0',

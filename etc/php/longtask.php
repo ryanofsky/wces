@@ -1,4 +1,4 @@
-<?
+<%
 require_once("wces/page.inc");
 require_once("wces/taskwindow.inc");
 
@@ -18,4 +18,4 @@ for ($i = 0; $i <= 2000000; ++$i)
 taskwindow_print("Done.");
 taskwindow_end();
 page_bottom();
-?>
+%>

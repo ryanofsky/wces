@@ -1,4 +1,4 @@
-<?
+<%
 
 
   /**
@@ -512,4 +512,4 @@ define("db_SelectMonster_left",1);
 define("db_SelectMonster_inner",2);
 define("db_SelectMonster_prefix","SelectMonsterChild");
 
-?>
+%>

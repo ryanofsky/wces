@@ -1,9 +1,9 @@
-<?
+<%
 require_once("wces/page.inc");
 page_top("Credits");
-?>
+%>
 
-<p><img src="<?=$server_wcespath?>media/oracle_logo.gif" border=0></p>
+<p><img src="<%=$server_wcespath%>media/oracle_logo.gif" border=0></p>
 
 <p><b><i>Faculty Advisors</i></b></p>
 <p>Dean Morton Friedman<br>Dean Jack McGourty</p>
@@ -23,20 +23,20 @@ page_top("Credits");
 
 <p><b><i>Powered by</i></b></p>
 <blockquote>
-<a href="http://www.gnu.org/"><img src="<?=$server_wcespath?>media/logo_linux.gif" width=88 height=31 border=0></a>
-<a href="http://www.php.net/"><img src="<?=$server_wcespath?>media/logo_php.gif" width=88 height=31 border=0></a>
-<a href="http://www.mysql.com/"><img src="<?=$server_wcespath?>media/logo_mysql.gif" width=88 height=31 border=0></a>
+<a href="http://www.gnu.org/"><img src="<%=$server_wcespath%>media/logo_linux.gif" width=88 height=31 border=0></a>
+<a href="http://www.php.net/"><img src="<%=$server_wcespath%>media/logo_php.gif" width=88 height=31 border=0></a>
+<a href="http://www.mysql.com/"><img src="<%=$server_wcespath%>media/logo_mysql.gif" width=88 height=31 border=0></a>
 </blockquote>
 
 <p><b><i>Best seen in</i></b></p>
 <blockquote>
-<a href="http://www.mozilla.org"><img src="<?=$server_wcespath?>media/logo_mozilla.gif" width=64 height=64 border=0></a>
-<a href="http://www.microsoft.com/windows/ie/"><img src="<?=$server_wcespath?>media/logo_ie5.gif" width=88 height=31 border=0></a>
+<a href="http://www.mozilla.org"><img src="<%=$server_wcespath%>media/logo_mozilla.gif" width=64 height=64 border=0></a>
+<a href="http://www.microsoft.com/windows/ie/"><img src="<%=$server_wcespath%>media/logo_ie5.gif" width=88 height=31 border=0></a>
 </blockquote>
 
 
 
-<?
+<%
 page_bottom();
-?>
+%>
 

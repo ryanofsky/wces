@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("wces/server.inc");
 require_once("wces/database.inc");
@@ -764,4 +764,4 @@ function importseaseval($doclasses,$doprofessors,$docourses,$doresponses)
   taskwindow_end();
 };
 
-?>
+%>

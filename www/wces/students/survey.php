@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("wces/page.inc");
 require_once("wces/login.inc");
@@ -211,7 +211,7 @@ else
 }
 
 
-?>
+%>
 
 
 

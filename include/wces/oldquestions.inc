@@ -1,4 +1,4 @@
-<?
+<%
 
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");
@@ -357,16 +357,16 @@ class OldSurvey extends FormWidget
     global $server_wcespath;
     if ($this->userid)
     {
-?>
+%>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
-  <td align=center bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">
-    <? $this->action->display("Save responses", OldSurvey_save, false, ""); ?>
-    <? $this->action->display("Return to class list without saving", OldSurvey_cancel, false, ""); ?>
+  <td align=center bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">
+    <% $this->action->display("Save responses", OldSurvey_save, false, ""); %>
+    <% $this->action->display("Return to class list without saving", OldSurvey_cancel, false, ""); %>
   </td>
 </tr>
 </table>
-<?  
+<%  
     }
   }
 }
@@ -599,30 +599,30 @@ class OldQuestionSet extends FormWidget
         {
           $val = $this->answers[$fieldname];
           $text = $showerrors && isset($this->errors[$fieldname]) ? "<font color=red>" . htmlspecialchars($text) . "</font>" : htmlspecialchars($text);
-?>
-<p><b><?=$text?></b></p>
+%>
+<p><b><%=$text%></b></p>
 <blockquote>
-  <input type=radio name="<?=$fieldname?>" id="<?=$fieldname?>a" value="a" <?=$val == "a" ? "checked" : ""?>><label for="<?=$fieldname?>a">excellent</label>
-  <input type=radio name="<?=$fieldname?>" id="<?=$fieldname?>b" value="b" <?=$val == "b" ? "checked" : ""?>><label for="<?=$fieldname?>b">very good</label>
-  <input type=radio name="<?=$fieldname?>" id="<?=$fieldname?>c" value="c" <?=$val == "c" ? "checked" : ""?>><label for="<?=$fieldname?>c">satisfactory</label>
-  <input type=radio name="<?=$fieldname?>" id="<?=$fieldname?>d" value="d" <?=$val == "d" ? "checked" : ""?>><label for="<?=$fieldname?>d">poor</label>
-  <input type=radio name="<?=$fieldname?>" id="<?=$fieldname?>e" value="e" <?=$val == "e" ? "checked" : ""?>><label for="<?=$fieldname?>e">disastrous</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>a" value="a" <%=$val == "a" ? "checked" : ""%>><label for="<%=$fieldname%>a">excellent</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>b" value="b" <%=$val == "b" ? "checked" : ""%>><label for="<%=$fieldname%>b">very good</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>c" value="c" <%=$val == "c" ? "checked" : ""%>><label for="<%=$fieldname%>c">satisfactory</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>d" value="d" <%=$val == "d" ? "checked" : ""%>><label for="<%=$fieldname%>d">poor</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>e" value="e" <%=$val == "e" ? "checked" : ""%>><label for="<%=$fieldname%>e">disastrous</label>
 </blockquote>
-<?
+<%
         }  
     
         foreach($this->fr as $fieldname => $text)
         {
-?>
-<p><b><?=$text?></b></p>
-<blockquote><textarea name="<?=$fieldname?>" rows=8 cols=50 wrap=virtual><?=htmlspecialchars($this->answers[$fieldname])?></textarea></blockquote>
-<?
+%>
+<p><b><%=$text%></b></p>
+<blockquote><textarea name="<%=$fieldname%>" rows=8 cols=50 wrap=virtual><%=htmlspecialchars($this->answers[$fieldname])%></textarea></blockquote>
+<%
         }  
       };
   
       if (count($this->abet) > 0)
       {  
-?>
+%>
 <h4>ABET Questions</h4>
 <table bordercolor=black cellspacing=0 cellpadding=3 border=0 RULES="groups" FRAME=box STYLE="border: none">
 <thead>
@@ -633,19 +633,19 @@ class OldQuestionSet extends FormWidget
 </thead>
 <tbody>
 <tr>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif">&nbsp;</td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>0</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>1</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>2</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>3</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>4</STRONG></font></td>
-  <td bgcolor=black background="<?=$server_wcespath?>media/0x000000.gif" align=center><font color=white><STRONG>5</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>0</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>1</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>2</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>3</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>4</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>5</STRONG></font></td>
 </tr>
-<?
+<%
         $choices = array(0 => "a", 1 => "b", 2 => "c", 3 => "d", 4 => "e", 5 => "f");
         $row = true;
         foreach ($this->abet as $fieldname => $text)
@@ -729,4 +729,4 @@ class OldQuestionSet extends FormWidget
   }
 }
 
-?>
+%>
