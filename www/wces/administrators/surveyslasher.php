@@ -3,6 +3,10 @@ require_once("wbes/server.inc");
 require_once("wbes/wbes.inc");
 require_once("wbes/postgres.inc");
 
+require_once("wces/page.inc");
+
+page_top("Remove classes");
+
 //first get a database connection.
 global $wbes;
 wbes_connect();
@@ -12,10 +16,6 @@ if(!isset($HTTP_POST_VARS['input']))
     {
 ?>
 
-<head><title>Remove classes</title></head>
-
-<body>
-
 <h3>Following is a list off the classes currently being surveyed.</h3>
 <br>
 <h4>Please check the boxes for those classes you do not wish to be surveyed,
@@ -23,12 +23,10 @@ if(!isset($HTTP_POST_VARS['input']))
 <br>
 
 <?
-    $sql = "SELECT topic_id, c.name AS name, section, year, code FROM wces_topics t, classes c, courses d";
-    $sql = $sql . " WHERE c.class_id = t.class_id and c.course_id = d.course_id";
-
+    $sql = "SELECT topic_id, d.name AS name, section, year, s.code || ' ' || d.code AS code FROM wces_topics t, classes c, courses d, subjects s";
+    $sql = $sql . " WHERE c.class_id = t.class_id and c.course_id = d.course_id and d.subject_id = s.subject_id and t.category_id IS NOT NULL ORDER BY code, section";
+   
     $result = pg_query($sql, $wbes, __FILE__, __LINE__);
-
-
 ?>
 
 <form method=POST>
@@ -87,7 +85,7 @@ else
 	    }
 	}
 
-    $sql = "DELETE FROM wces_topics WHERE topic_id IN(" . $elements . ")";
+    $sql = "UPDATE wces_topics SET category_id = NULL WHERE topic_id IN(" . $elements . ")";
 ?>    
     
     <h3>Input Accepted.</h3>
@@ -112,6 +110,8 @@ else
 
 <?    
     }
+page_bottom();    
+    
 ?>
     
     
