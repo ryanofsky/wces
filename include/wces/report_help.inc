@@ -135,17 +135,17 @@ function GraphSize(&$params, $datax = NULL)
 
 function MakeGraph($datax, $datay)
 {
-  global $server_media;
-
+  //global $server_media;
+  $server_media = 'http://oracle.seas.columbia.edu/wces/media';
   $params = array();
-  GraphSize($params, $datax);
+  //GraphSize($params, $datax);
   
   return "<img src=\"$server_media/graphs/bars.php"
     . "?datax=" . htmlspecialchars(serialize($datax)) 
     . "&datay=" . htmlspecialchars(serialize($datay))
-    . "&width=$params[width]&height=$params[height]"
+    //. "&width=$params[width]&height=$params[height]"
     . "\""
-    . " width=$params[width] height=$params[height]"
+    //. " width=$params[width] height=$params[height]"
     . ">";
 }
 
