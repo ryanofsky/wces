@@ -41,14 +41,44 @@ update classes set students = (select count(*) from enrollments as e where e.cla
 update users set flags = flags | case when exists (select * from enrollments AS e where e.user_id = users.user_id and status = 1) then 8 else 0 end;
 update users set flags = flags | case when exists (select * from enrollments AS e where e.user_id = users.user_id and status = 3) then 4 else 0 end;
 
+DROP FUNCTION update_topics(INTEGER, INTEGER, INTEGER, INTEGER);
+CREATE FUNCTION update_topics(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    course_id_ ALIAS FOR $1;
+    class_id_ ALIAS FOR $2;
+    category_id_ ALIAS FOR $3;
+    parent_ ALIAS FOR $4;
+    t1 INTEGER;
+    t2 INTEGER;
+  BEGIN
+    SELECT INTO t1 topic_id FROM wces_topics WHERE course_id = course_id AND
+      class_id = NULL 
+    IF FOUND THEN
+    ELSE
+      INSERT INTO wces_topics (parent, course_id) VALUES (parent_, course_id_);
+      t1 := currval(''topic_ids'');
+    END IF;
+    SELECT INTO t2 topic_id FROM wces_topics WHERE class_id = class_id_ AND 
+      course_id = course_id_ AND parent = t1;
+    IF FOUND THEN
+      UPDATE wces_topics SET category_id = category_id_ WHERE topic_id = t2;
+    ELSE
+      INSERT INTO wces_topics (parent, course_id, class_id, category_id) VALUES
+        (t1, course_id_, class_id_, category_id_);
+      t2 := currval(''topic_ids'');
+    END IF;
+    RETURN t2;
+  END;
+' LANGUAGE 'plpgsql';
+
 */
-function getClass($code, $year, $semester, $coursename = false)
+function getClass($code, $year, $semester, $coursename = false, $category_id = false, $parent = false)
 {
   global $wces;
 
   $l = strlen($code);
   if ($l == 7)
-    $section = "''"; 
+    $section = "'001'"; 
   else if ($l > 7 && $code[7] == '-')
   {
     $section = substr($code,8);
@@ -109,7 +139,9 @@ function getClass($code, $year, $semester, $coursename = false)
       SELECT currval('class_ids');
     ", $wces,__FILE__, __LINE__);
     $class_id = (int)pg_result($result,0,0);
-    pg_query("INSERT INTO wces_topics (class_id) VALUES ($class_id)", $wces,__FILE__, __LINE__);    
+    
+    if ($category_id && $parent)
+      pg_query("SELECT update_topics($course_id, $class_id, $category_id, $parent)", $wces,__FILE__, __LINE__);    
   }    
   
   return $class_id;
