@@ -4,7 +4,7 @@
   require_once("wces/wces.inc");
   
   login_protect(login_student);
-  page_top("List Classes","0100");
+  page_top("List classes","0100");
   
 function listclasses()
 {
@@ -12,14 +12,14 @@ function listclasses()
 
   $classes = mysql_query(
   "SELECT IF(COUNT(DISTINCT q.questionsetid)-COUNT(DISTINCT cs.answersetid)>0,1,0) AS surveyed, cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code AS scode 
-  FROM Enrollments AS e 
+  FROM enrollments AS e 
   INNER JOIN qsets AS qs ON e.classid = qs.classid
-  INNER JOIN QuestionSets AS q ON q.questionsetid = qs.questionsetid
-  LEFT JOIN Classes AS cl ON e.classid = cl.classid
-  LEFT JOIN Courses AS c ON cl.courseid = c.courseid
-  LEFT JOIN Subjects AS s ON c.subjectid = s.subjectid
-  LEFT JOIN AnswerSets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
-  LEFT JOIN CompleteSurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
+  INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
+  LEFT JOIN classes AS cl ON e.classid = cl.classid
+  LEFT JOIN courses AS c ON cl.courseid = c.courseid
+  LEFT JOIN subjects AS s ON c.subjectid = s.subjectid
+  LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
+  LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
   WHERE e.userid = '$userid'
   GROUP BY cl.classid
   ORDER BY surveyed DESC, s.code, c.code
@@ -49,11 +49,11 @@ function getquestionsets($classid)
   
   $classes = db_exec(
   "SELECT qs.questionsetid
-  FROM Enrollments AS e 
+  FROM enrollments AS e 
   INNER JOIN qsets AS qs ON e.classid = qs.classid
-  INNER JOIN QuestionSets AS q ON q.questionsetid = qs.questionsetid
-  LEFT JOIN AnswerSets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
-  LEFT JOIN CompleteSurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
+  INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
+  LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
+  LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
   WHERE e.userid = '$userid' AND e.classid = '$classid' AND cs.userid IS NULL
   LIMIT 50",$db);
   
@@ -67,7 +67,7 @@ function getquestionsets($classid)
 function showqset($questionsetid,$badfields)
 {
   global $db,$HTTP_POST_VARS;
-  $questionset = db_getrow($db,"QuestionSets",Array("questionsetid" => $questionsetid), 0);
+  $questionset = db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid), 0);
   extract($questionset);
   print("<h4>$displayname</h4>\n");
   for($i = 1; $i <= 10; ++$i)
@@ -125,7 +125,7 @@ function validatequestions($qsets)
   $badfields = Array();
   foreach($qsets as $questionsetid)
   {
-    $questionset = db_getrow($db,"QuestionSets",Array("questionsetid" => $questionsetid), 0);
+    $questionset = db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid), 0);
     extract($questionset);
     for($i = 1; $i <= 10; ++$i)
     {
@@ -149,7 +149,7 @@ function savequestions($qsets,$classid)
   foreach($qsets as $questionsetid)
   {
     $keys = Array("questionsetid" => $questionsetid, "questionperiodid" => $questionperiodid, "classid" => $classid);
-    $answersetid = db_getvalue($db,"AnswerSets",$keys,"answersetid");
+    $answersetid = db_getvalue($db,"answersets",$keys,"answersetid");
     if (!$answersetid)
     {
       $values = Array
@@ -167,13 +167,13 @@ function savequestions($qsets,$classid)
         "MC10a" => 0,"MC10b" => 0,"MC10c" => 0,"MC10d" => 0,"MC10e" => 0,
         "FR1" => "", "FR2" => ""
       );
-      $answersetid = db_addrow($db,"AnswerSets",array_merge($values,$keys));
+      $answersetid = db_addrow($db,"answersets",array_merge($values,$keys));
     };
     
-    $questionset = db_getrow($db,"QuestionSets",Array("questionsetid" => $questionsetid), 0);
+    $questionset = db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid), 0);
     extract($questionset);
 
-    $sql = "UPDATE AnswerSets SET responses = responses + 1";
+    $sql = "UPDATE answersets SET responses = responses + 1";
     for($i = 1; $i <= 10; ++$i)
     {
       $fieldname = "Q" . $questionsetid . "MC" . $i;
@@ -203,7 +203,7 @@ function savequestions($qsets,$classid)
     
     $sql .= " WHERE answersetid = $answersetid";
 
-    if (!db_exec("INSERT INTO CompleteSurveys(userid,answersetid) VALUES ($userid,$answersetid)",$db) || mysql_affected_rows($db) != 1)
+    if (!db_exec("INSERT INTO completesurveys(userid,answersetid) VALUES ($userid,$answersetid)",$db) || mysql_affected_rows($db) != 1)
       return false;    
     
     if (!db_exec($sql,$db))
@@ -219,7 +219,12 @@ function savequestions($qsets,$classid)
 $userid = login_getuserid();
 $db = wces_connect();
 $questionperiodid = wces_GetQuestionPeriod($db);
-wces_FindQuestionSets($db,"qsets");
+wces_Findquestionsets($db,"qsets");
+
+
+print('<i>The Spring 2001 Final Evaluation period has not yet begun. Check back soon and email any questions to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>.</i>');
+page_bottom();
+exit();
 
 if ($classid)
 {
@@ -260,3 +265,11 @@ else
 
   page_bottom();
 %>
+
+
+
+
+
+
+
+

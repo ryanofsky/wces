@@ -67,7 +67,7 @@ if ($mode == "professors")
   <script>AttachImage('courses','courses_on.gif')</script>
   <% 
 
-  $y = mysql_query("SELECT p.professorid, p.name FROM AnswerSets INNER JOIN Classes as cl USING (classid) INNER JOIN Professors AS p USING (professorid) GROUP BY p.professorid",$db);
+  $y = mysql_query("SELECT p.professorid, p.name FROM answersets INNER JOIN classes as cl USING (classid) INNER JOIN professors AS p USING (professorid) GROUP BY p.professorid",$db);
   $plist = array();
   while($row = mysql_fetch_array($y))
     if ($row["name"]) 
@@ -102,11 +102,11 @@ else // $mode == "courses"
 
   $y = mysql_query("
   
-  SELECT c.courseid, c.name, c.code, s.code AS scode, d.name AS dname, d.departmentid FROM AnswerSets AS a
-  INNER JOIN Classes as cl USING (classid)
-  INNER JOIN Courses AS c USING (courseid)
-  INNER JOIN Departments AS d USING (departmentid)
-  LEFT JOIN Subjects AS s ON (c.subjectid = s.subjectid)
+  SELECT c.courseid, c.name, c.code, s.code AS scode, d.name AS dname, d.departmentid FROM answersets AS a
+  INNER JOIN classes as cl USING (classid)
+  INNER JOIN courses AS c USING (courseid)
+  INNER JOIN departments AS d USING (departmentid)
+  LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
   WHERE (a.responses > 0) AND (a.questionsetid = 1)
   GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);
   
@@ -132,3 +132,10 @@ else // $mode == "courses"
 %>
 
 </body>
+
+
+
+
+
+
+

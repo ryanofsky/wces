@@ -9,7 +9,7 @@
 
   page_top("Survey Results","0010");
   $db = wces_connect();
-  $profname = db_getvalue($db,"Professors",Array("professorid" => $profid),"name");
+  $profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
 
 function report_display($db,$answersetids,$showresponses,$listclasses,$showgraph)
 {
@@ -24,21 +24,21 @@ function report_display($db,$answersetids,$showresponses,$listclasses,$showgraph
   }
   $list .= ")";
   
-  $questionsetid = mysql_result(mysql_query("SELECT MIN(questionsetid) as questionsetid FROM AnswerSets WHERE answersetid IN $list",$db),0);
-  $questions = db_getrow($db,"QuestionSets",Array("questionsetid" => $questionsetid),0);
+  $questionsetid = mysql_result(mysql_query("SELECT MIN(questionsetid) as questionsetid FROM answersets WHERE answersetid IN $list",$db),0);
+  $questions = db_getrow($db,"questionsets",Array("questionsetid" => $questionsetid),0);
   
   print("<hr><h3>" . $questions["displayname"] . "</h3>\n");
 
   if ($listclasses)
   {
-   print("<h4>Classes Included In This Report</h4>\n<ul>");
+   print("<h4>classes Included In This Report</h4>\n<ul>");
    
    $sql = "SELECT a.classid AS classid, cl.section AS section, s.code AS scode, c.code AS code, c.name AS name, p.name AS pname, p.professorid AS professorid
-      FROM AnswerSets AS a
-      LEFT JOIN Classes AS cl USING (classid)
-      LEFT JOIN Courses AS c USING (courseid)
-      LEFT JOIN Subjects AS s USING (subjectid)
-      LEFT JOIN Professors AS p ON (cl.professorid = p.professorid)
+      FROM answersets AS a
+      LEFT JOIN classes AS cl USING (classid)
+      LEFT JOIN courses AS c USING (courseid)
+      LEFT JOIN subjects AS s USING (subjectid)
+      LEFT JOIN professors AS p ON (cl.professorid = p.professorid)
       WHERE a.answersetid IN $list";
     
     //print("$sql<br>");
@@ -58,7 +58,7 @@ function report_display($db,$answersetids,$showresponses,$listclasses,$showgraph
     {
       $sql .= ", SUM(a.MC$i$choice) AS MC$i$choice";
     };
-  $sql .= " FROM AnswerSets AS a LEFT JOIN Classes as c USING (classid) WHERE answersetid IN $list";
+  $sql .= " FROM answersets AS a LEFT JOIN classes as c USING (classid) WHERE answersetid IN $list";
   
   $answers = mysql_fetch_array(mysql_query($sql,$db));
   
@@ -112,11 +112,11 @@ Students Evaluated: <b><%=$answers["responses"]%></b><br>
   if ($showresponses && ($questions["FR1"] || $questions["FR2"]))
   {
     $sql = "SELECT a.FR1 AS FR1, a.FR2 AS FR2, a.classid AS classid, cl.section AS section, s.code AS scode, c.code AS code, c.name AS name, p.name AS pname, p.professorid AS professorid
-      FROM AnswerSets AS a
-      LEFT JOIN Classes AS cl USING (classid)
-      LEFT JOIN Courses AS c USING (courseid)
-      LEFT JOIN Subjects AS s USING (subjectid)
-      LEFT JOIN Professors AS p ON (cl.professorid = p.professorid)
+      FROM answersets AS a
+      LEFT JOIN classes AS cl USING (classid)
+      LEFT JOIN courses AS c USING (courseid)
+      LEFT JOIN subjects AS s USING (subjectid)
+      LEFT JOIN professors AS p ON (cl.professorid = p.professorid)
       WHERE a.answersetid IN $list";
     
     //print("$sql<br>");
@@ -156,11 +156,11 @@ function listclasses()
 
   $sql = 
   "SELECT a.answersetid, a.questionperiodid, qp.year, qp.semester, qp.description, cl.classid, s.code as scode, c.code as code, cl.section, c.name
-  FROM Classes as cl 
-  INNER JOIN AnswerSets AS a USING (classid)
-  LEFT JOIN QuestionPeriods as qp USING (questionperiodid)
-  LEFT JOIN Courses AS c ON (cl.courseid = c.courseid)
-  LEFT JOIN Subjects AS s USING (subjectid)
+  FROM classes as cl 
+  INNER JOIN answersets AS a USING (classid)
+  LEFT JOIN questionperiods as qp USING (questionperiodid)
+  LEFT JOIN courses AS c ON (cl.courseid = c.courseid)
+  LEFT JOIN subjects AS s USING (subjectid)
   WHERE cl.professorid = $profid
   ORDER BY qp.year DESC, qp.semester DESC, qp.questionperiodid DESC, cl.classid";
   
@@ -174,7 +174,7 @@ function listclasses()
     extract($result);
     if ($oldquestionperiodid != $questionperiodid)
     {
-      if ($oldquestionperiodid != 0) print("  <li><a href=\"?questionperiodid=$oldquestionperiodid\">All Classes Combined</a></li>\n</ul>\n");
+      if ($oldquestionperiodid != 0) print("  <li><a href=\"?questionperiodid=$oldquestionperiodid\">All classes Combined</a></li>\n</ul>\n");
       $semester = ucwords($semester);
       print("<h4>$semester $year - $description</h4>\n<ul>");    
     }
@@ -188,7 +188,7 @@ function listclasses()
   if ($first)
     print("<p><b>No Responses Found</b></p>");
   else  
-    print("  <li><a href=\"?questionperiodid=$oldquestionperiodid\">All Classes Combined</a></li>\n</ul>");
+    print("  <li><a href=\"?questionperiodid=$oldquestionperiodid\">All classes Combined</a></li>\n</ul>");
       
 };  
   
@@ -202,10 +202,10 @@ function printresults($questionperiodid,$classid)
   $classcond = $classid ? " AND cl.classid = '$classid'" : "";
   
   $sql = "SELECT a.answersetid, a.questionsetid
-  FROM AnswerSets AS a
-  INNER JOIN Classes as cl USING (classid)
-  LEFT JOIN Courses as c USING (courseid)
-  LEFT JOIN Subjects as s USING (subjectid)
+  FROM answersets AS a
+  INNER JOIN classes as cl USING (classid)
+  LEFT JOIN courses as c USING (courseid)
+  LEFT JOIN subjects as s USING (subjectid)
   WHERE a.questionperiodid = '$questionperiodid' AND cl.professorid = '$profid'$classcond
   ORDER BY a.questionsetid";
 
@@ -248,3 +248,11 @@ else
 page_bottom();
 
 %>
+
+
+
+
+
+
+
+

@@ -1,5 +1,5 @@
 <%
-  define("server_mode","yahweh"); // "oracle" "yahweh" "yahwehisapi" "james" or "athlon"
+  define("server_mode","oracle"); // "oracle" "yahweh" "yahwehisapi" "james" or "athlon"
   
   if (server_mode == "oracle")
   {
@@ -22,7 +22,8 @@
     
     function server_sqlinit()
     {
-      return mysql_connect("localhost","root","------");
+      //return mysql_connect("localhost","root","------");
+      return mysql_connect("160.39.128.25","russ","insecure");
     };    
   }
   else if (server_mode == "yahweh")
@@ -48,8 +49,8 @@
     
     function server_sqlinit()
     {
-      return mysql_connect("localhost","root","------");
-      //return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
+      //return mysql_connect("localhost","root","------");
+      return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
     };    
   }
   else if (server_mode == "yahwehisapi")

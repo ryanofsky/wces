@@ -48,7 +48,7 @@ function login_setup($db, $userid, $uni, $isstudent, $isprofessor, $isadministra
   $HTTP_SESSION_VARS["login_isstudent"] = $isstudent ? true : false;
   $HTTP_SESSION_VARS["login_isprofessor"] = $isprofessor ? true : false;
   $HTTP_SESSION_VARS["login_isadministrator"] = $isadministrator ? true : false;
-  $HTTP_SESSION_VARS["login_profid"] = $isprofessor ? db_getvalue($db,"Professors",Array("userid" => $userid),"professorid") : false;
+  $HTTP_SESSION_VARS["login_profid"] = $isprofessor ? db_getvalue($db,"professors",Array("userid" => $userid),"professorid") : false;
   
   //WORKAROUND. Copy HTTP_SESSION_VARS into obnoxious globals
   foreach($HTTP_SESSION_VARS as $k => $v) {  global ${$k}; ${$k} = $HTTP_SESSION_VARS[$k]; }
@@ -56,10 +56,10 @@ function login_setup($db, $userid, $uni, $isstudent, $isprofessor, $isadministra
 
 function login_logout()
 {
-  session_start();
+  @session_start();
   @session_destroy();
   $p = session_get_cookie_params(); 
-  setcookie(session_name(), "", 0, $p["path"], $p["domain"]); 
+  @setcookie(session_name(), "", 0, $p["path"], $p["domain"]); 
 };
 
 function login_prompt($url,$status,$uni)
@@ -154,15 +154,15 @@ function login_validate($uni,$password,$requiredstatus)
     
   $db = wces_connect();
   
-  $result = db_exec("SELECT userid FROM Users WHERE cunix = '" . addslashes($cunix) . "'",$db);
+  $result = db_exec("SELECT userid FROM users WHERE cunix = '" . addslashes($cunix) . "'",$db);
   if (mysql_num_rows($result) == 1)
   {
     $userid = mysql_result($result,0);
-    db_exec("UPDATE Users SET lastlogin = NOW() WHERE userid = $userid",$db);
+    db_exec("UPDATE users SET lastlogin = NOW() WHERE userid = $userid",$db);
   }
   else
   {
-    db_exec("INSERT INTO Users(cunix,lastlogin) VALUES ('" . addslashes($cunix) . "',NOW())",$db);
+    db_exec("INSERT INTO users(cunix,lastlogin) VALUES ('" . addslashes($cunix) . "',NOW())",$db);
     $userid = mysql_insert_id($db);
   }  
  
@@ -171,7 +171,7 @@ function login_validate($uni,$password,$requiredstatus)
   {
     $class = substr($dump,$pos+9,20);
     $classid = class_update($db, $class);
-    db_replacenoid($db,"Enrollments",Array("userid" => $userid, "classid" => $classid),0);
+    db_replacenoid($db,"enrollments",Array("userid" => $userid, "classid" => $classid),0);
     $pos = strpos($dump,"CUcourse_",$pos+1);
   };
 
@@ -180,15 +180,15 @@ function login_validate($uni,$password,$requiredstatus)
   if (contains($dump,Array("CUstudent","BCstudent","CPMCstudent","TCstudent","UTSstudent")))
     $isstudent = 1;  
   
-  if (db_getvalue($db,"Users",Array("userid" => $userid),"isprofessor") == "true")
+  if (db_getvalue($db,"users",Array("userid" => $userid),"isprofessor") == "true")
     $isprofessor = 1;
   else if (contains($dump,Array("CUinstructor", "BCinstructor", "CUNIX_instructor", "CUadministrator", "CUNIX_Instructor")))
   {
      $isprofessor = 1;
-     db_updatevalues($db,"Users",Array("userid" => $userid),Array("isprofessor" => "true"));
+     db_updatevalues($db,"users",Array("userid" => $userid),Array("isprofessor" => "true"));
   }    
 
-  if (db_getvalue($db,"Users",Array("userid" => $userid),"isadmin") == "true")
+  if (db_getvalue($db,"users",Array("userid" => $userid),"isadmin") == "true")
     $isadministrator = 1;
 
   login_setup($db,$userid,$cunix,$isstudent,$isprofessor,$isadministrator);
@@ -253,8 +253,8 @@ function login_saveprofid($profid)
   if (session_is_registered("login_userid"))
   {
     $db = wces_connect();
-    db_updatevalues($db,"Professors",Array("userid" => $login_userid),Array("userid" => false));
-    db_updatevalues($db,"Professors",Array("professorid" => $profid),Array("userid" => $login_userid));
+    db_updatevalues($db,"professors",Array("userid" => $login_userid),Array("userid" => false));
+    db_updatevalues($db,"professors",Array("professorid" => $profid),Array("userid" => $login_userid));
     mysql_close($db);
     session_register("login_profid");
     $login_profid = $profid;

@@ -7,22 +7,33 @@ page_top("Usage Data");
 
 $db = wces_connect();
 
-wces_FindClasses($db,"currentclasses");
+wces_Findclasses($db,"currentclasses");
 
 $questionperiodid = wces_GetQuestionPeriod($db);
 
-mysql_query("CREATE TEMPORARY TABLE surveyclasses (courseid INTEGER NOT NULL, classid INTEGER NOT NULL, section CHAR(3) NOT NULL, scode CHAR(4), code CHAR(5), name TINYTEXT, pname TINYTEXT, professorid INTEGER, students INTEGER, responses INTEGER, PRIMARY KEY(classid))",$db);
-mysql_query("REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
+db_exec("CREATE TEMPORARY TABLE surveyclasses(
+courseid INTEGER NOT NULL,
+classid INTEGER NOT NULL,
+section CHAR(3) NOT NULL,
+scode CHAR(4),
+code CHAR(5),
+name TINYTEXT,
+pname TINYTEXT,
+professorid INTEGER,
+students INTEGER,
+responses INTEGER,
+PRIMARY KEY(classid))",$db,__FILE__, __LINE__);
+db_exec("REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
 SELECT c.courseid, cc.classid, cl.section, s.code, c.code, c.name, p.name, p.professorid, IFNULL(cl.students,0), IFNULL(MAX(a.responses),0)
 FROM currentclasses AS cc
-LEFT JOIN Classes AS cl USING (classid)
-LEFT JOIN Courses AS c USING (courseid)
-LEFT JOIN Subjects AS s USING (subjectid)
-LEFT JOIN Professors AS p ON (cl.professorid = p.professorid)
-LEFT JOIN AnswerSets AS a ON (cl.classid = a.classid AND a.questionperiodid = $questionperiodid)
-GROUP BY cc.classid",$db);
+LEFT JOIN classes AS cl USING (classid)
+LEFT JOIN courses AS c USING (courseid)
+LEFT JOIN subjects AS s USING (subjectid)
+LEFT JOIN professors AS p ON (cl.professorid = p.professorid)
+LEFT JOIN answersets AS a ON (cl.classid = a.classid AND a.questionperiodid = $questionperiodid)
+GROUP BY cc.classid",$db,__FILE__, __LINE__);
 
-$y = mysql_query("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$db);
+$y = db_exec("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$db,__FILE__, __LINE__);
 extract(mysql_fetch_array($y));
 %>
 
@@ -52,7 +63,7 @@ print("</ul>");
 
 /*
 
-$sql = "SELECT u.cunix, MIN(e.surveyed) AS didall, MAX(e.surveyed) AS didone FROM currentclasses AS cc INNER JOIN Enrollments AS e USING (classid) LEFT JOIN Users AS u USING (userid) GROUP BY e.userid HAVING didone = 'yes' ORDER BY didall DESC, RAND()";
+$sql = "SELECT u.cunix, MIN(e.surveyed) AS didall, MAX(e.surveyed) AS didone FROM currentclasses AS cc INNER JOIN enrollments AS e USING (classid) LEFT JOIN users AS u USING (userid) GROUP BY e.userid HAVING didone = 'yes' ORDER BY didall DESC, RAND()";
 $students = mysql_query($sql,$db);
 print("<h3>Individual Student Usage</h3>\n");
 $first = true; $didalllast = 0;
@@ -80,3 +91,10 @@ mysql_query("DROP TABLE surveyclasses",$db);
 
 page_bottom();
 %>
+
+
+
+
+
+
+
