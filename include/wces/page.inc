@@ -87,6 +87,7 @@ function showhelp(topic)
     page_link("Reporting Wizard", "administrators/report.php", $QSID);
     page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
     page_link("Data Import",      "administrators/import.php", $QSID);
+    page_link("Question Periods", "administrators/questionperiods.php", $QSID);
     page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
   }
 
