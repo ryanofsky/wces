@@ -2,8 +2,11 @@
   require_once("wces/login.inc");
   require_once("wces/page.inc");
   page_top("Login Page");
+
+  if (!isset($requestedstatus)) $requestedstatus = login_student;
+  if (!isset($uni)) $uni = "";
+  if (!isset($destination)) $destination = "";
   
-  if (!$requestedstatus) $requestedstatus=login_student;
 
   if (login_isloggedin())
   {
@@ -34,11 +37,11 @@
 <h3>Security Alert</h3>
 
 <p>The information sent in the form above is not encrypted, and could potentially be intercepted
-by someone monitoring http traffic on your network. <a href="http://www.columbia.edu/acis/security/">AcIS</a>recommends that you use encryption whenever possible. To start an encrypted session, click the link below:</p><%$params="destination=" . urlencode($destination) . "&requestedstatus=" .urlencode($requestedstatus) . "&message=" . urlencode($message) . "&uni=" . urlencode($uni); %>
+by someone monitoring http traffic on your network. <a href="http://www.columbia.edu/acis/security/">AcIS</a>recommends that you use encryption whenever possible. To start an encrypted session, click the link below:</p><%$params="destination=" . urlencode($destination) . "&requestedstatus=" .urlencode($requestedstatus) . "&uni=" . urlencode($uni); %>
 
 <ul>
-  <li><a href="https://oracle.seas.columbia.edu/wces/login/login.php?<%=$params%>">Secure Server</a></li>
-</ul>
+  <li><a href="<%=$server_sbase . $server_wcespath . "login/login.php?destination=" . urlencode($destination) . "&requestedstatus=" .urlencode($requestedstatus) . "&uni=" . urlencode($uni) . "&SESSION_TRANSFER_ID=" . urlencode(session_id())%>">Secure Server</a></li>
+</ul>  
 
 <% }
   page_bottom();
