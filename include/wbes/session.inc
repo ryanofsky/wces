@@ -3,7 +3,7 @@
 function session_initialize($vars, $prefix = "")
 {
   global $HTTP_COOKIE_VARS, $HTTP_POST_VARS, $HTTP_GET_VARS,
-         $ASID, $QSID, $ISID, $AASID, $AQSID, $AISID;
+         $ASID, $QSID, $ISID, $AASID, $AQSID, $AISID, $APSID, $PSID;
 
   foreach($vars as $var) // To ensure security, overwrite any existing values
     if (!session_is_registered("$prefix$var")) 
@@ -20,13 +20,14 @@ function session_initialize($vars, $prefix = "")
 
   $si = session_id();
   $sn = session_name();  
-  $AASID = "&$sn=" . urlencode($si);
-  $AQSID = "?$sn=" . urlencode($si);
+  $APSID = "$sn=" . urlencode($si);
+  $AASID = "&$APSID";
+  $AQSID = "?$APSID";
   $AISID = "<input type=hidden name=$sn value=\"".htmlspecialchars($si)."\">";
   if (isset($HTTP_COOKIE_VARS[$sn]))
-    list($ASID, $QSID, $ISID) = array("", "", "");
+    list($PSID, $ASID, $QSID, $ISID) = array("", "", "", "");
   else
-    list($ASID, $QSID, $ISID) = array($AASID, $AQSID, $AISID);
+    list($PSID, $ASID, $QSID, $ISID) = array($APSID, $AASID, $AQSID, $AISID);
 
   return $r;  
 }
@@ -34,14 +35,14 @@ function session_initialize($vars, $prefix = "")
 function session_restore($vars, $prefix = "")
 {
   global $HTTP_COOKIE_VARS, $HTTP_POST_VARS, $HTTP_GET_VARS, 
-         $ASID,$QSID,$ISID,$AASID,$AQSID,$AISID;
+         $PSID,$ASID,$QSID,$ISID,$AASID,$AQSID,$AISID,$APSID;
          
   $sn = session_name();
   if (isset($HTTP_COOKIE_VARS[$sn]) || isset($HTTP_POST_VARS[$sn]) || isset($HTTP_GET_VARS[$sn]))
     return session_initialize($vars,$prefix);
   else
   {
-    list($ASID,$QSID,$ISID,$AASID,$AQSID,$AISID) = array("","","","","","");
+    $PSID=$ASID=$QSID=$ISID=$APSID=$AASID=$AQSID=$AISID= "";
     return NULL;
   }  
 }

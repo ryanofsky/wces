@@ -20,7 +20,7 @@
     $status = login_getstatus();
     if ($rs & $status)
     {
-      if ($url) sloppyredirect($url);
+      if ($url) sloppyredirect(addurlparam($url,$PSID));
     }
     else if (($status & login_professor) && ($rs & login_knownprofessor))
       sloppyredirect($server_sbase . $wces_path . "login/profsearch.php?url=" . urlencode($url));
