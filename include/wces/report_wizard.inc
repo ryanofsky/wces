@@ -334,12 +334,12 @@ class ReportWizard extends Wizard
         };
       break;
       case ReportWizard_order:
-        if ($hidden || $this->output->checked == ReportWizard_output_email)
+        if ($hidden || $this->output->output->checked == ReportWizard_output_email)
           $this->order->displayHidden();
 
         if (!$hidden)
         {
-          if($this->output->checked == ReportWizard_output_email)
+          if($this->output->output->checked == ReportWizard_output_email)
             print("<p>Ordering options are not available in email reports. Choose a web based report to use this feature.</p>");
           else
           {
