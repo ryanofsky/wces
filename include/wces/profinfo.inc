@@ -120,7 +120,7 @@ class ProfessorInfo extends FormWidget
         $cunix = $email = $department = $url = $statement = $profile = $education = $picname = 0;
         extract($row);
         print("<tr>");
-        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$last, $first</a></td>\n");
+        print("  <td bgcolor=\"$color\"><a href=\"${server_wcespath}administrators/info.php?professorid=$professorid\">$last, $first</a></td>\n");
         print("  <td bgcolor=\"$color\">" . ($cunix ? "<a href=\"http://www.columbia.edu/cgi-bin/lookup.pl?$cunix\">$cunix</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">" . ($email ? "<a href=\"mailto:$email\">$email</a>" : "?") . "</td>\n");
         print("  <td bgcolor=\"$color\">$department</td>");
