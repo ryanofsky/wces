@@ -40,7 +40,7 @@ class ReportWizard extends Wizard
   var $groupdepartments;
   var $groupquestionperiods;
 
-  var $depts;
+  var $depts = NULL;
 
   function ReportWizard($prefix,$form,$formmethod)
   {
@@ -53,7 +53,8 @@ class ReportWizard extends Wizard
       $prefix,$form,$formmethod
     );
 
-    $this->depts = login_getdepts();
+    if (!(login_getstatus() & login_administrator))
+      $this->depts = login_getdepts();
 
     $this->output = new RadioButton(true, $this->prefix . "_output",$this->form,$this->formmethod);
     $this->includestandard = new CheckBox("{$prefix}_includestandard", $this->form, $this->formmethod);
@@ -135,14 +136,17 @@ class ReportWizard extends Wizard
 
     $t = $this->loadattribute("categories");
     $q = $this->loadattribute("questionperiods");
-    $d = $this->depts && !(login_getstatus() & login_administrator)? $this->depts : $this->loadattribute("departments");
+    $d = $this->depts ? $this->depts : $this->loadattribute("departments");
     $p = $this->loadattribute("professors");
     $c = $this->loadattribute("courses");
 
     if (!is_array($t) || !(count($t) > 0))
     {
       wces_connect();
-      $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
+      if ($this->depts)
+        $t = false;
+      else
+        $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
     }
     else if (in_array("all",$t)) $t = false;
 
@@ -167,13 +171,18 @@ class ReportWizard extends Wizard
     $this->order = new DynamicList(25,4,$labels, $this->prefix . "_order", $this->form, $this->formmethod);
     $this->order->loadvalues();
 
+    if ($this->depts)
+      $dwhere = "\nWHERE department_id in (" . implode($this->depts, ",") . ")";
+    else 
+      $dwhere = "";
+
     $this->queries = array(
       CATEGORIES => "SELECT survey_category_id AS id, name FROM survey_categories ORDER BY survey_category_id",
       QUESTION_PERIODS => "SELECT question_period_id AS id, displayname AS name FROM question_periods ORDER BY question_period_id DESC",
       DEPARTMENTS => "
         SELECT t.department_id AS id, d.code::text || ' - ' || d.name::text AS name
         FROM rwtopics AS t
-        INNER JOIN departments AS d USING (department_id)
+        INNER JOIN departments AS d USING (department_id)$dwhere
         GROUP BY t.department_id, d.code, d.name
         ORDER BY d.code",
       COURSES => "
