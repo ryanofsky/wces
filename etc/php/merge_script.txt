@@ -3,5 +3,5 @@ require_once("wces/wces.inc");
 require_once("wces/import.inc");
 $db_debug = true;
 $db = wces_connect();
-prof_merge($db,Array(107,222),false,false,true);
+prof_merge($db,Array(256,6343),false,false,true);
 %>
