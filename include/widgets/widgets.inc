@@ -71,7 +71,7 @@ class Widget
 
   // just a convenient wrapper around Form::getUrl()
   // calls name() automatically on $vars keys or accepts a scalar $vars
-  function getUrl($vars = null, $pageName = null)
+  function getUrl($vars = null, $pageName = null, $sid = null)
   {
     $fvars = array();
     if (is_array($vars))
@@ -82,7 +82,7 @@ class Widget
     else if (isset($vars))
       $fvars[$this->name()] = $vars;
 
-    return $this->form->getUrl($fvars, $pageName);
+    return $this->form->getUrl($fvars, $pageName, $sid);
   }
     
   function scriptName($str)
@@ -264,7 +264,7 @@ class Form extends ParentWidget
     $this->urlVars[$name] = $value;
   }
   
-  function getUrl($overrides = array(), $pageName = null)
+  function getUrl($overrides = array(), $pageName = null, $sid = null)
   {
     $params = '';
 
@@ -286,8 +286,10 @@ class Form extends ParentWidget
       $params .= urlencode($value);
     }
 
-    global $QSID, $ASID;
-    $params .= strlen($params) ? $ASID : $QSID;
+    if (!isset($sid)) 
+      $params .= strlen($params) ? $GLOBALS['ASID'] : $GLOBALS['QSID'];
+    else if ($sid) 
+      $params .= strlen($params) ? $GLOBALS['AASID'] : $GLOBALS['AQSID'];
 
     if (!isset($pageName))
       $pageName = $this->form->pageName;
