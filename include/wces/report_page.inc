@@ -127,12 +127,13 @@ function report_findgroups($topicstable, $groupings, $orderings)
     COURSES          => "MIN(s.code)",
     DEPARTMENTS      => "MIN(d.code)",
     PROFESSORS       => "MIN(u.lastname)",
-    CATEGORIES       => "MIN(t.survey_category_id)"
+    CATEGORIES       => NULL 
+    //XXX: no category field in rwtopics CATEGORIES       => "MIN(t.survey_category_id)"
   );
 
   $badorder = false;
 
-  $fargs = $fcond = $fcols = $group_s = "";
+  $fargs = $fcond = $fcols = $tcols = $group_s = "";
 
   $i = 0;
   foreach($groupings as $k => $v)
@@ -151,6 +152,9 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
     if ($fcols) $fcols .= ", ";
     $fcols .= "$cols[$k]";
+
+    if ($tcols) $tcols .= ", ";
+    $tcols .= "t.$cols[$k]";
   }
   if (!$group_s)
   {
@@ -161,31 +165,32 @@ function report_findgroups($topicstable, $groupings, $orderings)
   {
     $joins = $sjoins = 0;
     $order_s = "";
-    
+
     foreach($orderings as $o)
     {
-      if ($order_s) $order_s .= ", ";
       $joins |= $o;
       if ($groupings[$o])
       {
+        if ($order_s) $order_s .= ", ";
         $order_s .= $order[$o];
         $group_s .= ", $orderfields[$o]";
         $sjoins |= $o;
         unset($groupings[$o]);
-        if (count($groupings == 0)) break;
+        if (count($groupings) == 0) break;
       }
-      else
+      else if ($gorder[$o])
       {
+        if ($order_s) $order_s .= ", ";
         $badorder = true;
         $order_s .= $gorder[$o];
       }
     }
-    
+
     $tempname = substr(md5(uniqid(rand(),1)),0,20);
-    
+
     pg_query("
       CREATE TEMPORARY TABLE tab$tempname AS
-      SELECT $group_s
+      SELECT $tcols
       FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
       LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & COURSES ? "
       LEFT JOIN courses AS c ON c.course_id = t.course_id
@@ -194,17 +199,17 @@ function report_findgroups($topicstable, $groupings, $orderings)
       LEFT JOIN departments AS d ON d.department_id = t.department_id" : "") ."
       GROUP BY $group_s
       ORDER BY $order_s;
-    
+
       CREATE FUNCTION fun$tempname($fargs) RETURNS INTEGER AS '
         SELECT oid::integer FROM tab$tempname WHERE $fcond
       ' LANGUAGE 'sql';
-    
+
       UPDATE $topicstable SET ordinal = fun$tempname($fcols);
-    
+
       DROP FUNCTION fun$tempname($fargs);
       DROP TABLE tab$tempname;
     ", $wces, __FILE__, __LINE__);
-    
+
     return !$badorder;
   }
 }
@@ -220,7 +225,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 // possible options:
 // - "pies"
 
-function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices)
+function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$taresponses)
 {
   global $wces_path, $TAQUESTIONS, $TAVALUES;
 
@@ -504,6 +509,98 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       if ($outtext) $pagetext .= "\n\n";
     }
   } // while($textresponses->row ...)
+
+  ///////////////////////////////// TA RATINGS /////////////////////////////////////
+
+$TAQUESTIONS = array
+(
+  "overall" => "Overall Quality",
+  "knowledgeability" => "Knowledgeability",
+  "approachability" => "Approachability",
+  "availability" => "Availability",
+  "communication" => "Communication"
+);
+
+$TAVALUES = array
+(
+  "5" => "excellent",
+  "4" => "very good",
+  "3" => "satisfactory",
+  "2" => "poor",
+  "1" => "disastrous",
+  "0" => "n/a"
+);
+
+  while($taresponses->row && $taresponses->row['ordinal'] == $ordinal)
+  {
+    extract($taresponses->row);
+
+    if ($taresponses->split[1])
+    {
+      if ($outhtml)
+      {
+        $pagehtml .= "<h4>TA Ratings</h4>\n";
+
+        $first = true;
+        foreach($TAVALUES as $k => $t)
+        {
+          if ($first) $first = false; else $pagehtml .= ", ";
+          $pagehtml .= "$k = $t";
+        }
+
+        $pagehtml .= "<br><table border=1 cellspacing=0 cellpadding=2>\n<thead style=\"page-break-inside: avoid\">\n<tr>\n  <td>Name</td>\n";
+
+        foreach($TAQUESTIONS as $question)
+          $pagehtml .= "  <td><div style=\"writing-mode:tb-rl\"><b>" . str_replace(" ","&nbsp;",$question) . "</b></div></td>\n";
+        $pagehtml .= "<td><b>Comments</b></td><td><b>Student #</b></td></tr></thead>\n";
+        $avg = array();
+        $num = array();
+      }
+      if ($outtext) $pagetext .= "TA Ratings\n\n";
+    }
+
+    if ($outhtml)
+    {
+      if (!$name) $name = "<i>All TAs</i>";
+      $pagehtml .= "<tr>\n  <td>$name</td>";
+      foreach($TAQUESTIONS as $field => $question)
+      {
+        if ($$field > 0)
+        {
+          $avg[$field] = (isset($avg[$field]) ? $avg[$field] : 0) + $$field;
+          if (isset($num[$field])) ++$num[$field]; else $num[$field] = 1;
+        }
+        $pagehtml .= "  <td>" . $$field . "</td>\n";
+      }
+      $pagehtml .= "  <td>" . ($comments ? $comments : "&nbsp;") . "</td><td>" . $response_id . "</td></tr>\n";
+    }
+
+    if ($outtext)
+    {
+      if ($name) $name = "\"$name\""; else $name = "All TAs";
+      $pagetext .= " - TA Name: $name\n";
+      foreach($TAQUESTIONS as $field => $question)
+        $pagetext .= " - $question: " . $TAVALUES[$$field] . "\n";
+      $pagetext .= " - " . str_replace("\n","\n   ",wordwrap("Comments: \"" . $comments,73)) . "\"\n";
+      $pagetext .= " - Reviewed by: " . $response_id . "\n\n";
+    }
+
+    $taresponses->advance();
+
+    if ($taresponses->split[1])
+    {
+      if ($outhtml)
+      {
+        $pagehtml .= "<tr>\n  <td><b>AVERAGE</b></td>\n";
+        foreach($TAQUESTIONS as $field => $question)
+          $pagehtml .= "  <td>" . round($avg[$field]/$num[$field], 2). "</td>\n";
+        $pagehtml .= "  <td>&nbsp;</td>\n  <td>---</td>\n  </tr>\n</table>\n";
+      }
+      if ($outtext) $pagetext .= "\n\n";
+    }
+  } // while($taresponses->row ...)
+
+
 };
 
 ?>
