@@ -4,6 +4,7 @@ require_once("wces/oracle.inc");
 require_once("wces/wces.inc");
 require_once("wbes/postgres.inc");
 require_once("wbes/general.inc");
+require_once("wces/SimpleResults.inc");
 
 wces_connect();
 
@@ -215,18 +216,18 @@ else // $mode == "courses"
   <?  
 
   $result = pg_query("
-    SELECT DISTINCT d.department_id, d.code, d.name, c.course_id, get_course(c.course_id) AS course_info
+    SELECT d.department_id, d.code, d.name, c.course_id, get_course(c.course_id) AS course_info
     FROM ($select_classes) AS l
     INNER JOIN classes AS cl USING (class_id)
     INNER JOIN courses AS c USING (course_id)
     LEFT JOIN departments AS d ON d.department_id = c.guess_department_id
+    GROUP BY c.course_id, d.code, d.name, d.department_id
     ORDER BY d.name, course_info
   ", $wces, __FILE__, __LINE__);
   
   $classes = new pg_segmented_wrapper($result, "department_id");
   while($classes->row)
   {
-    
     extract($classes->row);
     if ($classes->split)
     {

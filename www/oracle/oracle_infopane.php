@@ -7,7 +7,7 @@ require_once("wbes/general.inc");
 require_once("wbes/postgres.inc");
 require_once("wbes/component_choice.inc");
 require_once("wces/report_page.inc");
-
+require_once("wces/SimpleResults.inc");
 if (isset($show_distributions))
 {
   $show_distributions = $show_distributions ? 1 : 0;
@@ -111,147 +111,45 @@ function ShowClass($class_id)
 </tr>
 </table>    
 <?    
-  $results = pg_query("
-    SELECT c.revision_id AS crevision_id, first(c.choices) AS cchoices,
-      c.flags, c.first_number, c.last_number, c.other_choice,
-      q.revision_id AS qrevision_id, q.qtext, choice_dist(qr.answer) AS dist
-    FROM wces_topics AS t
-    INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
-    INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
-    INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
-    INNER JOIN branches AS b ON c.branch_id = b.branch_id
-    INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
-    INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
-    WHERE t.class_id = $class_id AND r.question_period_id IN $set_question_periods AND c.branch_id = $oracle_branch_id
-    GROUP BY c.revision_id, q.revision_id, c.flags, c.first_number,
-      c.last_number, c.other_choice, c.branch_id, q.qtext
-    ORDER BY q.revision_id
-  ", $wces, __FILE__, __LINE__);
+  $sr =& new SimpleResults(array($class_id), false);
   
-  $rs = pg_query("
-    SELECT cl.students, COUNT(DISTINCT r.user_id) AS responses
-    FROM classes AS cl
-    INNER JOIN wces_topics AS t USING (class_id)
-    INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id AND r.user_id IS NOT NULL
-    WHERE cl.class_id = $class_id AND r.question_period_id IN $set_question_periods
-    GROUP BY cl.class_id, cl.students
-  ", $wces, __FILE__, __LINE__);
-
-  $n = pg_numrows($results);
-  
-  $db = NULL;
-  if ($n == 0)
-  {
-    $abc = pg_query("SELECT oldid FROM temp_class WHERE newid = $class_id", $wces, __FILE__, __LINE__);
-    $classid = pg_numrows($abc) == 1 ? (int)pg_result($abc,0,0) : 0;
+  print("<h4>Survey Results</h4>");
     
-    if ($classid)
+  if (!$show_distributions)
+    print("<p>Show Averages | <a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=1\">Show Distributions</a></p>\n"); 
+  else
+    print("<p><a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=0\">Show Averages</a> | Show Distributions</p>\n"); 
+
+  print("<table border=0 cellpadding=0 cellspacing=5>\n");
+  print("<tr><td colspan=3><p><i>{$sr->responses[$class_id]} of {$sr->students[$class_id]} students responded</i></p></td></tr>\n");
+
+  if (false) 
+    print("<p><strong><i>No Survey Responses Available</i></strong></p>\n");
+  else
+  {  
+    foreach($sr->base_questions as $i => $qtext)
     {
-      $db = wces_oldconnect();
-      $answer_criteria = "a.questionperiodid IN (1,2,4,5,7,9) AND a.topicid IN (1,2,4) AND a.questionsetid = '1'";
-      
-      $sql_columns = "c.students, a.responses"; 
-       
-      $choices = array("a","b","c","d","e"); 
-      for($i = 1; $i <= 10; ++$i) 
-      { 
-        $sql_columns .= ", q.MC$i"; 
-        foreach($choices as $choice) 
-          $sql_columns .= ", a.MC$i$choice"; 
-      }; 
-       
-      $n = db_exec(" 
-        SELECT $sql_columns 
-        FROM answersets AS a 
-        INNER JOIN classes as c USING (classid) 
-        LEFT JOIN questionsets as q ON (a.questionsetid = q.questionsetid) 
-        WHERE a.classid = '$classid' AND $answer_criteria 
-        ORDER BY a.responses DESC LIMIT 1
-      ", $db, __FILE__, __LINE__); 
-      
-      if (mysql_numrows($n) > 0)
-      {
-        assert(mysql_numrows($n) == 1);
-        $dfg = mysql_fetch_array($n); 
-        $responses = (int)$dfg['responses'];
-        $students = (int)$dfg['students'];
-        $n = 10;        
-      }
-      else
-        $n = 0;
-    }
-  };
-  
-  if ($n > 0)
-  {
-    print("<h4>Survey Results</h4>");
-    
-    if (!$show_distributions)
-      print("<p>Show Averages | <a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=1\">Show Distributions</a></p>\n"); 
-    else
-      print("<p><a href=\"oracle_infopane.php?class_id=$class_id&show_distributions=0\">Show Averages</a> | Show Distributions</p>\n"); 
-
-    if (!$db)
-    {
-      assert(pg_numrows($rs) == 1);
-      extract(pg_fetch_array($rs, 0, PGSQL_ASSOC));
-    }
-
-    print("<table border=0 cellpadding=0 cellspacing=5>\n");
-    print("<tr><td colspan=3><p><i>$responses of $students students responded</i></p></td></tr>\n");
-
-    for($i = 0; $i < $n; ++$i)
-    {
-      if (!$db)
-      {
-        extract(pg_fetch_array($results,$i,PGSQL_ASSOC));      
-        $cchoices = pg_explode($cchoices);
-        
-        $values = array(); // indexed by choice keys, holds numeric values of choices
-        foreach($cchoices as $ci => $ct)
-        {
-          $values[$ci] = $values[$ci] = $first_number + ($ci
-            / (count($cchoices)-1)) * ($last_number - $first_number);
-        }
-           
-        $sums = array_pad(pg_explode($dist),count($cchoices),0);
-      }
-      else
-      {
-        $j = $i + 1;
-        $qtext = $dfg["MC$j"];
-        if (!$qtext) continue;
-        $cchoices = array("excellent", "very good", "satisfactory", "poor", "disastrous");
-        $values = array(5,4,3,2,1);
-        $flags = 0;
-        $sums = array($dfg["MC{$j}a"], $dfg["MC{$j}b"], $dfg["MC{$j}c"], $dfg["MC{$j}d"], $dfg["MC{$j}e"]); 
-      };
-      
-      $dist = false;
-      foreach($values as $vi => $vk)
-        $dist[$vk] = $sums[$vi];
-      
-      if ($flags & FLAG_NACHOICE) 
-        unset($dist[end(array_keys($dist))]);
-      $avg = report_avg($dist);
-
       if ($show_distributions)
       {
         print("<tr><td>$qtext<br>");
-        print(MakeGraph($cchoices, $sums));
+        print(MakeGraph($sr->base_choices, $sr->distributions[$class_id][$i]));
         print("</td></tr>\n");
       }
       else
       {
+        $dist = &$sr->distributions[$class_id][$i];
+        $vdist = array();
+        foreach($sr->base_values as $k => $v)
+          $vdist[$v] = $dist[$k];
+        $avg = report_avg($vdist);
         printf("<tr><td>$qtext</td><td>%.2f</td><td nowrap>", $avg);
         print(report_meter(round($avg * 20)));
         print("</td></tr>\n");
       }
     }
-    print("</table>\n");
   }
-  else
-    print("<p><strong><i>No Survey Responses Available</i></strong></p>\n");
+
+  print("</table>\n");
 
   $result = pg_query("
     SELECT cl.name AS clname, cl.section, cl.year, cl.semester, cl.students, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname, c.course_id, d.department_id, s.subject_id, sc.school_id, dv.code AS dvcode, dv.division_id, cl.time, cl.location, cl.callnumber
