@@ -1,4 +1,4 @@
-<%
+<?
 
   require_once("wces/page.inc");
   require_once("wces/database.inc");
@@ -106,7 +106,7 @@ else
 
 page_bottom();
 
-%>
+?>
 
 
 

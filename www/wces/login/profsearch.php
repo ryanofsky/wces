@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/login.inc");
 require_once("wces/page.inc");
@@ -10,26 +10,26 @@ page_top("Professor Search Page");
 
 if (!$lastname)
 {
-%>
-<p>WCES needs to associate your CUNIX id, '<b><%=login_getuni()%></b>' with a professor listing from our database.</p>
+?>
+<p>WCES needs to associate your CUNIX id, '<b><?=login_getuni()?></b>' with a professor listing from our database.</p>
 <p>After this has been done once, WCES will remember the association for future logins. Associations can be updated at any time by choosing '<b>Update CUNIX Association</b>' from the professors menu on the left side of WCES pages.</p>
 <p>Type in your last name in the form below to search for your listing.</p>
-<%
+<?
 }
-%>
+?>
 <form name=profsearch action=profsearch.php method=get>
-Last Name: <input name="lastname" type="text" size="20" value="<%=htmlspecialchars($lastname)%>"> <input name="search" type="submit" value="Search">
-<input type="hidden" name="destination" value="<%=htmlspecialchars($destination)%>">
+Last Name: <input name="lastname" type="text" size="20" value="<?=htmlspecialchars($lastname)?>"> <input name="search" type="submit" value="Search">
+<input type="hidden" name="destination" value="<?=htmlspecialchars($destination)?>">
 </form>
-<%
+<?
 
 if ($lastname)
 {
-  %>
+  ?>
   <hr><h3>Results</h3>
   <p>Find the listing below that displays your name and classes and follow its 'Use This Listing' link.</p>
   <p><font size=-1">Note: If you see your name listed twice, you should contact an administrator so the listings can be merged. In the meantime, choose the listing with the classes you need to access.</font></p>
-  <%
+  <?
 
   $db = wces_connect();
   $professors = mysql_query("SELECT professorid, name FROM professors WHERE name LIKE '%" . addslashes($lastname) . "%' LIMIT 500",$db);
@@ -52,10 +52,10 @@ if ($lastname)
   }
   else
   {
-%>
+?>
 <p><i>No matches found. Please contact an administrator if you need to have your name added to the database.</i></p>
     
-<%
+<?
     
     
   };  
@@ -63,7 +63,7 @@ if ($lastname)
 
 page_bottom();
 
-%>
+?>
 
 
 
