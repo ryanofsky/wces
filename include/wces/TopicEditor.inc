@@ -128,7 +128,7 @@ class TopicEditor extends StatefullWidget
       $list = array
       ( array
         ( "", "
-            SELECT t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
+            SELECT t.topic_id, t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
             FROM enrollments_p AS e
             INNER JOIN wces_topics AS t USING (class_id)
             INNER JOIN question_periods AS s USING (question_period_id)
