@@ -1,11 +1,6 @@
 <?
 
 require_once("widgets/basic.inc");
-require_once("wbes/component.inc");
-require_once("wbes/component_choice.inc");
-require_once("wbes/component_textresponse.inc");
-require_once("wbes/component_heading.inc");
-require_once("wbes/component_text.inc");
 require_once("wbes/survey.inc");
 require_once("wces/database.inc");
 
@@ -35,6 +30,13 @@ define("SurveyEditor_modify_preview",3);
 
 $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
 
+$wbes = false;
+function wbes_connect()
+{
+  global $wbes;
+  if (!$wbes) $wbes = server_pginit("wbes");
+}
+
 class SurveyEditor extends FormWidget
 {
   var $survey = false; // persistent
@@ -43,23 +45,23 @@ class SurveyEditor extends FormWidget
   var $currentcomponent;
   var $barepage = false;
   var $message = "";
+  var $component_types = array();;
   
-  function SurveyEditor($prefix,$form,$formmethod)
+  function SurveyEditor($component_types, $prefix,$form,$formmethod)
   {
     global $server_url;
     $this->FormWidget($prefix,$form,$formmethod);
+    $index = array();                             // Put this in a more appropriate place...
+    foreach($component_types as $c)
+      $this->component_types[$GLOBALS["{$c}_code"] = $c;
   }
  
   function loadvalues()
   {
+    $this->survey = unserialize($this->loadattribute("survey"));
     if (get_class($this->survey) != "survey")
-    {
-      $this->survey = unserialize($this->loadattribute("survey"));
-      if (get_class($this->survey) != "survey")
-      {
-        $this->load();
-      }  
-    }  
+      $this->survey = false;
+
     $this->state = $this->loadattribute("state");
     $this->currentcomponent = $this->loadattribute("currentcomponent");
     $this->handleaction();
@@ -67,29 +69,22 @@ class SurveyEditor extends FormWidget
 
   function load()
   {
-    global $db;
-   
-    $result = db_exec("SELECT dump FROM cheesyclasses WHERE classid IN (" . $this->editclass . ", 0) ORDER BY classid DESC LIMIT 1", $db, __FILE__, __LINE__);
-    
-    if (mysql_num_rows($result) > 0)    
-      $this->survey = unserialize(mysql_result($result,0));
-    else
-      $this->survey = new Survey();
+    $this->survey = new Survey();
   }
   
   function save()
   {
-    global $db;
-
-    $e = $this->editclass;
-
-    db_exec("DELETE FROM cheesyclasses WHERE classid = $e", $db, __FILE__, __LINE__);
-
-    $d = addslashes(serialize($this->survey));
-    
-    db_exec("INSERT INTO cheesyclasses(classid, dump) VALUES('$e', '$d')", $db, __FILE__, __LINE__);
-    
-    $this->message = "<i><font color=blue>Survey Builder: Changes have been saved.</font></i><hr>";
+    //global $db;
+    //
+    //$e = $this->editclass;
+    //
+    //db_exec("DELETE FROM cheesyclasses WHERE classid = $e", $db, __FILE__, __LINE__);
+    //
+    //$d = addslashes(serialize($this->survey));
+    //
+    //db_exec("INSERT INTO cheesyclasses(classid, dump) VALUES('$e', '$d')", $db, __FILE__, __LINE__);
+    //
+    //$this->message = "<i><font color=blue>Survey Builder: Changes have been saved.</font></i><hr>";
     
   }
 
@@ -98,34 +93,23 @@ class SurveyEditor extends FormWidget
     switch ($this->state)
     {
       case SurveyEditor_insert:
-        $this->insert_action = new ActionButton($this->prefix . "_list_action", $this->form, $this->formmethod);
+        $this->insert_action = new ActionButton("{$this->prefix}_list_action", $this->form, $this->formmethod);
         $this->insert_action->loadvalues();
-        $this->insert_type = new RadioButton(array("Multiple Choice Question Set","Text Response Question","Heading Component","Text Component"), $this->prefix . "_insert_type",$this->form, $this->formmethod);
+        
+        $choices = array();
+        foreach($this->component_types as $k => $v)
+          $choices[$k] = $GLOBALS["{$v}_name"];
+       
+        $this->insert_type = new RadioButton($choices, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
         $this->insert_type->loadvalues();
 
         switch($this->insert_action->action)
         {
           case SurveyEditor_insert_create:
-            switch ($this->insert_type->checked)
-            {
-              case 0:
-                $q = new Choice();
-              break;
-              case 1:
-                $q = new TextResponse();
-              break;
-              case 2:
-                $q = new Heading();
-                break;
-              case 3:
-                $q = new Text();
-                break;
-              default:
-                $q = false;
-              break;
-            };
+            $name = @$this->component_types[$this->insert_type->checked];
+            $q = $name ? new $name() : false;
 
-            if ($q === false)
+            if (!$q)
               $this->insert_badinput = true;
             else
             {  
@@ -144,9 +128,9 @@ class SurveyEditor extends FormWidget
         }
         break;
       case SurveyEditor_modify:
-        $this->modify_action = new ActionButton($this->prefix . "_modify_action", $this->form, $this->formmethod);
+        $this->modify_action = new ActionButton("{$this->prefix}_modify_action", $this->form, $this->formmethod);
         $this->modify_action->loadvalues();
-        $this->modify_editor = $this->survey->components[$this->currentcomponent]->geteditor($this->prefix . "_modify_editor", $this->form, $this->formmethod);
+        $this->modify_editor = $this->survey->components[$this->currentcomponent]->geteditor("{$this->prefix}_modify_editor", $this->form, $this->formmethod);
         $this->modify_editor->loadvalues();
         switch($this->modify_action->action)
         {
@@ -175,7 +159,7 @@ class SurveyEditor extends FormWidget
         break;
       case SurveyEditor_main:
       default:
-        $this->main_action = new ActionButton($this->prefix . "_main_action", $this->form, $this->formmethod);
+        $this->main_action = new ActionButton("{$this->prefix}_main_action", $this->form, $this->formmethod);
         $this->main_action->loadvalues();
 
         switch($this->main_action->action)
@@ -288,7 +272,7 @@ by clicking above and below existing components.</p>
                 break;
               else
                 $component = &$this->survey->components[$i];
-              $w = $component->getwidget($this->prefix . "_main_qwidget_" . $i, $this->form, $this->formmethod);
+              $w = $component->getwidget("{$this->prefix}_main_qwidget_" . $i, $this->form, $this->formmethod);
               $w->loadvalues();
 ?>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
