@@ -1,33 +1,33 @@
-DROP TABLE saves;
-DROP SEQUENCE save_ids;
-DROP TABLE branches;
-DROP SEQUENCE branch_ids;
-DROP TABLE branch_topics_cache;
-DROP TABLE branch_ancestor_cache;
-DROP TABLE generic_components;
-DROP TABLE choice_components;
-DROP TABLE choice_questions;
-DROP TABLE textresponse_components;
-DROP TABLE text_components;
-DROP TABLE surveys;
-DROP TABLE subsurvey_components;
-DROP TABLE pagebreak_components;
-DROP TABLE revisions;
-DROP SEQUENCE revision_ids;
-DROP TABLE list_items;
-DROP SEQUENCE list_item_ids;
-DROP TABLE topics;
-DROP SEQUENCE topic_ids;
-DROP TABLE question_periods;
-DROP SEQUENCE question_period_ids;
-DROP TABLE survey_responses;
-DROP TABLE choice_responses;
-DROP TABLE choice_question_responses;
-DROP TABLE mchoice_question_responses;
-DROP TABLE textresponse_responses;
-DROP TABLE responses;
-DROP SEQUENCE response_ids;
-DROP TABLE array_int_composite;
+-- DROP TABLE saves;
+-- DROP SEQUENCE save_ids;
+-- DROP TABLE branches;
+-- DROP SEQUENCE branch_ids;
+-- DROP TABLE branch_topics_cache;
+-- DROP TABLE branch_ancestor_cache;
+-- DROP TABLE generic_components;
+-- DROP TABLE choice_components;
+-- DROP TABLE choice_questions;
+-- DROP TABLE textresponse_components;
+-- DROP TABLE text_components;
+-- DROP TABLE surveys;
+-- DROP TABLE subsurvey_components;
+-- DROP TABLE pagebreak_components;
+-- DROP TABLE revisions;
+-- DROP SEQUENCE revision_ids;
+-- DROP TABLE list_items;
+-- DROP SEQUENCE list_item_ids;
+-- DROP TABLE topics;
+-- DROP SEQUENCE topic_ids;
+-- DROP TABLE question_periods;
+-- DROP SEQUENCE question_period_ids;
+-- DROP TABLE survey_responses;
+-- DROP TABLE choice_responses;
+-- DROP TABLE choice_question_responses;
+-- DROP TABLE mchoice_question_responses;
+-- DROP TABLE textresponse_responses;
+-- DROP TABLE responses;
+-- DROP SEQUENCE response_ids;
+-- DROP TABLE array_int_composite;
 DROP FUNCTION array_int_pair(INTEGER, INTEGER);
 DROP FUNCTION array_int_fill(INTEGER, INTEGER);
 DROP FUNCTION boolean_cast(BOOLEAN);
@@ -42,6 +42,7 @@ DROP FUNCTION branch_topics_generate();
 DROP FUNCTION topic_contents(INTEGER);
 DROP FUNCTION revision_contents(INTEGER);
 DROP FUNCTION branch_latest(INTEGER, INTEGER);
+DROP FUNCTION branch_latest(INTEGER, INTEGER, INTEGER);
 DROP FUNCTION branch_topics_insert(INTEGER, INTEGER, INTEGER);
 DROP FUNCTION branch_topics_add(INTEGER, INTEGER);
 DROP FUNCTION branch_create(INTEGER, INTEGER, INTEGER, INTEGER);
@@ -412,16 +413,18 @@ CREATE FUNCTION branch_topics_generate(INTEGER) RETURNS INTEGER AS '
     topic_info RECORD;
   BEGIN
     t := topic_id_;
-     LOOP
+    LOOP
       INSERT INTO branch_topics_cache (topic_id, base_branch_id, branch_id)
       SELECT topic_id_, base_branch_id, branch_id FROM branches
       WHERE topic_id = t;
       SELECT INTO t parent FROM topics WHERE topic_id = t;
-      IF NOT FOUND THEN EXIT; END IF;
+      IF t IS NULL THEN EXIT; END IF;
     END LOOP;
 
     FOR topic_info IN SELECT topic_id FROM topics WHERE ((topic_id_ IS NULL AND parent IS NULL) OR topic_id_ = parent) LOOP
-      PERFORM branch_topics_generate(topic_info.topic_id);
+      IF EXISTS (SELECT * FROM branches WHERE topic_id = topic_info.topic_id) THEN
+        PERFORM branch_topics_generate(topic_info.topic_id);
+      END IF;
     END LOOP;
     RETURN 1;
   END;
@@ -468,7 +471,11 @@ CREATE FUNCTION revision_contents(INTEGER) RETURNS INTEGER AS'
 ' LANGUAGE 'plpgsql';
 
 -- given a branch id this function return the latest revision on the branch.
--- If the latest existing revision is out of date
+-- If the latest existing revision is out of date, a new revision will be
+-- generated and returned
+-- save_id_ is used to intentionally retrieve out of date revisions with
+-- save_id's lesser or equal to the argument. if null, the latest revision
+-- is retrieved
 CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     branch_id_ ALIAS FOR $1;
@@ -573,11 +580,12 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     END IF;
 
     FOR j IN REVERSE i..1 LOOP
+      RAISE NOTICE ''branch_latest j = %'', j;
       IF rec.revs[j] = 0 THEN
         i := revision_create(rec.types[j], par, rec.bids[j], 0, NULL, rec.rids[j]);
       ELSE
         i := revision_create(rec.types[j], par, rec.bids[j], 1, NULL, rec.rids[j]);
-        PERFORM revision_merge(rec.prids[j], rec.rids[j], par, i);
+        PERFORM revision_merge(revision_contents(rec.prids[j]), rec.rids[j], par, i);
       END IF;
       oldpar := par; par := i;
       UPDATE branches SET
@@ -588,6 +596,21 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     RETURN par;
   END;
 ' LANGUAGE 'plpgsql';
+
+-- this is the same as branch_latest(branch_id_, save_id_) except that
+-- there it treats the branch_id_ like a base_branch_id and it has a 
+-- topic_id_ argument which it will use to conveniently find the correct
+-- branch in the branch_topics_cache table. The topic *must* have entries
+-- in the cache. If there is a chance that it doesn't, it should be
+-- converted to a topic that does with a call to topic_contents(topic_id)
+
+-- order of the arguments are base_branch_id, topic_id, save_id
+CREATE FUNCTION branch_latest(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  SELECT branch_latest(
+      (SELECT branch_id FROM branch_topics_cache WHERE topic_id = $2
+        AND base_branch_id = $1), $3);
+' LANGUAGE 'sql';
+
 
 CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
@@ -1270,12 +1293,14 @@ CREATE FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
+    -- RAISE NOTICE ''choice_question_merge(%,%,%,%) called'', $1, $2, $3, $4;
     SELECT INTO orig_row      ctext, is_html FROM text_components WHERE revision_id = orig_id;
     SELECT INTO primary_row   ctext, is_html FROM text_components WHERE revision_id = primary_id;
     SELECT INTO secondary_row ctext, is_html FROM text_components WHERE revision_id = secondary_id;
     UPDATE choice_questions SET
       qtext = text_merge(orig_row.qtext, primary_row.qtext, secondary_row.qtext, ''t'')
     WHERE revision_id = new_id;
+    RAISE NOTICE ''choice_question_merge(%,%,%,%) returns'', $1, $2, $3, $4;
     RETURN 1;
   END;
 ' LANGUAGE 'plpgsql';
@@ -1290,6 +1315,7 @@ CREATE FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETUR
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
+    RAISE NOTICE ''choice_component_merge(%,%,%,%) called'', $1, $2, $3, $4;
     SELECT INTO orig_row      ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = orig_id;
     SELECT INTO primary_row   ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = primary_id;
     SELECT INTO secondary_row ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id = secondary_id;
@@ -1383,7 +1409,7 @@ CREATE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER A
     secondary_id ALIAS FOR $3;
     new_id       ALIAS FOR $4;
     rec RECORD;
-    ord INTEGER := 0;
+    ord INTEGER := 1;
     ck INTEGER;
     nk INTEGER;
   BEGIN
@@ -1413,7 +1439,7 @@ CREATE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER A
 
     -- Insert new items from secondary into the new list
 
-    ord := 0;
+    ord := 1;
     FOR rec IN SELECT ordinal, item_id FROM list_items WHERE revision_id = secondary_id ORDER BY ordinal LOOP
 
       SELECT INTO ck ordinal FROM list_items WHERE revision_id = common_id AND item_id = rec.item_id;
@@ -1442,7 +1468,7 @@ CREATE FUNCTION integer_merge(INTEGER, INTEGER, INTEGER, BOOLEAN) RETURNS INTEGE
     secondary_val ALIAS FOR $3;
     favor_primary ALIAS FOR $4;
   BEGIN
-    IF secondary_val = common_val || (primary_val <> common_val && favor_primary) THEN
+    IF secondary_val = common_val OR (primary_val <> common_val AND favor_primary) THEN
       RETURN primary_val;
     ELSE
       RETURN secondary_val;
@@ -1458,7 +1484,7 @@ CREATE FUNCTION text_merge(TEXT, TEXT, TEXT, BOOLEAN) RETURNS TEXT AS '
     secondary_val ALIAS FOR $3;
     favor_primary ALIAS FOR $4;
   BEGIN
-    IF secondary_val = common_val || (primary_val <> common_val && favor_primary) THEN
+    IF secondary_val = common_val OR (primary_val <> common_val AND favor_primary) THEN
       RETURN primary_val;
     ELSE
       RETURN secondary_val;
@@ -1474,7 +1500,7 @@ CREATE FUNCTION boolean_merge(BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) RETURNS BOOLEA
     secondary_val ALIAS FOR $3;
     favor_primary ALIAS FOR $4;
   BEGIN
-    IF secondary_val = common_val || (primary_val <> common_val && favor_primary) THEN
+    IF secondary_val = common_val OR (primary_val <> common_val AND favor_primary) THEN
       RETURN primary_val;
     ELSE
       RETURN secondary_val;
@@ -1490,7 +1516,7 @@ CREATE FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[], BOOLEAN) RETURNS IN
     secondary_val ALIAS FOR $3;
     favor_primary ALIAS FOR $4;
   BEGIN
-    IF secondary_val = common_val || (primary_val <> common_val && favor_primary) THEN
+    IF secondary_val = common_val OR (NOT(primary_val = common_val) AND favor_primary) THEN
       RETURN primary_val;
     ELSE
       RETURN secondary_val;
@@ -1506,7 +1532,7 @@ CREATE FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[], BOOLEAN) RETURNS TEXT[]
     secondary_val ALIAS FOR $3;
     favor_primary ALIAS FOR $4;
   BEGIN
-    IF secondary_val = common_val || (primary_val <> common_val && favor_primary) THEN
+    IF secondary_val = common_val OR (NOT(primary_val = common_val) AND favor_primary) THEN
       RETURN primary_val;
     ELSE
       RETURN secondary_val;
@@ -1518,7 +1544,6 @@ CREATE FUNCTION bitmask_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   SELECT (~ $1 & ($2 | $3)) | ($2 & $3)
 ' LANGUAGE 'sql';
 
-DROP FUNCTION choice_disti(INTEGER[], INTEGER[]);
 CREATE FUNCTION choice_disti(INTEGER[], INTEGER[]) RETURNS INTEGER[] AS '
   DECLARE
     state ALIAS FOR $1;

@@ -64,15 +64,14 @@ class ChoiceFactory extends ComponentFactory
 
       $result = pg_query("
         CREATE TEMPORARY TABLE tmp$c->revision_id AS
-        SELECT branch_latest(li.item_id,$latest) AS revision_id, ordinal
-        FROM list_items AS li, branch_topics_cache AS bt
-        WHERE li.revision_id = (SELECT revision_contents($c->revision_id))
-          AND bt.base_branch_id = li.item_id AND bt.topic_id = $topic_id;
+        SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
+        FROM list_items AS li
+        INNER JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $topic_id
+        WHERE li.revision_id = (SELECT revision_contents($c->revision_id));
 
         SELECT t.ordinal, q.revision_id, q.qtext
         FROM tmp$c->revision_id AS t INNER JOIN choice_questions AS q USING (revision_id)
         ORDER BY ordinal
-
       ", $wbes, __FILE__, __LINE__);
 
       pg_query("DROP TABLE tmp$c->revision_id", $wbes, __FILE__, __LINE__);
@@ -832,11 +831,11 @@ class ChoiceWidget extends ComponentWidget
       if ($this->component->select_many)
         $answer = pg_implode($this->answers[$i]);
       else
-        $answer = addslashes($this->answers[$i]);
+        $answer = quot($this->answers[$i]);
       $other = addslashes($this->others[$i]);
       $success = $success && pg_query("
         INSERT INTO $table(revision_id, parent, answer, other)
-        VALUES ({$this->component->revision_id}, $nparent, '$answer', '$other');
+        VALUES ({$this->component->revision_id}, $nparent, $answer, '$other');
       ", $wbes, __FILE__, __LINE__);
     }
     return $success;

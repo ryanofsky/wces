@@ -166,6 +166,7 @@ class SurveyWidget extends FormWidget
     {
       $errortext = "";
       foreach($this->questionwidgets as $questionwidget)
+        if (isset($questionwidget->errors))
         foreach($questionwidget->errors as $error)
           $errortext .= "  <li>$error</li>\n";
       if ($errortext) print("<p><strong>The form is not complete. The missing fields are highlighted in <font color=red>red</font>.</strong></p>\n<ul>\n$errortext</ul>\n");

@@ -54,10 +54,7 @@ class Survey
     $result = pg_query("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
     $existing_topic = (int)pg_result($result,0,0);
 
-    $result = pg_query("SELECT branch_latest(
-      (SELECT branch_id FROM branch_topics_cache WHERE topic_id = $existing_topic
-        AND base_branch_id = $base_branch_id), $latest
-    )", $wbes, __FILE__, __LINE__);
+    $result = pg_query("SELECT branch_latest($base_branch_id, $existing_topic, $latest)", $wbes, __FILE__, __LINE__);
     
     $this->orig_id = (int)pg_result($result,0,0);
    
@@ -69,10 +66,10 @@ class Survey
     $result = pg_query("
  
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
-      SELECT branch_latest(li.item_id, $latest) AS revision_id, ordinal
-      FROM list_items AS li, branch_topics_cache AS bt 
-      WHERE li.revision_id = (SELECT revision_contents($this->orig_id))
-        AND bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic;
+      SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
+      FROM list_items AS li
+      INNER JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
+      WHERE li.revision_id = (SELECT revision_contents($this->orig_id));
       
       SELECT t.ordinal, t.revision_id, r.type
       FROM tmp$this->orig_id AS t
