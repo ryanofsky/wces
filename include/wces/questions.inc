@@ -10,6 +10,7 @@ define("questions_listspace",0x8);
 
 class Question
 {
+  
   var $text,$usehtml;  // STRING, question text, html allowed
   
   function Question()
@@ -26,6 +27,10 @@ class Question
   function getwidget($prefix,$form,$formmethod)
   {
     return new QuestionWidget($this,$prefix,$form,$formmethod);
+  }
+  
+  function savequestion($db,$questionsetid)
+  {
   }
 };
 
