@@ -17,7 +17,7 @@ $page_links = 'page_links';
 
 function page_links()
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $absolutePrintStr, $headPrintStr;      
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID;      
   $uni = login_getuni();
   $user_id = login_getuserid();
   $status = login_getstatus();
@@ -132,8 +132,12 @@ function get_surveys()
 
 function page_top($title, $minimal = false)
 {
-  global $page_links, $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, 
-    $wces, $wces_closed, $absolutePrintStr, $headPrintStr;
+  global $page_links, $wces_this, $wces_path, $QSID, 
+    $wces, $absolutePrintStr, $headPrintStr;
+  
+  // not neccessary but makes output less cluttered when db_debug is enabled
+  if (login_getstatus() & login_student) get_surveys();
+  
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
