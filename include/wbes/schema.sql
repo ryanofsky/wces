@@ -186,7 +186,7 @@ CREATE TABLE textresponse_responses
 -- TODO: add indices and foreign key constraints
 
 -- drastically speeds up mass mailing
-CREATE INDEX survey_response_m ON survey_responses(specialization_id, question_period_id, user_id);
+CREATE INDEX survey_response_m ON survey_responses(topic_id, user_id);
 
 CREATE INDEX response_topic_idx ON survey_responses (topic_id);
 CREATE UNIQUE INDEX choice_component_idx ON choice_components(component_id);
@@ -594,9 +594,10 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
 
     i := branch_id_;
     LOOP
-      SELECT INTO j revision_id FROM revisions
+
+      SELECT INTO j revision_id FROM revisions 
       WHERE branch_id = i AND save_id <= save_id_
-      ORDER BY save_id_ DESC LIMIT 1;
+      ORDER BY save_id DESC LIMIT 1;
 
       IF j IS NOT NULL THEN RETURN j; END IF;
 
@@ -607,7 +608,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
     END LOOP;
   END;
 ' LANGUAGE 'plpgsql';
-
+select branch_latest(1, 4338, 1000);
 -- this is the same as branch_latest(branch_id_, save_id_) except that
 -- it takes a item_id and specialization_id instead of a branch_id.
 -- order of the arguments are item_id and specialization_id, save_id
