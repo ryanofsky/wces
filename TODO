@@ -1,5 +1,13 @@
-survey editor
-  - fill in user_id field in saves table
+printing
+  put class names on each page of report using ie printing features
+  Tutorial at http://www.webreference.com/js/column89/
+
+
+administravia
+  - why is "Overall Quality" base question listed twice?
+  - add a link on the login page to CUNIX account activation
+  - Andrew Campbell wants to add abet questions to ALL classes within the EE 
+    Dept. Which questions?
 
 mass mailing 
   - prevent from sending mail for deleted classes
@@ -15,14 +23,13 @@ fix data import script (classmove.php)
   - do insert completion id's
 
 subsurveys
-  - remove superfluous $base_branch_id parameter from Survey::save()
   - Subsurvey factory should hold an array of factories to use for the
     subsurvey. it can be passed as a parameter to the SubsurveyFactory
     constructor.
+  - subsurveys don't save the user_id
 
 new administrative interface
   - create question periods and set start and end dates
-  - prevent individual classes from being surveyed
   - choose which category a class goes in
   - create new categories
 
@@ -33,9 +40,10 @@ easy to use data uploader
 professor profile editor
   - needs to be updated for postgres database
 
-dartmouth
-  - merge changes from trunk
-
 scripts
-  load missing names and email addresses from ldap.columbia.edu
-  
+  - load missing names and email addresses from ldap.columbia.edu
+  - there are many duplicate professor listings. it is easy to find 
+    them by just printing a list of duplicate lastnames for professors
+    who teach classes which are in the wces_topics table. this hasn't
+    been done in a long time, and the problem is worse now because
+    of jackie's professor list which had bad data.
