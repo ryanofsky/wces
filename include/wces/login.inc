@@ -259,10 +259,11 @@ function login_validate($uni,$password)
   
   if ($status & login_professor)
   {
-    $result = db_getrow($db,"professors",Array("userid" => $userid),array("professorid",$name));
+    $result = db_getrow($db,"professors",Array("userid" => $userid),array("professorid","name"));
     if ($result)
     {
-      list($profid,$name) = $result;
+      $profid = $result["professorid"];
+      $name = $result["name"];
       $status |= login_knownprofessor;
     }  
   }
