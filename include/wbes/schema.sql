@@ -29,6 +29,10 @@
 -- DROP TABLE responses;
 -- DROP SEQUENCE response_ids;
 -- DROP TABLE array_int_composite;
+
+DROP FUNCTION subsurvey_component_save(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, TEXT);
+DROP FUNCTION subsurvey_component_merge(INTEGER, INTEGER, INTEGER, INTEGER);
+
 DROP FUNCTION array_int_pair(INTEGER, INTEGER);
 DROP FUNCTION array_int_fill(INTEGER, INTEGER);
 DROP FUNCTION boolean_cast(BOOLEAN);
@@ -149,6 +153,16 @@ CREATE TABLE text_components
   flags INTEGER
 ) INHERITS (revisions);
 
+
+---  survey_id INTEGER NOT NULL,
+
+CREATE TABLE subsurvey_components
+(
+  base_branch INTEGER,
+  flags INTEGER,
+  title TEXT
+) INHERITS (revisions);
+
 CREATE TABLE choice_components
 (
   choices      TEXT[],
@@ -180,11 +194,6 @@ CREATE TABLE surveys
   flags INTEGER
 ) INHERITS (revisions);
 
-CREATE TABLE subsurvey_components
-(
-  survey_id INTEGER NOT NULL,
-  flags INTEGER
-) INHERITS (revisions);
 
 CREATE TABLE pagebreak_components
 (
@@ -647,6 +656,9 @@ CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INT
     ELSE IF type_ = 7 THEN
       INSERT INTO generic_components(type, parent, branch_id, revision, save_id, merged)
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 8 THEN
+      INSERT INTO subsurvey_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
     ELSE IF type_ = 9 THEN
       INSERT INTO pagebreak_components(type, parent, branch_id, revision, save_id, merged)
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
@@ -655,7 +667,7 @@ CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INT
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
     ELSE
       RAISE EXCEPTION ''revision_create(%,%,%,%,%,%) called with unknown type number'', $1, $2, $3, $4, $5, $6;
-    END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF;
+    END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF; END IF;
     RETURN currval(''revision_ids'');
   END;
 ' LANGUAGE 'plpgsql';
@@ -1107,6 +1119,111 @@ CREATE FUNCTION choice_component_save(INTEGER, INTEGER, INTEGER, TEXT, TEXT[],
   END;
 ' LANGUAGE 'plpgsql';
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE FUNCTION subsurvey_component_save(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, TEXT) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_      ALIAS FOR $1;
+    orig_id_       ALIAS FOR $2;
+    save_id_       ALIAS FOR $3;
+    base_branch_   ALIAS FOR $4;
+    flags_         ALIAS FOR $5;
+    title_ 	   ALIAS FOR $6;
+    branch_id_   INTEGER := NULL;
+    changed      BOOLEAN := ''t'';
+    saveto       INTEGER;
+    rec RECORD;
+  BEGIN
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, flags, base_branch, title FROM subsurvey_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''text_component_save(%,%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5, $6;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.base_branch = base_branch_ AND flags_ = rec.flags AND title_ = rec.title);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, 8, save_id_);
+      UPDATE subsurvey_components SET base_branch = base_branch_, flags = flags_, title = title_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
+
+
+
+
+CREATE FUNCTION subsurvey_component_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    orig_id       ALIAS FOR $1;
+    primary_id    ALIAS FOR $2;
+    secondary_id  ALIAS FOR $3;
+    new_id        ALIAS FOR $4;
+    orig_row      RECORD;
+    primary_row   RECORD;
+    secondary_row RECORD;
+  BEGIN
+    SELECT INTO orig_row      flags, base_branch, title FROM subsurvey_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   flags, base_branch, title FROM subsurvey_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row flags, base_branch, title FROM subsurvey_components WHERE revision_id = secondary_id;
+    UPDATE choice_questions SET
+      flags = integer_merge(orig_row.flags, primary_row.flags, secondary_row.flags, ''t''),
+      base_branch = integer_merge(orig_row.base_branch, primary_row.base_branch, secondary_row.base_branch, ''t''),
+      title = text_merge(orig_row.title, primary_row.title, secondary_row.title, ''t'')
+    WHERE revision_id = new_id;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 CREATE FUNCTION text_component_save(INTEGER, INTEGER, INTEGER, INTEGER, TEXT, INTEGER) RETURNS INTEGER AS '
   DECLARE
     topic_id_    ALIAS FOR $1;
@@ -1313,6 +1430,10 @@ CREATE FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEG
 
     IF t = 6 THEN
       RETURN choice_question_merge(common_id, primary_id, secondary_id, new_id);
+    END IF;
+
+    IF t = 8 THEN
+	RETURN subsurvey_component_merge(common_id, primary_id, secondary_id, new_id);
     END IF;
 
     IF t = 9 THEN
