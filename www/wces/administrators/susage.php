@@ -104,7 +104,7 @@ for($i=0; $i < $n; ++$i)
   }
   else
     print('<a href="susage.php?survey_category_id=' 
-      . $survey_category["survey_category_id"] . '&sort='. $sort . '">'
+      . $survey_category["survey_category_id"] . '&sort='. $sort . $ASID . '">'
       . $survey_category["name"] . "</a>");
 }
 if (!$first) print (" | ");
@@ -114,7 +114,7 @@ if (!$foundfilter)
   print("None</p>");
 }
 else
-  print('<a href="susage.php">None</a><br>');
+  print('<a href="susage.php$QSID">None</a><br>');
 ///////////////////////////////////////////////////////////////////////////////
 
 print("Sorting: ");
@@ -133,7 +133,7 @@ foreach($order as $k => $v)
     print($v);
   else
     print('<a href="susage.php?survey_category_id=' 
-      . $ssid . "&sort=" . $k  . '">'
+      . $ssid . "&sort=" . $k  . $ASID . '">'
       . $v . "</a>");
 }
 print("</p>");
@@ -148,7 +148,7 @@ $cat = $survey_category_id ? "AND t.category_id = $survey_category_id" : "";
 //todo: use user_id instead of response_id
 pg_go("
   CREATE TEMPORARY TABLE surveycounts AS
-  SELECT t.class_id, COUNT(DISTINCT response_id) AS responses
+  SELECT t.class_id, COUNT(DISTINCT response_id)::INTEGER AS responses
   FROM question_periods_topics AS qt
   INNER JOIN wces_topics AS t USING (topic_id)
   INNER JOIN classes AS cl USING (class_id)
@@ -238,10 +238,11 @@ $students = pg_go("
   SELECT i.user_id, u.uni, CASE WHEN i.responses = 0 THEN 0 WHEN i.classes <= i.responses THEN 2 ELSE 1 END AS level
   FROM
     (SELECT e.user_id, COUNT (DISTINCT t.topic_id) AS classes, COUNT(DISTINCT s.topic_id) AS responses
-    FROM wces_topics AS t
+    FROM question_periods_topics AS qt
+    INNER JOIN wces_topics AS t USING (topic_id)
     INNER JOIN enrollments AS e ON e.class_id = t.class_id AND e.status = 1
-    LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = $question_period_id
-    WHERE t.class_id IS NOT NULL $cat
+    LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id AND s.question_period_id = qt.question_period_id
+    WHERE qt.question_period_id = $question_period_id $cat
     GROUP BY e.user_id) AS i
   INNER JOIN users AS u USING (user_id)
   ORDER BY level DESC, random();
@@ -270,7 +271,7 @@ for($i = 0; $i < $n; ++$i)
     $first = true;
   }
   if ($first) $first = false; else print(", ");
-  print("\n  <a href=\"${wces_path}administrators/info.php?user_id=$user_id\">$uni</a>");
+  print("\n  <a href=\"${wces_path}administrators/info.php?user_id=$user_id$ASID\">$uni</a>");
   $oldlevel = $level;
 }
 print("</blockquote>");
