@@ -339,7 +339,7 @@ class MassEmail extends ParentWidget
       $from = addslashes($this->from->text);
       $reply_to = addslashes($this->replyto->text);
       $mail_to = addslashes($this->to);
-      $category_id = (int)$this->category_id;
+      $category_id = $this->category_id ? (int)$this->category_id : 'NULL';
       $subject = addslashes($this->subject->text);
       $body = addslashes($this->text->text);
       $question_period_id = get_question_period();
