@@ -822,8 +822,8 @@ class Report extends FormWidget
     
     if ($this->profemail_action->action)
     {
-      $this->profemail_subject->display(true);
-      $this->profemail_message->display(true);
+      $this->profemail_subject->display(true); // true means hidden
+      $this->profemail_message->display(true); 
       $this->profemail_debug->display(true);
   
       $criteria = $this->wizard->criteria;
@@ -844,9 +844,8 @@ class Report extends FormWidget
       $profs->addcolumn("p.professorid, p.name AS pname, IFNULL(p.email,u.email) AS email");
       $profs->addgroup("p.professorid");
       $main->makeparent($profs);
-      
       $profs->execute($db); $main->execute($db); $textresponses->execute($db);
-
+      
       $line = "---------------------------------------------------------------------------\n";
       $subject = $this->profemail_subject->text;
       $message = $this->profemail_message->text;
@@ -874,7 +873,7 @@ class Report extends FormWidget
         
         $name = $profs->row["pname"];
         $address = $profs->row["email"];
-        $address = "rey4@columbia.edu"; 
+//        $address = "rey4@columbia.edu"; 
         $from = "wces@columbia.edu";
         
         if (!$address) print("<p><b><font color=red>No email address found for Professor $name</font></b></p>");
@@ -1026,6 +1025,7 @@ class ReportWizard extends Wizard
     {
       $this->groupclasses->checked = true;
       $this->groupquestionperiods->checked = true;
+      $this->groupdepartments->checked = true;
     }
 
     //////////////////////////////// WIZARD SETUP ////////////////////////////////////////    
@@ -1303,10 +1303,10 @@ class ReportWizard extends Wizard
       
       $first = true;
       $report .= "Group by: ";
-      if ($this->groupclasses->checked) { if ($first) $first = false; else $report.=", "; $report.="classes"; }
-      if ($this->groupcourses->checked)  { if ($first) $first = false; else $report.=", "; $report.="courses"; }
-      if ($this->groupprofessors->checked)  { if ($first) $first = false; else $report.=", "; $report.="professors"; }
-      if ($this->groupdepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="departments"; }
+      if ($this->groupclasses->checked) { if ($first) $first = false; else $report.=", "; $report.="Classes"; }
+      if ($this->groupcourses->checked)  { if ($first) $first = false; else $report.=", "; $report.="Courses"; }
+      if ($this->groupprofessors->checked)  { if ($first) $first = false; else $report.=", "; $report.="Professors"; }
+      if ($this->groupdepartments->checked)  { if ($first) $first = false; else $report.=", "; $report.="Departments"; }
       if ($this->groupquestionperiods->checked) { if ($first) $first = false; else $report.=", "; $report.="Question Periods"; }
       if ($first) $report .= "None";
       $report .= "\n";       
