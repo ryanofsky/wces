@@ -8,7 +8,6 @@ require_once('widgets/basic.inc');
 require_once('wbes/surveyeditor.inc');
 require_once('config/topics.inc');
 
-
 define("TopicEditor_choose", 1);
 
 $survey_debug = false;
@@ -22,25 +21,37 @@ class TopicEditor extends StatefullWidget
   // widgets
   var $editor;
   var $question_period;
-  
+
   function TopicEditor($name, &$parent)
   {
     $this->StatefullWidget($name, $parent);
-    $this->event->shortName(TopicEditor_choose, array('specialization_id', 'item_id'));
     $this->question_period =& new QuestionPeriodSelector("Display surveys for", "qps", $this);
+    $this->event->urlShortName('item_id'); 
+    $this->event->urlShortName('specialization_id');
   }
 
   function & handleEvent($event, $param, $new)
   {
-    global $base_branch_id, $user_id, $factories;
+    global $user_id;
     if ($event == TopicEditor_choose)
     {
       SurveyEditor::DumpScript();
-      $this->editor =& new SurveyEditor($param[1], $param[0], $user_id, 'editor', $this);
+      $this->editor =& new SurveyEditor($param[0], $param[1], $user_id, 'editor', $this);
       $this->loadChild($this->editor, $new);
       $this->barePage = $this->editor->barePage;
       return $this->editor;
     }
+  }
+
+  function & loadState()
+  {
+    StatefullWidget::loadState();
+    
+    $mode = WIDGET_FORM | WIDGET_URL;
+    $item_id = $this->readValue('item_id', $mode);
+    $specialization_id = $this->readValue('specialization_id', $mode);
+    if ($item_id && $specialization_id)
+      $this->eventLoop(TopicEditor_choose, array($item_id, $specialization_id), true);
   }
 
   function printTopics($result, $nameFormat)
@@ -51,9 +62,9 @@ class TopicEditor extends StatefullWidget
     for($i = 0; $i < $n; ++$i)
     {
       extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
-      $style = $modified == 't' ? 'style="list-style-type: circle"' 
-        : 'style="list-style-type: disc"'; 
-        
+      $style = $modified == 't' ? 'style="list-style-type: circle"'
+        : 'style="list-style-type: disc"';
+
       if ($nameFormat == TOPICS_CLASS)
         $name = format_class($name);
       else if ($nameFormat == TOPICS_COURSE)
@@ -61,10 +72,10 @@ class TopicEditor extends StatefullWidget
 
       $no = $survey_debug ? (" ($specialization_id" . ($parent ? ", $parent" : '') . ")") : '';
       print("  <li $style><a href=\""
-        . $this->event->getUrl(TopicEditor_choose, array($specialization_id, $item_id))
+        . $this->getUrl(array('item_id' => $item_id, 'specialization_id' => $specialization_id))
         . "$ASID\">$name</a>$no</li>\n");
-    } 
-    print("</ul>\n");         
+    }
+    print("</ul>\n");
   }
 
   function printVisible()
@@ -80,10 +91,10 @@ class TopicEditor extends StatefullWidget
     print("<p>Choose a survey to edit.</p>\n");
 
     $list = topics_list(get_question_period());
-    
+
     foreach ($list as $row)
     {
-      list($heading, $sql, $mode) = $row; 
+      list($heading, $sql, $mode) = $row;
       print($heading);
       $result = pg_go($sql, $wces, __FILE__, __LINE__);
       $this->printTopics($result, $mode);
@@ -96,7 +107,7 @@ class QuestionPeriodSelector extends ParentWidget
   var $box;
   var $event;
   var $text;
-  
+
   function QuestionPeriodSelector($text, $name, &$parent)
   {
     $this->ParentWidget($name, $parent);
@@ -109,7 +120,7 @@ class QuestionPeriodSelector extends ParentWidget
     $this->box =& new SqlBox($sql, false, 'box', $this);
     $this->event =& new EventWidget('event', $this);
   }
-  
+
   function printVisible()
   {
     print($this->text);
@@ -125,7 +136,7 @@ class QuestionPeriodSelector extends ParentWidget
     ParentWidget::loadInitialState();
     $this->box->selected = get_question_period();
   }
-  
+
   function loadState()
   {
     ParentWidget::loadState();
