@@ -6,7 +6,8 @@ require_once("wces/wces.inc");
 // SimpleResults exists to provides a uniform interface for
 // retrieving responses to base questions
 
-$select_classes = "SELECT DISTINCT class_id FROM wces_topics WHERE make_public";
+//$select_classes = "SELECT DISTINCT class_id FROM wces_topics WHERE make_public";
+$select_classes = "SELECT class_id FROM wces_topics AS tsct WHERE tsct.make_public AND EXISTS (SELECT * FROM semester_question_periods AS tscq WHERE tscq.question_period_id = tsct.question_period_id AND tscq.oracledate < (SELECT NOW()))";
 $set_question_periods = "(2,23)";
 $base_item_id = 14; // comments
 $oracle_item_id = 13; // multiple choice except for quality of text question

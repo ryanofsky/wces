@@ -52,6 +52,7 @@ class QuestionPeriodEditor extends StatefullWidget
     $this->year =& new TextBox(0, 4, "", "year", $this);
     $this->semester =& new DropBox($dartSemesters, "semester", $this);
     $this->profDate =& new TextBox(0, 30, "", "profDate", $this);
+    $this->oracleDate =& new TextBox(0, 30, "", "oracleDate", $this);
   }
 
   function loadInitialState()
@@ -61,7 +62,7 @@ class QuestionPeriodEditor extends StatefullWidget
     if ($this->question_period_id > 0)
     {
       wces_connect();     
-      $r = pg_go("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate FROM semester_question_periods WHERE question_period_id = $this->question_period_id ORDER BY begindate", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate, EXTRACT(EPOCH FROM oracledate) AS oracledate FROM semester_question_periods WHERE question_period_id = $this->question_period_id ORDER BY begindate", $wces, __FILE__, __LINE__);
       assert(pg_numrows($r) == 1);
       extract(pg_fetch_row($r, 0, PGSQL_ASSOC));
       $this->displayName->text = $displayname;
@@ -70,6 +71,7 @@ class QuestionPeriodEditor extends StatefullWidget
       $this->year->text = $year;
       $this->semester->selected = $semester;
       $this->profDate->text = format_date($profdate);
+      $this->oracleDate->text = format_date($oracledate);
     }
     else
     {
@@ -77,6 +79,7 @@ class QuestionPeriodEditor extends StatefullWidget
       $this->beginDate->text = "1/1/$y 12:00 am";
       $this->endDate->text = "1/31/$y 12:00 am";
       $this->profDate->text = "2/7/$y 12:00 am";
+      $this->oracleDate->text = "2/7/$y 12:00 am";
       $this->year->text = $y;
     }
   }
@@ -89,16 +92,19 @@ class QuestionPeriodEditor extends StatefullWidget
     $bd = parse_date($this->beginDate->text);
     $ed = parse_date($this->endDate->text);
     $rd = parse_date($this->profDate->text);
+    $od = parse_date($this->oracleDate->text);
 
     if ($bd === false) $this->errors[] = "Unable to parse begin date";
     if ($bd === false) $this->errors[] = "Unable to parse end date";
     if ($rd === false) $this->errors[] = "Unable to parse professor date";
+    if ($od === false) $this->errors[] = "Unable to parse oracle date";
     
     if (count($this->errors)) return false;
 
     $bd = nulldate($bd);
     $ed = nulldate($ed);
     $rd = nulldate($rd);
+    $od = nulldate($od);
     
     $dn = quot($this->displayName->text);
     $yr = (int)($this->year->text);
@@ -107,7 +113,7 @@ class QuestionPeriodEditor extends StatefullWidget
     {
       $r = pg_go("
         INSERT INTO semester_question_periods(displayname, begindate, enddate,
-        semester, year, profdate) VALUES ($dn, $bd, $ed, $sm, $yr, $rd);
+        semester, year, profdate, oracledate) VALUES ($dn, $bd, $ed, $sm, $yr, $rd, $od);
         SELECT currval('question_period_ids');
       ", $wces, __FILE__, __LINE__);
       if (!$r) return false;
@@ -119,7 +125,7 @@ class QuestionPeriodEditor extends StatefullWidget
       return (bool)pg_go("
         UPDATE semester_question_periods SET
           displayname = $dn, begindate = $bd, enddate = $ed,
-          semester = $sm, year = $yr, profdate = $rd
+          semester = $sm, year = $yr, profdate = $rd, oracledate = $od
         WHERE question_period_id = $this->question_period_id
       ", $wces, __FILE__, __LINE__);  
     }
@@ -133,13 +139,13 @@ class QuestionPeriodEditor extends StatefullWidget
         if ($this->save())
         {
           $this->done = true;
-          $this->message = "<p><font color=blue>Question Period Editor: Changes saved successfully</font></p>";
+          $this->message = "<p><font color=blue>Question Period Editor: Changes to question period $this->question_period_id saved successfully</font></p>";
         }     
       break;
 
       case QuestionPeriodEditor_cancel:
         $this->done = true;
-        $this->message = "<p><font color=red>Question Period Editor: No changes were saved.</font></p>";
+        $this->message = "<p><font color=red>Question Period Editor: Changes to question period $this->question_period_id were not saved.</font></p>";
       break;
     };
   }
@@ -161,6 +167,7 @@ class QuestionPeriodEditor extends StatefullWidget
 <tr><td>Begin Time:</td><td><? $this->beginDate->display(); ?></td></tr>
 <tr><td>End Time:</td><td><? $this->endDate->display(); ?></td></tr>
 <tr><td>Professor Results Date:</td><td><? $this->profDate->display(); ?></td></tr>
+<tr><td>Oracle Results Date:</td><td><? $this->oracleDate->display(); ?></td></tr>
 <tr><td>&nbsp;</td><td><? $this->event->displayButton("Save", QuestionPeriodEditor_save); $this->event->displayButton("Cancel", QuestionPeriodEditor_cancel); ?></td></tr>
 </table>
 <?
@@ -214,7 +221,7 @@ class QuestionPeriodList extends StatefullWidget
       print($this->editor->message);
 
     wces_connect();
-    $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods ORDER BY begindate, enddate", $wces, __FILE__, __LINE__);
     $n = pg_numrows($r);
 
     print("<table border=1>\n");
