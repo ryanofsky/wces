@@ -196,7 +196,7 @@ class db_SelectMonster
       foreach($found as $key)
         if ($this->leftcols[$key] == $leftcol && $this->rightcols[$key] == $rightcol) 
         {
-          $this->jointypes[$foundkey] = max($this->jointypes[$foundkey],$jointype);
+          $this->jointypes[$key] = max($this->jointypes[$key],$jointype);
           return;
         }  
     
@@ -382,7 +382,7 @@ class db_SelectMonster
       
     db_SelectMonster::fixchild($child,$parent);
     
-    foreach($child->children as $key => $value);
+    foreach($child->children as $key => $value)
       if ($value)
         db_SelectMonster::fixchild($child->children[$key],$parent);
   }
