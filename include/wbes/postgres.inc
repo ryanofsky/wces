@@ -150,6 +150,15 @@ class pg_segmented_wrapper
         $this->split = true;
     }
   }
+  
+  function peek($split_num = 0)
+  {
+    if ($this->rkey+1 >= $this->rows)
+      return true;
+    $key = is_array($this->splitcol) ? $this->splitcol[$split_num] : $this->splitcol;
+    return (bool)($this->row[$key] != pg_result($this->result, $this->rkey+1, $key));
+    
+  }
 }
 
 function pg_explode($sa)
