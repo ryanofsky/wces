@@ -57,7 +57,7 @@ class SurveyEditor extends FormWidget
  
   function loadvalues()
   {
-    $this->survey = unserialize((string)$this->loadattribute("survey"));
+    $this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
     if (get_class($this->survey) != "survey")
       $this->load();
 
@@ -200,7 +200,7 @@ class SurveyEditor extends FormWidget
   {
     global $server_media, $wbes;
     
-    $this->printattribute("survey", serialize($this->survey));
+    $this->printattribute("survey", urlencode(serialize($this->survey)));
     $q = unserialize(serialize($this->survey));
     $this->printattribute("currentcomponent",$this->currentcomponent);
     if (!$hidden)
@@ -271,6 +271,9 @@ and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
 <?            
             print("<table border=0 cellpadding=0 cellspacing=0>\n");
+            print("<tr><td colspan=6 align=center>");
+            $this->main_action->display("Add new component",SurveyEditor_main_insert,$ncomponents,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
+            print("</td></tr>");
             print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id={$this->prefix}_insertmarker name={$this->prefix}_insertmarker>\n");
             for($i=0;;++$i)
             {
@@ -487,6 +490,9 @@ if($needNode)
         if (i >= o.nodes) break;
         
         var node = document.images[o.prefix + '_node' + i];
+        
+        if (!node) continue;
+        
         node.ns4_onmouseover = SurveyEditor_node_onmouseover;
         node.ns4_onmouseout = SurveyEditor_node_onmouseout;
         node.key = i;
