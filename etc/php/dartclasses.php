@@ -132,6 +132,8 @@ function importclasses($filename,$year,$semester)
   $i = 0;
   $row = 0;
 
+  $classes = array();
+
   while ($data = fgetcsv ($fp, 8192, ","))
   {
     ++$row;
@@ -139,15 +141,22 @@ function importclasses($filename,$year,$semester)
       print("<b>Warning:</b> Row $row does not contain the correct number of fields. (3 expected, " . count($data) . " found)<br>\n");
     else
     {
+      
       $class_id = getClass($data[0], $year, $semester, $data[1]);
       if (!$class_id) die ("Unable to parse class $data[0] on row $row");
       
       $user_id = (int)$data[2];
       if (!$user_id) die ("Unable to add professor $data[2] to class $data[0] on row $row");
       
+      if (!isset($classes[$class_id]))
+      {
+        pg_query("
+          DELETE FROM enrollments WHERE class_id = $class_id AND status = 3;
+        ", $wces, __FILE__, __LINE__);
+        $classes[$class_id] = true;        
+      }
       pg_query("
-        DELETE FROM enrollments WHERE class_id = $class_id AND status = 3;
-        INSERT INTO enrollments (user_id, class_id, status) VALUES ($user_id, $class_id, 3);
+        INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 3, null);
       ", $wces, __FILE__, __LINE__);
       print("$data[0] added<br>\n");
     };
@@ -179,7 +188,7 @@ function importenrollments($filename, $year, $semester)
       
       pg_query("
         DELETE FROM enrollments WHERE class_id = $class_id AND user_id = $user_id;
-        INSERT INTO enrollments (user_id, class_id, status) VALUES ($user_id, $class_id, 1);
+        INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 1, null);
       ", $wces, __FILE__, __LINE__);
       print("$data[0], $data[1] added<br>\n");
     };
@@ -249,10 +258,10 @@ $path = "/afs/thayer/web/eval/thayer-data/";
 
 wces_connect();
 pg_query("BEGIN", $wces,__FILE__,__LINE__);
-importusers($path ."admins-w2002.txt",9);
-importusers($path . "students-w2002.txt",0);
-importclasses($path . "cinfo-w2002.txt",2002,0);
-importenrollments($path . "enroll-w2002.txt",2002,0);
+//importusers($path ."admins-w2002.txt",9);
+importusers($path . "students-s2002.txt",0);
+importclasses($path . "courses-s2002.txt",2002,0);
+importenrollments($path . "enroll-s2002.txt",2002,0);
 pg_query("END", $wces,__FILE__,__LINE__);
 
 ?>
