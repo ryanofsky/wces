@@ -1,6 +1,6 @@
 <? 
-  if (!$uni ) $uni = "";
-  if (!$pw ) $pw = "";
+  if (!isset($uni)) $uni = "";
+  if (!isset($pw)) $pw = "";
 ?>
 
 <HTML>
