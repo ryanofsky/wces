@@ -22,13 +22,11 @@ DROP SEQUENCE user_ids;
 DROP TABLE acis_groups;
 DROP SEQUENCE acis_group_ids;
 DROP TABLE acis_affiliations;
-DROP TABLE question_periods;
-DROP TABLE survey_topics;
-DROP SEQUENCE survey_topic_ids INCREMENT 1 START 1;
-DROP SEQUENCE question_period_ids;
-DROP FUNCTION prof_wwwreplace(VARCHAR(60));
-DROP FUNCTION prof_pidreplace(VARCHAR(28), VARCHAR(28), char(1), varchar(10));
-DROP FUNCTION prof_regreplace(VARCHAR(28), VARCHAR(28));
+DROP TABLE wces_topics;
+DROP TABLE survey_categories;
+DROP SEQUENCE survey_category_ids;
+DROP TABLE semester_question_periods;
+DROP FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER);
 DROP FUNCTION course_find(TEXT);
 DROP FUNCTION class_find(TEXT);
 DROP FUNCTION strpos(text,text,integer);
@@ -45,6 +43,7 @@ DROP FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEXT,
 DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VARCHAR(28),char(1),varchar(10));
 DROP FUNCTION cunix_associate(INTEGER,INTEGER);
 DROP FUNCTION get_profs(INTEGER);
+DROP FUNCTION get_question_period();
 
 CREATE TABLE classes
 (
@@ -196,7 +195,7 @@ CREATE TABLE professor_hooks
   name VARCHAR(60),
   firstname VARCHAR(28),
   lastname VARCHAR(28),
-  middle char(1),
+  middle VARCHAR(1),
   pid varchar(10) UNIQUE
 );
 
@@ -206,10 +205,10 @@ CREATE INDEX first_idx ON professor_hooks (firstname);
 CREATE INDEX last_idx ON professor_hooks (lastname);
 
 COMMENT ON COLUMN professor_hooks.source IS '
-1 - Regripper Dump ( http://www.columbia.edu/cu/bulletin/uwb/ )
-2 - Registrar PID files ( cunix.columbia.edu/wwws/data/cu/bulletin/uwb-test/include/ )
-3 - Imported from old oracle database
-4 - Imported from registrar text files';
+1 - Regripper Dump from RegRipper (first, last, MI, not separated)
+2 - Registrar PID files from cunix /wwws/data/cu/bulletin/uwb-test/include/ (first, last, MI, separated)
+3 - Imported from the original WCES's professor table (first and last separated, no MI)
+4 - Imported from the original WCES's class table OR from the registrar spreadsheets (first and last separated, no MI)
 
 CREATE TABLE acis_groups
 (
@@ -227,166 +226,112 @@ CREATE TABLE acis_affiliations
   PRIMARY KEY(user_id, acis_group_id)
 );
 
-CREATE TABLE question_periods
+CREATE TABLE wces_topics
 (
-  question_period_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('question_period_ids'),
-  displayname VARCHAR(60),
-  begindate TIMESTAMP,
-  enddate TIMESTAMP
+  class_id INTEGER,
+  category_id INTEGER
+)
+INHERITS (topics);
+
+CREATE TABLE survey_categories
+(
+  survey_category_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('survey_category_ids'),
+  name TEXT
 );
 
-CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
+CREATE SEQUENCE survey_category_ids INCREMENT 1 START 100;
 
-CREATE TABLE survey_topics
+CREATE TABLE semester_question_periods
 (
-  survey_topic_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('survey_topic_ids'),
-  class_id INTEGER NOT NULL,
-  question_period_id INTEGER NOT NULL
-);
+  semester INTEGER,
+  year INTEGER
+) INHERITS (question_periods);
 
-CREATE SEQUENCE survey_topic_ids INCREMENT 1 START 1;
+-- ALTER TABLE classes ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
+-- ALTER TABLE classes ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+-- ALTER TABLE classes ADD FOREIGN KEY (division_id) REFERENCES divisions(division_id);
+-- ALTER TABLE classes ADD FOREIGN KEY (school_id) REFERENCES schools(school_id);
+-- ALTER TABLE courses ADD FOREIGN KEY (subject_id) REFERENCES subjects(subject_id);
+-- ALTER TABLE users ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
+-- ALTER TABLE professor_data ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
+-- ALTER TABLE professor_hooks ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
+-- ALTER TABLE enrollments ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
+-- ALTER TABLE enrollments ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
+-- ALTER TABLE acis_groups ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
+-- ALTER TABLE acis_affiliations ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
+-- ALTER TABLE acis_affiliations ADD FOREIGN KEY (acis_group_id) REFERENCES acis_groups(acis_group_id);
+-- ALTER TABLE survey_topics ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
+-- ALTER TABLE survey_topics ADD FOREIGN KEY (question_period_id) REFERENCES question_periods(question_period_id);
 
-ALTER TABLE classes ADD FOREIGN KEY (course_id) REFERENCES courses(course_id);
-ALTER TABLE classes ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
-ALTER TABLE classes ADD FOREIGN KEY (division_id) REFERENCES divisions(division_id);
-ALTER TABLE classes ADD FOREIGN KEY (school_id) REFERENCES schools(school_id);
-ALTER TABLE courses ADD FOREIGN KEY (subject_id) REFERENCES subjects(subject_id);
-ALTER TABLE users ADD FOREIGN KEY (department_id) REFERENCES departments(department_id);
-ALTER TABLE professor_data ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE professor_hooks ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE enrollments ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE enrollments ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
-ALTER TABLE acis_groups ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
-ALTER TABLE acis_affiliations ADD FOREIGN KEY (user_id) REFERENCES users(user_id);
-ALTER TABLE acis_affiliations ADD FOREIGN KEY (acis_group_id) REFERENCES acis_groups(acis_group_id);
-ALTER TABLE survey_topics ADD FOREIGN KEY (class_id) REFERENCES classes(class_id);
-ALTER TABLE survey_topics ADD FOREIGN KEY (question_period_id) REFERENCES question_periods(question_period_id);
-
-CREATE FUNCTION prof_wwwreplace(VARCHAR(60)) RETURNS INTEGER AS '
+CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
   DECLARE
-    name_s ALIAS FOR $1;
-    profid INTEGER;
-    i INTEGER;
-    j INTEGER;
-    last VARCHAR (28);
-    first VARCHAR (28);
+    name_       ALIAS FOR $1;
+    firstname_  ALIAS FOR $2;
+    middle_     ALIAS FOR $3;
+    lastname_   ALIAS FOR $4;
+    pid_        ALIAS FOR $5;
+    source_     ALIAS FOR $6;
+    i INTEGER := NULL;
+    j INTEGER := NULL;
     rec RECORD;
   BEGIN
-    IF name_s IS NULL OR char_length(name_s) = 0 OR lower(name_s) = ''faculty'' OR lower(name_s) = ''. faculty'' THEN
-      RETURN 0;
-    END IF;  
-    
-    SELECT INTO rec user_id FROM professor_hooks WHERE source = 1 and name = name_s;
-    IF FOUND THEN RETURN rec.user_id; END IF;
-    
-    profid := 0;
-    
-    SELECT INTO rec user_id FROM professor_hooks WHERE source = 2 and name = name_s;
-    IF FOUND THEN profid := rec.user_id; END IF;
-    
-    IF profid = 0 THEN
-      SELECT INTO rec user_id FROM professor_hooks WHERE source IN (3,4) and name = name_s;
-      IF FOUND THEN profid := rec.user_id; END IF;
-    END IF:
+    IF source_ = 1 THEN
+      SELECT INTO i user_id FROM professor_hooks WHERE source = source_ AND name = name_;
+      IF FOUND THEN RETURN i; END IF;
       
-    IF profid = 0 THEN
-      i := 0; j := 0;
+      SELECT INTO i user_id FROM professor_hooks WHERE source = 2 AND name = name_;
+      
+      IF NOT FOUND THEN
+        INSERT INTO users (firstname, lastname) VALUES (firstname_, lastname_);
+        i := currval(''user_ids'');
+      END IF;
+
+      INSERT INTO professor_hooks(user_id, source, name) VALUES (i, source_, name_);
+      
+      RETURN i;
+    ELSE IF source_ = 2 THEN
+      SELECT INTO i user_id FROM professor_hooks WHERE source = 2
+        AND firstname = firstname_ AND middle = middle_ 
+        AND lastname = lastname_ AND pid = pid_;
+      IF FOUND THEN RETURN i; END IF;
+      
+      FOR rec IN SELECT user_id FROM professor_hooks WHERE 
+        (source IN (3,4) AND firstname = firstname AND lastname_ = lastname_) OR
+        (source = 1 AND name = name_)
+        GROUP BY user_id
       LOOP
-        i := position('' '' IN substring(name_s FROM j+1));
-        j := j + i;
-        EXIT WHEN (i = 0);
-        -- RAISE NOTICE ''i = (%)'',i;
+        IF i IS NULL i := rec.user_id; ELSE professor_merge(i,rec.user_id); END IF;
+        i := rec.user_id;
       END LOOP;
-      last := substring(name_s FROM j+1);
-      IF j > 0 THEN first := substring(name_s FROM 0 FOR j); ELSE first := ''''; END IF;
-      INSERT INTO users(lastname, firstname, flags, lastlogin) VALUES (last, first, 4, NULL);
-      profid := currval(''user_ids'');
-    END IF;
-    
-    INSERT INTO professor_hooks (user_id,source,name) VALUES (profid,1,name_s);
-    
-    RETURN profid;
-  END;
-' LANGUAGE 'plpgsql';
+      
+      IF i IS NULL THEN
+        INSERT INTO users (firstname, lastname) VALUES (firstname, lastname);
+        i := currval(''user_ids'');
+      END IF;
+      
+      INSERT INTO professor_hooks (user_id, source, name, firstname, lastname, middle, pid)
+      VALUES (i, source_, name_, firstname_, lastname_, middle_, pid_)
+      
+      RETURN i;
+    ELSE IF source_ = 3 OR source_ = 4 THEN
+      SELECT INTO i user_id FROM professor_hooks WHERE source = source_ AND firstname = firstname_ AND lastname = lastname_;
+      IF FOUND THEN RETURN i; END IF;
+      
+      FOR rec IN SELECT user_id FROM professor_hooks WHERE source = 2 AND firstname = firstname_ AND lastname = lastname_ LOOP
+        IF i IS NULL THEN i := rec.user_id ELSE i := NULL; EXIT; END IF;
+      END LOOP;
+      
+      IF i IS NULL THEN
+        INSERT INTO users (firstname, lastname) VALUES (firstname_, lastname_);
+        i := currval(''user_ids'');
+      END IF;
 
-CREATE FUNCTION prof_pidreplace(VARCHAR(28), VARCHAR(28), char(1), varchar(10)) RETURNS INTEGER AS '
-  DECLARE
-    firstname_s ALIAS FOR $1;
-    lastname_s  ALIAS FOR $2;
-    middle_s    ALIAS FOR $3;
-    pid_s       ALIAS FOR $4;
-    name_s VARCHAR(60);
-    i INTEGER;
-    j INTEGER;
-    profid INTEGER;
-    rec RECORD;
-  BEGIN
-    IF lower(lastname_s) = ''faculty'' OR pid_s = ''C000000001'' THEN
-      RETURN 0;
-    END IF;     
-    
-    SELECT INTO rec user_id FROM professor_hooks WHERE source = 2 AND firstname = firstname_s AND lastname = lastname_s AND middle = middle_s AND pid = pid_s;
-    IF FOUND THEN RETURN rec.user_id; END IF;
-    
-    name_s := trim(firstname_s::text || '' '' || trim(middle_s::text || '' '' || lastname_s::text));
-    profid := 0;
-    
-    SELECT INTO rec user_id FROM professor_hooks WHERE source = 1 AND name = name_s;
-    IF FOUND THEN profid := rec.user_id; END IF;
-    
-    IF profid = 0 THEN
-      SELECT INTO rec user_id FROM professor_hooks WHERE source IN (3,4) AND firstname = firstname_s AND lastname = lastname_s;
-      IF FOUND THEN profid := rec.user_id; END IF;
-    END IF;
-    
-    IF profid = 0 THEN
-      INSERT INTO users(lastname, firstname, flags, lastlogin) VALUES (lastname_s, firstname_s, 4, NULL);
-      profid := currval(''user_ids'');
-    END IF;
-    
-    INSERT INTO professor_hooks (user_id,source,name,lastname,firstname,middle,pid) VALUES (profid,2,name_s,lastname_s,firstname_s,middle_s,pid_s);
-    
-    RETURN profid;
-  END;
-' LANGUAGE 'plpgsql';
-
-CREATE FUNCTION prof_regreplace(VARCHAR(28), VARCHAR(28)) RETURNS INTEGER AS '
-  DECLARE
-    firstname_s ALIAS FOR $1;
-    lastname_s  ALIAS FOR $2;
-    name_s VARCHAR(60);
-    i INTEGER;
-    j INTEGER;
-    profid INTEGER;
-    rec RECORD;
-  BEGIN
-    IF lower(lastname_s) = ''faculty'' THEN
-      RETURN 0;
-    END IF;     
-    
-    SELECT INTO rec user_id FROM professor_hooks WHERE source = 4 AND firstname = firstname_s AND lastname = lastname_s;
-    IF FOUND THEN RETURN rec.user_id; END IF;
-
-    profid := 0;    
-
-    SELECT INTO rec user_id FROM professor_hooks WHERE source IN (2,3) AND firstname = firstname_s AND lastname = lastname_s;
-    IF FOUND THEN profid := rec.user_id; END IF;
-
-    name_s := trim(firstname_s::text || '' '' || lastname_s::text);
-    
-    IF profid = 0 THEN
-      SELECT INTO rec user_id FROM professor_hooks WHERE source = 1 AND name = name_s;
-      IF FOUND THEN profid := rec.user_id; END IF;
-    END IF;
-    
-    IF profid = 0 THEN
-      INSERT INTO users(lastname, firstname, flags, lastlogin) VALUES (lastname_s, firstname_s, 4, NULL);
-      profid := currval(''user_ids'');
-    END IF;
-    
-    INSERT INTO professor_hooks (user_id,source,name,lastname,firstname) VALUES (profid,4,name_s,lastname_s,firstname_s);
-    
-    RETURN profid;
+      INSERT INTO professor_hooks(user_id, source, name) VALUES (i, source_, firstname_, lastname_);
+      
+      RETURN i;
+    ELSE
+      RAISE EXCEPTION ''profesor_replace(%,%,%,%,%) fails. unknown source'', $1, $2, $3, $4, $5;
+    END IF; END IF; END IF
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -977,6 +922,124 @@ CREATE FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),
   END;
 ' LANGUAGE 'plpgsql';
 
+CREATE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS INTEGER AS '
+  DECLARE
+    first ALIAS FOR $1;
+    second ALIAS FOR $2;
+    separator ALIAS FOR $3;
+  BEGIN
+    IF first IS NULL OR char_length(first) = 0 THEN
+      RETURN NULLIF(first,'''');
+    END IF;
+
+    IF second IS NULL OR char_length(second) = 0 THEN
+      RETURN NULLIF(second,'''');
+    END IF;    
+    
+    IF separator IS NULL THEN
+      RETURN first || second;
+    ELSE
+      RETURN first || separator || second;
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+    
+' LANGUAGE 'plpgsql';
+
+DROP FUNCTION professor_merge(INTEGER, INTEGER);
+CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    primary_id ALIAS FOR $1;
+    secondary_id ALIAS FOR $2;
+    primary_row RECORD;
+    secondary_row RECORD;
+    pinfo RECORD;
+    sinfo RECORD;
+  BEGIN
+    RAISE NOTICE ''professor_merge(%,%) called'', $1, $2;
+    
+    IF primary_id = secondary_id THEN RETURN 1; END IF;
+    
+    SELECT INTO primary_row uni, lastname, firstname, email, department_id, flags, lastlogin FROM users WHERE user_id = primary_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''professor_merge(%,%) fails. invalid primary_id'', $1, $2;  
+    END IF;
+
+    SELECT INTO secondary_row uni, lastname, firstname, email, department_id, flags, lastlogin FROM users WHERE user_id = secondary_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''professor_merge(%,%) fails. invalid secondary_id'', $1, $2;  
+    END IF;
+
+    IF primary_row.uni IS NOT NULL AND secondary_row.uni IS NOT NULL THEN
+      RAISE NOTICE ''professor_merge(%,%) fails. cannot merge two professors with different cunix ids'', $1, $2;
+    END IF;    
+    
+    IF primary_row.uni IS NULL THEN
+      primary_row.uni := secondary_row.uni;
+      primary_row.lastlogin := secondary_row.lastlogin;
+    END IF;
+    
+    IF primary_row.lastname IS NULL AND firstname IS NULL THEN
+      primary_row.lastname  := secondary_row.lastname;
+      primary_row.firstname := secondary_row.firstname;
+    END IF;
+    
+    IF primary_row.email IS NULL THEN
+      primary_row.email := secondary_row.email;
+    END IF;
+      
+    IF primary_row.department_id IS NULL THEN
+      primary_row.department_id := secondary_row.department_id;
+    END IF;
+    
+    UPDATE users SET uni = primary_row.uni, email = primary_row.email,
+      lastname = primary_row.lastname, firstname = primary_row.firstname,
+      department_id = primary_row.department_id,
+      flags = flags | primary_row.flags
+    WHERE user_id = primary_id;
+    
+    SELECT INTO pinfo url, picname, statement, profile, education FROM professor_data
+    WHERE user_id = primary_id;
+    
+    SELECT INTO sinfo url, picname, statment, profile, education FROM professor_data
+    WHERE user_id = secondary_id;
+    
+    IF pinfo IS NULL OR sinfo IS NULL THEN
+      UPDATE professor_data SET user_id = primary_id WHERE user_id IN (primary_id, secondary_id);
+    ELSE
+      pinfo.url := text_join(pinfo.url, sinfo.url, ''	'');
+      
+      IF picname IS NULL OR charlength(picname) = 0 THEN
+        pinfo.picname = sinfo.picname;
+      END IF;
+      
+      pinfo.statement := text_join(pinfo.statement,sinfo.statement, ''<hr>'';
+      pinfo.profile := text_join(pinfo.profile,sinfo.profile, ''<hr>'';
+      pinfo.education := text_join(pinfo.education,sinfo.education, ''<hr>'';
+ 
+      UPDATE professor_data SET
+        url = pinfo.url,
+        picname = pinfo.picname,
+        statement = pinfo.statement,
+        education = pinfo.education      
+      WHERE user_id = primary_id;
+      DELETE FROM professor_data WHERE user_id = secondary_id;
+    END;
+    
+    -- Delete enrollments that already exist
+    
+    DELETE FROM enrollments WHERE
+      user_id = secondary_id 
+      AND
+      class_id IN (SELECT class_id FROM enrollments WHERE user_id = primary_id);
+    
+    UPDATE enrollments SET user_id = primary_id WHERE user_id = secondary_id;
+    UPDATE professor_hooks SET user_id = primary_id WHERE user_id = secondary_id;
+    
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
 CREATE FUNCTION cunix_associate(INTEGER,INTEGER) RETURNS INTEGER AS '
   DECLARE
     cunix_userid     ALIAS FOR $1;
@@ -1052,3 +1115,16 @@ CREATE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+CREATE FUNCTION get_question_period() RETURNS INTEGER AS '
+  DECLARE
+    curtime DATETIME;
+    i INTEGER;
+  BEGIN
+    curtime := NOW();
+    SELECT INTO i question_period_id
+    FROM question_periods
+    WHERE begindate < curtime
+    ORDER BY enddate DESC;
+    RETURN i;
+  END;
+' LANGUAGE 'plpgsql';
