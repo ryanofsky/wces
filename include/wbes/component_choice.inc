@@ -842,7 +842,7 @@ class ChoiceWidget extends ComponentWidget
       $other = addslashes($this->others[$i]);
       $success = $success && pg_query("
         INSERT INTO $table(revision_id, parent, answer, other)
-        VALUES ({$this->component->revision_id}, $nparent, $answer, '$other');
+        VALUES ({$this->component->question_ids[$i]}, $nparent, $answer, '$other');
       ", $wbes, __FILE__, __LINE__);
     }
     return $success;
