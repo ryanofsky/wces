@@ -52,7 +52,8 @@ class ReportWizard extends Wizard
       $wces_path,
       $prefix,$form,$formmethod
     );
-
+    
+    $this->reallyskip = array(1 => true);
     $this->depts = login_getdepts();
 
     $this->output = new RadioButton(true, $this->prefix . "_output",$this->form,$this->formmethod);
@@ -221,7 +222,7 @@ class ReportWizard extends Wizard
     for($i = 0; $i < $n; ++$i)
     {
       extract(pg_fetch_array ($result, $i, PGSQL_ASSOC));
-      $selected = $hash[$id] ? " selected" : "";
+      $selected = isset($hash[$id]) && $hash[$id] ? " selected" : "";
       print("<option value=\"$id\"$selected>$name</option>");
     }
     print("</select>\n");
