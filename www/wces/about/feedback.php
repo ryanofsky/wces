@@ -15,7 +15,8 @@ if (!$comments)
 <?=$ISID?>
 <?
   $email = '';
-  if ($user_id = login_getuserid())
+  $login =& LoginInstance();
+  if ($user_id = $login->get('user_id'))
   {
     wces_connect();
     $result = pg_go("SELECT email FROM users WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
@@ -24,7 +25,7 @@ if (!$comments)
   }
 ?>
 <table>
-<tr><td valign=top>Email (optional) </td><td><input type=text name=email value="<?=$email?>" size=30></td></tr>
+<tr><td valign=top>From (optional) </td><td><input type=text name=email value="<?=$email?>" size=30></td></tr>
 <tr><td valign=top>Comments </td><td><textarea name=comments rows=7 cols=40></textarea></td></tr>
 <tr><td valign=top>&nbsp;</td><td><input type=submit name=submit value="Submit"></td></tr>
 </table>

@@ -6,8 +6,10 @@
   require_once("wces/page.inc");  
   page_top("The WCES");
   
-  print("<h3>Welcome " . login_getname() . ",</h3>\n");
-  $status = login_getstatus();
+  $login =& LoginInstance();
+  
+  print("<h3>Welcome " . $login->get('name') . ",</h3>\n");
+  $status = $login->get('status');
 
   $onemenu = true;
 
@@ -99,7 +101,7 @@ and make the rest of the site accessible to you.
     else
     {
       if (!isset($db)) $db = wces_connect();
-      $userid = login_getuserid();
+      $userid = LoginValue("user_id");
       
       $n = pg_numrows($survey_listing);
 

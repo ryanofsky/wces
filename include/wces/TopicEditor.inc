@@ -61,7 +61,8 @@ class TopicEditor extends StatefullWidget
           return null;
         } 
       }
-      $this->editor =& new SurveyEditor($item_id, $specialization_id, login_getuserid(), 'editor', $this);
+      $login =& LoginInstance();
+      $this->editor =& new SurveyEditor($item_id, $specialization_id, $login->get('user_id'), 'editor', $this);
       $this->loadChild($this->editor, $new);
       $this->barePage = $this->editor->barePage;
       return $this->editor;
