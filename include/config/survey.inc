@@ -7,7 +7,7 @@ require_once('wbes/component_textresponse.inc');
 require_once('wbes/component_text.inc');
 require_once('wces/component_abet.inc');
 
-$survey_factories = array
+$WCES_CONFIG_FACTORIES = array
 ( 
   new SurveyFactory(),
   new AbetFactory(),

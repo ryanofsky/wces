@@ -1,6 +1,6 @@
 <?
 
-require_once("config/survey.inc");
+require_once($WCES_CONFIG_FACTORIES_INCLUDE);
 require_once("widgets/basic.inc");
 require_once("wbes/postgres.inc");
 require_once("wbes/survey.inc");
@@ -75,8 +75,8 @@ class SurveyEditor extends StatefullWidget
         $this->loadChild($this->insert, $new);
         if (isset($this->insert->choose))
         {
-          global $survey_factories;
-          $factory = $survey_factories[$this->insert->choose];
+          $factories =& $GLOBALS['WCES_CONFIG_FACTORIES'];
+          $factory = $factories[$this->insert->choose];
           $q = &$factory->create();
           $q->neverSaved = true;
           $this->addEvent(SurveyEditor_modify, $this->survey->insert($q, $param));
@@ -145,14 +145,12 @@ class SurveyEditor extends StatefullWidget
 
   function loadState($new)
   {
-    global $survey_factories;
-    
     $survey = empty($new) ? $this->readValue("survey") : null;
 
     if ($new = !isset($survey)) // assignment is intentional
     {
       if (!isset($this->survey)) // survey could be pre-assigned
-        $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+        $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $GLOBALS['WCES_CONFIG_FACTORIES']);
     }
     else
       $this->survey = unserialize($survey);   
@@ -351,8 +349,8 @@ class SurveyEditorInsert extends ParentWidget
     switch($this->event->event)
     {
       case SurveyEditorInsert_create:
-        global $survey_factories;
-        if (!isset($survey_factories[$this->choices->checked]))
+        $factories =& $GLOBALS['WCES_CONFIG_FACTORIES'];
+        if (!isset($factories[$this->choices->checked]))
           $this->badInput = true;
         else
         {
@@ -377,8 +375,8 @@ class SurveyEditorInsert extends ParentWidget
     print("<h5>Which component type would you like to insert? <a href=\"javascript:showhelp('inserttypes')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a></h5>\n");
 
     $first = true;
-    global $survey_factories;
-    foreach ($survey_factories as $key => $f)
+    $factories =& $GLOBALS['WCES_CONFIG_FACTORIES'];
+    foreach ($factories as $key => $f)
     {
       $name = $f->name();
       if (!isset($name)) continue;

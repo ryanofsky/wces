@@ -1,5 +1,6 @@
 <?
 
+require_once($WCES_CONFIG_FACTORIES_INCLUDE);
 require_once("widgets/basic.inc");
 
 define("SurveyWidget_save",1);
@@ -52,13 +53,12 @@ class SurveyWidget extends ParentWidget
 
   function loadState($new)
   {    
-    global $survey_factories;
     $survey = empty($new) ? $this->readValue("survey") : null;
 
     if ($new = !isset($survey)) // assignment is intentional
     {  
       if (!isset($this->survey)) // survey could be pre-assigned
-        $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+        $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $GLOBALS['WCES_CONFIG_FACTORIES']);
     }
     else
       $this->survey = unserialize($survey);   

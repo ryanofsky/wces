@@ -11,7 +11,6 @@ $WCES_CONFIG_PAGE_INCLUDE = 'config/ColumbiaPage.inc';
 $WCES_CONFIG_PAGE = 'ColumbiaPage';
 
 $WCES_CONFIG_FACTORIES_INCLUDE = 'config/survey.inc';
-$WCES_CONFIG_FACTORIES = 'survey_factories';
 
 $WBES_LOGIN = 'ColumbiaLogin';
 $WBES_LOGIN_INCLUDE = 'config/ColumbiaLogin.inc';
