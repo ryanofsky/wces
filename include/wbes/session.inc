@@ -2,13 +2,27 @@
 
 // Start up session and set helper *SID variables
 
-function session_initialize()
+function session_initialize($existing_only = false)
 {
-  global $USID, $QSID, $ASID, $ISID, $AUSID, $AQSID, $AASID, $AISID;
+  global $AUSID, $AQSID, $AASID, $AISID, $USID, $QSID, $ASID, $ISID;
+
+  $sn = session_name();
+  
+  if (isset($_POST[$sn]))
+    session_id($si = $_POST[$sn]);
+  else if (isset($_GET[$sn]))
+    session_id($si = $_GET[$sn]);
+  else if (isset($_COOKIE[$sn]))
+    session_id($si = $_COOKIE[$sn]);
+  else if ($existing_only)
+  {
+    $AUSID = $AQSID = $AASID = $AISID = $USID = $QSID = $ASID = $ISID = '';
+    return false;
+  }
+  
   session_start();
 
-  $si = session_id();
-  $sn = session_name();  
+  if (!isset($si)) $si = session_id();
   $AUSID = "$sn=" . urlencode($si);
   $AQSID = "?$AUSID";
   $AASID = "&$AUSID";
@@ -18,32 +32,29 @@ function session_initialize()
     $USID = $QSID = $ASID = $ISID = '';
   else
     list($USID, $QSID, $ASID, $ISID) = array($AUSID, $AQSID, $AASID, $AISID);
+
+  return true;
 }
 
 // Call session_initialize only if there is a pre-existing session
 
 function session_restore()
 {
-  global $USID, $QSID, $ASID, $ISID, $AUSID, $AQSID, $AASID, $AISID;
-  
   // avoid doing duplicate work if session_restore is called
   // from different places.
-  if (isset($USID)) return;
-  
-  $sn = session_name();
-  
-  if (isset($_SESSION) || isset($_COOKIE[$sn]) || isset($_POST[$sn]) || isset($_GET[$sn]))
-    session_initialize();
-  else
-    $USID = $QSID = $ASID = $ISID = $AUSID = $AQSID = $AASID = $AISID = '';
+  global $AUSID;
+  if (isset($AUSID)) return (bool)$AUSID;
+
+  return session_initialize(true);
 }
 
 function session_kill()
 {
-  global $USID, $QSID, $ASID, $ISID, $AUSID, $AQSID, $AASID, $AISID;
-  $USID = $QSID = $ASID = $ISID = $AUSID = $AQSID = $AASID = $AISID = '';
-  if (!isset($_SESSION)) session_start();
-  session_destroy();
+  if (session_restore()) session_destroy();
+  
+  global $AUSID, $AQSID, $AASID, $AISID, $USID, $QSID, $ASID, $ISID;
+  $AUSID = $AQSID = $AASID = $AISID = $USID = $QSID = $ASID = $ISID = '';
+  
   $p = session_get_cookie_params();
   setcookie(session_name(), '', 0, $p['path'], $p['domain']);
   $_SESSION = null;

@@ -30,14 +30,14 @@ function LoginProtect($requiredStatus)
     // have to be passed as a URL parameter for browsers that support cookies.     
     session_initialize();
         
-    $login->prompt($server_url->toString(false, true, true), $requiredStatus);
+    $login->prompt(LoginUrl(), $requiredStatus);
   }
 };
 
 function LoginLink($requiredStatus = null, $destUrl = null)
 {
-  global $WBES_LOGIN_HANDLER, $server_url, $ASID;
-  if (!isset($destUrl)) $destUrl = $server_url->toString(false, true, true);
+  global $WBES_LOGIN_HANDLER, $ASID;
+  if (!isset($destUrl)) $destUrl = LoginUrl();
   $r = $WBES_LOGIN_HANDLER . "?url=" . urlencode($destUrl);
   if (strlen($requiredStatus)) $r .= "&rs=" . urlencode($requiredStatus);
   return $r . $ASID;
@@ -47,6 +47,24 @@ function & LoginValue($param)
 {
   $login =& LoginInstance();
   return $login->get($param);
+}
+
+function LoginUrl()
+{
+  global $server_url;
+
+  // current page url
+  $u = $server_url->toString(false, true, true);
+
+  $sn = session_name();
+
+  // strip out session identifiers before the end of the parameter list
+  $u = preg_replace("/([?&])$sn=[^&]*&/", "\\1", $u);
+
+  // strip out session identifiers at the end of the parameter list
+  $u = preg_replace("/[?&]$sn=[^&#]*(\$|#)/", "\\1", $u);
+  
+  return $u;
 }
 
 //-----------------------------------------------------------------------------
@@ -121,7 +139,15 @@ class WcesLogin
     $page->loggingIn = true;
     $page->printTop("Login Page");
     print("<form name=$f->formName method=post action=\"$f->pageName\">\n");
-    $f->display();
+    if ($f->pageName == $WBES_LOGIN_HANDLER)
+      print($GLOBALS['ISID']);
+    else
+    {
+      print($GLOBALS['AISID']);
+      if (!isset($w->base))
+        $w->base = $server_url->toString(true, false, false, false);
+    }
+    
     $w->display();
     print("</form>\n");
     $page->printBottom();
@@ -148,8 +174,8 @@ class WcesLogin
     $c = array();
     $status = (int)$this->get('status');
 
-    if ($status & LOGIN_STUDENT)       $c[] = "student";
-    if ($status & LOGIN_PROFESSOR)     $c[] = "professor";
+    if ($status & LOGIN_STUDENT) $c[] = "student";
+    if ($status & LOGIN_PROFESSOR) $c[] = "professor";
     if ($status & LOGIN_ADMIN) $c[] = "administrator";
 
     $l = array_splice ($c, -1);
@@ -237,8 +263,6 @@ class LoginWidget extends ParentWidget
 
     if ($this->base)
       $this->printValue('base', $this->base, $mode);
-      
-    print($ISID);
   
     $login =& LoginInstance();
     $luni = $login->get('uni');
@@ -264,13 +288,11 @@ class LoginWidget extends ParentWidget
 <?
     if (!$server_url->secure)
     {
-      $plainUrl = $this->getUrl(array('plaintext' => 1), $GLOBALS['WBES_LOGIN_HANDLER']);
+      $plainUrl = $this->getUrl(array('plaintext' => 1, 'base' => false), 
+        $GLOBALS['WBES_LOGIN_HANDLER']);
       
       if (!strcasecmp(substr($this->form->pageName, 0, 8), "https://"))
       {
-        $base = $server_url->toString(true, false, false, false);
-        $this->printValue('base', $base);
-        
         print("<p><font size=\"-1\"><b>Note:</b> The information entered in "
           . "this form will be transmitted using your browser's SSL "
           . "encryption. If you would like to connect with no encryption, "
@@ -278,8 +300,8 @@ class LoginWidget extends ParentWidget
         
         if (!empty($GLOBALS['WBES_LOGIN_SECURE_HANDLER']))
         {
-          $certUrl = $this->getUrl(array('base' => $base), 
-            $GLOBALS['WBES_LOGIN_SECURE_HANDLER']);
+          $certUrl = $this->getUrl(array(), 
+            $GLOBALS['WBES_LOGIN_SECURE_HANDLER'], true);
           print("\nIf you would like to view a secure version of this page "
             . "so you can examine our site's certificate before entering "
             . "your password, click <a href=\"$certUrl\">here</a>.");
@@ -318,7 +340,6 @@ class LoginWidget extends ParentWidget
         'uni' => $this->uni, 'error' => $this->error),
         $this->base . $GLOBALS['WBES_LOGIN_HANDLER']);
   }
-  
 }
 
 ?>
