@@ -5,6 +5,60 @@ require_once('wces/TopicEditor.inc');
 
 function topics_list($question_period_id)
 {
+  
+  /*
+  
+
+insert into components_survey (type, ctext, flags) values (1, '', 0);
+select currval('component_ids');
+ currval 
+---------
+    2182
+
+insert into saves (user_id) values (null);
+INSERT 31609416 1
+wces=# select currval('save_ids');
+ currval 
+---------
+     551
+     
+wces=# select nextval('revision_ids');
+ nextval 
+---------
+    2182
+(1 row)
+
+wces=# select nextval('branch_ids');
+ nextval 
+---------
+    1754
+
+insert into branches (branch_id) values (1754);
+     
+insert into revisions (revision_id, parent, branch_id, revision, save_id, component_id)
+values (2182, NULL, 1754, 1, 551, 2182);
+
+update branches set latest_id = 2182 where branch_id = 1754;
+
+  select nextval('item_ids')
+wces-# ;
+ nextval 
+---------
+    1627
+(1 row)
+
+
+wces=# select nextval('specialization_ids');
+ nextval 
+---------
+   25134
+(1 row)
+
+insert into item_specializations(item_id, specialization_id, branch_id)
+values (1627, 25134, 1754);
+*/
+  
+  
   return array
   (  // heading, sql, name type
     array
@@ -25,6 +79,9 @@ function topics_list($question_period_id)
           SELECT 0, 1456, 24450, 'Base Biology Lecture Questions', 6, 't', NULL                 
           UNION
           SELECT 0, 1483, 24450, 'Base Biology Lab Questions', 7, 't', NULL                 
+          UNION 
+          SELECT 0, 1627, 25134, 'Business School Questions', 8, 't', NULL                 
+         
         ) AS t ORDER BY ordinal
       ",
       TOPICS_LITERAL
