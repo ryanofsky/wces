@@ -1,0 +1,92 @@
+@font-face
+{ 
+  font-family: Trebuchet MS;
+  font-style: normal;
+  font-weight: normal;
+  src: url(TREBUCH1.eot);
+}
+
+@font-face
+{ 
+  font-family: Trebuchet MS;
+  font-style: normal;
+  font-weight: 700;
+  src: url(TREBUCH0.eot);
+}
+
+.title
+{ 
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+  font-size: 24 pt;
+}
+
+.navlinks
+{
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  font-color: black;
+}
+
+.spaced 
+{ 
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+  padding-left: 5px;
+  padding-right: 3px;
+}
+
+.hanging
+{
+  font-size: 8pt; margin-left: 10px; text-indent: -10px;
+}
+
+h4
+{
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+  background-color:#E0E0E0;
+  padding: 2px;
+  font-weight:bold;
+}
+
+p
+{
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+}
+
+body
+{
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+}
+
+td.editmenu
+{
+  background-color:#EEEEEE;
+  cursor:hand;
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+}
+
+td.editmenuhover
+{
+  background-color:#AAAAAA;
+  cursor:hand;
+  font-family: Trebuchet MS, Arial, Helvetica, sans-serif;
+}
+
+td.insertmenu
+{
+  background-color:#FFFFFF;
+  cursor:none;
+}
+
+td.insertmenuhover
+{
+  background-color:#FFE051;
+  cursor:hand;
+}
+
+.tinybutton
+{
+  font-weight: bold;
+  font-size: x-small;
+  cursor: hand;
+  font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+}
