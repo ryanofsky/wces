@@ -87,6 +87,7 @@ function showhelp(topic)
   if ($status & login_administrator)
   {
     if ($nospace) $nospace = false; else page_spacer();
+    page_link("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
     page_link("Course Database",  "administrators/info.php", $QSID);
@@ -100,7 +101,7 @@ function showhelp(topic)
     if ($nospace) $nospace = false; else page_spacer();
     if ($status & login_knownprofessor)
     {
-      page_link("Upcoming Surveys", "professors/editsurveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
+      page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
       page_link("Survey Results",   "professors/seeresults.php", $QSID);
       //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
       //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
@@ -178,7 +179,7 @@ function page_link($caption,$link,$extlink = "",$params='style="white-space: now
 function page_spacer()
 {
   global $wces_path;
-  print("    <p><img src=\"$wces_path/media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
+  print("    <p><img src=\"{$wces_path}media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
 }
 
 function page_showhelp($topic)
