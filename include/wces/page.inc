@@ -5,12 +5,12 @@ require_once("wces/login.inc");
 require_once("wces/oracle.inc");
 
 $wces_path = "/wces/";
-$wces_this = $server_url->path;
+$wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4;
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $db;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd"> 
 <html>
@@ -65,7 +65,7 @@ function showhelp(topic)
 </table>
 <? } else { ?>
 <tr> 
-  <td valign=top bgcolor="#DEDEDE" class=sidelinks nowrap>
+  <td valign=top bgcolor="#DEDEDE" class=sidelinks>
 <?
   $uni = login_getuni();
   $status = login_getstatus();
@@ -110,11 +110,27 @@ function showhelp(topic)
   
   if ($status & login_student)
   {
-    //if ($nospace) $nospace = false; else page_spacer();
-    //page_link("Survey",      "students/survey.php");
-    //page_link("Survey #1",      "students/survey.php?surveyid=1");
-    //page_link("Survey #2",      "students/survey.php?surveyid=2");
-    //page_link("Email Settings", "students/optout.php");
+    if (!isset($db)) $db = wces_connect();
+    
+    wces_GetCurrentQuestionPeriod($db, $questionperiodid, $description, $year, $semester);
+    $userid = login_getuserid();
+    
+    $classes = db_exec("
+      SELECT cl.classid, c.name
+      FROM enrollments AS e
+      INNER JOIN groupings AS g ON e.classid = g.linkid AND g.linktype = 'classes'
+      INNER JOIN classes AS cl ON g.linkid = cl.classid AND year = '$year' AND semester = '$semester'
+      INNER JOIN courses AS c USING (courseid)
+      LEFT JOIN cheesyresponses AS cr ON cr.userid = e.userid AND cr.classid = e.classid AND cr.questionperiodid = '$questionperiodid'
+      WHERE e.userid = '$userid' AND cr.userid IS NULL
+      ", $db, __FILE__, __LINE__);
+    
+    if (mysql_num_rows($classes) > 0) { if ($nospace) $nospace = false; else page_spacer(); }
+    
+    while($row = mysql_fetch_assoc($classes))
+    {
+      page_link($row["name"],"students/survey.php?classid=" . $row["classid"],"","");
+    }
   }
   
   if ($nospace) $nospace = false; else page_spacer();
@@ -160,7 +176,7 @@ function page_bottom($minimal = false)
 <?
 }
 
-function page_link($caption,$link,$extlink = "")
+function page_link($caption,$link,$extlink = "",$params='style="white-space: nowrap;"')
 {
   global $wces_path, $wces_this;
   if (((boolean)$extlink) === $extlink)
@@ -169,11 +185,12 @@ function page_link($caption,$link,$extlink = "")
     $extlink = "";
   }  
   else
-    $islink = "$wces_path$link" != $wces_this;
+    $islink = strpos($wces_this, "$wces_path$link") !== 0;
+
   if ($islink)  
-    print("    <p><a href=\"$wces_path$link$extlink\" class=navlinks>$caption</a></p>\n");
+    print("    <p><a href=\"$wces_path$link$extlink\" class=navlinks $params>$caption</a></p>\n");
   else
-    print("    <p class=navlinks>$caption</p>\n");
+    print("    <p class=navlinks $params>$caption</p>\n");
 }
 
 function page_spacer()
