@@ -30,7 +30,7 @@ class Widget // abstract
   
   function dumpscript() // public static abstract
   {
-    assert(0);
+  
   }
   
   function loadattribute($attrname) // protected
@@ -44,7 +44,7 @@ class Widget // abstract
       assert(0);  
   }
   
-  function printattribute($attrname,$value) // protect
+  function printattribute($attrname,$value)
   {
     $attrname = htmlspecialchars($this->prefix . "_" . $attrname);
     $i = htmlspecialchars($value);
@@ -63,6 +63,131 @@ class Widget // abstract
     $this->printattribute($attrname,$this->loadattribute($attrname));
   }
 }
+
+class Textbox extends Widget
+{
+  var $rows,$cols,$params,$text;
+  
+  function Textbox($rows, $cols, $params, $prefix,$form,$formmethod)
+  {
+    $this->Widget($prefix,$form,$formmethod);
+    $this->rows = $rows;
+    $this->cols = $cols;
+    $this->params = $params;
+  }
+  
+  function display($hidden)
+  {
+    $n = '"' . $this->prefix . '_"';
+    $t = '"' . htmlspecialchars($this->text) . '"';
+    $s = $this->params ? " " . $this->params : "";
+    if ($hidden)
+      print("<input type=hidden name=$n value=$t$s>\n");
+    else if ($this->rows == 0)
+      print("<input type=text name=$n value=$t$s>\n");
+    else
+      print("<textarea name=$n$s>$t</textarea>");
+  }
+  
+  function loadvalues()
+  {
+    $this->text = $this->loadattribute("");
+  }
+}
+
+class CheckBox extends Widget
+{
+  var $checked;
+  
+  function CheckBox($prefix,$form,$formmethod)
+  {
+    $this->Widget($prefix,$form,$formmethod);
+  }
+  
+  function display($hidden)
+  {
+    $n = '"' . $this->prefix . '_"';
+    if($hidden)
+      print("<input type=hidden name=$n value=" . ($this->checked ? 1 : 0) . ">");
+    else
+      print("<input type=checkbox name=$n id=$n" . ($this->checked ? " checked" : "") . ">");
+  }
+  
+  function displaylabel($label)
+  {
+    $n = '"' . $this->prefix . '_"';
+    print("<label for=$n>$label</label>");
+  }
+  
+  function loadvalues()
+  {
+    $this->checked = $this->loadattribute("");
+  } 
+}
+
+class RadioButton extends Widget
+{ 
+  var $items;
+  var $checked;
+  
+  function RadioButton($items,$prefix,$form,$formmethod)
+  {
+    $this->Widget($prefix,$form,$formmethod);
+    $this->items = $items;
+  }
+  
+  function display($index)
+  {
+    $n = '"' . $this->prefix . '"';
+    $i = '"' . $this->prefix . '_' . $index . '"';
+    print("<input type=radio name=$n id=$i" . ($this->checked == $index ? " checked" : "") . ">");
+  }
+
+  function displaylabel($index)
+  {
+    $i = '"' . $this->prefix . '_' . $index . '"';
+    print("<label for=$i>" . $this->items[$index] . "</label>");
+  }
+
+}
+
+class ActionButton extends Widget
+{
+  var $action;
+  var $object;
+  
+  function ActionButton($prefix,$form,$formmethod)
+  {
+    Widget($prefix, $form, $formmethod);
+  }
+  
+  function loadvalues() // public abstract
+  {
+    if ($this->formmethod == WIDGET_GET)
+      $thearray = $HTTP_GET_VARS;
+    else if ($this->formmethod == WIDGET_POST)
+      $thearray = $HTTP_POST_VARS;
+    else
+      assert(0);
+    
+    $l = strlen($this->prefix);
+    foreach($thearray as $key => $value)
+    {
+      if ($this->prefix == substr($key,$l))
+      {
+        $p = strrpos($key,'_');
+        $action = substr($key,$l,$p-$l);
+        $object = substr($key,$p);
+        return;        
+      }
+    }
+  }
+  
+  function display($action,$object,$label)
+  {
+    print('<input type=submit name="' . $this->prefix . '_' . $action . '_' . $object . '" value="' . $label . '">');
+  }
+};
 
 class ImageButton extends Widget
 {
@@ -95,6 +220,7 @@ class ImageButton extends Widget
     if (!$ImageButton_dumped)
     {
       $ImageButton_dumped = true;
+    }
 %>
 <script>
 <!--  
