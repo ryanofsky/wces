@@ -185,7 +185,8 @@ Bitmask    | Nonzero when the user...
 0x00000001 | is an administrator
 0x00000002 | is an administrator within his/her department
 0x00000004 | is a professor
-0x00000008 | is a student';
+0x00000008 | is a student
+0x00000010 | is a ta';
 
 CREATE TABLE enrollments
 (
@@ -365,9 +366,10 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION course_find(TEXT, BOOLEAN) RETURNS INTEGER AS '
   DECLARE
     ccode ALIAS FOR $1;
+    allow_insert ALIAS FOR $2;
     subj CHAR(4);
     dcode CHAR(1);
     cnum CHAR(4);
@@ -385,12 +387,14 @@ CREATE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
 
     SELECT INTO subjectid subject_id FROM subjects WHERE code = subj;
     IF NOT FOUND THEN
+      IF NOT allow_insert THEN RETURN 0; END IF;
       INSERT INTO subjects (code) VALUES (subj);
       subjectid := currval(''subject_ids'');
     END IF;
 
     SELECT INTO courseid course_id FROM courses WHERE subject_id = subjectid AND code = num AND divisioncode = dcode;
     IF NOT FOUND THEN
+      IF NOT allow_insert THEN RETURN 0; END IF; 
       INSERT INTO courses (subject_id, code, divisioncode) VALUES (subjectid,num,dcode);
       courseid := currval(''course_ids'');
     END IF;
@@ -398,6 +402,10 @@ CREATE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
     RETURN courseid;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION course_find(TEXT) RETURNS INTEGER AS '
+  SELECT course_find($1, ''t'');
+' LANGUAGE 'sql';
 
 CREATE FUNCTION class_find(TEXT) RETURNS INTEGER AS '
   DECLARE
@@ -463,7 +471,7 @@ CREATE FUNCTION strpos(text,text,integer) RETURNS integer AS '
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),TEXT) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),TEXT) RETURNS INTEGER AS '
   DECLARE
     uni_s ALIAS FOR $1;
     email_s ALIAS FOR $2;
@@ -628,7 +636,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
             AND
             e.status = 1
             AND
-            e.lastseen < curtime
+            (e.lastseen IS NULL OR e.lastseen < curtime)
             AND
             ((cl.year * 3 + cl.semester) >= relevant)
         );
