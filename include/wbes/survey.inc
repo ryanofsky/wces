@@ -35,7 +35,7 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
 
-  function load($topic_id, $base_branch_id, &$cfactories, $save_id = false, $latest = false)
+  function load($topic_id, $base_branch_id, &$cfactories, $latest = false)
   {
     global $wbes;
     wbes_connect();
@@ -44,9 +44,6 @@ class Survey
     for(reset($cfactories); list($k) = each($cfactories); )
       $factories[$cfactories[$k]->code()] = &$cfactories[$k];
 
-    $save_id = (int)$save_id;
-    if (!$save_id) $save_id = "NULL";
-    
     $latest = (int)$latest;
     if (!$latest) $latest = "NULL";    
 
@@ -92,7 +89,7 @@ class Survey
         $type = -1;
 
       if ($type !== $lasttype && $lasttype !== false)
-        $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $save_id, $latest);
+        $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $latest);
 
       if ($i >= $n) break;
 
