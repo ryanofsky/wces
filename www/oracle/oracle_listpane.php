@@ -1,4 +1,12 @@
-<body bgcolor="#6699CC">
+<head>
+<style>
+<!--
+a { text-decoration: none; }
+a:hover { text-decoration: underline; ) 
+-->
+</style>
+</head>
+<body bgcolor="#6699CC" link="#000000" vlink="#9C6531">
 <base target=info>
 <script language="JavaScript">
 <!--
@@ -45,8 +53,8 @@ ul                      { font-family: Arial, Helvetica, sans-serif; list-style-
 
 <%
 
-require_once("wces.inc");
-require_once("reporting.inc");
+require_once("wces/wces.inc");
+require_once("wces/reporting.inc");
 
 $db = wces_connect();
 
@@ -54,7 +62,7 @@ if ($mode == "professors")
 {
 
   %>
-  <p align=center><a href="?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<%=$oracleroot%>media/courses.gif" name=courses border=0></a>
+  <p align=center><a href="oracle_listpane.php?mode=courses" target="_self" onmouseover="swap('courses')" onmouseout="swap('courses')"><img src="<%=$oracleroot%>media/courses.gif" name=courses border=0></a>
   <img src="<%=$oracleroot%>media/professors_down.gif"></p>
   <script>AttachImage('courses','courses_on.gif')</script>
   <% 
@@ -88,7 +96,7 @@ else // $mode == "courses"
 
   %>
   <p align=center><img src="<%=$oracleroot%>media/courses_down.gif">
-  <a href="?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<%=$oracleroot%>media/professors.gif" name=profs border=0></a></p>
+  <a href="oracle_listpane.php?mode=professors" target="_self" onmouseover="swap('profs')" onmouseout="swap('profs')"><img src="<%=$oracleroot%>media/professors.gif" name=profs border=0></a></p>
   <script>AttachImage('profs','professors_on.gif')</script>
   <%  
 
