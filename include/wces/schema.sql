@@ -66,10 +66,22 @@ CREATE TABLE Classes (
   section char(3) NOT NULL default '',
   year year(4) NOT NULL default '0000',
   semester enum('spring','summer','fall') NOT NULL default 'spring',
+  name tinytext,
   professorid int(11) default NULL,
   students smallint(6) default NULL,
+  time tinytext,
+  location tinytext,
+  callnumber int(11) default NULL,
+  departmentid int(11) default NULL,
+  divisionid int(11) default NULL,
   PRIMARY KEY (classid),
   KEY courseid(courseid,section,year,semester)
+);
+
+CREATE TABLE CompleteSurveys (
+  userid int(11) NOT NULL default '0',
+  answersetid int(11) NOT NULL default '0',
+  PRIMARY KEY (userid,answersetid)
 );
 
 CREATE TABLE Courses (
@@ -77,7 +89,6 @@ CREATE TABLE Courses (
   subjectid int(11) NOT NULL default '0',
   code varchar(5) NOT NULL default '',
   name tinytext,
-  description tinytext,
   information text,
   departmentid int(11) default NULL,
   divisionid int(11) default NULL,
@@ -96,14 +107,15 @@ CREATE TABLE Departments (
 
 CREATE TABLE Divisions (
   divisionid int(11) NOT NULL auto_increment,
-  name tinytext NOT NULL default '',
+  code char(2) default NULL,
+  shortcode char(1) default NULL,
+  name tinytext NOT NULL,
   PRIMARY KEY (divisionid)
 );
 
 CREATE TABLE Enrollments (
   userid int(11) NOT NULL default '0',
   classid int(11) NOT NULL default '0',
-  surveyed enum('no','yes') default 'no' NOT NULL,
   PRIMARY KEY (userid,classid)
 );
 
