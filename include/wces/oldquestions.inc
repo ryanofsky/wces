@@ -96,32 +96,42 @@ class OldSurvey extends FormWidget
     $this->form = new Form("${prefix}_form",$form,$formmethod);
     $questionperiodid = wces_Findquestionsetsta($db,"qsets",$classid);
 
-    $classes = db_exec(
-    "SELECT qs.questionsetid
-    FROM enrollments AS e 
-    INNER JOIN qsets AS qs ON e.classid = qs.classid
-    INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
-    LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
-    LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
-    WHERE e.userid = '$userid' AND e.classid = '$classid' AND cs.userid IS NULL
-    LIMIT 50", $db, __FILE__, __LINE__);
+    if($userid)
+    {
+      $classes = db_exec(
+      "SELECT qs.questionsetid
+      FROM enrollments AS e 
+      INNER JOIN qsets AS qs ON e.classid = qs.classid
+      INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
+      LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
+      LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
+      WHERE e.userid = '$userid' AND e.classid = '$classid' AND cs.userid IS NULL
+      LIMIT 50", $db, __FILE__, __LINE__);
+    }
+    else
+    {
+      $classes = db_exec("SELECT questionsetid FROM qsets", $db, __FILE__, __LINE__);
+    }
     
     $this->questionsets = array();
-    
     while($row = mysql_fetch_assoc($classes))
     {
       $questionsetid = $row["questionsetid"];
       $this->questionsets[] = new OldQuestionSet($db, $questionsetid, $classid, $questionperiodid, "${prefix}_Q$questionsetid", $form, $formmethod);
     }  
 
-    $this->tas = 
-      mysql_result(db_exec(
-        "SELECT IF(MAX(tarate) = 'yes' AND tac.classid IS NULL,1,0) AS dota FROM qsets
-        LEFT JOIN tacomplete AS tac ON 
-          tac.classid = qsets.classid AND
-          questionperiodid = '$questionperiodid' AND
-          userid = '$userid'",$db,__FILE__,__LINE__),0) > 0 ? array() : false;
-
+    if ($userid)
+    {
+      $this->tas = 0 < mysql_result(
+        db_exec("SELECT IF(MAX(tarate) = 'yes' AND tac.classid IS NULL,1,0) AS dota FROM qsets LEFT JOIN tacomplete AS tac ON tac.classid = qsets.classid AND questionperiodid = '$questionperiodid' AND userid = '$userid'", $db, __FILE__, __LINE__), 0
+        ) ? array() : false;
+    }
+    else
+    {
+      $this->tas = 0 < mysql_result(
+        db_exec("SELECT IF(MAX(tarate) = 'yes',1,0) AS dota FROM qsets", $db, __FILE__, __LINE__), 0
+        ) ? array() : false;
+    }
     $this->activeta = false;
     $this->tawidget = false;
     
@@ -345,6 +355,8 @@ class OldSurvey extends FormWidget
   function optionbar()
   {
     global $server_wcespath;
+    if ($this->userid)
+    {
 %>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
@@ -355,6 +367,7 @@ class OldSurvey extends FormWidget
 </tr>
 </table>
 <%  
+    }
   }
 }
 
@@ -553,7 +566,7 @@ class OldQuestionSet extends FormWidget
     if ($questionset["ABET"])
     {
       $choices = array(0 => "a", 1 => "b", 2 => "c", 3 => "d", 4 => "e", 5 => "f");
-      $abet = explode(",",$questionset["ABET"]);
+      $abet = explode(",", $questionset["ABET"]);
       foreach ($abet as $v)
       {
         $fieldname = $this->prefix . "_ABET$v";

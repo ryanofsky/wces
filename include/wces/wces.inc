@@ -118,18 +118,26 @@ function wces_Findquestionsetsta($db,$temptable,$classid = 0, $topicid = 0)
   $semester = "'" . addslashes($questionperiod["semester"]) . "'";
   $whereclass = $classid > 0 ? " AND cl.classid = '" . addslashes($classid) . "'" : "";
   $wheretopic = $topicid > 0 ? " AND g.topicid = '" . addslashes($topicid) . "'" : "";
-  db_exec("CREATE TEMPORARY TABLE $temptable (classid INTEGER NOT NULL, questionsetid INTEGER NOT NULL, tarate enum('no','yes') NOT NULL, PRIMARY KEY(classid,questionsetid))",$db,__FILE__, __LINE__);
-  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.classid
+  db_exec("CREATE TEMPORARY TABLE $temptable (classid INTEGER NOT NULL, questionsetid INTEGER NOT NULL, tarate enum('no','yes') NOT NULL, topicid INTEGER, PRIMARY KEY(classid,questionsetid))",$db,__FILE__, __LINE__);
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate,topicid) SELECT cl.classid, g.questionsetid, g.tarate, g.topicid FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.classid
     WHERE g.linktype = 'classes' AND cl.year = $year AND cl.semester = $semester $whereclass $wheretopic",$db,__FILE__, __LINE__);
-  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.courseid
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate,topicid) SELECT cl.classid, g.questionsetid, g.tarate, g.topicid FROM groupings AS g INNER JOIN classes as cl ON g.linkid = cl.courseid
     WHERE g.linktype = 'courses' AND cl.year = $year AND cl.semester = $semester AND NOT (ASCII(cl.section) IN (66,98,77,109,78,110,82,114,86,118)) $whereclass $wheretopic",$db);
-  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN classes AS cl ON g.linkid = cl.professorid
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate,topicid) SELECT cl.classid, g.questionsetid, g.tarate, g.topicid FROM groupings AS g INNER JOIN classes AS cl ON g.linkid = cl.professorid
     WHERE g.linktype = 'professors' AND cl.year = $year AND cl.semester = $semester $whereclass $wheretopic",$db,__FILE__, __LINE__);
-  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.subjectid INNER JOIN classes as cl ON c.courseid = cl.courseid
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate,topicid) SELECT cl.classid, g.questionsetid, g.tarate, g.topicid FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.subjectid INNER JOIN classes as cl ON c.courseid = cl.courseid
     WHERE g.linktype = 'subjects' AND cl.year = $year AND cl.semester = $semester $whereclass $wheretopic",$db,__FILE__, __LINE__);
-  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate) SELECT cl.classid, g.questionsetid, g.tarate FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.departmentid INNER JOIN classes as cl ON c.courseid = cl.courseid 
+  db_exec("REPLACE INTO $temptable (classid,questionsetid,tarate,topicid) SELECT cl.classid, g.questionsetid, g.tarate, g.topicid FROM groupings AS g INNER JOIN courses AS c  ON g.linkid = c.departmentid INNER JOIN classes as cl ON c.courseid = cl.courseid 
     WHERE g.linktype = 'departments' AND cl.year = $year AND cl.semester = $semester $whereclass $wheretopic",$db,__FILE__, __LINE__);
   return $questionperiod["questionperiodid"];
+}
+
+function wces_CompleteClasses($db, $temptable, $topicid = 0)
+{
+  db_exec("CREATE TEMPORARY TABLE $temptable (classid INTEGER, questionperiodid INTEGER PRIMARY KEY (classid, questionperiodid))", $db, __FILE__, __LINE__);
+  $where = $criteria["topics"] ?  "WHERE topicid IN (" . implode(", ", $criteria["topics"]) . ")" : "";
+  db_exec("REPLACE INTO $temptable(classid, questionperiodid) SELECT classid, questionperiodid FROM answersets $where GROUP BY classid", $db, __FILE__, __LINE__);
+  db_exec("REPLACE INTO $temptable(classid, questionperiodid) SELECT classid, questionperiodid FROM taratings  $where GROUP BY classid", $db, __FILE__, __LINE__);
 }
 
 function wces_GetQuestionPeriod($db)

@@ -286,15 +286,15 @@ class db_SelectMonster
   *                 in ascending order. Default is ascending.
   * @param integer  Optional, Position to place new ORDER BY column relative
   *                 to existing ones. Can be negative. Examples: 0 is first,
-  *                 1 is second, -1 is last. Default is first.
+  *                 1 is second, Boolean true for last. Default is first.
   * @access public
   */
   function addordering($column,$descending=false,$position=0)
   {
-    if ($position === true) $position = -1;
+    if ($position === true) $position = count($this->orderby);
     array_splice($this->orderby, $position, 0, $column);
     array_splice($this->orderbydesc, $position, 0, $descending);
-    
+/*    
     $found = array_keys($this->orderby,$column);
     array_shift($found);
     $lost = 0;
@@ -305,6 +305,7 @@ class db_SelectMonster
       array_splice($this->orderbydesc,$key,1);
       ++$lost;
     };
+*/    
   }
 
   /**
@@ -502,9 +503,7 @@ class db_SelectMonster
     $sql_where = $this->where ? "WHERE " . $this->where : "";
     $sql_having = $this->having ? "HAVING " . $this->having : "";
 
-    $sql = "SELECT $sql_columns FROM $sql_from $sql_joins $sql_where $sql_groupby $sql_orderby $sql_having";
-    $this->result = mysql_query($sql,$db);
-    if (!$this->result || $db_debug) taskwindow_cprint("<textarea rows=20 cols=80 id=textarea1 name=textarea1>SQL ERROR\n---------\n\n$sql</textarea><br>");
+    $this->result = db_exec("SELECT $sql_columns FROM $sql_from $sql_joins $sql_where $sql_groupby $sql_orderby $sql_having",$db,__FILE__,__LINE__);
     $this->size = mysql_num_rows($this->result);
   }
 };
