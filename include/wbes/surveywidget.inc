@@ -102,7 +102,7 @@ class SurveyWidget extends FormWidget
   function save()
   {
     global $wbes, $HTTP_POST_VARS, $server_feedback;
-    
+
     $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
 
@@ -119,19 +119,19 @@ class SurveyWidget extends FormWidget
     }
     else
       $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $question_period_id, $this->topic_id, $this->user_id);\n";
-    
+
     $sql .= "SELECT currval('response_ids')";
     $result = pg_query($sql, $wbes, __FILE__, __LINE__);
-    
+
     $response_id = (int)pg_result($result, 0, 0);
 
     $failure = false;
-    
+
     foreach(array_keys($this->questionwidgets) as $key)
       $failure = $failure || !$this->questionwidgets[$key]->save($response_id);
-    
+
     $fields = "'" . addslashes(serialize($HTTP_POST_VARS)) . "'";
-    
+
     // temporary, ensure that even if results not saved correctly, they will still
     // be recoverable
     //
@@ -150,13 +150,13 @@ class SurveyWidget extends FormWidget
         VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
       ", $wbes, __FILE__, __LINE__);
     }
-    
+
     if ($failure)
       pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
     else
       $failure = $failure || !pg_query("COMMIT", $wbes, __FILE__, __LINE__);    
-      
-    if ($failure)  
+
+    if ($failure)
     {
       $this->failure = true;
       print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:' . $server_feedback . '">' . $server_feedback . '</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
@@ -207,6 +207,7 @@ class SurveyWidget extends FormWidget
       else
         $q->display(true);
     }
+
     print("<p>&nbsp;</p>\n");
     $this->optionbar();
   }
@@ -214,11 +215,11 @@ class SurveyWidget extends FormWidget
   function optionbar()
   {
     global $wces_path;
-    
+
     $prev = $this->page > 0;
     $next = $this->page < $this->pages && $this->pages > 0;
     $save = (bool)$this->user_id;
-    
+
     if ($save || $prev || $next)
     {
 ?>

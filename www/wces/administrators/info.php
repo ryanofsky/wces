@@ -92,66 +92,61 @@ function PrintEnrollments($user_id)
   
   $userid = (int)login_getuserid();
   $restricted = !(login_getstatus() & login_administrator) && $user_id != $userid;
+  $surveys = (bool)(login_getstatus() & login_administrator);
 
-  pg_query("
-    CREATE TEMPORARY TABLE enclasses AS
-    SELECT e.status, e.class_id, c.course_id, cl.year, cl.semester, cl.section, (s.code || c.divisioncode || c.code) AS code, cl.name AS clname, c.name AS cname
-    FROM enrollments AS e" . ($restricted ? "
-    LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . "
-    INNER JOIN classes AS cl ON cl.class_id = e.class_id
-    INNER JOIN courses AS c USING (course_id)
-    INNER JOIN subjects AS s USING (subject_id)
-    WHERE e.user_id = $user_id" . ($restricted ? "
-    AND (e.status > 1 OR my.class_id IS NOT NULL)" : "")
-  ,$wces,__FILE__,__LINE__);
+  $result = pg_query("
+    SELECT question_period_id, displayname, year, semester
+    FROM semester_question_periods
+    WHERE question_period_id = (SELECT get_question_period())
+  ", $wces, __FILE__, __LINE__);
+  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
 
   $classes = pg_query("
-    SELECT class_id, course_id, year, semester, section, code, clname, cname, status
-    FROM enclasses
-    ORDER BY year DESC, semester DESC, status DESC, code, section
-  ", $wces, __FILE__, __LINE__);
-  
-  $professors = pg_query("
-    SELECT cl.class_id, e.user_id, btrim(u.firstname || ' ' || u.lastname) AS name
-    FROM enclasses AS cl
-    INNER JOIN enrollments AS e ON cl.class_id = e.class_id AND e.status = 3
-    INNER JOIN users AS u USING (user_id)
-    ORDER BY cl.year DESC, cl.semester DESC, cl.status DESC, cl.code, cl.section
-  ", $wces, __FILE__, __LINE__);
-  
-  pg_query("DROP TABLE enclasses", $wces, __FILE__, __LINE__);
+    SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
+      t.topic_id, (cl.year = $year AND cl.semester = $semester) AND EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id AND question_period_id = $question_period_id) AS response" : "") . "
+    FROM enrollments AS e
+    INNER JOIN classes AS cl USING (class_id)" . ($restricted ? "
+    LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
+    LEFT JOIN wces_topics AS t ON t.class_id = e.class_id" : "") . "
+    WHERE e.user_id = $user_id" . ($restricted ? "
+    AND (e.status > 1 OR myx.class_id IS NOT NULL)" : "") . "
+    ORDER BY cl.year DESC, cl.semester DESC"
+  ,$wces,__FILE__,__LINE__);
 
-  $sems = array(0 => "spring", 1 => "summer", 2 => "fall");
   $stats = array(0 => "dropped", 1 => "student", 2 => "ta", 3 => "professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
-  print("  <tr><td><b>Year</b></td><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Section</b></td><td><b>Course Name</b></td><td><b>Professor</b></td><td><b>Status</b></td></tr>\n");
-  $classlen = pg_numrows($classes);
-  $profs = new pg_wrapper($professors); 
-  $prow = &$profs->row;
-  for($i = 0; $i < $classlen; ++$i)
+  print("  <tr><td><b>Semester</b></td><td><b>Course Code</b></td><td><b>Section</b></td><td><b>Name</b></td><td><b>Professor</b></td><td><b>Status</b></td>");
+  if ($surveys) print("<td><b>Surveyed?</b></td>");
+  print("</tr>\n");
+  $n = pg_numrows($classes);
+  for($i = 0; $i < $n; ++$i)
   {
     $row = pg_fetch_array($classes,$i,PGSQL_ASSOC);
-    $name = $row['clname'] ? "$row[cname]: $row[clname]" : $row['cname'];
-    $sem = $sems[$row['semester']];
-    print("  <tr><td>$row[year]</td><td>$sem</td><td><a href=\"info.php?course_id=$row[course_id]$ASID\">$row[code]</a></td><td><a href=\"info.php?class_id=$row[class_id]$ASID\">$row[section]</a></td><td>$name</td><td>");
-    for($firstp = true; $prow && $row['class_id'] == $prow['class_id']; $profs->advance())
-    {
-      if ($firstp) $firstp = false; else print("<br>");
-      print("<a href=\"info.php?user_id=$prow[user_id]$ASID\">$prow[name]</a>");
-    }
-    if ($firstp) print("&nbsp;");
-    
+    $p = format_profs($row['profs'], true, "", "<br>");
+    if (!$p) $p = "&nbsp;";
+    $c = explode_class($row['class']);
+    $code = format_course($c, '%c', true);
+    $section = format_class($c, '%s', true);
+    $sem = $c['term'];
     $status = $stats[$row['status']];
-   
-    print("</td><td>$status</td></tr>\n");
+    
+    print("  <tr><td>$c[term]</td><td>$code</td><td>$section</td>"
+      . "<td>$c[className]</td><td>$p</td><td>$status</td>");
+    if ($surveys)
+    {
+      print("<td>");
+      //debugout((!$row['topic_id'] ? 1 : 0),"topic_id  ");
+      print((!$row['topic_id'] ? "&nbsp;" : ($row['response'] == 't' ? "yes" : "no")) . "</td>");
+    }
+    print("</tr>\n");
   }
   print("</table>\n");
-  
+
   if ($restricted)
   {
     print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "$ASID\">Log in as an administrator to see more enrollments...</a></p>\n");
-  }  
+  }
  
   print("<hr>\n");
 }
@@ -285,28 +280,25 @@ function PrintClassInfo($class_id)
   ", $wces, __FILE__, __LINE__); 
   
   $sems = array(0 => "Spring", 1 => "Summer", 2 => "Fall");
-  if (pg_numrows($result) == 1)
-  {
-    $time = $callnumber = $location = $name = $clname = $section = $year = $semester = $students = $pname = $professorid = $code = $name = $information = $dcode = $dname = $scode = $sname = $dvname = $scname = $course_id = $department_id = $subject_id = $school_id = $dvcode = $division_id = "";
-    extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-    
-    print("<h3>$name" . ($clname ? " - $clname" : "") . "</h3>\n");
-    print("<p>$sems[$semester] $year Section $section</p>\n");
-    if ($information) print("<h4>Information</h4>\n<p>$information</p>\n");
-    print("<h4>Other Information</h4>");
-    if ($students) print ("<i>Enrollment:</i> $students Students</p>");
-    if ($dcode) print ("<p><i>Department:</i> $dcode - $dname ($department_id)</p>");
-    if ($scode) print ("<p><i>Subject:</i> $scode - $sname ($subject_id)</p>");
-    if ($scname) print ("<p><i>School:</i> $scname ($school_id)</p>");
-    if ($dvname) print ("<p><i>Division:</i> $dvcode - $dvname ($division_id)</p>");
-    if ($time) print ("<p><i>Time:</i> $time</p>");
-    if ($location) print ("<p><i>Location:</i> $location</p>");
-    if ($callnumber) print ("<p><i>Call Number:</i> $callnumber</p>");
-    if ($code) print ("<p><i>Course Code:</i> <a href=\"info.php?course_id=$course_id$ASID\">$code</a></p>");
-  }
+  if (pg_numrows($result) != 1) return;
+  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   
+  print("<h3>$name" . ($clname ? " - $clname" : "") . "</h3>\n");
+  print("<p>$sems[$semester] $year Section $section</p>\n");
+  if ($information) print("<h4>Information</h4>\n<p>$information</p>\n");
+  print("<h4>Other Information</h4>");
+  if ($students) print ("<i>Enrollment:</i> $students Students</p>");
+  if ($dcode) print ("<p><i>Department:</i> $dcode - $dname ($department_id)</p>");
+  if ($scode) print ("<p><i>Subject:</i> $scode - $sname ($subject_id)</p>");
+  if ($scname) print ("<p><i>School:</i> $scname ($school_id)</p>");
+  if ($dvname) print ("<p><i>Division:</i> $dvcode - $dvname ($division_id)</p>");
+  if ($time) print ("<p><i>Time:</i> $time</p>");
+  if ($location) print ("<p><i>Location:</i> $location</p>");
+  if ($callnumber) print ("<p><i>Call Number:</i> $callnumber</p>");
+  if ($code) print ("<p><i>Course Code:</i> <a href=\"info.php?course_id=$course_id$ASID\">$code</a></p>");
+
   print("<hr>\n<h3>Known Enrollments</h3>");
-  
+
   if (login_getstatus() & login_administrator)
     $restricted = false;
   else
@@ -316,8 +308,33 @@ function PrintClassInfo($class_id)
     $restricted = pg_result($result,0,0) ? false : true;
   }
 
+  $surveys = false;
+  if (login_getstatus() & login_administrator)
+  {
+    $result = pg_query("
+      SELECT topic_id FROM wces_topics WHERE class_id = $class_id AND category_id IS NOT NULL
+    ", $wces, __FILE__, __LINE__);
+    
+    if (pg_numrows($result) == 1)
+    {
+      $topic_id = (int)pg_result($result,0,0);
+      
+      $result = pg_query("
+        SELECT question_period_id FROM semester_question_periods
+        WHERE question_period_id = (SELECT get_question_period()) AND year = $year AND semester = $semester
+      ", $wces, __FILE__, __LINE__);
+    
+      if (pg_numrows($result) == 1)
+      {
+         $question_period_id = (int)pg_result($result,0,0);
+        $surveys = true;
+      }
+    }
+  }
+
   $result = pg_query("
-    SELECT e.user_id, e.status, u.uni, (u.lastname || ', ' || u.firstname) AS name
+    SELECT e.user_id, e.status, u.uni, (u.lastname || ', ' || u.firstname) AS name " . ($surveys ? ",
+      EXISTS(SELECT * FROM survey_responses WHERE user_id = e.user_id AND question_period_id = $question_period_id AND topic_id = $topic_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN users AS u USING (user_id)
     WHERE e.class_id = $class_id" . ($restricted ? "
@@ -328,14 +345,21 @@ function PrintClassInfo($class_id)
   $stat = array(0 => "Dropped", 1 => "Student", 2 => "TA", 3 => "Professor");
 
   print("<table border=1 cellspacing=0 cellpadding=2>\n");
-  print("  <tr><td><b>Status</b></td><td><b>DND</b></td><td><b>Name</b></td></tr>\n");
+  print("  <tr><td><b>Status</b></td><td><b>UNI</b></td><td><b>Name</b></td>");
+  if ($surveys) print("<td><b>Surveyed</b></td>");
+  print("</tr>\n");
   $n = pg_numrows($result);
   for($i = 0; $i < $n; ++$i)
   {
     extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
     if (!$uni) $uni = "<i>unknown</i>";
     if (!$name) $name = "&nbsp;";
-    print("<td>$stat[$status]</td><td><a href=\"info.php?user_id=$user_id$ASID\">$uni</a></td><td>$name</td></tr>\n");
+    print("<td>$stat[$status]</td><td><a href=\"info.php?user_id=$user_id$ASID\">$uni</a></td><td>$name</td>");
+    if ($surveys)
+    {
+      print("<td>" . ($response == 't' ? "yes" : "no") . "</td>");
+    }
+    print("</tr>\n");
   }
   print("</table>\n");
   

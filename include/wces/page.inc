@@ -9,11 +9,11 @@ $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
 $wces_closed = false;
-
+$absolutePrintStr = $headPrintStr = "";
 
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $headPrintStr, $absolutePrintStr;
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $absolutePrintStr, $headPrintStr;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
@@ -136,7 +136,7 @@ function showhelp(topic)
       extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
       if ($surveyed) break;
       if ($i == 0) page_spacer();
-      page_link(format_class($name,0,0,1,0,0,0), "students/survey.php?class_id=$class_id", $QSID, "");
+      page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id", $QSID, "");
     }
   }
 

@@ -89,7 +89,23 @@ class Survey
         $type = -1;
 
       if ($type !== $lasttype && $lasttype !== false)
+      {
+        if (!isset($factories[$lasttype]))
+        {
+          print("<h4>Fatal Error: Can't load component type $lasttype</h4>");
+          print("<p>Either the type doesn't exist and the database is corrupted,"
+            . " or you forgot to include this component's factory in the factories array.</p>");
+          print("<p>Here is a list of factories that were passed:</p>");
+          print("<table>\n");
+          foreach($factories as $k => $v)
+          {
+            print("<tr><td>" . $v->code() . "</td><td>" . get_class($v) . "</td><td>" . $v->name() . "</td></tr>");
+          }
+          print("</table>\n");
+          die(); 
+        }
         $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $latest);
+      }
 
       if ($i >= $n) break;
 
