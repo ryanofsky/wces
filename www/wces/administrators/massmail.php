@@ -1,4 +1,4 @@
-<%
+<?
 require_once("wces/page.inc");
 require_once("widgets/widgets.inc");
 require_once("widgets/basic.inc");
@@ -127,7 +127,7 @@ class MassEmail extends FormWidget
           print("  <li>$error</li>\n");
         print("</ul>\n");
       }
-%>
+?>
 <p>From this page you can send customized emails to students in classes being surveyed this semester.</p>
 <p>Use the <strong>To:</strong> drop down box to send emails to a specific group of students.</p>
 <p>The following variables can be used in the subject and message body. They will be replaced by student data taken from the WCES database.</p>
@@ -146,15 +146,15 @@ class MassEmail extends FormWidget
 <table>
   <tr>
     <td valign=top align=right><STRONG>From:</STRONG></td>
-    <td><% $this->from->display(); %></td>
+    <td><? $this->from->display(); ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>Reply To:</STRONG></td>  
-    <td><% $this->replyto->display(); %></td>
+    <td><? $this->replyto->display(); ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>To:</STRONG></td>  
-    <td><%
+    <td><?
       print("<select name=\"${prefix}_to\">");
       foreach($MassEmail_students as $key => $label)
       {
@@ -174,22 +174,22 @@ class MassEmail extends FormWidget
         print("<option value=\"$topicid\"$selected>$name Students</option>");
       }
       print("</select>\n");
-    %></td>
+    ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>Subject:</STRONG></td>
-    <td><% $this->subject->display(); %></td>
+    <td><? $this->subject->display(); ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>Text:</STRONG></td>
-    <td><% $this->text->display(); %></td>
+    <td><? $this->text->display(); ?></td>
   </tr>
   <tr>
     <td>&nbsp;</td>
-    <td><% $this->action->display("Send", MassEmail_send); %> <% $this->action->display("Preview", MassEmail_preview); %>  </td>
+    <td><? $this->action->display("Send", MassEmail_send); ?> <? $this->action->display("Preview", MassEmail_preview); ?>  </td>
   </tr>
 </table>
-<%  
+<?  
     }
   }
   
@@ -346,4 +346,4 @@ $mm->display();
 print("</form>\n");
 
 page_bottom();
-%>
+?>
