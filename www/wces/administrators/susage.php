@@ -4,14 +4,43 @@ require_once("wces/login.inc");
 require_once("wces/page.inc");
 login_protect(login_administrator);
 
-$db = wces_connect();
+param($topicid);
 
+$db = wces_connect();
 wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
 $semester = ucfirst($semester);
-
 page_top("Student Usage Data for $semester $year $questionperiod");
 
-wces_Findclasses($db,"currentclasses", &$questionperiodid, &$year, &$semester);
+///////////////////////////////////////////////////////////////////////////////
+
+print("<p>Filtering: ");
+$topics = db_exec("SELECT topicid, name FROM topics", $db, __FILE__, __LINE__);
+$first = true;
+$foundfilter = false;
+while($topic = mysql_fetch_assoc($topics))
+{
+  if ($first) $first = false; else print (" | ");
+  if ($topic["topicid"] == $topicid)
+  {
+    $foundfilter = true;
+    print($topic["name"]);
+  }
+  else
+    print('<a href="susage.php?topicid=' . $topic["topicid"] . '">' . $topic["name"] . "</a>");
+}
+if (!$first) print (" | ");
+if (!$foundfilter)
+{
+  $topicid = 0;
+  print("None</p>");
+}
+else
+  print('<a href="susage.php">None</a></p>');
+
+///////////////////////////////////////////////////////////////////////////////
+
+$questionperiodid = wces_Findquestionsetsta($db,"qsets",false,$topicid);
+
 db_exec("CREATE TEMPORARY TABLE surveyclasses(
 courseid INTEGER NOT NULL,
 classid INTEGER NOT NULL,
@@ -26,7 +55,7 @@ responses INTEGER,
 PRIMARY KEY(classid))",$db,__FILE__, __LINE__);
 db_exec("REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
 SELECT c.courseid, cc.classid, cl.section, s.code, c.code, c.name, p.name, p.professorid, IFNULL(cl.students,0), IFNULL(MAX(a.responses),0)
-FROM currentclasses AS cc
+FROM qsets AS cc
 LEFT JOIN classes AS cl USING (classid)
 LEFT JOIN courses AS c USING (courseid)
 LEFT JOIN subjects AS s USING (subjectid)
@@ -36,6 +65,9 @@ GROUP BY cc.classid",$db,__FILE__, __LINE__);
 
 $y = db_exec("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$db,__FILE__, __LINE__);
 extract(mysql_fetch_array($y));
+
+///////////////////////////////////////////////////////////////////////////////
+
 %>
 
 <h3>Aggregate Student Usage</h3>
@@ -61,33 +93,53 @@ while ($class = mysql_fetch_array($classes))
 }
 print("</ul>");
 
-/*
+flush();
 
-$sql = "SELECT u.cunix, MIN(e.surveyed) AS didall, MAX(e.surveyed) AS didone FROM currentclasses AS cc INNER JOIN enrollments AS e USING (classid) LEFT JOIN users AS u USING (userid) GROUP BY e.userid HAVING didone = 'yes' ORDER BY didall DESC, RAND()";
-$students = mysql_query($sql,$db);
+///////////////////////////////////////////////////////////////////////////////
+
+db_exec("CREATE TEMPORARY TABLE studsurvs( cunix TINYTEXT, surveys INTEGER, surveyed INTEGER )", $db, __FILE__, __LINE__);
+db_exec("
+
+  REPLACE INTO studsurvs(cunix, surveys, surveyed)
+  SELECT u.cunix, COUNT(DISTINCT q.questionsetid), COUNT(DISTINCT cs.answersetid)
+  FROM qsets AS qs
+  INNER JOIN enrollments AS e ON e.classid = qs.classid
+  INNER JOIN users AS u ON u.userid = e.userid
+  INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
+  LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
+  LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
+  GROUP BY u.userid
+  
+", $db, __FILE__, __LINE__);
+
+$students = db_exec("SELECT cunix, IF(surveys-surveyed=0,1,0) AS didall, IF(surveyed>0,1,0) AS didone FROM studsurvs ORDER BY didall DESC, didone DESC, RAND()", $db, __FILE__, __LINE__);
+
 print("<h3>Individual Student Usage</h3>\n");
-$first = true; $didalllast = 0;
+
+$levels = array
+(
+  2 => "<h4>Students who completed all of their surveys</h4>\n<blockquote>",
+  1 => "\n</blockquote>\n<h4>Students who completed at least one of their surveys</h4>\n<blockquote>",
+  0 => "\n</blockquote>\n<h4>Students who completed at none of their surveys</h4>\n<blockquote>"
+);  
+
+$oldlevel = "";
+
 while ($student = mysql_fetch_array($students))
 {
+  $didall = $didone = "";
   extract($student);
-  if (!($didall === $didalllast))
+  $level = $didall + $didone;
+  if (!($level === $oldlevel))
   {
+    print($levels[$level]);
     $first = true;
-    if ($didall == 'yes')
-      print("<h4>Students who completed all of their surveys</h4>\n<blockquote>");
-    else
-      print("</blockquote>\n<h4>Students who completed at least one of their surveys</h4>\n<blockquote>");
-  };
-  if ($first) $first = false; else print (",\n");
-  print ("<a href=\"http://www.columbia.edu/cgi-bin/lookup.pl?$cunix\">$cunix</a>");
-  $didalllast = $didall;
+  }  
+  if ($first) $first = false; else print(", ");
+  print("\n  <a href=\"${server_wcespath}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
+  $oldlevel = $level;
 }
 print("</blockquote>");
-
-*/
-
-mysql_query("DROP TABLE currentclasses",$db);
-mysql_query("DROP TABLE surveyclasses",$db);
 
 page_bottom();
 %>
