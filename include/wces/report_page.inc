@@ -222,7 +222,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
 function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices)
 {
-  global $wces_path, $TAQUESTIONS, $TAVALUES, $ABETQUESTIONS;
+  global $wces_path, $TAQUESTIONS, $TAVALUES;
 
   $outhtml = is_string($pagehtml);
   $outtext = is_string($pagetext);
