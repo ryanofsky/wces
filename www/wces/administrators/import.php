@@ -22,9 +22,9 @@ function printform()
   <LEGEND align="top">Legacy Database Import</LEGEND>
   <table>
   <tr><td valign="top">Options:</td><td>
-  <INPUT NAME="doclasses"    ID="classes"    TYPE="checkbox" value="on" CHECKED><label for="classes">Import classes</label><br>
-  <INPUT NAME="doprofessors" ID="professors" TYPE="checkbox" value="on" CHECKED><label for="professors">Import professors</label><br>
-  <INPUT NAME="docourses"    ID="courses"    TYPE="checkbox" value="on" CHECKED><label for="courses">Import courses</label><br>
+  <INPUT NAME="doclasses"    ID="classes"    TYPE="checkbox" value="on" CHECKED><label for="classes">Import Classes</label><br>
+  <INPUT NAME="doprofessors" ID="professors" TYPE="checkbox" value="on" CHECKED><label for="professors">Import Professors</label><br>
+  <INPUT NAME="docourses"    ID="courses"    TYPE="checkbox" value="on" CHECKED><label for="courses">Import Courses</label><br>
   <INPUT NAME="doresponses"  ID="responses"  TYPE="checkbox" value="on" CHECKED><label for="responses">Import Responses</label>
   </td></tr>
   <tr><td>&nbsp;</td><td><INPUT type="submit" NAME="import" VALUE="Go"></td></tr></table>
