@@ -800,7 +800,81 @@ CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INT
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION branch_create(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION move_branch(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    branch_id_        ALIAS FOR $1;
+    new_parent_branch ALIAS FOR $2;
+    save_id_          ALIAS FOR $3;
+    parent_ INTEGER;
+    p INTEGER;
+    nrev INTEGER;
+    siblings RECORD;
+    type_ INTEGER;
+  BEGIN
+    SELECT INTO parent_ parent FROM branches WHERE branch_id = branch_id_ FOR UPDATE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''move_branch(%,%) fails. branch % not found'', $1, $2, branch_id_;
+    END IF;
+    
+    SELECT INTO p parent FROM branches WHERE branch_id = new_parent_branch FOR UPDATE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION ''move_branch(%,%) fails. branch % not found'', $1, $2, new_parent_branch;
+    END IF;
+
+    IF branch_id_ = new_parent_branch THEN
+      RAISE EXCEPTION ''move_branch(%,%) fails. cannot make branch % a child of itself'', $1, $2, new_parent_branch;
+    END IF;
+
+    IF (parent_ IS NOT NULL AND p IS NOT NULL) AND parent_ <> p THEN
+      RAISE EXCEPTION ''move_branch(%,%) fails. this function is currently only implemented for the case where the new parent is a child of the old parent'', $1, $2, branch_id_;
+    END IF;
+    
+    UPDATE branches SET parent = new_parent_branch WHERE branch_id = branch_id_;
+    
+    INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+    VALUES (new_parent_branch, branch_id_);
+        
+    INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+    SELECT new_parent_branch, descendant_id
+    FROM branch_ancestor_cache
+    WHERE ancestor_id = branch_id_;
+    
+    IF parent_ IS NULL THEN
+      -- if parent_ is null, the parent value of all revisions
+      -- on branch_id_ should currently be null
+
+      rid := nextval(''revision_ids'');
+      INSERT INTO revisions (revision_id, parent, branch_id, revision, save_id, merged, component_id)
+      VALUES (rid, NULL, new_parent_branch, 0, save_id_, NULL, NULL);
+
+      UPDATE revisions SET parent = rid
+      WHERE branch_id = branch_id AND parent IS NULL;
+
+      INSERT INTO revisions (parent, branch_id, revision, save_id, type)
+      VALUES (NULL, new_parent_branch, 0, save_id_, type_)
+      nrev := currval(''revision_ids'');
+      UPDATE revisions SET parent = nrev WHERE parent IS NULL AND branch_id = branch_id_;
+    ELSE
+      -- loop through the parents of revisions that are on this branch.
+      -- new zero revisions will be placed in between the parents and the revisions on rec1.branch_id
+      FOR siblings IN SELECT parent FROM revisions WHERE branch_id = branch_id_ GROUP BY parent LOOP
+        IF siblings.parent IS NULL THEN
+          RAISE EXCEPTION ''move_branch(%,%) fails. Database is corrupt. Some revisions on child branch % have NULL parents.'', $1, $2, branch_id_;
+        END IF;
+
+        SELECT INTO type_ type FROM revisions WHERE revision_id = siblings.parent;
+        -- revision_create not needed since this is a zero revision.
+        INSERT INTO revisions (parent, branch_id, revision, save_id, type)
+        VALUES (siblings.parent, new_parent_branch, 0, save_id_, type_);
+        nrev := currval(''revision_ids'');
+        UPDATE revisions SET parent = nrev WHERE parent = siblings.parent AND branch_id_ = branch_id_ AND revision_id <> nrev;
+      END LOOP;
+    END IF;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION branch_create(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     topic_id_          ALIAS FOR $1;
     base_branch        ALIAS FOR $2;
@@ -847,16 +921,7 @@ CREATE FUNCTION branch_create(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGE
           SELECT INTO t parent FROM topics WHERE topic_id = t;
           IF NOT FOUND THEN RAISE EXCEPTION ''branch_id % doesn''''t belong underneath branch %.'', child.branch_id, parent_branch_id; END IF;
           IF t = topic_id_ THEN -- this branch needs to be moved
-            -- loop through the parents of revisions that are on this branch.
-            -- new zero revisions will be placed in between the parents and the revisions on rec1.branch_id
-            FOR parent IN SELECT parent AS id FROM revisions WHERE branch_id = branch_id_ GROUP BY parent LOOP
-              SELECT INTO type_ type FROM revisions WHERE revision_id_ = parent.id;
-              -- revision_create not needed since this is a zero revision.
-              INSERT INTO revisions (parent, branch_id, revision, save_id, type)
-              VALUES (parent.id, branch_id_, 0, save_id_, type_)
-              nrev := currval(''revision_ids'');
-              UPDATE revisions SET parent = nrev WHERE parent = parent.id AND branch_id_ = branch_id_ AND revision_id <> nrev;
-            END LOOP;
+            PERFORM move_branch(child.branch_id, branch_id_, NULL);
             EXIT;
           END IF;
           -- exit condition for branches that don''t need to be moved
@@ -1887,3 +1952,7 @@ CREATE FUNCTION func_last (text[],text[]) RETURNS text[] AS '
 
 CREATE AGGREGATE last ( BASETYPE = text[], SFUNC = func_last, STYPE = text[]);
 CREATE AGGREGATE first ( BASETYPE = text[], SFUNC = func_first, STYPE = text[]);
+
+create function topic_modified(integer) returns bool as '
+  select exists(select * from branch_topics_cache where topic_id = $1)
+' language 'sql';
