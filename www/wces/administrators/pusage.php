@@ -5,7 +5,7 @@ require_once("wces/page.inc");
 login_protect(login_administrator);
 
 $db = wces_connect();
-wces_GetCurrentQuestionPeriod($db, &$questionperiodid, &$questionperiod, &$year, &$semester);
+wces_GetCurrentQuestionPeriod($db, $questionperiodid, $questionperiod, $year, $semester);
 $semester = ucfirst($semester);
 
 page_top("Professor Usage Data for $semester $year $questionperiod");
@@ -106,8 +106,3 @@ mysql_query("DROP TABLE currentclasses");
 
 page_bottom();
 ?>
-
-
-
-
-
