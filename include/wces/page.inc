@@ -211,7 +211,7 @@ a.blank:hover { color: #FFFFFF; text-decoration: none; }
 <% if (!$hidemenus) { %>
 <table width="100%" height="100%" border=0 cellpadding=0 cellspacing=0>
 <tr>
-  <td height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" target=_top href="/index.html"><img name="i1" border="0" src="<%=$server_wcespath%>media/wces1.gif" width="115" height="65"></a></td>
+  <td height=65 align="middle"><A onmouseover="image_swap('i1')" onmouseout="image_swap('i1')" href="/index.html"><img name="i1" border="0" src="<%=$server_wcespath%>media/wces1.gif" width="115" height="65"></a></td>
   <td height=65><a href="<%=$server_wcespath%>" target="_top" onmouseover="image_swap('i2')" onmouseout="image_swap('i2')"><img name="i2" border="0" src="<%=$server_wcespath%>media/wcestitle.gif" width="600" height="57"></a>
     <script language="JavaScript">
     <!--
