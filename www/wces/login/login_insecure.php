@@ -26,11 +26,10 @@
 <h3>Security Alert</h3>
 
 <p>The information sent in the form above is not encrypted, and could potentially be intercepted
-by someone monitoring http traffic on your network. <a href="http://www.columbia.edu/acis/security/">AcIS</a>recommends that you use encryption technology whenever possible, and to this end we've set up twobackup servers that support encryption. Expect the site to be fully encrypted during the upcomingspring evaluation periods.</p><%$params="destination=" . urlencode($destination) . "&requestedstatus=" .urlencode($requestedstatus) . "&message=" . urlencode($message) . "&uni=" . urlencode($uni); %>
+by someone monitoring http traffic on your network. <a href="http://www.columbia.edu/acis/security/">AcIS</a>recommends that you use encryption whenever possible, and to this end we've set up asecure backup server that supports encryption. Expect the site to be fully encrypted during the upcomingspring evaluation periods.</p><%$params="destination=" . urlencode($destination) . "&requestedstatus=" .urlencode($requestedstatus) . "&message=" . urlencode($message) . "&uni=" . urlencode($uni); %>
 
 <ul>
   <li><a href="https://160.39.209.146/wces/login/login.php?<%=$params%>">Secure Server 1</a></li>
-  <li><a href="https://oracle.yahweh.detour.net:999/wces/login/login.php?<%=$params%>">Secure Server 2</a></li>
 </ul>
 
 <%
