@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/report_page.inc");
 
@@ -168,4 +168,4 @@ function report_profemail($db,$wizard,$subject,$message,$debug)
   
 }
 
-%>
+?>
