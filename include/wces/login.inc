@@ -21,10 +21,7 @@ if (isset($HTTP_COOKIE_VARS[session_name()]) || (isset($SESSION_TRANSFER_ID) && 
   //workaround. copy obnoxious globals into HTTP_SESSION_VARS
   $a = array("login_userid","login_cunixid","login_isstudent","login_isprofessor","login_isadministrator","login_profid");
   foreach($a as $b)
-  {
-    if (isset( ${$b} ))
-      $HTTP_SESSION_VARS[$b] = ${$b};
-  }  
+    $HTTP_SESSION_VARS[$b] = isset(${$b}) ? ${$b} : false;
   unset($a,$b);
 }
 else
@@ -202,7 +199,9 @@ function login_validate($uni,$password,$requiredstatus)
   {
      $isprofessor = 1;
      db_updatevalues($db,"users",Array("userid" => $userid),Array("isprofessor" => "true"));
-  }    
+  }
+  else
+    $isprofessor = 0;   
 
   if (db_getvalue($db,"users",Array("userid" => $userid),"isadmin") == "true")
     $isadministrator = 1;
