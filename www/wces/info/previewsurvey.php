@@ -22,7 +22,8 @@
     print("<form>");
     foreach($questionsets as $k => $qid)
     { 
-      $q = new OldQuestionWidget($db,$qid, 0, 0, "preview$k","prv",WIDGET_GET);
+      $q = new OldQuestionSet($db,$qid, 0, 0, "preview$k","prv",WIDGET_GET);
+      $q->loadvalues();
       $q->display();
     }  
     print("</form>");
