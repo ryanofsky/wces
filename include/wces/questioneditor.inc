@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("widgets/basic.inc");
 
@@ -195,49 +195,49 @@ class QuestionSetEditor extends FormWidget
         break;
         case QuestionSetEditor_main:
         default:
-%>
+?>
 
 <p>Welcome to the question set editor</p>
 
 <table border=2 bordercolor=black bordercolorlight=black bordercolordark=black cellspacing=0>
-<% foreach($this->questionset->questions as $key => $question)
+<? foreach($this->questionset->questions as $key => $question)
    {
      $w = $question->getwidget($this->prefix . "_main_qwidget_" . $key, $this->form, $this->formmethod);
      $w->loadvalues();
-%>
+?>
   <tr>
     <td bgcolor="#DDDDDD">&nbsp;</td>
-    <td align=center valign=middle><% $this->action->display("Insert a component here", QuestionSetEditor_insert,$key,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"'); %></td>
+    <td align=center valign=middle><? $this->action->display("Insert a component here", QuestionSetEditor_insert,$key,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"'); ?></td>
   </tr>
   <tr>
     <td bgcolor="#DDDDDD">
       <table>
         <tr>
-          <td><% $this->action->display(" Modify ",QuestionSetEditor_modify,$key,'class="tinybutton" style="width:100%; BACKGROUND: #0030E7; COLOR: white;"'); %></td>
-          <td><% $this->main_action->display(" Move Up ", QuestionSetEditor_main_moveup,$key,'class="tinybutton" style="width:100%; BACKGROUND: #EFDF18; COLOR: black;"'); %></td>
+          <td><? $this->action->display(" Modify ",QuestionSetEditor_modify,$key,'class="tinybutton" style="width:100%; BACKGROUND: #0030E7; COLOR: white;"'); ?></td>
+          <td><? $this->main_action->display(" Move Up ", QuestionSetEditor_main_moveup,$key,'class="tinybutton" style="width:100%; BACKGROUND: #EFDF18; COLOR: black;"'); ?></td>
         </tr>
         <tr>
-          <td><% $this->main_action->display(" Delete ", QuestionSetEditor_main_delete,$key,'class="tinybutton" style="width:100%; BACKGROUND: red; COLOR: white;"'); %></td>
-          <td><% $this->main_action->display(" Move Down ", QuestionSetEditor_main_movedown,$key,'class="tinybutton" style="width:100%; BACKGROUND: #EFDF18; COLOR: black;"'); %></td>
+          <td><? $this->main_action->display(" Delete ", QuestionSetEditor_main_delete,$key,'class="tinybutton" style="width:100%; BACKGROUND: red; COLOR: white;"'); ?></td>
+          <td><? $this->main_action->display(" Move Down ", QuestionSetEditor_main_movedown,$key,'class="tinybutton" style="width:100%; BACKGROUND: #EFDF18; COLOR: black;"'); ?></td>
         </tr>
       </table>
     </td>
     <td>
-      <% $w->display(); %>
+      <? $w->display(); ?>
     </td>
   </tr>
-<% } %>
+<? } ?>
   <tr>
     <td bgcolor="#DDDDDD">&nbsp;</td>
-    <td align=center valign=middle><% $this->action->display("Insert a component here",QuestionSetEditor_insert,-1,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"'); %></td>
+    <td align=center valign=middle><? $this->action->display("Insert a component here",QuestionSetEditor_insert,-1,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"'); ?></td>
   </tr>
 </table>
-<%
+<?
         break;
       }
     }
   }        
 }
-%>
+?>
 
 
