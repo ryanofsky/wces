@@ -134,7 +134,7 @@ class pg_segmented_wrapper
           $this->split[] = $changed = $changed || $this->last[$s] !== $this->row[$s];
       }
       else
-        $this->split = $this->last !== $this->row[$this->splitcol];
+        $this->split = $this->last[$this->splitcol] !== $this->row[$this->splitcol];
     }
     else
     {
