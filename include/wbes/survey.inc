@@ -110,7 +110,7 @@ class Survey
     }
   }
 
-  function save($topic_id, $base_branch_id, $user_id, $save_id = false)
+  function save($topic_id, $user_id, $save_id = false)
   {
     global $wbes;
     wbes_connect();
