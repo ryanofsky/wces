@@ -115,6 +115,7 @@ Bitmask    | Nonzero when the user...
 0x00000004 | is a professor
 0x00000008 | is a student
 0x00000010 | is a ta
+0x00000080 | opts out of mass emails
 ';
 
 CREATE TABLE enrollments
@@ -126,13 +127,27 @@ CREATE TABLE enrollments
   PRIMARY KEY(user_id, class_id)
 );
 
-COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - professor, 0 - dropped class';
+-- this table only exists as an optimization.
+-- it is faster to select from enrollments_p than to
+-- select from enrollments where status = 4. it is not
+-- a problem as long as clients that need to write into
+-- the enrollments table use the enrollment_update()
+-- and enrollment_update_status() functions instead of
+-- updating or inserting into the enrollments table
+-- directly
+
+CREATE TABLE enrollments_p () INHERITS (enrollments);
+
+COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - ta and student, 4 - professor, 0 - dropped class';
 
 CREATE INDEX class_idx ON enrollments (class_id);
 CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
 CREATE INDEX user_idx ON enrollments (user_id);
-CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 CREATE INDEX ta_ratings_parent_idx ON ta_ratings (parent);
+
+CREATE INDEX enrollment_p_class ON enrollments (class_id);
+CREATE INDEX enrollment_p_user ON enrollments (user_id);
+CREATE UNIQUE INDEX enrollment_p_idx ON enrollments (user_id, class_id);
 
 CREATE TABLE professor_data
 (
@@ -172,7 +187,7 @@ CREATE TABLE acis_groups
 (
   acis_group_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('acis_group_ids'),
   class_id INTEGER,
-  code VARCHAR(60) UNIQUE NOT NULL
+  code VARCHAR(60) UNIQUE NOT NULL,
   status INTEGER
 );
 
@@ -240,11 +255,16 @@ ALTER TABLE acis_affiliations ADD FOREIGN KEY fk_aff_group(acis_group_id) REFERE
 ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_class(class_id) REFERENCES classes(class_id);
 ALTER TABLE wces_topics ADD FOREIGN KEY fk_topic_category(category_id) REFERENCES survey_categories(survey_category_id);
 
-CREATE OR REPLACE FUNCTION references_class (INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION references_class(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM wces_topics WHERE class_id = $1)                  THEN 1 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM enrollments WHERE class_id = $1 AND status <> 3)  THEN 2 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM acis_groups WHERE class_id = $1)                  THEN 4 ELSE 0 END;
+' LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION references_question_period(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM wces_topics WHERE question_period_id = $1)        THEN 1 ELSE 0 END
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS INTEGER AS '
@@ -507,7 +527,7 @@ CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VA
           ELSE
             IF SUBSTRING(affil FROM 1 FOR 8) = ''CUinstr_'' THEN
               classid := class_find(SUBSTRING(affil FROM 9));
-              class_status := 3;
+              class_status := 4;
               -- RAISE NOTICE ''classid (%)'',classid;
             END IF;
           END IF;
@@ -524,15 +544,7 @@ CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VA
           INSERT INTO acis_affiliations(user_id, acis_group_id) VALUES (userid, acis_groupid);
         END IF;
         IF classid <> 0 THEN
-          SELECT INTO rec class_id, status FROM enrollments WHERE user_id = userid AND class_id = classid;
-          IF NOT FOUND THEN
-            INSERT INTO enrollments(user_id,class_id,status,lastseen) VALUES (userid, classid, 1, curtime);
-          ELSE
-            UPDATE enrollments SET lastseen = curtime WHERE user_id = userid AND class_id = classid;
-            IF rec.status < class_status THEN
-              UPDATE enrollments SET status = class_status WHERE user_id = userid AND class_id = classid;
-            END IF;
-          END IF;
+          PERFORM enrollment_update(userid, classid, class_status, curtime);
         END IF;
       END IF;
 
@@ -634,15 +646,16 @@ CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VA
       IF FOUND THEN
         flags_s := flags_s | 8;
       ELSE
-        SELECT INTO rec MAX(status) FROM enrollments WHERE user_id = userid;
-        IF FOUND AND rec.max IS NOT NULL THEN
-          IF rec.max = 3 THEN
-            flags_s := flags_s | 4;
-          ELSE
-            IF rec.max IN (1,2) THEN
-              flags_s := flags_s | 8;
-            END IF;
-          END IF;
+        IF EXISTS (SELECT * FROM enrollments_p WHERE user_id = userid) THEN
+          flags_s := flags_s | 4;
+        END IF;
+
+        IF EXISTS (SELECT * FROM enrollments WHERE user_id = userid AND status & 1 <> 0) THEN
+          flags_s := flags_s | 8;
+        END IF;
+
+        IF EXISTS (SELECT * FROM enrollments WHERE user_id = userid AND status & 2 <> 0) THEN
+          flags_s := flags_s | 16;
         END IF;
       END IF;
     END IF;
@@ -799,35 +812,110 @@ CREATE OR REPLACE FUNCTION school_update(VARCHAR(252)) RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+CREATE OR REPLACE FUNCTION enrollment_update_status(INTEGER, INTEGER, INTEGER, INTEGER, BOOLEAN) RETURNS INTEGER AS '
+  DECLARE
+    user_id_ ALIAS FOR $1;
+    class_id_ ALIAS FOR $2;
+    old_status ALIAS FOR $3;
+    new_status ALIAS FOR $4;
+    leave_professor ALIAS FOR $5;
+    rec RECORD;
+  BEGIN
+    --RAISE NOTICE ''enrollment_update_status(%,%,%,%,%) called'', $1, $2, $3, $4, $5;
+    IF new_status = 4 THEN
+      IF old_status = 4 THEN
+        RETURN 4;
+      ELSE
+        SELECT INTO rec lastseen FROM enrollments
+          WHERE user_id = user_id_ AND class_id = class_id_;
+        DELETE FROM enrollments WHERE user_id = user_id_ AND class_id = class_id_;        
+        INSERT INTO enrollments_p (user_id, class_id, status, lastseen)
+        VALUES (user_id_, class_id, new_status, rec.lastseen);
+        RETURN 4;
+      END IF;
+    ELSE
+      IF old_status = 4 THEN
+        IF leave_professor THEN
+          RETURN old_status;
+        ELSE
+          SELECT INTO rec lastseen FROM enrollments_p
+            WHERE user_id = user_id_ AND class_id = class_id_;
+          DELETE FROM enrollments_p WHERE user_id = user_id_ AND class_id = class_id_;        
+          INSERT INTO enrollments (user_id, class_id, status, lastseen)
+          VALUES (user_id_, class_id, new_status, rec.lastseen);
+          RETURN new_status;
+        END IF;
+      ELSE
+        IF new_status = 0 THEN
+          UPDATE enrollments SET status = 0
+          WHERE user_id = user_id_ AND class_id = class_id_;
+          RETURN new_status;
+        ELSE
+          UPDATE enrollments SET status = status | new_status
+          WHERE user_id = user_id_ AND class_id = class_id_;          
+          RETURN old_status | new_status;
+        END IF;
+      END IF;
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
 CREATE OR REPLACE FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP) RETURNS INTEGER AS '
   DECLARE
     userid ALIAS FOR $1;
     classid ALIAS FOR $2;
-    status_s ALIAS FOR $3;
+    status_ ALIAS FOR $3;
     tyme ALIAS FOR $4;
     rec RECORD;
   BEGIN
     SELECT INTO rec status, lastseen FROM enrollments WHERE user_id = userid AND class_id = classid;
     IF NOT FOUND THEN
-      INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES (userid, classid, status_s, tyme);
-      RETURN status_s;
+      IF status_ = 4 THEN
+        INSERT INTO enrollments_p (user_id, class_id, status, lastseen)
+        VALUES (userid, classid, status_, tyme);        
+      ELSE
+        INSERT INTO enrollments (user_id, class_id, status, lastseen)
+        VALUES (userid, classid, status_, tyme);
+      END IF;
+      RETURN status_;
     ELSE
-      IF tyme < rec.lastseen OR (tyme IS NULL AND rec.lastseen IS NOT NULL) THEN
+      IF (tyme IS NULL AND rec.lastseen IS NOT NULL) OR tyme < rec.lastseen THEN
         RETURN rec.status;  
       END IF;
-
       IF tyme IS NOT NULL THEN
         UPDATE enrollments SET lastseen = tyme WHERE user_id = userid AND class_id = classid;
       END IF;
-      IF status_s > rec.status THEN
-        UPDATE enrollments SET status = status_s WHERE user_id = userid AND class_id = classid;
-        RETURN status_s;
-      ELSE
-        RETURN rec.status;
-      END IF;
+      RETURN enrollment_update_status(userid, classid, rec.status, status_, ''t'');
     END IF;
   END;
 ' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION enrollment_drop_ta(INTEGER, INTEGER) RETURNS VOID AS '
+  UPDATE enrollments SET status = status & ~2
+  WHERE user_id = $1 AND class_id = $2;
+' LANGUAGE 'sql';
+
+CREATE OR REPLACE FUNCTION enrollment_add_ta(INTEGER, INTEGER) RETURNS VOID AS '
+  DECLARE
+    user_id_ ALIAS FOR $1;
+    class_id_ ALIAS FOR $2;
+    s INTEGER;
+  BEGIN
+    SELECT INTO s status FROM enrollments WHERE user_id = user_id_
+      AND class_id = class_id_;
+    IF NOT FOUND THEN
+       INSERT INTO enrollments (user_id, class_id, status, lastseen)
+       VALUES (user_id_, class_id_, 2, NULL);
+    ELSIF s = 4 THEN
+      RAISE EXCEPTION ''enrollment_add_ta(%, %) fails. User % is already a professor of class %'', $1, $2, user_id_, class_id_;
+    ELSE
+      UPDATE enrollments SET status = status | 2 
+      WHERE user_id = user_id_ AND class_id = class_id_;
+    END IF;
+    RETURN;
+  END;
+' LANGUAGE 'plpgsql';
+SELECT enrollment_add_ta(864, 35896);
 
 CREATE OR REPLACE FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP,INTEGER) RETURNS INTEGER AS '
   DECLARE
@@ -966,6 +1054,7 @@ CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS 
     pinfo RECORD;
     sinfo RECORD;
     t TEXT;
+    ers RECORD;
   BEGIN
     RAISE NOTICE ''professor_merge(%,%) called'', $1, $2;
 
@@ -1034,22 +1123,29 @@ CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS 
       DELETE FROM professor_data WHERE user_id = secondary_id;
     END IF;
 
-    -- Update primary enrollments to keep maximum status
-
-    UPDATE enrollments
-    SET status = MAX(status, get_status(secondary_id, class_id))
-    WHERE user_id = primary_id;
-
-    -- Delete secondary enrollments that already exist in primary
+    -- Combine enrollments
     
-    DELETE FROM enrollments WHERE
-      user_id = secondary_id
-      AND
-      class_id IN (SELECT class_id FROM enrollments WHERE user_id = primary_id);
-
-    -- Transfer hooks and enrollments from secondary to primary
+    FOR ers IN 
+      SELECT e1.class_id, e1.lastseen AS primary_time, 
+        e1.status AS primary_status, e2.lastseen AS secondary_time,
+        e2.status AS secondary_status
+      FROM enrollments AS e1
+      INNER JOIN enrollments AS e2 USING (class_id)
+      WHERE e1.user_id = primary_id AND e2.user_id = secondary_id
+    LOOP
+      IF (ers.primary_time IS NULL AND ers.secondary_time IS NOT NULL)
+        OR (ers.primary_time < ers.secondary_time) 
+      THEN
+        PERFORM enrollment_update(primary_id, ers.class_id, ers.secondary_status, ers.secondary_time);
+        DELETE FROM enrollments WHERE user_id = secondary_id AND class_id = ers.class_id;
+      ELSE
+        PERFORM enrollment_update(secondary_id, ers.class_id, ers.primary_status, ers.primary_time);
+        DELETE FROM enrollments WHERE user_id = primary_id AND class_id = ers.class_id;
+      END IF;
 
     UPDATE enrollments SET user_id = primary_id WHERE user_id = secondary_id;
+
+    -- Transfer hooks and enrollments from secondary to primary
     UPDATE professor_hooks SET user_id = primary_id WHERE user_id = secondary_id;
     UPDATE temp_user SET newid = primary_id WHERE newid = secondary_id;
     UPDATE temp_prof SET newid = primary_id WHERE newid = secondary_id;
@@ -1068,72 +1164,10 @@ CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS 
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION get_status(INTEGER, INTEGER) RETURNS INTEGER AS '
-  SELECT status FROM enrollments WHERE user_id = $1 AND class_id = $2;
-' LANGUAGE 'sql';
-
 CREATE OR REPLACE FUNCTION MAX(INTEGER, INTEGER) RETURNS INTEGER AS '
   SELECT CASE WHEN $2 IS NULL OR $1 > $2 THEN $1 ELSE $2 END;
 ' LANGUAGE 'sql';
 
-CREATE OR REPLACE FUNCTION cunix_associate(INTEGER,INTEGER) RETURNS INTEGER AS '
-  DECLARE
-    cunix_userid     ALIAS FOR $1;
-    professor_userid ALIAS FOR $2;
-    cu RECORD;
-    pr RECORD;
-    i INTEGER;
-  BEGIN
-    SELECT INTO i user_id FROM users WHERE user_id = professor_userid AND uni IS NULL AND flags & 4 = 4;
-    IF NOT FOUND THEN RETURN 0; END IF;
-
-    SELECT INTO cu user_id, uni, department_id, flags, lastlogin FROM users WHERE user_id = cunix_userid AND uni IS NOT NULL AND flags & 4 = 4;
-    IF NOT FOUND THEN RETURN 0; END IF;
-
-    UPDATE users SET
-      uni = NULL,
-      flags = 4,
-      lastlogin = NULL
-    WHERE user_id = cunix_userid;
-
-    UPDATE users SET
-      uni = cu.uni,
-      flags = cu.flags,
-      lastlogin = cu.lastlogin
-    WHERE user_id = professor_userid;
-
-    IF cu.flags & 2 = 2 THEN
-      UPDATE users SET department_id = cu.department_id WHERE user_id = professor_userid;
-    END IF;
-
-    -- Delete enrollments that already exist
-
-    DELETE FROM enrollments WHERE
-      user_id = cunix_userid
-      AND
-      status IN (0,1)
-      AND
-      class_id IN (SELECT class_id FROM enrollments WHERE user_id = professor_userid);
-
-    UPDATE enrollments SET user_id = professor_userid WHERE user_id = cunix_userid AND status IN (0,1);
-    UPDATE acis_affiliations SET user_id = professor_userid WHERE user_id = cunix_userid;
-
-    SELECT INTO i COUNT(*) FROM professor_hooks WHERE user_id = cunix_userid;
-    IF i > 0 THEN RETURN professor_userid; END IF;
-
-    SELECT INTO i COUNT(*) FROM enrollments WHERE user_id = cunix_userid;
-    IF i > 0 THEN RETURN professor_userid; END IF;
-
-    SELECT INTO i COUNT(*) FROM professor_data WHERE user_id = cunix_userid;
-    IF i > 0 THEN RETURN professor_userid; END IF;
-
-    DELETE FROM users WHERE user_id = cunix_userid;
-    RETURN professor_userid;
-
-  END;
-' LANGUAGE 'plpgsql';
-
-DROP FUNCTION get_profs(INTEGER);
 CREATE OR REPLACE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
   DECLARE
     classid ALIAS FOR $1;
@@ -1142,9 +1176,9 @@ CREATE OR REPLACE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
   BEGIN
     FOR rec IN SELECT
       u.user_id, u.firstname, u.lastname
-      FROM enrollments AS e
+      FROM enrollments_p AS e
       INNER JOIN users AS u USING (user_id)
-      WHERE e.class_id = classid AND e.status = 3
+      WHERE e.class_id = classid
     LOOP
       IF char_length(list) > 0 THEN
         list := list || ''\n'';
@@ -1159,8 +1193,8 @@ WITH (ISCACHABLE);
 
 CREATE OR REPLACE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
   SELECT COALESCE(s.code, '''') || ''\n'' 
-    || COALESCE(c.divisioncode, '''') || ''\n'' 
-    || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
+    || COALESCE(c.divisioncode, '''')
+    || LTRIM(to_char(COALESCE(c.code, 0)::integer, ''0000'')) || ''\n''
     || COALESCE(cl.section, '''')     || ''\n'' || COALESCE(cl.year::text, '''') || ''\n'' 
     || COALESCE(cl.semester::text, '''')    || ''\n'' || COALESCE(c.name, '''') || ''\n''
     || COALESCE(cl.name, '''') || ''\n'' || $1 || ''\n'' || c.course_id
@@ -1173,8 +1207,8 @@ CREATE OR REPLACE FUNCTION get_class(INTEGER) RETURNS TEXT AS '
 DROP FUNCTION get_course(INTEGER);
 CREATE OR REPLACE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
   SELECT COALESCE(s.code, '''') || ''\n'' 
-    || COALESCE(c.divisioncode, '''') || ''\n'' 
-    || to_char(COALESCE(c.code, 0)::integer, ''00000'')  || ''\n''
+    || COALESCE(c.divisioncode, '''')
+    || LTRIM(to_char(COALESCE(c.code, 0)::integer, ''0000''))  || ''\n''
     || COALESCE(c.name, '''') || ''\n''
     ||  $1
   FROM courses AS c
