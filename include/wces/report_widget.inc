@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/report_wizard.inc");
 require_once("wces/report_generate.inc");
@@ -119,23 +119,23 @@ class Report extends FormWidget
     {
       print("<table><tr><td height=50>\n");
       $this->action->display(false,Report_revivewizard,0);
-      %><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%=$this->action->gethref(Report_revivewizard,0)%>"><img src="<%=$server_wcespath%>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a></span> <%
+      ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->action->gethref(Report_revivewizard,0)?>"><img src="<?=$server_wcespath?>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a></span> <?
       if ($this->state == Report_results)
       {
         $this->action->display(false,Report_print,0);
         $this->action->display(false,Report_email,0);
-        %><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%=$this->wizard->printable->checked ? "javascript:void(window.print())" : $this->action->gethref(Report_print,0) %>"><img src="<%=$server_wcespath%>media/report/print.gif" border=0 width=20 height=20 alt="Printer"><%=$this->wizard->printable->checked ? "Print this report" : "Printable version of this Report"%></a></span> <%
-        %><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%=$this->action->gethref(Report_email,0)%>"><img src="<%=$server_wcespath%>media/report/email.gif" border=0 width=20 height=20 alt="Email a copy of this report"> Email this Report</a></span> <%
+        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->wizard->printable->checked ? "javascript:void(window.print())" : $this->action->gethref(Report_print,0) ?>"><img src="<?=$server_wcespath?>media/report/print.gif" border=0 width=20 height=20 alt="Printer"><?=$this->wizard->printable->checked ? "Print this report" : "Printable version of this Report"?></a></span> <?
+        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->action->gethref(Report_email,0)?>"><img src="<?=$server_wcespath?>media/report/email.gif" border=0 width=20 height=20 alt="Email a copy of this report"> Email this Report</a></span> <?
       }
       if ($this->state == Report_profemail && $this->profemail_action->action)
       {
         $this->profemail_action->display(false,0,0);
-        %><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%=$this->profemail_action->gethref(0,0)%>"><img src="<%=$server_wcespath%>media/report/back.gif" border=0 width=20 height=20 alt="Back">Back to Professor Email</span> <%
+        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->profemail_action->gethref(0,0)?>"><img src="<?=$server_wcespath?>media/report/back.gif" border=0 width=20 height=20 alt="Back">Back to Professor Email</span> <?
       }
       if ($this->state == Report_email)
       {
         $this->email_action->display(false,Report_email_topcancel,0);
-        %><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<%=$this->email_action->gethref(Report_email_topcancel,0)%>"><img src="<%=$server_wcespath%>media/report/back.gif" border=0 width=20 height=20 alt="Back">Back to Results</span> <%
+        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->email_action->gethref(Report_email_topcancel,0)?>"><img src="<?=$server_wcespath?>media/report/back.gif" border=0 width=20 height=20 alt="Back">Back to Results</span> <?
       }
       print("</td></tr></table>\n");
     }
@@ -185,30 +185,30 @@ class Report extends FormWidget
          makereport($db,$this->wizard,false,$html,$text);
          $this->email_text->text = $text;
        }  
-%>
+?>
 <table>
   <tr>
     <td valign=top align=right><STRONG>To:</STRONG></td>
-    <td><% $this->email_to->display(); %></td>
+    <td><? $this->email_to->display(); ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>From:</STRONG></td>  
-    <td><% $this->email_from->display(); %></td>
+    <td><? $this->email_from->display(); ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>Subject:</STRONG></td>
-    <td><% $this->email_subject->display(); %></td>
+    <td><? $this->email_subject->display(); ?></td>
   </tr>
   <tr>
     <td valign=top align=right><STRONG>Text:</STRONG></td>
-    <td><% $this->email_text->display(); %></td>
+    <td><? $this->email_text->display(); ?></td>
   </tr>
   <tr>
     <td>&nbsp;</td>
-    <td><% $this->email_action->display("Send",Report_email_send,0); %> <% $this->email_action->display("Cancel",Report_email_cancel,0); %></td>
+    <td><? $this->email_action->display("Send",Report_email_send,0); ?> <? $this->email_action->display("Cancel",Report_email_cancel,0); ?></td>
   </tr>
 </table>
-<%
+<?
     }
   }
   
@@ -246,24 +246,24 @@ class Report extends FormWidget
         print("Professor <a href=\"{$server_wcespath}administrators/info.php?professorid=$professorid\">$pname</a> - email <a href=\"mailto:$email\">$email</a> - $pages classes<br>");
       };  
       print("</ul>\n");
-%>
+?>
 <h4>Message</h4>
 <table>
 <tr>
-  <td valign=top align=right><strong>Subject:</strong></td><td valign=top><% $this->profemail_subject->display(); %></td>
+  <td valign=top align=right><strong>Subject:</strong></td><td valign=top><? $this->profemail_subject->display(); ?></td>
 </tr>  
 <tr>
-  <td valign=top align=right><STRONG>Custom Message:</STRONG></td><td valign=top><% $this->profemail_message->display(); %></td>
+  <td valign=top align=right><STRONG>Custom Message:</STRONG></td><td valign=top><? $this->profemail_message->display(); ?></td>
 </tr>
 <tr>
-  <td>&nbsp;</td><td><% $this->profemail_debug->display(); %> <% $this->profemail_debug->displaylabel("Debug Mode (doesn't actually send emails)"); %></td>
+  <td>&nbsp;</td><td><? $this->profemail_debug->display(); ?> <? $this->profemail_debug->displaylabel("Debug Mode (doesn't actually send emails)"); ?></td>
 </tr>
 <tr>  
-  <td>&nbsp;</td><td><% $this->profemail_action->display("Submit",1,0); %></td>
+  <td>&nbsp;</td><td><? $this->profemail_action->display("Submit",1,0); ?></td>
 </tr>
 </table>  
-<%      
+<?      
     };
   }
 };  
-%>
+?>
