@@ -51,26 +51,26 @@ CREATE FUNCTION update_topics(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGE
     t1 INTEGER;
     t2 INTEGER;
   BEGIN
-    SELECT INTO t1 topic_id FROM wces_topics WHERE course_id = course_id AND
-      class_id = NULL 
+    SELECT INTO t1 topic_id FROM wces_topics WHERE course_id = course_id_ AND class_id = NULL;
     IF FOUND THEN
     ELSE
       INSERT INTO wces_topics (parent, course_id) VALUES (parent_, course_id_);
       t1 := currval(''topic_ids'');
     END IF;
-    SELECT INTO t2 topic_id FROM wces_topics WHERE class_id = class_id_ AND 
-      course_id = course_id_ AND parent = t1;
+    SELECT INTO t2 topic_id FROM wces_topics WHERE class_id = class_id_ AND course_id = course_id_ AND parent = t1;
     IF FOUND THEN
       UPDATE wces_topics SET category_id = category_id_ WHERE topic_id = t2;
     ELSE
-      INSERT INTO wces_topics (parent, course_id, class_id, category_id) VALUES
-        (t1, course_id_, class_id_, category_id_);
+      INSERT INTO wces_topics (parent, course_id, class_id, category_id) VALUES (t1, course_id_, class_id_, category_id_);
       t2 := currval(''topic_ids'');
     END IF;
     RETURN t2;
   END;
 ' LANGUAGE 'plpgsql';
-
+begin;
+select update_topics(5, 90, 1, 1);
+select * from wces_topics where course_id = 5;
+rollback;
 */
 function getClass($code, $year, $semester, $coursename = false, $category_id = false, $parent = false)
 {
@@ -154,7 +154,7 @@ function opencsv($filename)
   return $fp;
 }
 
-function importclasses($filename,$year,$semester)
+function importclasses($filename,$year,$semester, $category_id = false, $parent = false)
 {
   global $wces;
 
@@ -174,7 +174,7 @@ function importclasses($filename,$year,$semester)
     else
     {
       
-      $class_id = getClass($data[0], $year, $semester, $data[1]);
+      $class_id = getClass($data[0], $year, $semester, $data[1], $category_id, $parent);
       if (!$class_id) die ("Unable to parse class $data[0] on row $row");
       
       $user_id = (int)$data[2];
@@ -292,7 +292,7 @@ wces_connect();
 pg_query("BEGIN", $wces,__FILE__,__LINE__);
 //importusers($path ."admins-w2002.txt",9);
 importusers($path . "students-s2002.txt",0);
-importclasses($path . "courses-s2002.txt",2002,0);
+importclasses($path . "courses-s2002.txt",2002,0,1,1);
 importenrollments($path . "enroll-s2002.txt",2002,0);
 pg_query("END", $wces,__FILE__,__LINE__);
 
