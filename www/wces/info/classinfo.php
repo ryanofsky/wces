@@ -21,6 +21,7 @@ WHERE cl.classid = '" . addslashes($classid) . "'", $db);
 $info = mysql_fetch_array($infoq);
 if ($info)
 {
+  $name = $clname = $section = $year = $semester = $students = $pname = $professorid = $code = $name = $information = $dcode = $dname = $scode = $sname = $dvname = $scname = $courseid = $departmentid = $subjectid = $schoolid = $dvcode = $divisionid = "";
   extract($info);
   
   print("<h3>$name" . ($clname ? " - $clname" : "") . "</h3>\n");
