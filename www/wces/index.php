@@ -1,7 +1,7 @@
 <?
   require_once("wces/login.inc");
   
-  login_protect(0);
+  LoginProtect(0);
 
   require_once("wces/page.inc");  
   page_top("The WCES");
@@ -18,7 +18,7 @@
     print("<p>You are not a known student, professor, or administrator. To get access to this site, please <a href=\"{$wces_path}about/feedback.php\">contact us</a>.</p>");
   }
 
-  if ($status & login_administrator)
+  if ($status & LOGIN_ADMIN)
   {
     if ($onemenu) $onemenu = false; else print("<h4>Administrator Options</h4>");
 ?>
@@ -35,7 +35,7 @@
 <?
   }
 
-  if ($status & login_deptadmin)
+  if ($status & LOGIN_DEPT_ADMIN)
   {
     if ($onemenu) $onemenu = false; else print("<h4>Department Administrator Options</h4>");
 ?>
@@ -46,13 +46,13 @@
 <?
   }
   
-  if ($status & login_professor)
+  if ($status & LOGIN_PROFESSOR)
   {
     if ($onemenu) $onemenu = false; else print("<h4>Professor Options</h4>");
     
     $pimg = "<img align=right src=\"${wces_path}media/professor_small.gif\" width=98 height=110>";
     
-    if (!($status & login_knownprofessor))
+    if (!($status & LOGIN_KNOWN_PROFESSOR))
     {
 ?>
 <p><?=$pimg?>According to the AcIS affiliation listings, you are a professor
@@ -60,7 +60,7 @@ but are not currently teaching any classes. If you need professor access to
 WCES (the ability to see survey results and create survey questions), you
 should <a href="<?=$wces_path?>about/feedback.php<?=$QSID?>">send us</a>
 your name, CUNIX ID, and the list of classes you teach.
-<? if (!($status & login_student)) { ?>
+<? if (!($status & LOGIN_STUDENT)) { ?>
 If you just need student access to the site (to evaluate a class you are
 taking) also <a href="<?=$wces_path?>about/feedback.php<?=$QSID?>">let us
 know</a>. In both cases, we can quickly add your information to the database
@@ -87,12 +87,16 @@ and make the rest of the site accessible to you.
     }
   }
 
-  if ($status & login_student)
+  if ($status & LOGIN_STUDENT)
   {
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
+<p><b>New!</b> Are you TAing this semester? If so, you can 
+<a href="<?=$wces_path?>students/taregister.php">register</a>
+with WCES to have your name appear on your class's survey.</p>
 <?
+    
     $survey_listing = get_surveys();
     if (!$survey_listing)
     {
