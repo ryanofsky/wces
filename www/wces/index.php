@@ -124,7 +124,7 @@ and make the rest of the site accessible to you.
           else
           {
             $complete = false;
-            print ("  <LI><A HREF=\"students/survey.php?class_id=$class_id&question_period_id=$question_period_id$ASID\">$name</a></LI>\n");
+            print ("  <LI><A HREF=\"students/survey.php?topic_id=$topic_id$ASID\">$name</a></LI>\n");
           }  
         }
 

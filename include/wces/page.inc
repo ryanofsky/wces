@@ -106,15 +106,15 @@ function get_surveys()
    
     $user_id = login_getuserid();
     $survey_listing = pg_go("
-      SELECT q.question_period_id, t.specialization_id, t.class_id, get_class(t.class_id) AS name,
+      SELECT q.question_period_id, t.topic_id, t.item_id, t.specialization_id, t.class_id, get_class(t.class_id) AS name,
         CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
       FROM question_periods AS q
       INNER JOIN wces_topics AS t USING (question_period_id)
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = cl.class_id AND e.status = 1
-      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.specialization_id = t.question_period_id AND sr.user_id = $user_id
+      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.user_id = $user_id
       WHERE q.begindate < (SELECT NOW()) AND q.enddate > (SELECT NOW()) AND NOT t.cancelled
-      GROUP BY q.question_period_id, t.specialization_id, t.class_id, sr.user_id
+      GROUP BY q.question_period_id, t.topic_id, t.item_id, t.specialization_id, t.class_id, sr.user_id
       ORDER BY surveyed, name
     ", $wces, __FILE__, __LINE__);      
     
