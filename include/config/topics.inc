@@ -8,7 +8,7 @@ function topics_list($question_period_id)
   return array
   (  // heading, sql, name type
     array
-    ( '', 
+    ( '<h5>Base Surveys</h5>', 
       "
         SELECT * FROM
         (
@@ -20,14 +20,24 @@ function topics_list($question_period_id)
           UNION
           SELECT 1, 3733, 'Base Bioengineering Questions', 4, 't', NULL
           UNION
-          SELECT 1, 3490, 'Gateway Lab Questions', 5, 't', NULL        
+          SELECT 1, 3111, 'Base Chemistry Questions', 5, 't', NULL                 
         ) AS t ORDER BY ordinal
       ",
       TOPICS_LITERAL
     ),
+
+    array
+    ( "<h5>Course Surveys</h5>\n",
+      "
+        SELECT t.item_id, t.specialization_id, get_course(t.course_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
+        FROM wces_course_topics AS t
+        ORDER BY name
+      ", 
+      TOPICS_COURSE
+    ),
     
     array
-    ( "<h5>Individual Classes</h5>\n",
+    ( "<h5>Class Section Surveys</h5>\n",
       "
         SELECT t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified, t.category_id
         FROM wces_topics AS t
