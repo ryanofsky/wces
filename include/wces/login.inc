@@ -332,6 +332,8 @@ function login_prompt($url, $rs, $de = false, $uni = "")
     else     
       print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
   }
+  else if ($uni)
+    print("<p><b><font color=red>Invalid username or password.</font></b></p>\n");
 
   $securesite = "$server_sbase${wces_path}login/login.php";
   $insecuresite = "$server_base${wces_path}login/login.php";
@@ -339,7 +341,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
 
 ?>  
   <p><strong>Enter your CUNIX username and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
-  <form method=post action="<?= $securesite ?>">
+  <form method=post action="<?= $de ? $insecuresite : $securesite ?>">
   <input type=hidden name=url value="<?= htmlspecialchars($url) ?>">
   <input type=hidden name=rs value="<?= htmlspecialchars($rs) ?>">
   <input type=hidden name=de value="<?= htmlspecialchars($de) ?>">
@@ -371,6 +373,7 @@ of this form, click <a href="<?= $securesite . $urlargs?>">here</a>.
 </font>
 <?  
   }
+  print("<p>&nbsp;</p><p>&nbsp;</p><p>&nbsp;</p>");
   page_bottom();  
   exit();
 }
