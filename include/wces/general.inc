@@ -1,8 +1,24 @@
 <%
 
-// redirect function. headers can only be sent before text
-// calling exit() after this function will cause redirect
-// to take place
+require_once("wces/login.inc");
+
+
+/**
+* Puts a warning into the database and sends an obnoxious email to rey4@columbia.edu
+* It should be used like an assert, to ensure that unexpected conditions do
+* not go unnoticed.
+* 
+* @param string  A text error message containing some details.
+* @param string  Source file where error occurred. Should be set to __FILE__.
+* @param string  Line number where error occured. Should be __LINE__.
+*/	
+function sendwarning($dump, $file, $line)
+{
+  $db = wces_connect();
+  $uni = login_getuni();
+  $errorid = db_addrow($db, "warninglog", array("file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
+  mail("rey4@columbia.edu", "Warning from $file in line $line", wordwrap("Dear Russell Yanofsky,\n\nThe SEAS Oracle would like you to know about an error it recently encountered in $file, line $line.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n"));
+}
 
 /**
 * Constructs an absolute URL. If any of the parameters is false, then the
@@ -13,7 +29,6 @@
 * @param string  Port, if 0 then the port is omitted.
 * @param string  Request string such as "/folder/file?name1=value1"
 * @return string An absolute URL constructed from the parameters
-* @access public
 */	
 
 function absurl($protocol = false, $server = false, $port = false, $request = false)
@@ -38,6 +53,19 @@ function absurl($protocol = false, $server = false, $port = false, $request = fa
   if ($request === false) $request = server_getrequest(); 
 }
 
+/**
+* A wimpier explode() function. It splits a two parted string whose
+* parts are separated by a single character into two strings. It 
+* searches from the end of the original string.
+* 
+* @param string  The character to split by.
+* @param string  The original string.
+* @param string  A reference (&) variable that stores the first part
+*                of the output.
+* @param string  A reference (&) variable that stores the second part
+*                of the output.
+*/	
+
 function simplesplit($splitchar,$name,$first,$last)
 {
   $p = strrpos($name,$splitchar);
@@ -52,6 +80,10 @@ function simplesplit($splitchar,$name,$first,$last)
     $last = substr($name,$p+1);
   }  
 }
+
+// redirect function. headers can only be sent before text
+// calling exit() after this function will cause redirect
+// to take place
 
 function redirect($url)
 {
@@ -70,8 +102,8 @@ function redirect($url)
 
 function sloppyredirect($url)
 {
-  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
-  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  //print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
+  //print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
   print("Click <a href=\"$url\">here</a> to proceed.");
 }
 
@@ -166,6 +198,20 @@ function recursearray(&$arr,$name)
 function ifassign($value,&$variable)
 {
   if ($value) $variable = $value;
+}
+
+function param(&$var)
+{
+  if (!isset($var)) $var = false;
+}
+
+function emailvalid($email)
+{
+  $email = trim($email);
+  return
+    eregi("^[_a-z0-9-]+(\.[_a-z0-9-]+)*@([0-9a-z][0-9a-z-]*[0-9a-z]\.)+[a-z]{2}[mtgvu]?$", $email)
+    ||
+    eregi("^[^;,]*<[_\.0-9a-z-]+@([0-9a-z][0-9a-z-]+\.)+[a-z]{2,3}>$", $email);
 }
 
 %>

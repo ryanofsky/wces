@@ -146,47 +146,67 @@ function login_validate($uni,$password,$requiredstatus)
   if (!(strpos($dump,"no soup for you") === false))
     return false; // BAD PASSWORD
 
-/*
-
   if (ereg(".*REMOTE_USER=([^<>]+)<br>",$dump,$result))
     $cunix = $result[1];
   else
   {
-    debugout("???" . $result[1]);
-    return false; // OK PASSWORD, BAD LOGIN?
-  }
+    $cunix = $uni;
+    sendwarning("Login parser warning: username not found.\n\n----------\n\n$dump");
+  }  
 
   if (ereg(".*USER_EMAIL=([^<>]+)<br>",$dump,$result))
     $email = $result[1];
   else
+  {
     $email = "";
+    sendwarning("Login parser warning: email address not found.\n\n----------\n\n$dump");
+  }  
 
-*/
-
-  $cunix = $uni;
-    
   $db = wces_connect();
-  
+
   $result = db_exec("SELECT userid FROM users WHERE cunix = '" . addslashes($cunix) . "'",$db);
   if (mysql_num_rows($result) == 1)
   {
     $userid = mysql_result($result,0);
-    db_exec("UPDATE users SET lastlogin = NOW() WHERE userid = $userid",$db);
+    db_exec("UPDATE users SET lastlogin = NOW() WHERE userid = '$userid'",$db);
   }
   else
   {
-    db_exec("INSERT INTO users(cunix,lastlogin) VALUES ('" . addslashes($cunix) . "',NOW())",$db);
+    db_exec("REPLACE INTO users(cunix,lastlogin) VALUES ('" . addslashes($cunix) . "',NOW())",$db);
     $userid = mysql_insert_id($db);
   }  
- 
+
+  wces_GetCurrentQuestionPeriod($db, false, false, &$year, &$semester);
+  $result = db_exec ("
+  SELECT e.classid
+  FROM enrollments AS e  
+  INNER JOIN classes AS cl USING (classid)
+  WHERE cl.year >= '$year' AND cl.semester >= '$semester' AND e.userid = '$userid'", $db, __FILE__, __LINE__);
+
+  $badenrollments = array();
+  while($row = mysql_fetch_assoc($result))
+    $badenrollments[$row["classid"]] = true;
+
   $pos = strpos($dump,"CUcourse_");
+  $insertfailed = false;
   while(!($pos === false))
   {
-    $class = substr($dump,$pos+9,20);
-    $classid = class_update($db, $class);
-    db_replacenoid($db,"enrollments",Array("userid" => $userid, "classid" => $classid),0);
-    $pos = strpos($dump,"CUcourse_",$pos+1);
+    $classid = class_update($db, substr($dump,$pos+9,20));
+    if ($classid)
+    {
+      if (isset($badenrollments[$classid])) unset($badenrollments[$classid]);
+      db_replacenoid($db,"enrollments",Array("userid" => $userid, "classid" => $classid),0);
+      $pos = strpos($dump,"CUcourse_",$pos+1);
+    }
+    else
+      $insertfailed = true;
   };
+  
+  if ($insertfailed)
+    sendwarning("Login parser warning: class insertions failed.\n\n----------\n\n$dump");
+  
+  if (count($badenrollments) > 0)
+    db_exec("DELETE FROM enrollments WHERE userid = '$userid' AND classid IN (" . implode(",",array_keys($badenrollments)) . ")", $db, __FILE__, __LINE__);
 
   // begin validation
 
@@ -268,13 +288,12 @@ function login_saveprofid($profid)
   if (session_is_registered("login_userid"))
   {
     $db = wces_connect();
-    db_updatevalues($db,"professors",Array("userid" => $login_userid),Array("userid" => false));
-    db_updatevalues($db,"professors",Array("professorid" => $profid),Array("userid" => $login_userid));
+    db_updatevalues($db, "professors", Array("userid" => $login_userid),Array("userid" => false));
+    db_updatevalues($db, "professors", Array("professorid" => $profid),Array("userid" => $login_userid));
     mysql_close($db);
     session_register("login_profid");
     $login_profid = $profid;
   };  
 };
-
 
 %>
