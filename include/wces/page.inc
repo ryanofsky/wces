@@ -87,11 +87,8 @@ function showhelp(topic)
     page_link("Professor Usage",         "administrators/pusage.php");
     page_link("Mass Mailing",            "administrators/massmail.php");
     page_link("Reporting Wizard",        "administrators/report.php");
-    page_link("Fake Login",              "administrators/fakelogin.php");
-    page_link("Enrollment Viewer",       "administrators/enrollment.php");
+    page_link("Course Database",         "administrators/info.php");
     page_link("Professor Listing",       "administrators/pstats.php");
-    page_link("Semester Initialization", "administrators/semester.php");
-    page_link("Data Upload",             "administrators/import.php");
   }
 
   if ($status & login_professor)
@@ -108,7 +105,7 @@ function showhelp(topic)
     page_link("Update Association", "login/profsearch.php");
   }
   
-  if ($status & login_student)
+  if (false && ($status & login_student))
   {
     if (!isset($db)) $db = wces_connect();
     

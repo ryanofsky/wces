@@ -20,10 +20,7 @@
   <li><a href="<?=$wces_path?>administrators/pusage.php<?=$QSID?>">Professor Usage</a> - See a detailed report of professor usage of WCES during the current question period.</li>
   <li><a href="<?=$wces_path?>administrators/pstats.php<?=$QSID?>">Professor Listing</a> - View and edit information about professors.</li>
   <li><a href="<?=$wces_path?>administrators/massmail.php<?=$QSID?>">Mass Mail</a> - Send reminder and thank-you emails to students.</li>
-  <li><a href="<?=$wces_path?>administrators/fakelogin.php<?=$QSID?>">Fake Login</a> - Log onto WCES as another user.</li>
-  <li><a href="<?=$wces_path?>administrators/enrollment.php<?=$QSID?>">Enrollment Viewer</a> - See a student's class enrollments.</li>
-  <li><a href="<?=$wces_path?>administrators/import.php<?=$QSID?>">Data Upload</a> - Load text files into the database.</li>
-  <li><a href="<?=$wces_path?>administrators/semester.php<?=$QSID?>">New Semester Initialization</a> - Upload registrar data for a new question period.</li>
+  <li><a href="<?=$wces_path?>administrators/info.php<?=$QSID?>">Course Database</a> - See courses and enrollments.</li>
 </ul>
 <?
   }
@@ -69,40 +66,40 @@ your listing and save the association.</p><p>&nbsp;</p>
     if ($onemenu) $onemenu = false; else print("<h4>Student Options</h4>");
 ?>
 <p><img align=right src="<?=$wces_path?>media/student.gif" width=99 height=99>
-Choose a class to evaluate from the list below.</p>
+The midterm evalution period ended on 10/18/01.</p>
 <?
-    $classes = db_exec("
-      SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code AS scode, if(cr.userid IS NULL, 0, 1) AS surveyed
-      FROM enrollments AS e
-      INNER JOIN groupings AS g ON e.classid = g.linkid AND g.linktype = 'classes'
-      INNER JOIN classes AS cl ON g.linkid = cl.classid AND year = '$year' AND semester = '$semester'
-      INNER JOIN courses AS c USING (courseid)
-      INNER JOIN subjects AS s USING (subjectid)
-      LEFT JOIN cheesyresponses AS cr ON cr.userid = e.userid AND cr.classid = e.classid AND cr.questionperiodid = '$questionperiodid'
-      WHERE e.userid = '$userid'
-      ORDER BY surveyed, s.code, c.code
-      ", $db, __FILE__, __LINE__);
-    
-    print ("<p>Choose a class link from this list below.</p>");
-    print ("<UL>\n");
-    $found = false;
-    while ($class = mysql_fetch_assoc($classes))
-    {
-      $found = true;
-      $complete = true;
-      extract($class);
-      if ($surveyed)  
-        print ("  <LI>Survey Complete: " . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>\n");
-      else
-      {
-        $complete = false;
-        print ("  <LI><A HREF=\"students/survey.php?classid=$classid\">" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</a></LI>\n");
-      }  
-    }
-    if (!$found) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, check our <a href=\"evaluations.php\">class evaluation listing</a> and email <a href=\"mailto:wces@columbia.edu\">wces@columbia.edu</a> so we can update our database with your information.</LI>");
-    print ("</UL>");
-    
-    print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
+//    $classes = db_exec("
+//      SELECT cl.classid, cl.section, cl.year, cl.semester, c.code, c.name, s.code AS scode, if(cr.userid IS NULL, 0, 1) AS surveyed
+//      FROM enrollments AS e
+//      INNER JOIN groupings AS g ON e.classid = g.linkid AND g.linktype = 'classes'
+//      INNER JOIN classes AS cl ON g.linkid = cl.classid AND year = '$year' AND semester = '$semester'
+//      INNER JOIN courses AS c USING (courseid)
+//      INNER JOIN subjects AS s USING (subjectid)
+//      LEFT JOIN cheesyresponses AS cr ON cr.userid = e.userid AND cr.classid = e.classid AND cr.questionperiodid = '$questionperiodid'
+//      WHERE e.userid = '$userid'
+//      ORDER BY surveyed, s.code, c.code
+//      ", $db, __FILE__, __LINE__);
+//    
+//    print ("<p>Choose a class link from this list below.</p>");
+//    print ("<UL>\n");
+//    $found = false;
+//    while ($class = mysql_fetch_assoc($classes))
+//    {
+//      $found = true;
+//      $complete = true;
+//      extract($class);
+//      if ($surveyed)  
+//        print ("  <LI>Survey Complete: " . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</LI>\n");
+//      else
+//      {
+//        $complete = false;
+//        print ("  <LI><A HREF=\"students/survey.php?classid=$classid\">" . ucfirst($semester) . " $year  - $scode$code <i>$name</i> (section $section)</a></LI>\n");
+//      }  
+//    }
+//    if (!$found) print ("<LI>None of the classes you are enrolled in have evaluations available at this time. If you think this is an error, check our <a href=\"evaluations.php\">class evaluation listing</a> and email <a href=\"mailto:wces@columbia.edu\">wces@columbia.edu</a> so we can update our database with your information.</LI>");
+//    print ("</UL>");
+//    
+//    print("<p>Remember to <a href=\"${wces_path}login/logout.php\">log out</a> when you are done.</p>");
   }  
   
   page_bottom();
