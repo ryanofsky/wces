@@ -120,11 +120,26 @@ class Report extends FormWidget
     {
       print("<table><tr><td height=50>\n");
       $this->action->display(false,"","");
-      ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->action->gethref(Report_revivewizard,0)?>"><img src="<?=$wces_path?>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a></span> <?
+      ?><a class=blank href="<?=$this->action->gethref(Report_revivewizard,0)?>"><img src="<?=$wces_path?>media/report/wizard.gif" border=0 width=24 height=22 alt="Back to the Reporting Wizard"> Back to the Reporting Wizard</a><?
       if ($this->state == Report_results)
       {
-        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->wizard->printable->checked ? "javascript:void(window.print())" : $this->action->gethref(Report_print,0) ?>"><img src="<?=$wces_path?>media/report/print.gif" border=0 width=20 height=20 alt="Printer"><?=$this->wizard->printable->checked ? "Print this report" : "Printable version of this Report"?></a></span> <?
-        ?><span class=off onmousedown="this.className='down'" onmouseup="this.className = 'up'"  onmouseover="this.className = 'up'" onmouseout="this.className='off'"><a class=blank href="<?=$this->action->gethref(Report_email,0)?>"><img src="<?=$wces_path?>media/report/email.gif" border=0 width=20 height=20 alt="Email a copy of this report"> Email this Report</a></span> <?
+?>
+<script>
+<!--
+  if (window.print)
+  {
+    document.write(' <a class=blank href="<?=$this->wizard->printable->checked ? "javascript:void(window.print())" : $this->action->gethref(Report_print,0) ?>"><img src="<?=$wces_path?>media/report/print.gif" border=0 width=20 height=20 alt="Printer"><?=$this->wizard->printable->checked ? "Print this report" : "Printable version of this Report"?></a>');
+  }
+// -->
+</script>
+
+<!--
+
+<a class=blank href="<?=$this->action->gethref(Report_email,0)?>"><img src="<?=$wces_path?>media/report/email.gif" border=0 width=20 height=20 alt="Email a copy of this report"> Email this Report</a>
+
+-->
+
+<?
       }
       if ($this->state == Report_profemail && $this->profemail_action->action)
       {
