@@ -144,14 +144,15 @@ function & LoadSurvey($item_id, $specialization_id, &$factories, $save_id = null
   $component_id = (int)pg_result($r, 0, 0);
   $load =& $surveyGlobals->getLoad(1, $component_id, $specialization_id);
   $load->addTarget(new SurveyLoadTarget($dest, 0, $revision_id, $item_id));
-
   $surveyGlobals->doLoad();
-
-  return $dest[0];
+  $survey =& $dest[0];
+  $survey->top = true;
+  return $survey;
 };
 
 function SaveSurvey(&$survey, $specialization_id, $user_id)
 {
+  assert($survey->top);
   global $wbes;
   wbes_connect();
   $result = pg_go("
@@ -186,6 +187,9 @@ class Survey extends Component
 {
   var $components = array();
   var $revision_id = null;
+  
+  // is top level survey
+  var $top;
 
   function insert(&$component,$position = 0)
   {

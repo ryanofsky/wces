@@ -85,6 +85,7 @@ class PageBreakEditor extends ComponentEditor
 </tr>
 </table>
 <?
+    $this->buttons->printButtons();
   }
 };
 

@@ -55,6 +55,7 @@ class HeadingEditor extends ComponentEditor
 </tr>
 </table>
 <?
+    $this->buttons->printButtons();
   }
 }
 

@@ -149,6 +149,7 @@ class TextResponseEditor extends ComponentEditor
 </tr>
 </table>
 <?
+    $this->buttons->printButtons();
   }
 };
 

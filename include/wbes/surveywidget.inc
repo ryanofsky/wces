@@ -198,10 +198,13 @@ class SurveyWidget extends ParentWidget
 
     if ($this->isStale) $this->printNavigation();
 
+    if (!isset($this->instructions))
+      print("<p>Instructions: Fill in the form below and press the \"Submit Evaluation\" button when you are done. Note that you will not be able to go back and edit any part of the evaluation once it is submitted.</p>");
+    else if ($this->instructions !== false)
+      print($this->instructions);
+    
     if (count($this->questionWidgets) == 0)
       print("<p><i>This survey contains no questions.</i></p>");
-
-    print("<p>Instructions: Fill in the form below and press the \"Submit Evaluation\" button when you are done. Note that you will not be able to go back and edit any part of the evaluation once it is submitted.</p>");
 
     if ($this->showErrors)
     {
@@ -237,9 +240,6 @@ class SurveyWidget extends ParentWidget
       else
         $q->displayHidden();
     }
-
-    print("<p>&nbsp;</p>\n");
-    $this->printNavigation();
   }
 
   function printNavigation()
@@ -249,11 +249,12 @@ class SurveyWidget extends ParentWidget
     $prev = $this->page > 0;
     $next = $this->page < $this->pages && $this->pages > 0;
     if (!$next) $this->sawLastPage = true;
-    $save = ((bool)$this->user_id) && $this->sawLastPage;
+    $save = !empty($this->survey->top) && $this->user_id && $this->sawLastPage;
 
     if ($save || $prev || $next)
     {
 ?>
+<p>&nbsp;</p>
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
   <td align=center bgcolor="#68ACFF">

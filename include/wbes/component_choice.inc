@@ -499,7 +499,8 @@ class ChoiceEditor extends ComponentEditor
     else if ($this->controls->selected == "select")
       $c->rows = (int) $this->rows->selected;
 
-    $this->component->vertical = $this->controls->selected == "buttons" && $this->orientation->selected == "vertical";
+    $this->component->vertical = $this->controls->selected == "buttons" 
+      && $this->orientation->selected == "vertical";
 
     ComponentEditor::save();
   }
@@ -703,6 +704,7 @@ function <?=$refreshFunction?>(form)
 </tr>
 </table>
 <?
+    $this->buttons->printButtons();
   }
 }
 

@@ -55,7 +55,8 @@ class SurveyEditor extends StatefullWidget
   var $insert;
   var $modify;
   var $preview;
-
+  var $buttons;
+  
   function SurveyEditor($item_id, $specialization_id, $user_id, $name, &$parent)
   {
     global $server_url;
@@ -174,10 +175,31 @@ class SurveyEditor extends StatefullWidget
     $ncomponents = count($this->survey->components);
     if ($ncomponents == 0)
     {
-      print("<p>This survey does not have any components. Click below to either insert a component or cancel without saving any changes.</p>");
+      if ($this->survey->top)
+        print("<p>This survey does not have any components. Click below to "
+          . "either insert a component or cancel without saving any changes."
+          . "</p>\n");
+      else
+        print("<p>This survey does not have any components.</p>\n");
+
+      print("<p>");
       $this->event->displayButton("Insert a component",SurveyEditor_inserte,0,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
-      print(" ");
-      $this->event->displayButton("Cancel",SurveyEditor_cancel,"", 'class="tinybutton" style="BACKGROUND: #CE3031; COLOR: white;"');
+      
+      if ($this->survey->top)
+      {
+        print(" ");
+        $this->event->displayButton("Cancel",SurveyEditor_cancel,"", 'class="tinybutton" style="BACKGROUND: #CE3031; COLOR: white;"');
+      }
+      
+      print("</p>");
+      
+      if (!$this->survey->top)
+      {
+        print("<p>");
+        $this->buttons->printButtons(false);
+        print("</p>");
+      }
+      
     }
     else // $ncomponents != 1
     { 
@@ -235,13 +257,26 @@ by clicking above and below existing components.</p>
         print("</tr>\n");
         print($horizontalBorder);
       }
+      
 ?>
 <tr>
   <td colspan=2></td>
   <td align=center>
-    <? $this->event->displayButton("Save Survey", SurveyEditor_save, null, 'class="tinybutton"'); ?>
-    <? $this->event->displayButton("Cancel", SurveyEditor_cancel, null, 'class="tinybutton"'); ?>
-    <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->event->name()?>',<?=SurveyEditor_preview?>)">
+<?
+      if ($this->survey->top)
+      {
+        $this->event->displayButton('Save Survey', SurveyEditor_save, null, 
+          'class="tinybutton"');
+        print(' ');
+        $this->event->displayButton('Cancel', SurveyEditor_cancel, null, 
+          'class="tinybutton"');
+        print(' <input type=button class=tinybutton value=Preview '
+          . 'onclick="return SurveyEditor_preview(this.form,\''
+          . $this->event->name() . '\',' . SurveyEditor_preview . ')">');
+      }
+      else
+        $this->buttons->printButtons(false);
+?>
   </td>
 </tr>
 </table>
@@ -416,6 +451,7 @@ class SurveyEditorModify extends ParentWidget
     $this->component =& $component;
     $this->event =& new EventWidget("event", $this);
     $this->editor =& $component->getEditor("editor", $this);
+    $this->editor->buttons =& $this;
   }
   
   function loadState($new)
@@ -460,16 +496,23 @@ class SurveyEditorModify extends ParentWidget
     if ($this->previewError)
       $this->editor->printErrors();
     else
-    {
       $this->editor->display();
-      $this->event->displayButton("Save", SurveyEditorModify_save, null, 'class="tinybutton"');
-      $this->event->displayField();
-      print('<input type=button class=tinybutton value=Preview onclick="'
-        . "return SurveyEditor_preview(this.form,'" . $this->event->name()
-        . "', " . SurveyEditorModify_preview . ")\">");
-      $this->event->displayButton("Cancel", SurveyEditorModify_cancel, null, 'class="tinybutton"');
-    }
   }
+  
+  function printButtons($cancel = true)
+  {
+    $this->event->displayButton("Save", SurveyEditorModify_save, null, 'class="tinybutton"');
+    $this->event->displayField();
+    print(' <input type=button class=tinybutton value=Preview onclick="'
+      . "return SurveyEditor_preview(this.form,'" . $this->event->name()
+      . "', " . SurveyEditorModify_preview . ")\">");
+    if ($cancel)
+    {
+      print(' ');
+      $this->event->displayButton("Cancel", SurveyEditorModify_cancel, null,
+        'class="tinybutton"');    
+    }    
+  }  
 };
 
 class SurveyEditorPreview extends ParentWidget

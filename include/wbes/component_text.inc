@@ -58,6 +58,7 @@ class TextEditor extends ComponentEditor
 </tr>
 </table>
 <?
+    $this->buttons->printButtons();
   }
 };
 

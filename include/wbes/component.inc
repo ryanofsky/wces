@@ -226,6 +226,7 @@ class ComponentEditor extends ParentWidget
 {
   // parameters
   var $component; // source component
+  var $noCancel = false;
 
   // widgets
   var $text, $is_html, $locking;
