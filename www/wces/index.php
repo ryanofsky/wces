@@ -22,6 +22,9 @@
 to WCES. Once you have logged in you will be able to add custom questions to upcoming surveys
 and see results of already completed ones. You can edit questions and log in during non-evaluation period.</p>
 
+<p><b>Macintosh Users!</b> Please note that Internet Explorer for Macs will not accept our security certificate.  You are advised to use Netscape Navigator or Communicator instead
+</p>
+
 </td></tr></table>
 
 <%
