@@ -12,7 +12,6 @@ require_once('config/topics.inc');
 define("TopicEditor_choose", 1);
 
 $survey_debug = false;
-$db_debug = 0;
 
 class TopicEditor extends StatefullWidget
 {
@@ -144,7 +143,7 @@ class TopicEditor extends StatefullWidget
       list($heading, $sql, $mode) = $row;
       print($heading);
       $result = pg_go($sql, $wces, __FILE__, __LINE__);
-      $printed = $printed || $this->printTopics($result, $mode);
+      if ($this->printTopics($result, $mode)) $printed = true;
     }
     if (!$printed) print("<p><i>No surveys found</i></p>\n");
   }
