@@ -237,8 +237,6 @@ CREATE TABLE wces_topics
   cancelled BOOLEAN NOT NULL
 );
 
-
-
 CREATE TABLE survey_categories
 (
   survey_category_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('survey_category_ids'),
@@ -254,8 +252,21 @@ CREATE TABLE semester_question_periods
   profdate TIMESTAMP WITH TIME ZONE
 ) INHERITS (question_periods);
 
-CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 
+CREATE TABLE ta_ratings
+(
+    name TEXT,
+    overall INTEGER,
+    knowledgeability INTEGER,
+    approachability INTEGER,
+    availability INTEGER,
+    communication INTEGER,
+    comments TEXT,
+    user_id INTEGER
+)
+INHERITS (responses);
+
+CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 ALTER TABLE classes ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
 ALTER TABLE classes ADD CONSTRAINT department_fk FOREIGN KEY (department_id) REFERENCES departments;
 ALTER TABLE classes ADD CONSTRAINT division_fk FOREIGN KEY (division_id) REFERENCES divisions;
@@ -276,6 +287,7 @@ ALTER TABLE sent_mails ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFE
 ALTER TABLE sent_mails_topics ADD CONSTRAINT sent_mail_fk FOREIGN KEY (sent_mail_id) REFERENCES sent_mails(sent_mail_id);
 ALTER TABLE users ADD CONSTRAINT departmentfk FOREIGN KEY (department_id) REFERENCES departments;
 ALTER TABLE wces_topics ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations(specialization_id);
+ALTER TABLE ta_ratings ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 
 -- can't currently create these due to errors in data
 ALTER TABLE wces_topics ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
