@@ -252,15 +252,16 @@ begin
 end;
 
 procedure TSpider.ParseDeptPage(page:string);
-var no,nc,vo,vc: string;
+var no,nc,vo,vc,vm: string;
     deptname, deptabbv:string;
-    pos1,pos2,pos3,pos4,pos5:integer;
+    pos1,pos2,pos3,pos4,pos5,pos6:integer;
 begin
   if deptlist = nil then deptlist := TStringKeyHashTable.Create;
 
   no := '<tr valign=top><td bgcolor=#DADADA>';
   nc := '</td>';
   vo := '<a href="';
+  vm := 'sel/';
   vc := '">';
   pos2 := 1;
   repeat
@@ -268,10 +269,11 @@ begin
     pos2 := StringPos(nc,page,pos1);
     deptname := Copy(page,pos1 + length(no), pos2 - pos1 - length(no));
     pos3 := Stringpos(vo,page,pos2);
-    pos4 := Stringpos(vc,page,pos3);
+    pos4 := Stringpos(vm,page,pos3);
     pos5 := Stringpos('_',page,pos3);
-    if (pos3 + length(vo) + 4 <= pos5) and (pos5 < pos4) then
-      deptabbv := Copy(page,pos5-4,4)
+    pos6 := Stringpos(vc,page,pos3);
+    if (pos4 + length(vm) < pos5 ) and (pos5 < pos6) then
+      deptabbv := Copy(page,pos4 + length(vm),pos5 - pos4 - length(vm))
     else
       deptabbv := '';
     deptlist.Value[deptname] := deptabbv;
@@ -312,7 +314,7 @@ begin
   repeat
     pos1 := StringPos(opener,page,pos2);
     pos2 := StringPos(closer,page,pos1);
-    if pos2 - pos1 - length(opener)= 15 then
+    if (pos1 > 0) and (pos2 > 0) and (page[pos2 - 4] = '-') and (page[pos2-10] = '-') then
     begin
      item := ClassItem(classlist.add());
      item.url := baseurl + Copy(page,pos1+length(opener),pos2-pos1-length(opener)) + '/';
@@ -334,6 +336,8 @@ begin
   classinfo.course := getvalue('','<font size=+2>','</font><br>',page,titleopen);
   classinfo.classname := StripHTML(getvalue('<font size=+2>','</font><br>','<tr valign=top><td bgcolor=#99CCFF>',page,titleopen));
   classinfo.instructor := getvalue(no+'Instructor'+nc,vo,vc,page,tableopen);
+  if length(classinfo.instructor) = 0 then
+    classinfo.instructor := getvalue(no+'Instructors'+nc,vo,vc,page,tableopen);
   classinfo.department := StripHTML(getvalue(no+'Department'+nc,vo,vc,page,tableopen));
   classinfo.students   := KeepNumbers(getvalue(no+'Enrollment'+nc,vo,vc,page,tableopen));
   classinfo.subject    := getvalue(no+'Subject' + nc,vo,vc,page,tableopen);
