@@ -1,4 +1,4 @@
-<%
+<?
 
 define("WIDGET_POST",1);
 define("WIDGET_GET",2);
@@ -109,7 +109,7 @@ class ImageButton extends Widget
   {
     if ($hidden) return;
     $this->dumpscript();
-    %><a onmousedown="button_push('<%=$this->prefix%>')" onmouseup="button_unpush('<%=$this->prefix%>')" onmouseout="button_unpush('<%=$this->prefix%>')" <%=$this->aparams%>"><img name="<%=$this->prefix%>" src="<%=$this->raisedsrc%>" border=0 <%=$this->iparams%>"></a><script>AttachPushed('<%=$this->prefix%>','<%=$this->pushedsrc%>')</script><%  
+    ?><a onmousedown="button_push('<?=$this->prefix?>')" onmouseup="button_unpush('<?=$this->prefix?>')" onmouseout="button_unpush('<?=$this->prefix?>')" <?=$this->aparams?>"><img name="<?=$this->prefix?>" src="<?=$this->raisedsrc?>" border=0 <?=$this->iparams?>"></a><script>AttachPushed('<?=$this->prefix?>','<?=$this->pushedsrc?>')</script><?  
   }
   
   function dumpscript() // public static inherited
@@ -118,7 +118,7 @@ class ImageButton extends Widget
     if (!$ImageButton_dumped)
     {
       $ImageButton_dumped = true;
-%>
+?>
 <script>
 <!--  
 
@@ -166,9 +166,9 @@ class ImageButton extends Widget
   };
 // -->
 </script>
-<%
+<?
     }  
   }
 }
 
-%>
+?>
