@@ -155,7 +155,7 @@ function SaveSurvey(&$survey, $specialization_id, $user_id)
   global $wbes;
   wbes_connect();
   $result = pg_go("
-    --BEGIN WORK;
+    BEGIN WORK;
     INSERT INTO saves (user_id) VALUES ($user_id);
     SELECT currval('save_ids')
   ", $wbes, __FILE__, __LINE__);
