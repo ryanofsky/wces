@@ -10,7 +10,7 @@ define("SurveyWidget_previous",4);
 class SurveyWidget extends ParentWidget
 {
   // parameters
-  var $specialization_id, $base_branch_id, $user_id, $question_period_id, $factories;
+  var $specialization_id, $base_branch_id, $user_id, $question_period_id;
   var $backup = true;
   var $anonymous = false;
   var $replacements = false;
@@ -40,14 +40,13 @@ class SurveyWidget extends ParentWidget
   // $abc =& new SurveyWidget(...);
   // $abc->ta =& new TASurvey(...);
 
-  function SurveyWidget($specialization_id, $base_branch_id, $user_id, $question_period_id, &$factories, $name, &$parent)
+  function SurveyWidget($item_id, $specialization_id, $user_id, $question_period_id, $name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->specialization_id           = (int)$specialization_id;
-    $this->base_branch_id     = (int)$base_branch_id;
+    $this->item_id            = (int)$item_id;
+    $this->specialization_id  = (int)$specialization_id;
     $this->user_id            = (int)$user_id;
     $this->question_period_id = (int)$question_period_id;
-    $this->factories =& $factories;
     $this->event =& new EventWidget("event", $this);
   }
 
@@ -55,7 +54,8 @@ class SurveyWidget extends ParentWidget
   {
     ParentWidget::loadInitialState();
     $this->isStale = false;
-    if (!$this->survey) $this->loadSurvey();
+    global $survey_factories;
+    if (!$this->survey) $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
     $this->makeWidgets(true);
   }
 
@@ -80,14 +80,6 @@ class SurveyWidget extends ParentWidget
       ++$this->page;
     else if ($this->event->event == SurveyWidget_previous)
       --$this->page;
-  }
-
-  function loadSurvey()
-  {
-    global $wbes;
-    wbes_connect();
-    $this->survey =& new Survey();
-    $this->survey->load($this->specialization_id, $this->base_branch_id, $this->factories);
   }
 
   function makeWidgets($newLoad)

@@ -1,10 +1,11 @@
 <?
 
+require_once("config/survey.inc");
 require_once("widgets/basic.inc");
+require_once("wbes/postgres.inc");
+require_once("wbes/survey.inc");
 require_once("wbes/surveywidget.inc");
 require_once("wbes/server.inc");
-require_once("wbes/survey.inc");
-require_once("wbes/postgres.inc");
 
 define("SurveyEditor_inserte",1);
 define("SurveyEditor_modify",2);
@@ -40,7 +41,7 @@ $survey_nolock = false;
 class SurveyEditor extends StatefullWidget
 {
   // parameters
-  var $specialization_id, $base_branch_id, $user_id, $factories;
+  var $specialization_id, $base_branch_id, $user_id;
 
   // output
   var $done = false;
@@ -55,14 +56,13 @@ class SurveyEditor extends StatefullWidget
   var $modify;
   var $preview;
 
-  function SurveyEditor($item_id, $specialization_id, $user_id, &$factories, $name, &$parent)
+  function SurveyEditor($item_id, $specialization_id, $user_id, $name, &$parent)
   {
     global $server_url;
     $this->StatefullWidget($name, $parent);
     $this->specialization_id = (int)$specialization_id;
     $this->item_id = (int)$item_id;
     $this->user_id = (int)$user_id;
-    $this->factories = &$factories;
     $this->event =& new EventWidget("event", $this);
   }
 
@@ -71,11 +71,12 @@ class SurveyEditor extends StatefullWidget
     switch($event)
     {
       case SurveyEditor_inserte:
-        $this->insert =& new SurveyEditorInsert($this->factories, "insert", $this);
+        $this->insert =& new SurveyEditorInsert("insert", $this);
         $this->loadChild($this->insert, $new);
         if (isset($this->insert->choose))
         {
-          $factory = &$this->factories[$this->insert->choose];
+          global $survey_factories;
+          $factory = $survey_factories[$this->insert->choose];
           $q = &$factory->create();
           $q->neverSaved = true;
           $this->addEvent(SurveyEditor_modify, $this->survey->insert($q, $param));
@@ -106,7 +107,7 @@ class SurveyEditor extends StatefullWidget
         }
         else
         {
-          $inner =& new SurveyWidget(0,0,0,0, $this->factories, "inner", $this->preview);
+          $inner =& new SurveyWidget(0,0,0,0, "inner", $this->preview);
           $inner->survey =& $this->survey;
         }
         $this->preview->inner =& $inner;
@@ -126,7 +127,6 @@ class SurveyEditor extends StatefullWidget
       break;
 
       case SurveyEditor_save:
-        $GLOBALS['db_debug'] = true;
         if (SaveSurvey($this->survey, $this->specialization_id, $this->user_id))
         {
           $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
@@ -145,8 +145,8 @@ class SurveyEditor extends StatefullWidget
 
   function loadInitialState()
   {
-    $surveyGlobals =& new SurveyGlobals($this->factories, $this->user_id);
-    $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $surveyGlobals);
+    global $survey_factories;
+    $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
   }
 
   function loadState()
@@ -319,9 +319,6 @@ define("SurveyEditorInsert_cancel",2);
 
 class SurveyEditorInsert extends ParentWidget
 {
-  // parameters
-  var $factories;
-
   // output
   var $done = false;
   var $choose = null;
@@ -333,10 +330,9 @@ class SurveyEditorInsert extends ParentWidget
   // private
   var $badInput = false;
 
-  function SurveyEditorInsert(&$factories, $name, &$parent)
+  function SurveyEditorInsert($name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->factories =& $factories;
     $this->event =& new EventWidget("event", $this);
     $this->choices =& new RadioButton(true, "choices", $this);
   }
@@ -347,7 +343,8 @@ class SurveyEditorInsert extends ParentWidget
     switch($this->event->event)
     {
       case SurveyEditorInsert_create:
-        if (!isset($this->factories[$this->choices->checked]))
+        global $survey_factories;
+        if (!isset($survey_factories[$this->choices->checked]))
           $this->badInput = true;
         else
         {
@@ -372,7 +369,8 @@ class SurveyEditorInsert extends ParentWidget
     print("<h5>Which component type would you like to insert? <a href=\"javascript:showhelp('inserttypes')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a></h5>\n");
 
     $first = true;
-    foreach($this->factories as $key => $f)
+    global $survey_factories;
+    foreach ($survey_factories as $key => $f)
     {
       $name = $f->name();
       if (!isset($name)) continue;
