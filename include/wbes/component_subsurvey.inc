@@ -3,22 +3,27 @@
 require_once("wbes/component.inc");
 require_once("wces/login.inc");
 
-
-
-
-
 class SubsurveyFactory extends ComponentFactory
 {
+  function SubsurveyFactory(&$factories)
+  {
+    $this->factories = &$factories;
+  }
+  
   function code() { return 8; }
   function name() { return "Subsurvey Component"; }
   
-  function create()
+  function & create()
   {
-    $sub = new Subsurvey();
+    $sub = & new Subsurvey;
     
-    /* 
+    /* [tyler]
     this is a dirty hack, we must save the survey before
-    we can really use, thems the breaks.
+    we can really use, thems the breaks. 
+    */
+    
+    /* [russ]
+    arghhh...
     */
 
     //print("Pre saved.");    
@@ -34,28 +39,19 @@ class SubsurveyFactory extends ComponentFactory
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, base_branch, flags, title FROM subsurvey_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
-    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = new Subsurvey();
+      $c = & new Subsurvey;
       $c->revision_id   = (int)$wr->row['revision_id'];
       $c->base_branch   = (int)$wr->row['base_branch'];
 
-      $c->text 		= $wr->row['title'];
+      $c->text = $wr->row['title'];
 
-    	$factories = array(
-        new ChoiceFactory(),
-        new TextResponseFactory(),
-        new TextFactory(),
-        new HeadingFactory(),
-        new SubsurveyFactory()
-      );
-	
-	//print("Loading survey.");
-	$c->survey->load($topic_id, $c->base_branch, $factories);
-	
-	$c->our_topic_id = $topic_id;
-	//print("Load 1: $topic_id<br>");
-
+      //print("Loading survey.");
+      $c->survey->load($topic_id, $c->base_branch, $this->factories);
+      
+      $c->our_topic_id = $topic_id;
+      //print("Load 1: $topic_id<br>");
 
       $flagGroup        = (int)$wr->row['flags'];
       $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
@@ -65,49 +61,46 @@ class SubsurveyFactory extends ComponentFactory
   }
 };
 
-
-
 class Subsurvey extends Component
 {
-    var $base_branch;
-    var $survey;
-    var $our_topic_id;
-    var $mode;
+  var $base_branch;
+  var $survey;
+  var $our_topic_id;
+  var $mode;
 
   function Subsurvey()
   {
     $this->mode = 0;
     $this->our_topic_id = $GLOBALS['topic_id'];
-    $this->survey = new Survey();
+    $this->survey = & new Survey();
     $this->base_branch = 0;
   }
   
-  function geteditor($prefix,$form,$formmethod)
+  function geteditor($name, &$parent)
   {
-    return new SubsurveyEditor($this,$prefix,$form,$formmethod);
+    return & new SubsurveyEditor($name, $parent);
   }  
   
-  function getwidget($prefix,$form,$formmethod)
+  function getwidget($name, &$parent)
   {
-    return new SubsurveyWidget($this,$prefix,$form,$formmethod);
+    return & new SubsurveyWidget($name, $parent);
   }
   
   function save($topic_id, $save_id)
   {
-      global $wbes;
+    global $wbes;
   
-      $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
-      
+    $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
+    
     $this->our_topic_id = $topic_id;
     //print("Save 1: $topic_id");
     
     $user_id = login_getuserid();
     
     if($this->base_branch == 0)
-	{$this->base_branch = $this->survey->save($topic_id, null, $user_id, $save_id);}
+      {$this->base_branch = $this->survey->save($topic_id, null, $user_id, $save_id);}
     else
-	{$this->survey->save($topic_id, $this->base_branch, $user_id, $save_id);}
-  
+      {$this->survey->save($topic_id, $this->base_branch, $user_id, $save_id);}
   
     $flagGroup = 0;
     if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
@@ -116,149 +109,130 @@ class Subsurvey extends Component
     $result = pg_query("SELECT subsurvey_component_save($topic_id, $revision_id, $save_id, $this->base_branch, $flagGroup, '$this->text')", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
-  
 };
 
 class SubsurveyEditor extends ComponentEditor
 {
     var $sub_editor;
-    var $action = 0;
+    var $event = 0;
     var $sub_survey;
 
-    var $c;
-    var $p;
-    var $f;
-    var $fm;
+    var $c; //$component
+    var $p; //prefix
+    var $f; //form
+    var $fm; //formmethod
 
-  function SubsurveyEditor(&$component,$prefix,$form,$formmethod)
+  function SubsurveyEditor(&$component,$name, &$parent)
   {
-    $this->c = $component;
-    $this->p = $prefix;
-    $this->f = $form;
-    $this->fm = $formmethod;
-  
-  
-    $this->ComponentEditor($component,$prefix,$form,$formmethod);
-    $this->sub_editor = new ActionButton($prefix, $form, $formmethod);
-  }
-  
-  function loadvalues()
-  {
-    //print("Load 2.<br>");
-    ComponentEditor::loadvalues();
-    $this->sub_editor->loadvalues();
-    $this->action = $this->sub_editor->action;
-    $this->c->mode = $this->loadattribute("SUBmode");
-    $this->c->our_topic_id = $GLOBALS['topic_id'];
+    $this->ComponentEditor($component, $name, &$parent);
+    $this->sub_editor = & new EventWidget("sub_editor", &$parent);
     
-    if($this->action == 199 || $this->c->mode == 1)
-	{
-	$this->c->mode = 1;
-	
-	$factories = array(
-      new ChoiceFactory(),
-      new TextResponseFactory(),
-      new TextFactory(),
-      new HeadingFactory(),
-      new SubsurveyFactory()
+    $factories = array(
+      &new ChoiceFactory,
+      &new TextResponseFactory,
+      &new TextFactory,
+      &new HeadingFactory,
+      &new SubsurveyFactory
     );
 
-	// XXX: factories array for subsurvey should be a parameter SubsurveyFactory
-	// XXX: user_id should be taken from parent surveyeditor
-	$this->sub_survey = new SurveyEditor($this->c->our_topic_id, $this->c->base_branch, 0, $factories, $this->p . "_sub", $this->f, $this->fm);
-	
-	
-	$this->sub_survey->survey = $this->c->survey;
-	$this->sub_survey->loadvalues();
-	}
-
+    // XXX: factories array for subsurvey should be a parameter SubsurveyFactory
+    // XXX: user_id should be taken from parent surveyeditor
+    $this->sub_survey = & new SurveyEditor($component->our_topic_id, $component->base_branch, 0, $factories, "sub", $this);
   }
   
-  function checkvalues()
+  function loadState()
   {
-    return true;
+    //print("Load 2.<br>");
+    ComponentEditor::loadState();
+
+    $this->event = $this->sub_editor->event;
+    $this->component->mode = $this->readValue("SUBmode");
+    $this->component->our_topic_id = $GLOBALS['topic_id'];
+    
+    if($this->event == 199 || $this->c->mode == 1)
+    {
+      $this->component->mode = 1;
+      $this->sub_survey->survey = $this->c->survey;
+      $this->sub_survey->loadState();
+    }
   }
   
-  function savevalues()
+  function saveValues()
   {
     //print("Save 2.");
       
-    ComponentEditor::savevalues();
-    
+    ComponentEditor::saveValues();
     
     if(isset($this->survey))
-	{
-	//print("The survey is set.");
-	$user_id = login_getuserid();
-    
-	if($user_id == null || $user_id == "")
-	    {$user_id = 0;}
-    
-	if($this->component->base_branch == 0)
-	    {$this->component->base_branch = $this->survey->save($GLOBALS['topic_id'], null, $user_id, 0);}
-	else
-	    {$this->survey->save($GLOBALS['topic_id'], $this->component->base_branch, $user_id, 0);}
-	}
+        {
+        //print("The survey is set.");
+        $user_id = login_getuserid();
+          
+        if($user_id == null || $user_id == "")
+            {$user_id = 0;}
+          
+        if($this->component->base_branch == 0)
+            {$this->component->base_branch = $this->survey->save($GLOBALS['topic_id'], null, $user_id, 0);}
+        else
+            {$this->survey->save($GLOBALS['topic_id'], $this->component->base_branch, $user_id, 0);}
+        }
   }
   
-  function display()
-  {
-    $this->printattribute("SUBmode", $this->c->mode);
-    $this->printattribute("TopicID", $this->c->our_topic_id);
+  function printState()
+      {
+      $this->printValue("SUBmode", $this->c->mode);        
+      $this->printValue("TopicID", $this->c->our_topic_id);
+      }
   
-    if(($this->action != 199 && $this->c->mode != 1) || $this->sub_survey->state == SurveyEditor_done)
-	{
-	ComponentEditor::display();
-	?>
-	<table>
-	<tr>
-	<td valign=top><strong><? $this->fieldname("Subsurvey:",$this->text->broken); ?></strong></td>
-	<td><? $this->text->display(false); ?><br><? $this->is_html->display(false); 
-	$this->is_html->displaylabel("Contains HTML Tags"); ?><br>
-	<? $this->locking->display(false); $this->locking->displaylabel("Lock this component"); ?><br>
-	<? $this->sub_editor->display("Edit subsurvey", 199); ?>
-	</td>
-	</tr>
-	</table>
-	<?
-	}
-    else
-	{
-	?>
-	<h3>The Following is a nested subsurvey.</h3>
-	<br><br>
-	
-	<? 
-	if($this->sub_survey->state == SurveyEditor_done)
-	    {?>Your sub-survey has been saved.<?}
-	else
-	    {$this->sub_survey->display();}
-	?>
-	
-	<br><br>
-	<h3>This is the end of the nested subsurvey.</h3>
-	<br><?
-	}
-  }
+  function printVisible()
+      {
+      if(($this->event != 199 && $this->c->mode != 1) || $this->sub_survey->state == SurveyEditor_done)
+          {
+          ComponentEditor::display();
+          ?>
+          <table>
+          <tr>
+          <td valign=top><strong><? $this->fieldname("Subsurvey:",$this->text->broken); ?></strong></td>
+          <td><? $this->text->display(false); ?><br><? $this->is_html->display(false); 
+          $this->is_html->displaylabel("Contains HTML Tags"); ?><br>
+          <? $this->locking->display(false); $this->locking->displaylabel("Lock this component"); ?><br>
+          <? $this->sub_editor->display("Edit subsurvey", 199); ?>
+          </td>
+          </tr>
+          </table>
+          <?
+          }
+      else
+          {
+          ?>
+          <h3>The Following is a nested subsurvey.</h3>
+          <br><br>
+          
+          <? 
+          if($this->sub_survey->state == SurveyEditor_done)
+              {?>Your sub-survey has been saved.<?}
+          else
+              {$this->sub_survey->display();}
+          ?>
+          
+          <br><br>
+          <h3>This is the end of the nested subsurvey.</h3>
+          <br><?
+          }
+      }
 };
 
 class SubsurveyWidget extends ComponentWidget
 {
-  function SubsurveyWidget(&$component,$prefix,$form,$formmethod)
+  function SubsurveyWidget(&$component, $name, &$parent)
   {
-    $this->ComponentWidget($component,$prefix,$form,$formmethod);
+    $this->ComponentWidget($component, $name, $parent);
   }
   
-  function loadvalues()
+  function printVisible()
   {
-  }
-  
-  function display($hidden = false, $showerrors = true)
-  {
-    //$this->printattribute("SUBmode", $this->component->mode);
-    //$this->printattribute("TopicID", $this->component->our_topic_id);
-  
-  
+    //$this->printValue("SUBmode", $this->component->mode);
+    //$this->printValue("TopicID", $this->component->our_topic_id);
     $user_id = login_getuserid();
     $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
     $url = "subshow.php?topic_id=" . $this->component->our_topic_id . "&base_branch=" . $this->component->base_branch . "&user_id=$user_id&question_period_id=9";

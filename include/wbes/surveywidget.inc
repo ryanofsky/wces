@@ -7,126 +7,119 @@ define("SurveyWidget_cancel",2);
 define("SurveyWidget_next",3);
 define("SurveyWidget_previous",4);
 
-class SurveyWidget extends FormWidget
+class SurveyWidget extends ParentWidget
 {
-//public:
-
-  var $finished = false;
-  var $failure = false; // failure on save
-
-//private:
-
-  var $topic_id;
-  var $base_branch_id;
-  var $user_id;
-  var $question_period_id;
-  var $factories;
-
-  var $action; // ActionButton widget
-  var $form; // Form widget
-  var $showerrors = false; 
-  var $survey = NULL;
-  var $questionwidgets;
-  var $page = 0;
+  // parameters
+  var $topic_id, $base_branch_id, $user_id, $question_period_id, $factories;
   var $backup = true;
-  var $sawlastpage = false;
+
+  // output 
+  var $done = false;
+  var $failure = false; // failure on save
   var $message = "";
 
-  // to add a ta section to the survey, assign an instance of TASurvey to this: 
-  // $abc = new SurveyWidget(...);
-  // $abc->ta = new TASurvey(...);
-  var $ta = null;
+  // persistent 
+  var $page = 0;
+  var $survey = null;
+  var $showErrors = false;
+  var $sawLastPage = false;
 
-  function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, $factories, $prefix, $form, $formmethod)
+  // widgets  
+  var $ta = null;
+  var $event;
+  var $questionWidgets;
+  
+  // private
+  var $isStale = true;
+
+  // to add a ta section to the survey, assign an instance of TASurvey to this member:
+  // $abc = & new SurveyWidget(...);
+  // $abc->ta = & new TASurvey(...);
+
+  function SurveyWidget($topic_id, $base_branch_id, $user_id, $question_period_id, &$factories, $name, &$parent)
   {
-    $this->FormWidget($prefix, $form, $formmethod);
+    $this->ParentWidget($name, $parent);
     $this->topic_id           = (int)$topic_id;
     $this->base_branch_id     = (int)$base_branch_id;
     $this->user_id            = (int)$user_id;
     $this->question_period_id = (int)$question_period_id;
-    $this->factories          = $factories;
-
-    $this->action = new ActionButton("${prefix}_action",$form,$formmethod);
-    $this->form = new Form("${prefix}_form",$form,$formmethod);
+    $this->factories =& $factories;
+    $this->event =& new EventWidget("event", $this);
   }
 
-  function loadvalues()
+  function loadInitialState()
   {
-    $this->page = (int)$this->loadattribute("page");
-    $this->showerrors = (bool)$this->loadattribute("showerrors");
-    $this->sawlastpage = (bool)$this->loadattribute("sawlastpage");
-    if (!$this->survey)
-    {
-      $this->survey = unserialize((string)$this->loadattribute("survey"));
-      if (get_class($this->survey) != "survey")
-        $this->load();
-    }
+    ParentWidget::loadInitialState();
+    $this->isStale = false;
+    if (!$this->survey) $this->loadSurvey();
+    $this->makeWidgets(true);
+  } 
 
-    $this->questionwidgets = array();
+  function loadState()
+  {
+    ParentWidget::loadState();
+    $this->survey = unserialize((string)$this->readValue("survey"));
+    $this->showErrors= (bool)$this->readValue("showErrors");
+    $this->page = (int)$this->readValue("page");
+    $this->sawLastPage = (bool)$this->readValue("sawLastPage");
+    $this->isStale = true;
+    $this->makeWidgets(false);
+
+    if ($this->event->event == SurveyWidget_save)
+      $this->saveResponses();
+    else if ($this->event->event == SurveyWidget_cancel)
+    {
+      $this->message = "<p><font color=red>Responses Not Saved</font></p>";
+      $this->done = true;
+    }
+    else if ($this->event->event == SurveyWidget_next)
+      ++$this->page;
+    else if ($this->event->event == SurveyWidget_previous)
+      --$this->page;
+  }
+
+  function loadSurvey()
+  {
+    global $wbes;
+    wbes_connect();
+    $this->survey =& new Survey();
+    $this->survey->load($this->topic_id, $this->base_branch_id, $this->factories);
+  }
+
+  function makeWidgets($newLoad)
+  {
+    assert(get_class($this->survey) == "survey");
+    
     $page = 0;
     foreach(array_keys($this->survey->components) as $k)
     {
       if ("pagebreak" == get_class($this->survey->components[$k])) ++$page;
-      $c = $this->survey->components[$k]->getwidget("{$this->prefix}_$k",$this->form, $this->formmethod);
+      $c = & $this->survey->components[$k]->getwidget("c$k", $this);
       $c->page = $page;
-      $this->questionwidgets[] = $c;
+      $this->loadChild($c, $newLoad);
+      $this->questionWidgets[] = & $c;
     }
 
     if ($this->ta)
     {
       $this->ta->page = $page;
-      $this->questionwidgets[] = &$this->ta;
+      $this->loadChild($c, $newLoad);
+      $this->questionWidgets[] = &$this->ta;
     }
 
     $this->pages = $page;
-
-    $this->form->loadvalues();
-    if($this->form->isstale)
-    {
-      foreach(array_keys($this->questionwidgets) as $key)
-        $this->questionwidgets[$key]->loadvalues();
-
-      $this->action->loadvalues();
-      $this->handleactions();
-    }
   }
 
-  function handleactions()
-  {
-    if ($this->action->action == SurveyWidget_save)
-      $this->save();
-    else if ($this->action->action == SurveyWidget_cancel)
-    {
-      $this->message = "<p><font color=red>Responses Not Saved</font></p>";
-      $this->finished = true;
-    }
-    else if ($this->action->action == SurveyWidget_next)
-      ++$this->page;
-    else if ($this->action->action == SurveyWidget_previous)
-      --$this->page;
-
-    $this->action->action = "";
-    $this->action->object = "";
-  }
-
-  function load()
-  {
-    global $wbes;
-    wbes_connect();
-    $this->survey = new Survey();
-    $this->survey->load($this->topic_id,$this->base_branch_id,$this->factories);
-  }
-
-  function save()
+  function saveResponses()
   {
     global $wbes, $HTTP_POST_VARS, $server_feedback;
 
     $anonymous = true; // todo: decide how to make this this configurable
     global $wbes;
 
-    $this->showerrors = true;
-    foreach(array_keys($this->questionwidgets) as $key)
-      if (count($this->questionwidgets[$key]->errors) > 0) return;
+    $this->showErrors = true;
+    foreach(array_keys($this->questionWidgets) as $key)
+      if (count($this->questionWidgets[$key]->errors) > 0) return;
 
     wbes_connect();
     $sql = "BEGIN;\n";
@@ -145,8 +138,8 @@ class SurveyWidget extends FormWidget
 
     $failure = false;
 
-    foreach(array_keys($this->questionwidgets) as $key)
-      $failure = $failure || !$this->questionwidgets[$key]->save($response_id);
+    foreach(array_keys($this->questionWidgets) as $key)
+      $failure = $failure || !$this->questionWidgets[$key]->save($response_id);
 
     $fields = "'" . addslashes(serialize($HTTP_POST_VARS)) . "'";
 
@@ -180,80 +173,66 @@ class SurveyWidget extends FormWidget
       print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:' . $server_feedback . '">' . $server_feedback . '</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
     }
     else
-      $this->message = "<p><font color=blue>Responses Saved</font></p>";      
+      $this->message = "<p><font color=blue>Responses Saved</font></p>";
 
-    $this->finished = true;
+    $this->done = true;
   }
 
-  function display()
+  function printState()
+  {
+    $this->printValue("survey", serialize($this->survey));
+    $this->printValue("page", $this->page);
+    $this->printValue("showErrors", (int)$this->showErrors);    
+    $this->printValue("sawLastPage", (int)$this->sawLastPage);
+  }
+
+  function printVisible()
   {
     global $wces_path;
 
-    $this->printattribute("page", $this->page);
+    if ($this->isStale) $this->printNavigation();
 
-    if ($this->failure) return;
+    if (count($this->questionWidgets) == 0)
+      print("<p><i>This survey contains no questions.</i></p>");
 
-    if (count($this->questionwidgets) == 0)
-    {
-      print("<p><strong>No surveys can be found.</strong></p>");
-      return;
-    }
-
-    $this->form->display();
-    $this->action->display();
-
-    $this->printattribute("survey",serialize($this->survey));
-
-    if ($this->ta && $this->ta->modal)
-    {
-      foreach(array_keys($this->questionwidgets) as $k)
-      {
-        $q = &$this->questionwidgets[$k];
-        $q->display(!isset($q->modal) || !$q->modal);
-      }
-      return;
-    }
-
-    $this->printattribute("showerrors",(int)$this->showerrors);
-    if ($this->form->isstale) $this->optionbar();
-    if ($this->showerrors)
+    if ($this->showErrors)
     {
       $errortext = "";
-      foreach($this->questionwidgets as $questionwidget)
-        if (isset($questionwidget->errors))
-        foreach($questionwidget->errors as $error)
+      foreach(array_keys($this->questionWidgets) as $i)
+      {
+        $q = &$this->questionWidgets[$i];
+        $q->showErrors = true;
+        foreach($q->errors as $error)
           $errortext .= "  <li>$error</li>\n";
+      }
       if ($errortext) print("<p><strong>The form is not complete. The missing fields are highlighted in <font color=red>red</font>.</strong></p>\n<ul>\n$errortext</ul>\n");
     }
-    if ($this->action->action) $this->action->display();
 
-    foreach(array_keys($this->questionwidgets) as $i)
+    foreach(array_keys($this->questionWidgets) as $i)
     {
-      $q = &$this->questionwidgets[$i];
+      $q = &$this->questionWidgets[$i];
       if ($q->page == $this->page)
       {
         print("<div>");
-        $q->display(false, $this->showerrors);
+        $q->display();
         print("</div>\n<br>\n");
       }
       else
-        $q->display(true);
+        $q->displayHidden();
     }
 
     print("<p>&nbsp;</p>\n");
-    $this->optionbar();
-
-    $this->printattribute("sawlastpage", (int)$this->sawlastpage);
+    $this->printNavigation();
   }
 
-  function optionbar()
+  function printNavigation()
   {
     global $wces_path;
 
     $prev = $this->page > 0;
     $next = $this->page < $this->pages && $this->pages > 0;
-    if (!$next) $this->sawlastpage = true;
-    $save = ((bool)$this->user_id) && $this->sawlastpage;
+    if (!$next) $this->sawLastPage = true;
+    $save = ((bool)$this->user_id) && $this->sawLastPage;
 
     if ($save || $prev || $next)
     {
@@ -261,10 +240,10 @@ class SurveyWidget extends FormWidget
 <table width="100%" cellpadding=5 cellspacing=0>
 <tr>
   <td align=center bgcolor="#B5CFE7">
-    <? if ($prev) $this->action->display("Previous Page", SurveyWidget_previous, false, ""); ?>
-    <? if ($next) $this->action->display("Next Page", SurveyWidget_next, false, ""); ?>
-    <? if ($save) $this->action->display("Save responses", SurveyWidget_save, false, ""); ?>
-    <? if ($save) $this->action->display("Return without saving", SurveyWidget_cancel, false, ""); ?>
+    <? if ($prev) $this->event->displayButton("Previous Page", SurveyWidget_previous, false, ""); ?>
+    <? if ($next) $this->event->displayButton("Next Page", SurveyWidget_next, false, ""); ?>
+    <? if ($save) $this->event->displayButton("Save responses", SurveyWidget_save, false, ""); ?>
+    <? if ($save) $this->event->displayButton("Return without saving", SurveyWidget_cancel, false, ""); ?>
   </td>
 </tr>
 </table>

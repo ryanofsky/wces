@@ -9,9 +9,9 @@ class TextResponseFactory extends ComponentFactory
   function code() { return 3; }
   function name() { return "Text Response Question"; }
   
-  function create()
+  function & create()
   {
-    return new TextResponse();
+    return new TextResponse;
   }
   
   function load(&$components, $ids, $ordinals)
@@ -21,9 +21,9 @@ class TextResponseFactory extends ComponentFactory
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, ctext, flags, rows, cols FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
-    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = new TextResponse();
+      $c = & new TextResponse;
       $c->revision_id   = (int)$wr->row['revision_id'];
       $c->text          = $wr->row['ctext'];
       $c->rows          = (int) $wr->row['rows'];
@@ -32,7 +32,7 @@ class TextResponseFactory extends ComponentFactory
       $flagGroup        = $wr->row['flags'];
       $c->locked        = (bool)($flagGroup & FLAG_LOCKED);
       $c->is_html       = (bool)($flagGroup & FLAG_ISHTML);
-      $c->label_align   = (bool)($flagGroup & FLAG_ALIGN);
+      $c->labelAlign   =  (bool)($flagGroup & FLAG_ALIGN);
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }  
@@ -42,7 +42,7 @@ class TextResponse extends Component
 {
   var $rows = 5;
   var $cols = 60;
-  var $label_align = false;
+  var $labelAlign = false;
   
   function TextResponse()
   {
@@ -51,14 +51,14 @@ class TextResponse extends Component
     $this->cols = 60;
   }
   
-  function geteditor($prefix,$form,$formmethod)
+  function & geteditor($name, &$parent)
   {
-     return new TextResponseEditor($this,$prefix,$form,$formmethod);
+     return new TextResponseEditor($this, $name, $parent);
   }
   
-  function getwidget($prefix,$form,$formmethod)
+  function & getwidget($name, &$parent)
   {
-     return new TextResponseWidget($this,$prefix,$form,$formmethod);
+     return new TextResponseWidget($this, $name, $parent);
   }
   
   function save($topic_id, $save_id)
@@ -73,7 +73,7 @@ class TextResponse extends Component
     $flagGroup = 0;
     if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
     if ($this->locked)      $flagGroup |= FLAG_LOCKED;
-    if ($this->label_align) $flagGroup |= FLAG_ALIGN;
+    if ($this->labelAlign)  $flagGroup |= FLAG_ALIGN;
 
     $result = pg_query("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
@@ -82,50 +82,30 @@ class TextResponse extends Component
 
 class TextResponseEditor extends ComponentEditor
 {
-  //my addition. (the $label_align part) [tyler]
-  var $rows,$cols,$label_align; //widgets
+  // widgets
+  var $rows, $cols, $labelAlign;
   
-  function TextResponseEditor(&$component,$prefix,$form,$formmethod)
+  function TextResponseEditor(&$component, $name, &$parent)
   {
-    $this->ComponentEditor($component,$prefix,$form,$formmethod);
-    $this->rows = new TextBox(0,10,"",$prefix."_rows",$form,$formmethod);
-    $this->cols = new TextBox(0,10,"",$prefix."_cols",$form,$formmethod);
+    $this->ComponentEditor($component, $name, $parent);
+    $this->rows = & new TextBox(0, 10, "", "rows", $this);
+    $this->cols = & new TextBox(0, 10, "", "cols", $this);
     $this->rows->broken = false;
     $this->cols->broken = false;
-    //mine [tyler]
-    $choices = array("above","left");
-    $this->label_align = new DropBox($choices,$prefix."_label_align",$form,$formmethod);
+    $this->labelAlign = & new DropBox(array("above","left"), "labelAlign", $this);
   }
   
-  function loadvalues()
+  function loadInitialState()
   {
-    ComponentEditor::loadvalues();
-    if ($this->loadprevious)
-    {
-      $this->rows->loadvalues();
-      $this->cols->loadvalues();
-      //mine [tyler]
-      $this->label_align->loadvalues();
-    }
-    else
-    {
-      $this->rows->text = $this->component->rows;
-      $this->cols->text = $this->component->cols;
-      //mine [tyler]
-      $this->label_align->selected = $this->component->label_align;
-    }
+    $this->rows->text = $this->component->rows;
+    $this->cols->text = $this->component->cols;
+    $this->labelAlign->selected = $this->component->labelAlign;
   }
   
-  function checkvalues()
+  function validate()
   {
     $rows = (int)$this->rows->text;
     $cols = (int)$this->cols->text;
-    
-    //if ($rows < 1)
-    //{
-    //  $this->errors[] = "The response box should be at least one row high.";
-    //  $this->rows->broken = true;
-    //}  
     
     if ($cols < 1)
     {
@@ -136,47 +116,40 @@ class TextResponseEditor extends ComponentEditor
     return count($this->errors) == 0;
   }
   
-  function savevalues()
+  function save()
   {
     $this->component->rows = (int)$this->rows->text;
     $this->component->cols = (int)$this->cols->text;
-    //mine [tyler]
-    $this->component->label_align = $this->label_align->selected;
-    ComponentEditor::savevalues();
+    if ($this->component->rows < 0) $this->component->rows = 0;
+    $this->component->labelAlign = $this->labelAlign->selected;
+    ComponentEditor::save();
   }
   
-  function display()
+  function printVisible()
   {
     global $server_media;
     
-    ComponentEditor::display();
+    $this->printErrors();
 ?>
 <table>
 <tr>
   <td valign=top><strong><? $this->fieldname("Component Text:",$this->text->broken); ?></strong></td>
-  <td><? $this->text->display(false); ?><br><? $this->is_html->display(false); $this->is_html->displaylabel("Contains HTML Tags"); ?></td>
+  <td><? $this->text->display(); ?><br><? $this->is_html->display(); $this->is_html->displayLabel("Contains HTML Tags"); ?></td>
 </tr>
-<?// mine [tyler]
-?>
-
 <tr>
 <td valign=top><br><strong><? $this->fieldname("Label Placement:",false); ?></strong></td>
-<td><? $this->label_align->display(false); ?></td>
+<td><? $this->labelAlign->display(); ?></td>
 </tr>
-
-<?// /mine
-?>
-
 <tr>
   <td valign=top><strong><? $this->fieldname("Height (rows)",$this->rows->broken); ?></strong></td>
   <td>
-    <?$this->rows->display(false);?>
+    <?$this->rows->display();?>
     <a href="javascript:showhelp('textsize')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
   </td>
 </tr>
 <tr>
   <td valign=top><strong><? $this->fieldname("Width (columns)",$this->cols->broken); ?></strong></td>
-  <td><? $this->cols->display(false); ?></td>
+  <td><? $this->cols->display(); ?></td>
 </tr>
 </table>
 <?    
@@ -185,22 +158,18 @@ class TextResponseEditor extends ComponentEditor
 
 class TextResponseWidget extends ComponentWidget
 {
+  // widgets
   var $response;
-    //mine [tyler]
-    var $align = null;  
-  function TextResponseWidget(&$component,$prefix,$form,$formmethod)
+  
+  // private
+  var $align = null;  
+  
+  function TextResponseWidget(&$component, $name, &$parent)
   {
-    $this->ComponentWidget($component,$prefix,$form,$formmethod);
-    $this->response = new TextBox($component->rows,$component->cols," wrap=virtual",$prefix."_response",$form,$formmethod);
-    //mine [tyler]
-    $this->align = $component->label_align;
+    $this->ComponentWidget($component, $name, $parent);
+    $this->response =& new TextBox($component->rows, $component->cols, " wrap=virtual", "response", $this);
   }
   
-  function loadvalues()
-  {
-    $this->response->loadvalues();
-  }
-
   function save($parent)
   {
     global $wbes;
@@ -215,33 +184,25 @@ class TextResponseWidget extends ComponentWidget
       return true;
   }
   
-  function display($hidden = false, $showerrors = false)
+  function printVisible()
   {
-    if ($hidden)
+    if($this->component->labelAlign)
     {
-      $this->response->display($hidden);
-    }
-    else
-    {
-     //mine [tyler]
-      if($this->align == 1)
-      {
 ?>
 <table>
 <tr>
-<td valign=top><?= ComponentWidget::display(); ?></td>
-<td valign=top><?= $this->response->display(); ?>
+<td valign=top><? ComponentWidget::printVisible(); ?></td>
+<td valign=top><? $this->response->display(); ?>
 </tr>
 </table>
 <?
-      }
-      else
-      {
-        ComponentWidget::display();
-        print("<div>");
-        $this->response->display();
-        print("</div>\n");
-      }
+    }
+    else
+    {
+      ComponentWidget::printVisible();
+      print("<div>");
+      $this->response->display();
+      print("</div>\n");
     }
   }
 };

@@ -21,9 +21,9 @@ class ChoiceFactory extends ComponentFactory
   function code() { return 2; }
   function name() { return "Multiple Choice Question Set"; }
 
-  function create()
+  function & create()
   {
-    return new Choice();
+    return new Choice;
   }
 
   function load(&$components, $ids, $ordinals, $topic_id, $latest)
@@ -33,9 +33,9 @@ class ChoiceFactory extends ComponentFactory
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
-    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = new Choice();
+      $c = & new Choice;
       $c->revision_id   = (int)$wr->row['revision_id'];
       $c->text          = $wr->row['ctext'];
       $c->choices       = pg_explode($wr->row['choices']);
@@ -121,14 +121,14 @@ class Choice extends Component
     $this->Component();
   }
 
-  function geteditor($prefix,$form,$formmethod)
+  function & geteditor($name, &$parent)
   {
-    return new ChoiceEditor($this,$prefix,$form,$formmethod);
+    return new ChoiceEditor($this, $name, $parent);
   }
 
-  function getwidget($prefix,$form,$formmethod)
+  function & getwidget($name, &$parent)
   {
-    return new ChoiceWidget($this,$prefix,$form,$formmethod);
+    return new ChoiceWidget($this, $name, $parent);
   }
 
   function save($topic_id, $save_id)
@@ -169,96 +169,88 @@ class Choice extends Component
 
 class ChoiceEditor extends ComponentEditor
 {
-  //widgets
-
+  // widgets
   var $qtype;
   var $question;
-  var $question_id;
   var $questions;
   var $ctype;
   var $choices;
   var $select_many;
   var $other;
-
-  //added N/A choice. [tyler]
   var $na;
-
-  //added intro text. [tyler]
   var $intro;
-
-  //added support for numbering. [tyler]
-  var $numbering_scheme;
-
-  //added locking [tyler]
-  var $locking;
-
   var $other_label;
   var $first_number;
   var $last_number;
   var $first_label;
   var $last_label;
+  var $numbering_scheme;
   var $layout;
   var $controls;
   var $rows;
   var $orientation;
 
-  function ChoiceEditor(&$component,$prefix,$form,$formmethod)
-  {
-    $this->ComponentEditor($component,$prefix,$form,$formmethod);
+  // persistent
+  var $question_id;
 
-    $this->qtype = new DropBox(array(
+  function ChoiceEditor(&$component, $name, &$parent)
+  {
+    DynamicList::DumpScript();
+
+    $this->ComponentEditor($component, $name, $parent);
+    $this->qtype = & new DropBox(array(
       ""         => "-- Select One --",
       "single"   => "Single Question",
       "multiple" => "Multiple Questions"
-    ), $this->prefix."_qtype", $this->form, $this->formmethod);
+    ), "qtype", $this);
 
-    $this->question = new TextBox(4,40,"wrap=virtual", $this->prefix."_question", $this->form, $this->formmethod);
-    $this->questions = new DynamicList(30,7,false,$this->prefix."_questions",$this->form,$this->formmethod);
+    $this->question = & new TextBox(4, 40, "wrap=virtual", "question", $this);
+    $this->questions = & new DynamicList(30, 7, false, "questions", $this);
     $this->question_id = "";
 
-    $this->ctype = new DropBox(array(
+    $this->ctype = & new DropBox(array(
       ""         => "-- Select One --",
       "text"     => "Text Choices",
       "ntext"    => "Quantitative Text Choices",
       "num"      => "Numeric Choices"
-    ), $this->prefix."_ctype", $this->form, $this->formmethod);
+    ), "ctype", $this);
 
-    $this->choices = new DynamicList(30,7,false,$this->prefix."_choices",$this->form,$this->formmethod);
-    $this->select_many = new CheckBox($this->prefix."_selectmany", $this->form, $this->formmethod);
-    $this->other = new CheckBox($this->prefix."_other", $this->form, $this->formmethod);
+    $this->choices = & new DynamicList(30, 7, false, "choices", $this);
+    $this->select_many = & new CheckBox("selectmany", $this);
+    $this->other = & new CheckBox("other", $this);
 
     //Added to support N/A option. [tyler]
-    $this->na = new CheckBox($this->prefix."_na", $this->form, $this->formmethod);
+    $this->na = & new CheckBox("na", $this);
 
     //Added to support intro text. [tyler]
-    $this->intro = new TextBox(0,40,"",$this->prefix."_intro",$this->form,$this->formmethod);
+    $this->intro = & new TextBox(0, 40, "", "intro", $this);
 
-    $this->other_label = new TextBox(0,25,"",$this->prefix."_otherlabel",$this->form,$this->formmethod);
-    $this->first_number = new TextBox(0,5,"",$this->prefix."_firstnumber",$this->form,$this->formmethod);
-    $this->last_number = new TextBox(0,5,"",$this->prefix."_lastnumber",$this->form,$this->formmethod);
-    $this->first_label = new TextBox(0,20,"",$this->prefix."_firstlabel",$this->form,$this->formmethod);
-    $this->last_label = new TextBox(0,20,"",$this->prefix."_lastlabel",$this->form,$this->formmethod);
+    $this->other_label = & new TextBox(0, 25, "", "otherlabel", $this);
+    $this->first_number = & new TextBox(0, 5, "", "firstnumber", $this);
+    $this->last_number = & new TextBox(0, 5, "", "lastnumber", $this);
+    $this->first_label = & new TextBox(0, 20, "", "firstlabel", $this);
+    $this->last_label = & new TextBox(0, 20, "", "lastlabel", $this);
 
     //added numbering support. [tyler]
-    $this->numbering_scheme = new DropBox(array(
+    $this->numbering_scheme = & new DropBox(array(
       FLAG_NONUMBERS => "None",
       FLAG_ARABIC => "Arabic numbers",
       FLAG_ALPHA => "Letters",
       FLAG_ROMAN => "Roman Numerals"
-    ),$this->prefix."_numbering", $this->form, $this->formmethod);
+    ), "numbering", $this);
 
-    $this->layout = new DropBox(array(
+    $this->layout = & new DropBox(array(
       "under" => "Put choices underneath the question text",
       "right" => "Put choices to the right of the question text"
-    ), $this->prefix."_layout", $this->form, $this->formmethod);
+    ), "layout", $this);
 
-    $this->controls = new DropBox(array(
+    $this->controls = & new DropBox(array(
       "buttons" => "Checkboxes",
       "select"  => "List boxes",
       "drop"    => "Drop-down lists"
-    ), $this->prefix."_controls", $this->form, $this->formmethod);
+    ), "controls", $this);
 
-    $this->rows = new DropBox(array(
+    $this->rows = & new DropBox(array(
       "2"  => "2",
       "3"  => "3",
       "4"  => "4",
@@ -268,137 +260,106 @@ class ChoiceEditor extends ComponentEditor
       "8"  => "8",
       "9"  => "9",
       "10" => "10"
-    ), $this->prefix."_rows", $this->form, $this->formmethod);
+    ), "rows", $this);
 
-    $this->orientation = new DropBox(array(
+    $this->orientation = & new DropBox(array(
       "vertical"  => "vertically",
       "horiz"  => "horizontally"
-    ), $this->prefix . "_orientation", $this->form, $this->formmethod);
-    
-    DynamicList::dumpscript();
+    ), "orientation", $this);
   }
 
-  function loadvalues()
+  function loadInitialState()
   {
-    ComponentEditor::loadvalues();
+    $c = count($this->component->questions);
 
-    if ($this->loadprevious)
+    if ($c >= 1)
     {
-      $this->qtype->loadvalues();
-      $this->question->loadvalues();
-      $this->questions->loadvalues();
-      $this->ctype->loadvalues();
-      $this->choices->loadvalues();
-      $this->select_many->loadvalues();
-      $this->other->loadvalues();
+      $this->question->text = $this->component->questions[0];
+      $this->question_id = $this->component->question_ids[0];
+      $this->questions->items = $this->component->questions;
+      $this->questions->keys = $this->component->question_ids;
+      $this->qtype->selected = $c == 1 ? "single" : "multiple";
+    }
+    else
+      $this->qtype->selected = "";
 
-      //added to support N/A values. [tyler]
-      $this->na->loadvalues();
-
-      //added to support intro text. [tyler]
-      $this->intro->loadvalues();
-
-      //added to support numbering. [tyler]
-      $this->numbering_scheme->loadvalues();
-
-      $this->other_label->loadvalues();
-      $this->first_number->loadvalues();
-      $this->last_number->loadvalues();
-      $this->first_label->loadvalues();
-      $this->last_label->loadvalues();
-      $this->layout->loadvalues();
-      $this->controls->loadvalues();
-      $this->rows->loadvalues();
-      $this->orientation->loadvalues();
-      $this->question_id = (int)$this->loadattribute("question_id");
+    if ($this->component->other_choice)
+    {
+      $this->other->checked = true;
+      $this->other_label->text = $this->component->other_choice;
     }
     else
     {
-      $c = count($this->component->questions);
+      $this->other->checked = false;
+      $this->other_label->text = "Other (please specify)";
+    }
 
-      if ($c >= 1)
-      {
-        $this->question->text = $this->component->questions[0];
-        $this->question_id = $this->component->question_ids[0];
-        $this->questions->items = $this->component->questions;
-        $this->questions->keys = $this->component->question_ids;
-        $this->qtype->selected = $c == 1 ? "single" : "multiple";
-      }
-      else
-        $this->qtype->selected = "";
+    $this->first_number->text = $this->component->first_number;
+    $this->last_number->text = $this->component->last_number;
 
-      if ($this->component->other_choice)
-      {
-        $this->other->checked = true;
-        $this->other_label->text = $this->component->other_choice;
-      }
-      else
-      {
-        $this->other->checked = false;
-        $this->other_label->text = "Other (please specify)";
-      }
+    //added to support N/A values. [tyler]
+    $this->na->checked = $this->component->na_choice;
 
-      $this->first_number->text = $this->component->first_number;
-      $this->last_number->text = $this->component->last_number;
+    //added to support intro text. [tyler]
+    $this->intro->text = $this->component->intro_text;
 
-      //added to support N/A values. [tyler]
-      $this->na->checked = $this->component->na_choice;
+    //added to support numbering. [tyler]
+    $this->numbering_scheme->selected = $this->component->numbering_scheme;
 
-      //added to support intro text. [tyler]
-      $this->intro->text = $this->component->intro_text;
+    //added to support locking. [tyler]
+    $this->locking->checked = $this->component->locked;
 
-      //added to support numbering. [tyler]
-      $this->numbering_scheme->selected = $this->component->numbering_scheme;
-
-      //added to support locking. [tyler]
-      $this->locking->checked = $this->component->locked;
-
-      if ($this->component->is_numeric)
-      {
-        $this->ctype->selected = "num";
-        $this->choices->items = array();
-        $this->first_label->text = $this->component->choices[0];
-        $this->last_label->text = $this->component->choices[1];
-      }
-      else if (count($this->component->choices) > 0)
-      {
-        $this->choices->items = $this->component->choices;
-        $this->first_label->text = "";
-        $this->last_label->text = "";
-        if ($this->component->first_number || $this->component->first_number)
-          $this->ctype->selected = "ntext";
-        else
-        {
-          $this->ctype->selected = "text";
-          $this->first_number->text = 5;
-          $this->last_number->text = 1;
-        }
-      }
+    if ($this->component->is_numeric)
+    {
+      $this->ctype->selected = "num";
+      $this->choices->items = array();
+      $this->first_label->text = $this->component->choices[0];
+      $this->last_label->text = $this->component->choices[1];
+    }
+    else if (count($this->component->choices) > 0)
+    {
+      $this->choices->items = $this->component->choices;
+      $this->first_label->text = "";
+      $this->last_label->text = "";
+      if ($this->component->first_number || $this->component->first_number)
+        $this->ctype->selected = "ntext";
       else
       {
-        $this->ctype->selected = "";
+        $this->ctype->selected = "text";
         $this->first_number->text = 5;
         $this->last_number->text = 1;
       }
-
-      $this->select_many->checked = $this->component->select_many;
-      $this->layout->selected = $this->component->stacked ? "right" : "under";
-      $r = $this->component->rows;
-
-      if ($r == 0)
-        $this->controls->selected = "buttons";
-      else if ($r == 1)
-        $this->controls->selected = "drop";
-      else
-        $this->controls->selected = "select";
-
-      $this->rows->selected = $r;
-
-      $this->orientation->selected = $this->component->vertical ? "vertical" : "horiz";
     }
+    else
+    {
+      $this->ctype->selected = "";
+      $this->first_number->text = 5;
+      $this->last_number->text = 1;
+    }
+
+    $this->select_many->checked = $this->component->select_many;
+    $this->layout->selected = $this->component->stacked ? "right" : "under";
+    $r = $this->component->rows;
+
+    if ($r == 0)
+      $this->controls->selected = "buttons";
+    else if ($r == 1)
+      $this->controls->selected = "drop";
+    else
+      $this->controls->selected = "select";
+
+    $this->rows->selected = $r;
+
+    $this->orientation->selected = $this->component->vertical ? "vertical" : "horiz";
   }
 
-  function checkvalues()
+  function loadState()
+  {
+    ComponentEditor::loadState();
+    $this->question_id = (int)$this->readValue("question_id");
+  }
+
+  function validate()
   {
     if ($this->qtype->selected == "single")
     {
@@ -491,7 +452,7 @@ class ChoiceEditor extends ComponentEditor
     return count($this->errors) == 0;
   }
 
-  function savevalues()
+  function save()
   {
     $c = &$this->component;
 
@@ -551,29 +512,64 @@ class ChoiceEditor extends ComponentEditor
 
     $this->component->vertical = $this->controls->selected == "buttons" && $this->orientation->selected == "vertical";
 
-    ComponentEditor::savevalues();
+    ComponentEditor::save();
   }
 
-  function display()
+  function printVisible()
   {
     global $SurveyEditor_ns4, $server_media;
-
-    ComponentEditor::display();
-    $p = $this->prefix;
+    $this->printErrors();
 
     $show_sing = $this->qtype->selected == "single";
     $show_mult = $this->qtype->selected == "multiple";
-    $show_coun = $this->qtype->selected == "multiple";
     $show_clst = $this->ctype->selected == "text" || $this->ctype->selected == "ntext";
     $show_txto = $this->ctype->selected == "text";
     $show_othr = $this->other->checked;
     $show_numr = $this->ctype->selected == "ntext" || $this->ctype->selected == "num";
     $show_nlab = $this->ctype->selected == "num";
-    $show_rows = $this->controls->selected == "select";
-
-    //modified [tyler]
+    $show_coun = $this->qtype->selected == "multiple";
+    $show_srow = $this->controls->selected == "select";
     $show_ornt = $this->controls->selected == "buttons";
 
+    $refreshFunction = $this->scriptName("refresh");
+
+    if (!$SurveyEditor_ns4)
+    {
+?>
+<script>
+function <?=$refreshFunction?>(form)
+{
+  var qtype = form['<?=$this->qtype->name?>'].value;
+  var ctype = form['<?=$this->ctype->name?>'].value;
+  var other = form['<?=$this->other->name?>'].checked;
+  var controls = form['<?=$this->controls->name?>'].value;
+  elem('<?=$this->fullName("sing")?>').style.display = qtype == 'single' ? 'block' : 'none';
+  elem('<?=$this->fullName("mult")?>').style.display = qtype == 'multiple' ? 'block' : 'none';
+  elem('<?=$this->fullName("clst")?>').style.display = ctype == 'text' || ctype == 'ntext' ? 'block' : 'none';
+  elem('<?=$this->fullName("txto")?>').style.display = ctype == 'text' ? 'block' : 'none';
+  elem('<?=$this->fullName("othr")?>').style.display = other ? 'block' : 'none';
+  elem('<?=$this->fullName("numr")?>').style.display = ctype == 'ntext' || ctype == 'num' ? 'block' : 'none';
+  elem('<?=$this->fullName("nlab")?>').style.display = ctype == 'num' ? 'block' : 'none';
+  elem('<?=$this->fullName("coun")?>').style.display = qtype == 'multiple' ? 'block' : 'none';
+  elem('<?=$this->fullName("srow")?>').style.display = controls == 'select' ? 'inline' : 'none';
+  elem('<?=$this->fullName("ornt")?>').style.display = controls == 'buttons' ? 'inline' : 'none';
+}
+</script>
+<?
+   }
+   else
+   {
+?>
+<script>
+function <?=$refreshFunction?>(form)
+{
+  if (form.onsubmit) form.onsubmit();
+  form.submit();
+  return;
+}
+</script>
+<?
+   }
 ?>
 <table>
 <? /* added to support intro text. [tyler] */ ?>
@@ -584,36 +580,36 @@ class ChoiceEditor extends ComponentEditor
 <tr>
   <td valign=top><strong>Questions:</strong></td>
   <td>
-    <? $this->qtype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+    <? $this->qtype->display("onchange=\"$refreshFunction(this.form)\""); ?>
     <a href="javascript:showhelp('choice_mult')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
 
     <? if (!$SurveyEditor_ns4 || $show_sing) { ?>
-    <div id=<?=$p?>_single style="display: <?= $show_sing ? "block" : "none" ?>">
-    <?$this->question->display(false); $this->printattribute("question_id", $this->question_id); ?>
+    <div id=<?=$this->fullName("sing")?> style="display: <?= $show_sing ? "block" : "none" ?>">
+    <?$this->question->display(); $this->printValue("question_id", $this->question_id); ?>
     </div>
-    <? } else $this->question->display(true); ?>
+    <? } else $this->question->displayHidden(); ?>
 
     <? if (!$SurveyEditor_ns4 || $show_mult) { ?>
-    <div id=<?=$p?>_multiple style="display: <?= $show_mult ? "block" : "none" ?>">
-    <?$this->questions->display(false);?>
+    <div id=<?=$this->fullName("mult")?> style="display: <?= $show_mult ? "block" : "none" ?>">
+    <?$this->questions->display();?>
     </div>
-    <? } else $this->questions->display(true); ?>
+    <? } else $this->questions->displayHidden(); ?>
 
   </td>
 </tr>
 <tr>
   <td valign=top><strong>Choices:</strong></td>
   <td>
-    <?= $this->ctype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+    <?= $this->ctype->display("onchange=\"$refreshFunction(this.form)\""); ?>
     <a href="javascript:showhelp('choice_type')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
     <? if (!$SurveyEditor_ns4 || $show_clst) { ?>
-    <div id=<?=$p?>_choicelist style="display: <?= $show_clst ? "block" : "none" ?>">
-    <? $this->choices->display(false); ?>
+    <div id=<?=$this->fullName("clst")?> style="display: <?= $show_clst ? "block" : "none" ?>">
+    <? $this->choices->display(); ?>
     </div>
-    <? } else $this->choices->display(true); ?>
+    <? } else $this->choices->displayHidden(); ?>
 
     <? if (!$SurveyEditor_ns4 || $show_txto) { ?>
-    <table id=<?=$p?>_textoptions style="display: <?= $show_txto ? "block" : "none" ?>">
+    <table id=<?=$this->fullName("txto")?> style="display: <?= $show_txto ? "block" : "none" ?>">
     <tr>
       <td><? $this->select_many->display(); ?></td>
       <td>
@@ -622,23 +618,23 @@ class ChoiceEditor extends ComponentEditor
       </td>
     </tr>
     <tr>
-      <td valign=top><? $this->other->display(false,"onclick=\"${p}_refresh(this.form)\""); ?></td>
+      <td valign=top><? $this->other->display("onclick=\"$refreshFunction(this.form)\""); ?></td>
       <td>
-        <? $this->other->displaylabel('Include an "other" choice'); ?>
+        <? $this->other->displayLabel('Include an "other" choice'); ?>
         <a href="javascript:showhelp('choice_other')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
       </td>
     </tr>
     <? if (!$SurveyEditor_ns4 || $show_othr) { ?>
     <tr>
       <td></td>
-      <td><div id=<?=$p?>_olabel style="display: <?= $show_othr ? "block" : "none" ?>"><? $this->other_label->display(); ?></div></td>
+      <td><div id=<?=$this->fullName("othr")?> style="display: <?= $show_othr ? "block" : "none" ?>"><? $this->other_label->display(); ?></div></td>
     </tr>
-    <? } else $this->other_label->display(true); ?>
+    <? } else $this->other_label->displayHidden(); ?>
     </table>
-    <? } else { $this->select_many->display(true); $this->other->display(true); $this->other_label->display(true); } ?>
+    <? } else { $this->select_many->displayHidden(); $this->other->displayHidden(); $this->other_label->displayHidden(); } ?>
 
     <? if (!$SurveyEditor_ns4 || $show_numr) { ?>
-    <table id=<?=$p?>_numchoice style="display: <?= $show_numr ? "block" : "none" ?>">
+    <table id=<?=$this->fullName("numr")?> style="display: <?= $show_numr ? "block" : "none" ?>">
     <tr>
       <td>First Value:</td>
       <td><? $this->first_number->display(); ?></td>
@@ -648,10 +644,10 @@ class ChoiceEditor extends ComponentEditor
       <td><? $this->last_number->display(); ?></td>
     </tr>
     </table>
-    <? } else { $this->first_number->display(true); $this->last_number->display(true); } ?>
+    <? } else { $this->first_number->displayHidden(); $this->last_number->displayHidden(); } ?>
 
     <? if (!$SurveyEditor_ns4 || $show_nlab) { ?>
-    <table id=<?=$p?>_sparsechoice style="display: <?= $show_nlab ? "block" : "none" ?>">
+    <table id=<?=$this->fullName("nlab")?> style="display: <?= $show_nlab ? "block" : "none" ?>">
     <tr>
       <td>First Label:</td>
       <td><? $this->first_label->display(); ?></td>
@@ -662,124 +658,91 @@ class ChoiceEditor extends ComponentEditor
     </tr>
     </table>
     <? } else { ?>
-    <div><? $this->first_label->display(true); $this->last_label->display(true); ?></div>
+    <div><? $this->first_label->displayHidden(); $this->last_label->displayHidden(); ?></div>
     <? } ?>
 
     <? /* added to support N/A option */ ?>
-    <div><?= $this->na->display(); ?> Allow N/A choice</div>
-    
-    <? /* Locking support. [tyler]*/ ?>
-    <div><?= $this->locking->display();?> Lock this component.</div>
+    <div><? $this->na->display(); $this->na->displayLabel('Allow N/A choice')?></div>
 
+    <? /* Locking support. [tyler]*/ ?>
+    <div><? $this->locking->display(); $this->locking->displayLabel('Lock this component'); ?></div>
   </td>
 </tr>
 <tr>
   <td valign=top><strong>Appearance:</strong></td>
   <td>
     <? if (!$SurveyEditor_ns4 || $show_coun) { ?>
-    <div id=<?=$p?>_numberingsection style="display: <?= $show_coun ? "block" : "none" ?>">
+    <div id=<?=$this->fullName("coun")?> style="display: <?= $show_coun ? "block" : "none" ?>">
     Question Numbering: <? $this->numbering_scheme->display(); ?>
     </div>
-    <? } else { $this->numbering_scheme->display(true); } ?>
+    <? } else { $this->numbering_scheme->displayHidden(); } ?>
     <table>
     <tr>
       <td>Layout:</td>
       <td>
-        <? $this->layout->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+        <? $this->layout->display(); ?>
         <a href="javascript:showhelp('choice_where')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
       </td>
     </tr>
     <tr>
       <td>Controls:</td>
       <td>
-        <? $this->controls->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+        <? $this->controls->display("onchange=\"$refreshFunction(this.form)\""); ?>
 
-        <? if (!$SurveyEditor_ns4 || $show_rows) { ?>
-        <span id=<?=$p?>_selrows style="display: <?= $show_rows ? "inline" : "none" ?>">
+        <? if (!$SurveyEditor_ns4 || $show_srow) { ?>
+        <span id=<?=$this->fullName("srow")?> style="display: <?= $show_srow ? "inline" : "none" ?>">
         with
         <? $this->rows->display(); ?>
         rows
         </span>
-        <? } else $this->rows->display(true); ?>
+        <? } else $this->rows->displayHidden(); ?>
 
         <? if (!$SurveyEditor_ns4 || $show_ornt) { ?>
-        <span id=<?=$p?>_borient style="display: <?= $show_ornt ? "inline" : "none" ?>">
+        <span id=<?=$this->fullName("ornt")?> style="display: <?= $show_ornt ? "inline" : "none" ?>">
         oriented
         <? $this->orientation->display(); ?>
         </span>
-        <? } else $this->orientation->display(true); ?>
+        <? } else $this->orientation->displayHidden(); ?>
 
         <a href="javascript:showhelp('choice_comp')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
-
       </td>
     </tr>
     </table>
 
-  <? $this->is_html->display(false); $this->is_html->displaylabel("HTML Tags in Question Text");?>
+  <? $this->is_html->display(); $this->is_html->displayLabel("HTML Tags in Question Text");?>
   </td>
 </tr>
 </table>
-<script>
-<!--
-
-function <?=$p?>_refresh(form)
-{
-  if (document.all || document.getElementById)
-  {
-    var qtype = form.<?= $this->qtype->prefix ?>.value;
-    var ctype = form.<?= $this->ctype->prefix ?>.value;
-    var other = form.<?= $this->other->prefix ?>.checked;
-    var cntrl = form.<?= $this->controls->prefix ?>.value;
-    var lyout = form.<?= $this->layout->prefix ?>.value;
-    elem("<?=$p?>_single").style.display = qtype == "single" ? "block" : "none";
-    elem("<?=$p?>_multiple").style.display = qtype == "multiple" ? "block" : "none";
-    elem("<?=$p?>_choicelist").style.display = ctype == "text" || ctype == "ntext" ? "block" : "none";
-    elem("<?=$p?>_textoptions").style.display = ctype == "text" ? "block" : "none";
-    elem("<?=$p?>_numchoice").style.display = ctype == "ntext" || ctype == "num" ? "block" : "none";
-    elem("<?=$p?>_sparsechoice").style.display = ctype == "num" ? "block" : "none";
-    elem("<?=$p?>_selrows").style.display = cntrl == "select" ? "inline" : "none";
-    elem("<?=$p?>_borient").style.display = cntrl == "buttons" ? "inline" : "none";
-    elem("<?=$p?>_olabel").style.display = other ? "block" : "none";
-    elem("<?=$p?>_numberingsection").style.display = qtype == "multiple" ? "block" : "none";
-  }
-  else
-  {
-    if (form.onsubmit) form.onsubmit();
-    form.submit();
-    return;
-  }
-}
-
-// -->
-</script>
 <?
   }
 }
 
 class ChoiceWidget extends ComponentWidget
 {
-  var $choices;
-  var $other;
-  var $legend;
-
+  // persistent
   var $answers = NULL;
   var $others = NULL;
   var $errors = NULL;
 
-  function ChoiceWidget(&$c,$prefix,$form,$formmethod)
+  // private
+  var $legend;
+  var $choices;
+  var $other;
+
+  function ChoiceWidget(&$c, $name, &$parent)
   {
-    $this->ComponentWidget($c,$prefix,$form,$formmethod);
+    $this->ComponentWidget($c, $name, $parent);
 
     $this->legend = "";
     if ($c->is_numeric)
     {
-        if ($c->choices[0] || $c->choices[1])
-          $this->legend = $c->first_number . " = " . $c->choices[0] . ", " . $c->last_number . " = " . $c->choices[1];
+      if ($c->choices[0] || $c->choices[1])
+        $this->legend = $c->first_number . " = " . $c->choices[0] . ", " . $c->last_number . " = " . $c->choices[1];
 
-        if ($c->first_number < $c->last_number)
-          $this->choices = range($c->first_number, $c->last_number);
-        else
-          $this->choices = array_reverse(range($c->last_number, $c->first_number));
+      if ($c->first_number < $c->last_number)
+        $this->choices = range($c->first_number, $c->last_number);
+      else
+        $this->choices = array_reverse(range($c->last_number, $c->first_number));
     }
     else
       $this->choices = $c->choices;
@@ -805,13 +768,14 @@ class ChoiceWidget extends ComponentWidget
     }
   }
 
-  function loadvalues()
+  function loadState()
   {
+    ComponentWidget::loadState();
     foreach ($this->questions as $i => $text)
     {
       $c = &$this->component;
       $name = "q$i";
-      $a = $this->loadattribute($name);
+      $a = $this->readValue($name);
 
       if ($c->select_many)
         $this->answers[$i] = is_array($a) ? $a : NULL;
@@ -822,7 +786,7 @@ class ChoiceWidget extends ComponentWidget
         $this->answers[$i] = NULL;
         $this->errors[$i] = "Question '$text' is not filled in.";
       }
-      $this->others[$i] = (string)$this->loadattribute("q{$i}_{$this->other}");
+      $this->others[$i] = (string)$this->readValue("q{$i}_{$this->other}");
     }
   }
 
@@ -845,7 +809,7 @@ class ChoiceWidget extends ComponentWidget
     {
       $other = addslashes($this->others[$i]);
       $a = &$this->answers[$i];
-      
+
       if ($other || isset($a))
       {
         if (!isset($a))
@@ -864,17 +828,17 @@ class ChoiceWidget extends ComponentWidget
     return $success;
   }
 
-  function showchoices($questionno, $tdparams = "")
+  function printChoices($questionno, $tdparams = "")
   {
     $c = &$this->component;
     $a = &$this->answers[$questionno];
-    $name = $this->prefix . "_q" . $questionno;
-    if ($c->select_many) $name .= "[]";
+    $name = $mname = $this->fullName("q$questionno");
+    if ($c->select_many) $mname .= "[]";
 
     if ($c->stacked && !$c->vertical) print("<td $tdparams>");
     if ($c->rows > 0)
     {
-      print("<select name=$name" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
+      print("<select name=$mname" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
       foreach($this->choices as $i => $choice)
       {
         $selected = (!$c->select_many && $i === $a) || ($c->select_many && is_array($a) && in_array($i, $a)) ? " selected" : "";
@@ -903,13 +867,13 @@ class ChoiceWidget extends ComponentWidget
 
         if ($c->select_many)
         {
-            $checked = is_array($a) && in_array($i, $a) ? " checked" : "";
-            print("<input type=checkbox name=$name value=$i id=$id$checked>");
+          $checked = is_array($a) && in_array($i, $a) ? " checked" : "";
+          print("<input type=checkbox name=$mname value=$i id=$id$checked>");
         }
         else
         {
-            $checked = $i === $a ? " checked" : "";
-            print("<input type=radio name=$name value=$i id=$id$checked>");
+          $checked = $i === $a ? " checked" : "";
+          print("<input type=radio name=$mname value=$i id=$id$checked>");
         }
 
         if (!$c->stacked || $c->vertical)
@@ -925,7 +889,7 @@ class ChoiceWidget extends ComponentWidget
     if ($c->stacked && !$c->vertical) print("</td>\n");
   }
 
-  function print_number($i)
+  function printNumber($i)
   {
     if($this->component->numbering_scheme == FLAG_ARABIC)
       print(($i+1) . ".  ");
@@ -945,27 +909,26 @@ class ChoiceWidget extends ComponentWidget
       print(Numbers_Roman::toRoman($i+1) . ".  ");
   }
 
-  function display($hidden = false, $showerrors = false)
+  function printHidden()
+  {
+    if (isset($this->answers))
+    foreach($this->answers as $i => $v)
+    {
+      $name = "q$i";
+      if (is_array($v))
+        $this->printArrayValue($name, $v);
+      else
+        $this->printValue($name, $v);
+    }
+
+    if (isset($this->others))
+    foreach($this->others as $i => $v)
+      $this->printValue("q{$i}_{$this->other}", $v);
+  }
+
+  function printVisible()
   {
     global $server_media;
-
-    if($hidden)
-    {
-      if (isset($this->answers))
-      foreach($this->answers as $i => $v)
-      {
-        $name = "q$i";
-        if (is_array($v))
-          $this->printarrayattribute($name, $v);
-        else
-          $this->printattribute($name, $v);
-      }
-
-      if (isset($this->others))
-      foreach($this->others as $i => $v)
-        $this->printattribute("q{$i}_{$this->other}", $v);
-      return;
-    }
 
     $c = &$this->component;
     $n = count($this->choices);
@@ -1000,14 +963,14 @@ class ChoiceWidget extends ComponentWidget
       foreach ($this->questions as $i => $text)
       {
         $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $server_media . '/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $server_media . '/0xEEEEEE.gif"';
-        if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
+        if (isset($this->errors[$i]) && $this->showErrors) $text = "<b><font color=red>$text</font></b>";
         print("<tr>\n<td $color>");
 
         //added support for numbering. [tyler]
-        $this->print_number($i);
+        $this->printNumber($i);
 
         print($text . "</td>\n");
-        $this->showchoices($i, "$color align=center");
+        $this->printChoices($i, "$color align=center");
         print("</tr>");
       }
       print("\n</tbody>\n</table>\n");
@@ -1018,15 +981,15 @@ class ChoiceWidget extends ComponentWidget
       print("<table border=1 cellspacing=3 cellpadding=3 width=100%>");
       foreach ($this->questions as $i => $text)
       {
-        if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
+        if (isset($this->errors[$i]) && $this->showErrors) $text = "<b><font color=red>$text</font></b>";
         print("<tr>");
         print("<td valign=top>");
 
         //added support for numbering. [tyler]
-        $this->print_number($i);
+        $this->printNumber($i);
 
         print($text . "</td>\n<td>");
-        $this->showchoices($i);
+        $this->printChoices($i);
         print("</td>\n");
         print("</tr>");
       }
@@ -1038,10 +1001,10 @@ class ChoiceWidget extends ComponentWidget
       foreach ($this->questions as $i => $text)
       {
         //added support for numbering. [tyler]
-        $this->print_number($i);
-        if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
+        $this->printNumber($i);
+        if (isset($this->errors[$i]) && $this->showErrors) $text = "<b><font color=red>$text</font></b>";
         print("$text<br>\n");
-        $this->showchoices($i);
+        $this->printChoices($i);
         print("<br><br>\n");
       }
     }

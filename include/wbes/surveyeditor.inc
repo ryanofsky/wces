@@ -6,366 +6,235 @@ require_once("wbes/server.inc");
 require_once("wbes/survey.inc");
 require_once("wbes/postgres.inc");
 
-//states
-define("SurveyEditor_main",1);
-define("SurveyEditor_insert",2);
-define("SurveyEditor_modify",3);
-define("SurveyEditor_done",4);
-define("SurveyEditor_preview", 5);
-
-//main actions
-define("SurveyEditor_main_insert",1);
-define("SurveyEditor_main_modify",2);
-define("SurveyEditor_main_delete",3);
-define("SurveyEditor_main_moveup",4);
-define("SurveyEditor_main_movedown",5);
-define("SurveyEditor_main_save",6);
-define("SurveyEditor_main_cancel",7);
-define("SurveyEditor_main_preview",8);
-
-//insert actions
-define("SurveyEditor_insert_create",1);
-define("SurveyEditor_insert_cancel",2);
-
-//modify actions
-define("SurveyEditor_modify_save",1);
-define("SurveyEditor_modify_cancel",2);
-define("SurveyEditor_modify_preview",3);
+define("SurveyEditor_inserte",1);
+define("SurveyEditor_modify",2);
+define("SurveyEditor_delete",3);
+define("SurveyEditor_moveup",4);
+define("SurveyEditor_movedown",5);
+define("SurveyEditor_save",6);
+define("SurveyEditor_cancel",7);
+define("SurveyEditor_preview",8);
 
 $SurveyEditor_ns4 = $server_url->xpath == "/ns4";
 
-class SurveyEditor extends FormWidget
+class SurveyEditor extends StatefullWidget
 {
-  var $survey = false; // persistent
-  var $insert_badinput = false;
-  var $state;
-  var $currentcomponent;
-  var $barepage = false;
+  // parameters
+  var $topic_id, $base_branch_id, $user_id, $factories;
+
+  // output
+  var $done = false;
   var $message = "";
-  var $factories;
-  var $topic_id;
-  var $base_branch_id;
-  
-  function SurveyEditor($topic_id, $base_branch_id, $user_id, $factories, $prefix,$form,$formmethod)
+  var $barePage = false;
+
+  // persistent
+  var $survey = null;
+
+  // widgets
+  var $insert;
+  var $modify;
+  var $preview;
+
+  function SurveyEditor($topic_id, $base_branch_id, $user_id, &$factories, $name, &$parent)
   {
     global $server_url;
-    $this->FormWidget($prefix,$form,$formmethod);
+    $this->StatefullWidget($name, $parent);
     $this->topic_id = (int)$topic_id;
     $this->base_branch_id = (int)$base_branch_id;
     $this->user_id = (int)$user_id;
-    $this->factories = $factories;
-    $GLOBALS['topic_id'] = $topic_id;
+    $this->factories = &$factories;
+
+    $this->event = & new EventWidget("event", $this);
+
+    $GLOBALS['topic_id'] = $topic_id; // xxx: wtf?
   }
- 
-  function loadvalues($empty = false)
+
+  function & handleEvent($event, $param, $new)
   {
-    if(!$empty)
+    switch($event)
     {
-      $this->survey = unserialize((string)urldecode((string)$this->loadattribute("survey")));
-
-      if (get_class($this->survey) != "survey")
-        $this->load();
-    }
-
-    $this->state = $this->loadattribute("state");
-    $this->currentcomponent = $this->loadattribute("currentcomponent");
-    //print($this->prefix . " values loaded, now handling action.\n<br>\n");
-    $this->handleaction();
-  }
-
-  function load()
-  {
-    $this->survey = new Survey();
-    $this->survey->load($this->topic_id,$this->base_branch_id,$this->factories);
-  }
-  
-  function save()
-  {
-    if ($this->survey->save($this->topic_id,$this->user_id,0))
-      $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
-    else
-      $this->message = "<h1>Save Error</h1>";
-    $this->state = SurveyEditor_done;
-  }
-
-  function handleaction()
-  {
-    $GLOBALS['topic_id'] = $this->topic_id;
-
-    switch ($this->state)
-    {
-      case SurveyEditor_insert:
-        $this->insert_action = new ActionButton("{$this->prefix}_list_action", $this->form, $this->formmethod);
-        $this->insert_action->loadvalues();
-        
-        $this->insert_type = new RadioButton(true, "{$this->prefix}_insert_type",$this->form, $this->formmethod);
-        $this->insert_type->loadvalues();
-
-        switch($this->insert_action->action)
+      case SurveyEditor_inserte:
+        $this->insert =& new SurveyEditorInsert($this->factories, "insert", $this);
+        $this->loadChild($this->insert, $new);
+        if (isset($this->insert->choose))
         {
-          case SurveyEditor_insert_create:
-            $factory = @$this->factories[$this->insert_type->checked];
-            $q = is_object($factory) ? $factory->create() : false;
-
-            if (!$q)
-              $this->insert_badinput = true;
-            else
-            {  
-              $q->neversaved = true;
-              $this->state = SurveyEditor_modify;
-              $this->currentcomponent = $this->survey->insert($q, $this->currentcomponent);
-              $this->handleaction();
-            }  
-          break;
-          case SurveyEditor_insert_cancel:
-            $this->state = SurveyEditor_main;
-            $this->handleaction();
-          break;
-          default:
-          break;
+          $factory = &$this->factories[$this->insert->choose];
+          $q = &$factory->create();
+          $q->neverSaved = true;
+          $this->addEvent(SurveyEditor_modify, $this->survey->insert($q, $param));
         }
-        break;
+      return $this->insert;
+
       case SurveyEditor_modify:
-        $this->modify_action = new ActionButton("{$this->prefix}_modify_action", $this->form, $this->formmethod);
-        $this->modify_action->loadvalues();
-        $this->modify_editor = $this->survey->components[$this->currentcomponent]->geteditor("{$this->prefix}_modify_editor", $this->form, $this->formmethod);
-        $this->modify_editor->loadvalues();
-        switch($this->modify_action->action)
+        $this->modify =& new SurveyEditorModify($this->survey->components[$param], "modify", $this);
+        $this->loadChild($this->modify, $new);
+        if ($this->modify->preview)
+          $this->addEvent(SurveyEditor_preview, $param);
+        else if ($this->modify->previewError)
+          $this->barePage = true;
+        else if ($this->modify->done)
         {
-          case SurveyEditor_modify_save:
-            if ($this->modify_editor->checkvalues())
-            {
-              unset($this->modify_editor->component->neversaved);
-              $this->modify_editor->savevalues();
-              $this->state = SurveyEditor_main;
-              $this->handleaction();
-            }
-          break;
-          case SurveyEditor_modify_cancel:
-            $i = $this->currentcomponent;
-            if (isset($this->survey->components[$i]->neversaved))
-              $this->survey->delete($i);
-            $this->state = SurveyEditor_main;
-            $this->handleaction();
-          break;
-          case SurveyEditor_modify_preview:
-            if($this->modify_editor->checkvalues())
-              $this->modify_editor->savevalues();
-            $this->barepage = true;  
-            break;  
+          if (isset($this->survey->components[$param]->neverSaved))
+            $this->survey->delete($param);
         }
-        break;
-      case SurveyEditor_main:
-      default:
-        //print($this->prefix . " Doing default. \n<br>\n");
-        $this->main_action = new ActionButton("{$this->prefix}_main_action", $this->form, $this->formmethod);
-        $this->main_action->loadvalues();
+      return $this->modify;
 
-        switch($this->main_action->action)
-        {
-          case SurveyEditor_main_insert:
-            $this->state = SurveyEditor_insert;
-            $this->currentcomponent = $this->main_action->object;
-            $this->handleaction();
-          break;
-          case SurveyEditor_main_modify:
-            $this->state = SurveyEditor_modify;
-            $this->currentcomponent = $this->main_action->object;
-            $this->handleaction();
-          break;
-          case SurveyEditor_main_delete:
-            $this->survey->delete($this->main_action->object);
-          break;
-          case SurveyEditor_main_moveup:
-            $this->survey->moveup($this->main_action->object);
-          break;
-          case SurveyEditor_main_movedown:
-            $this->survey->movedown($this->main_action->object);
-          break;
-          case SurveyEditor_main_save:
-            $this->save();
-          break;
-          case SurveyEditor_main_cancel:
-            $this->state = SurveyEditor_done;
-            $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font>";
-          break;
-          case SurveyEditor_main_preview:
-            $this->state = SurveyEditor_preview;
-            $this->handleaction();
-          default:
-          break;
-        }
-      break;
       case SurveyEditor_preview:
-        $this->barepage = true;
+        $this->barePage = true;
+        $this->preview =& new SurveyEditorPreview("preview", $this);
+        if (isset($param))
+        {
+          $c =& $this->survey->components[$param];
+          $inner =& $c->getWidget("inner", $this->preview);
+        }
+        else
+        {
+          $inner =& new SurveyWidget(0,0,0,0, $this->factories, "inner", $this->preview);
+          $inner->survey =& $this->survey;
+        }
+        $this->preview->inner =& $inner;
+        $this->loadChild($this->preview, $new);
+      return $this->preview;
+
+      case SurveyEditor_delete:
+        $this->survey->delete($param);
       break;
-    }  
+
+      case SurveyEditor_moveup:
+        $this->survey->moveup($param);
+      break;
+
+      case SurveyEditor_movedown:
+        $this->survey->movedown($param);
+      break;
+
+      case SurveyEditor_save:
+        $this->done = true;
+        if ($this->survey->save($this->topic_id, $this->user_id,0))
+          $this->message = "<font color=red><i>Survey Builder: Saved changes</i></font>";
+        else
+          $this->message = "<h1>Save Error</h1>";
+      break;
+
+      case SurveyEditor_cancel:
+        $this->done = true;
+        $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font>";
+      break;
+    }
   }
 
-  function display($hidden = false)
+  function loadInitialState()
+  {
+    $this->survey =& new Survey();
+    $this->survey->load($this->topic_id, $this->base_branch_id, $this->factories);
+    StatefullWidget::loadInitialState();
+  }
+
+  function loadState()
+  {
+    $this->survey = unserialize($this->readValue("survey"));
+    StatefullWidget::loadState();
+  }
+
+  function printState()
+  {
+    StatefullWidget::printState();
+    $this->printValue("survey", serialize($this->survey));
+  }
+
+  function printVisible()
   {
     global $server_media, $wbes;
-    
-    $this->printattribute("survey", urlencode(serialize($this->survey)));
-    $q = unserialize(serialize($this->survey));
-    $this->printattribute("currentcomponent",$this->currentcomponent);
-    if (!$hidden)
-    {
-    //print("Now displaying: " . $this->state);
-      switch ($this->state)
-      {
-        case SurveyEditor_insert:
-          $this->printattribute("state",SurveyEditor_insert);
-          if ($this->insert_badinput) print("<p><font color=red>You forgot to choose an item from the list</font></p>");
-          $first = true;
-          print("<h5>Which component type would you like to insert? <a href=\"javascript:showhelp('inserttypes')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a></h5>\n");
 
-          foreach($this->factories as $key => $f)
-          {
-            if ($first) $first = false; else print("<br>\n");
-            $this->insert_type->display($key);
-            $this->insert_type->displaylabel($key, $f->name());
-          }
-          print("\n");
-          print("<p>");
-          $this->insert_action->display("Create", SurveyEditor_insert_create, "", 'class="tinybutton"');
-          $this->insert_action->display("Cancel", SurveyEditor_insert_cancel, "", 'class="tinybutton"');
-          print("</p>");
-        break;
-        case SurveyEditor_modify:
-          if ($this->modify_action->action != SurveyEditor_modify_preview)
-          {
-            $this->modify_action->display(false,"","");
-            $this->printattribute("state",SurveyEditor_modify);
-            $this->modify_editor->display();
-            $this->modify_action->display("Save", SurveyEditor_modify_save, "", 'class="tinybutton"');
-            print("<input type=button class=tinybutton value=Preview onclick=\"return SurveyEditor_preview(this.form,'{$this->modify_action->prefix}'," . SurveyEditor_modify_preview . ")\">");
-            $this->modify_action->display("Cancel",SurveyEditor_modify_cancel, "", 'class="tinybutton"');
-          }
-          else
-          {
-            print('<center><input type=button onclick="window.close()" value="Close this window"></center>');
-            $this->modify_editor->preview();
-          }
-        break;
-        case SurveyEditor_preview:
-          $this->printattribute("state",SurveyEditor_preview);
-          print('<p align=center><input type=button onclick="window.close()" value="Close this window"></p>');
-          $w = new SurveyWidget(0,0,0,0,0,"{$this->prefix}_preview", $this->form, $this->formmethod);
-          $w->survey = $this->survey;
-          $w->loadvalues();
-          $w->display();
-        break;
-        case SurveyEditor_main:
-        default:
-          $this->printattribute("state",SurveyEditor_main);
-          $this->main_action->display(false,"","");
-          print("<h5>Survey Builder</h5>");
-          $ncomponents = count($this->survey->components);
-          if ($ncomponents == 0)
-          {
-            print("<p>This survey does not have any components. Click below to either insert a component or cancel without saving any changes.</p>");
-            $this->main_action->display("Insert a component",SurveyEditor_main_insert,0,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
-            print(" ");
-            $this->main_action->display("Cancel",SurveyEditor_main_cancel,"", 'class="tinybutton" style="BACKGROUND: #CE3031; COLOR: white;"');
-          }
-          else // $ncomponents != 1
-          {
+    $this->event->displayField();
+
+    print("<h5>Survey Builder</h5>");
+    $ncomponents = count($this->survey->components);
+    if ($ncomponents == 0)
+    {
+      print("<p>This survey does not have any components. Click below to either insert a component or cancel without saving any changes.</p>");
+      $this->event->displayButton("Insert a component",SurveyEditor_inserte,0,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
+      print(" ");
+      $this->event->displayButton("Cancel",SurveyEditor_cancel,"", 'class="tinybutton" style="BACKGROUND: #CE3031; COLOR: white;"');
+    }
+    else // $ncomponents != 1
+    {
 ?>
 <p>This page shows a WYSIWYG view of your survey. You can modify, delete, and
 rearrange survey components by moving your mouse over the blue orbs at the left
 and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
-<?            
-            print("<table border=0 cellpadding=0 cellspacing=0>\n");
-            print("<tr><td colspan=6 align=center>");
-            $this->main_action->display("Add new component",SurveyEditor_main_insert,$ncomponents,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
-            print("</td></tr>");
-            print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id={$this->prefix}_insertmarker name={$this->prefix}_insertmarker>\n");
-            for($i=0;;++$i)
-            {
-?>
-<tr><td colspan=1><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->prefix?>_insert<?=$i?>" class=insertmenu><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]" name=<?=$this->prefix?>_ns4marker<?=$i?>></td></tr>
 <?
-              if ($i >= $ncomponents) break;
-              $component = &$this->survey->components[$i];
-              $w = $component->getwidget("{$this->prefix}_main_qwidget_$i", $this->form, $this->formmethod);
-              $w->loadvalues();
+      print("<table border=0 cellpadding=0 cellspacing=0>\n");
+      print("<tr><td colspan=6 align=center>");
+      $this->event->displayButton("Add new component",SurveyEditor_inserte,$ncomponents,'class="tinybutton" style="BACKGROUND: #00BE21; COLOR: white;"');
+      print("</td></tr>");
+      $insertMarker = $this->fullname("insertMarker");
+      print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id=$insertMarker name=$insertMarker>\n");
+      for($i=0;;++$i)
+      {
+?>
+<tr><td colspan=1><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]"></td><td colspan=3 id="<?=$this->fullName("insert$i")?>" class=insertmenu><img src="<?=$server_media?>/nada.gif" width=1 height=10 alt="[ spacer ]" name=<?=$this->fullName("ns4marker$i")?>></td></tr>
+<?
+        if ($i >= $ncomponents) break;
+        $component = &$this->survey->components[$i];
+        $w = $component->getwidget("main_qwidget_$i", $this);
+        $this->loadChild($w, true);
+
+        $readOnly = false;
+        if($component->locked && $component->revision_id)
+        {
+          wbes_connect();
+          $r = pg_query("
+            SELECT topic_id FROM branches AS a, revisions AS b
+            WHERE a.branch_id = b.branch_id
+              AND b.revision_id = '$component->revision_id'
+          ", $wbes, __FILE__, __LINE__);
+          $wr = & new pg_wrapper($r);
+          $readOnly = (bool)$wr->row['topic_id'] != $this->topic_id;
+        }
+        $name = $this->fullName($readOnly ? "lockedNode$i" : "node$i");
+        $image = $readOnly ? "grey_node.gif" : "node.gif";
 ?>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td rowspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr>
-<?
-
-$needNode = true;
-
-if($component->locked && $component->revision_id)
-{
-  wbes_connect();
-  $sql = "SELECT topic_id FROM branches AS a, revisions AS b WHERE a.branch_id = b.branch_id AND b.revision_id = '$component->revision_id'";
-  $r = pg_query($sql, $wbes, __FILE__, __LINE__);
-  $wr = new pg_wrapper($r);
-    
-  if($wr->row['topic_id'] != $this->topic_id)
-  {
-    $needNode = false;
-?>
-    <td width=40 valign=center><img src="<?=$server_media?>/editor/grey_node.gif" width=40 height=18 border=0 align=absmiddle alt=locked_node></td>
-<?
-  }
-}
-
-if($needNode)
-    {
-?>
-  <td width=40 valign=center><img src="<?=$server_media?>/editor/node.gif" width=40 height=18 border=0 align=absmiddle alt=node id=<?=$this->prefix?>_node<?=$i?> name=<?=$this->prefix?>_node<?=$i?>></td>
-<?
-    }?>
-
-  
-
+  <td width=40><img src="<?=$server_media?>/editor/<?=$image?>" width=40 height=18 border=0 id=<?=$name?> name=<?=$name?> align=absmiddle alt=Orb></td>
   <td width=1><img src="<?=$server_media?>/nada.gif" width=3 height=1 alt="[ spacer ]"></td>
-  <td><? $w->displaypreview(); ?></td>
+  <td><? $w->preview = true; $w->display(); ?></td>
 </tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td><td colspan=2><img src="<?=$server_media?>/nada.gif" width=1 height=3 alt="[ spacer ]"></td></tr>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
 <?
-            } // for i
+      } // for i
 ?>
 <tr>
   <td>&nbsp;</td>
   <td colspan=3 align=center>
-    <? $this->main_action->display("Save Survey",SurveyEditor_main_save,"", 'class="tinybutton"'); ?>
-    <? $this->main_action->display("Cancel",SurveyEditor_main_cancel,"", 'class="tinybutton"'); ?>
-    <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->main_action->prefix?>',<?=SurveyEditor_main_preview?>)">
-    
-    
+    <? $this->event->displayButton("Save Survey", SurveyEditor_save, null, 'class="tinybutton"'); ?>
+    <? $this->event->displayButton("Cancel", SurveyEditor_cancel, null, 'class="tinybutton"'); ?>
+    <input type=button class=tinybutton value=Preview onclick="return SurveyEditor_preview(this.form,'<?=$this->event->name?>',<?=SurveyEditor_preview?>)">
   </td>
 </tr>
 </table>
 
-<script>SurveyEditor(<?=count($this->survey->components)?>, "<?=$this->prefix?>", "<?=$this->form?>");</script>
+<script>SurveyEditor(<?=count($this->survey->components)?>, "<?=$this->name?>", "<?=$this->form->formName?>");</script>
 <?
-          } // if $ncomponents == 0      
-        break;
-        case SurveyEditor_done:
-        break;
-      } // switch
-    } // if hidden
+    } // if $ncomponents == 0
   }
-  
-  function dumpscript()
+
+  function DumpScript()
   {
     global $server_media, $SurveyEditor_ns4;
     static $dumped = false;
     if ($dumped) return; else $dumped = true;
 
-    ActionButton::dumpscript();
+    EventWidget::DumpScript();
     includeScript("$server_media/editor/menus.js");
 
-    $mod = SurveyEditor_main_modify; $del = SurveyEditor_main_delete;
-    $up = SurveyEditor_main_moveup; $down = SurveyEditor_main_movedown;
-    $ins = SurveyEditor_main_insert;
+    $mod = SurveyEditor_modify; $del = SurveyEditor_delete;
+    $up = SurveyEditor_moveup; $down = SurveyEditor_movedown;
+    $ins = SurveyEditor_inserte;
 
     if (!$SurveyEditor_ns4)
     {
@@ -381,7 +250,7 @@ EOD;
     }
     else
     {
-      includeScript("$server_media/editor/menus_ns4.js");      
+      includeScript("$server_media/editor/menus_ns4.js");
 
       $str = <<<EOD
 <layer id=SurveyEditor_cmdmenu visibility=hide z-index=10><table border=1 cellspacing=0 cellpadding=3>
@@ -397,11 +266,11 @@ EOD;
     absolutePrint($str);
 
     absolutePrint("<script language=javascript>
-SurveyEditor_main_insert = $ins;
-SurveyEditor_main_modify = $mod;
-SurveyEditor_main_delete = $del;
-SurveyEditor_main_moveup = $up;
-SurveyEditor_main_movedown = $down;
+SurveyEditor_inserte = $ins;
+SurveyEditor_modify = $mod;
+SurveyEditor_delete = $del;
+SurveyEditor_moveup = $up;
+SurveyEditor_movedown = $down;
 SurveyEditor_menu = SurveyEditor_Menu();
 ");
 
@@ -409,14 +278,184 @@ SurveyEditor_menu = SurveyEditor_Menu();
     {
       absolutePrint("
 window.SurveyEditor_loadpackage = new Array();
-window.SurveyEditor_spots = new Array();  
+window.SurveyEditor_spots = new Array();
 window.SurveyEditor_onload_old = window.onload;
 window.SurveyEditor_hotspot = 0;
 window.onload = SurveyEditor_onload;
-");  
+");
     }
     absolutePrint("</script>");
-    
+
   }
 }
+
+define("SurveyEditorInsert_create",1);
+define("SurveyEditorInsert_cancel",2);
+
+class SurveyEditorInsert extends ParentWidget
+{
+  // parameters
+  var $factories;
+
+  // output
+  var $done = false;
+  var $choose = null;
+
+  // widgets
+  var $event;
+  var $choices;
+
+  // private
+  var $badInput = false;
+
+  function SurveyEditorInsert(&$factories, $name, &$parent)
+  {
+    $this->ParentWidget($name, $parent);
+    $this->factories =& $factories;
+    $this->event =& new EventWidget("event", $this);
+    $this->choices =& new RadioButton(true, "choices", $this);
+  }
+
+  function loadState()
+  {
+    ParentWidget::loadState();
+    switch($this->event->event)
+    {
+      case SurveyEditorInsert_create:
+        if (!isset($this->factories[$this->choices->checked]))
+          $this->badInput = true;
+        else
+        {
+          $this->choose = $this->choices->checked;
+          $this->done = true;
+        }
+      break;
+
+      case SurveyEditorInsert_cancel:
+        $this->done = true;
+      break;
+    }
+  }
+
+  function printVisible()
+  {
+    global $server_media;
+
+    if ($this->badInput)
+      print("<p><font color=red>You forgot to choose an item from the list</font></p>");
+
+    print("<h5>Which component type would you like to insert? <a href=\"javascript:showhelp('inserttypes')\"><img src=\"$server_media/help/question.gif\" width=16 height=16 border=0 align=absmiddle alt=help></a></h5>\n");
+
+    $first = true;
+    foreach($this->factories as $key => $f)
+    {
+      if ($first) $first = false; else print("<br>\n");
+      $this->choices->display($key);
+      $this->choices->displayLabel($key, $f->name());
+    }
+
+    print("\n<p>");
+    $this->event->displayButton("Create", SurveyEditorInsert_create, null, 'class="tinybutton"');
+    $this->event->displayButton("Cancel", SurveyEditorInsert_cancel, null, 'class="tinybutton"');
+    print("</p>");
+  }
+};
+
+define("SurveyEditorModify_save",1);
+define("SurveyEditorModify_cancel",2);
+define("SurveyEditorModify_preview",3);
+
+class SurveyEditorModify extends ParentWidget
+{
+  // parameters
+  var $component;
+
+  // output
+  var $done = false;
+  var $preview = false;
+  var $previewError = false;
+
+  // widgets
+  var $editor;
+  var $event;
+
+  function SurveyEditorModify(&$component, $name, &$parent)
+  {
+    $this->ParentWidget($name, $parent);
+    $this->component =& $component;
+    $this->event =& new EventWidget("event", $this);
+    $this->editor =& $component->getEditor("editor", $this);
+  }
+
+  function loadState()
+  {
+    ParentWidget::loadState();
+    switch($this->event->event)
+    {
+      case SurveyEditorModify_save:
+        if ($this->editor->validate())
+        {
+          unset($this->editor->component->neverSaved);
+          $this->editor->save();
+          $this->done = true;
+        }
+      break;
+
+      case SurveyEditorModify_cancel:
+        $this->done = true;
+      break;
+
+      case SurveyEditorModify_preview:
+        if($this->editor->validate())
+        {
+          $this->editor->save();
+          $this->preview = true;
+          $this->done = true;
+        }
+        else
+          $this->previewError = true;
+      break;
+
+      default:
+      return;
+    }
+  }
+
+  function printVisible()
+  {
+    if ($this->previewError)
+      $this->editor->printErrors();
+    else
+    {
+      $this->editor->display();
+      $this->event->displayButton("Save", SurveyEditorModify_save, null, 'class="tinybutton"');
+      $this->event->displayField();
+      print('<input type=button class=tinybutton value=Preview onclick="'
+        . "return SurveyEditor_preview(this.form,'{$this->event->name}', "
+        . SurveyEditorModify_preview . ")\">");
+      $this->event->displayButton("Cancel", SurveyEditorModify_cancel, null, 'class="tinybutton"');
+    }
+  }
+};
+
+class SurveyEditorPreview extends ParentWidget
+{
+  // output
+  var $done = false;
+
+  // widgets
+  var $inner = null;
+
+  function SurveyEditorPreview($name, &$parent)
+  {
+    $this->Widget($name, $parent);
+  }
+
+  function printVisible()
+  {
+    print('<p align=center><input type=button onclick="window.close()" value="Close this window"></p>');
+    if (isset($this->inner)) $this->inner->display();
+  }
+};
+
 ?>

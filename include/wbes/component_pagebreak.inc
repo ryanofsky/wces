@@ -7,9 +7,9 @@ class PageBreakFactory extends ComponentFactory
   function code() { return 9; }
   function name() { return "Page Break Component"; }
   
-  function create()
+  function & create()
   {
-    return new PageBreak();
+    return new PageBreak;
   }
   
   function load(&$components, $ids, $ordinals)
@@ -31,79 +31,61 @@ class PageBreakFactory extends ComponentFactory
 
 class PageBreak extends Component
 {
-  
   var $renumber = false;
-  
-  function PageBreak()
+ 
+  function & getEditor($name, &$parent)
   {
-  }
-  
-  function geteditor($prefix,$form,$formmethod)
-  {
-    return new PageBreakEditor($this,$prefix,$form,$formmethod);
+    return new PageBreakEditor($this, $name, $parent);
   }  
   
-  function getwidget($prefix,$form,$formmethod)
+  function & getWidget($name, &$parent)
   {
-    return new PageBreakWidget($this,$prefix,$form,$formmethod);
+    return new PageBreakWidget($this, $name, $parent);
   }
   
   function save($topic_id, $save_id)
   {
     global $wbes;
-    $renumber 	= $this->renumber ? "'t'" : "'f'";    
-    $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';    
+    $renumber = $this->renumber ? "'t'" : "'f'";    
+    $revision_id = $this->revision_id ? $this->revision_id : 'NULL';    
     $result = pg_query("SELECT pagebreak_component_save($topic_id, $revision_id, $save_id, $renumber)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
-  
-}
+};
 
 class PageBreakEditor extends ComponentEditor
 {
+  // widgets
   var $renumber;
   
-  function PageBreakEditor(&$component,$prefix,$form,$formmethod)
+  function PageBreakEditor(&$component, $name, &$parent)
   {
-    $this->ComponentEditor($component,$prefix,$form,$formmethod);
-    $this->renumber = new CheckBox("{$this->prefix}_renumber", $this->form, $this->formmethod);
+    $this->ComponentEditor($component, $name, $parent);
+    $this->renumber = new CheckBox("renumber", $this);
     $this->renumber->checked = $component->renumber;
   }
   
-  function loadvalues()
+  function loadInitialState()
   {
-    ComponentEditor::loadvalues();
-    if ($this->loadprevious)
-    {
-      $this->renumber->loadvalues();
-    }
-    else
-    {
-    	$this->renumber->checked = $this->component->renumber;
-    }
+    ComponentEditor::loadInitialState();
+    $this->renumber->checked = $this->component->renumber;
   }
-  
-  function checkvalues()
+
+  function save()
   {
-    return true;
-  }
-  
-  function savevalues()
-  {
-    ComponentEditor::savevalues();
+    ComponentEditor::save();
     $this->component->renumber = $this->renumber->checked;
   }
   
-  function display()
+  function printVisible()
   {
-    ComponentEditor::display();
+    $this->printErrors();
 ?>
-
 <p><strong>Page Break Component</strong></p>
 <table>
 <tr>
   <td valign=top><strong><? $this->fieldname("Options:", false); ?></strong></td>
-  <td><? $this->renumber->display(false); ?><? $this->renumber->displaylabel("Restart Survey Numbering"); ?></td>
+  <td><? $this->renumber->display(); $this->renumber->displayLabel("Restart Survey Numbering"); ?></td>
 </tr>
 </table>
 <?    
@@ -112,23 +94,15 @@ class PageBreakEditor extends ComponentEditor
 
 class PageBreakWidget extends ComponentWidget
 {
-  function PageBreakWidget(&$component,$prefix,$form,$formmethod)
+  function PageBreakWidget(&$component, $name, &$parent)
   {
-    $this->ComponentWidget($component,$prefix,$form,$formmethod);
+    $this->ComponentWidget($component, $name, $parent);
   }
   
-  function loadvalues()
+  function printVisible()
   {
+    if ($this->preview) print("[ Page Break ]");  
   }
-
-  function displaypreview()
-  {
-    print("[ Page Break ]");
-  }
-
-  function display($hidden = false, $showerrors = true)
-  {
-  }  
-}
+};
 
 ?>

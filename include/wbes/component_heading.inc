@@ -6,99 +6,73 @@ class HeadingFactory extends ComponentFactory
 {
   function code() { return 4; }
   function name() { return "Heading Component"; }
-  
-  function create()
+
+  function & create()
   {
-    return new Heading();
+    return new Heading;
   }
-  
+
   function load(&$components, $ids, $ordinals, $topic_id)
   {
     return $this->textload($components, $ids, $ordinals, $topic_id, "Heading");
-  }  
+  }
 };
 
 class Heading extends Component
 {
   function Heading()
+  {}
+
+  function & getEditor($name, &$parent)
   {
+    return new HeadingEditor($this, $name, $parent);
   }
-  
-  function geteditor($prefix,$form,$formmethod)
+
+  function & getWidget($name, &$parent)
   {
-    return new HeadingEditor($this,$prefix,$form,$formmethod);
-  }  
-  
-  function getwidget($prefix,$form,$formmethod)
-  {
-    return new HeadingWidget($this,$prefix,$form,$formmethod);
+    return new HeadingWidget($this, $name, $parent);
   }
-  
+
   function save($topic_id, $save_id)
   {
     return $this->textsave($topic_id, $save_id, HeadingFactory::code());
-  }  
+  }
 }
 
 class HeadingEditor extends ComponentEditor
 {
-  function HeadingEditor(&$component,$prefix,$form,$formmethod)
+  function HeadingEditor(&$component, $name, &$parent)
   {
-    $this->ComponentEditor($component,$prefix,$form,$formmethod);
+    $this->ComponentEditor($component, $name, $parent);
   }
-  
-  function loadvalues()
+
+  function printVisible()
   {
-    ComponentEditor::loadvalues();
-  }
-  
-  function checkvalues()
-  {
-    return true;
-  }
-  
-  function savevalues()
-  {
-    ComponentEditor::savevalues();
-  }
-  
-  function display()
-  {
-    ComponentEditor::display();
+    $this->printErrors();
 ?>
 <table>
 <tr>
   <td valign=top><strong><? $this->fieldname("Text:",$this->text->broken); ?></strong></td>
-  <td><? $this->text->display(false); ?><br><? $this->is_html->display(false); $this->is_html->displaylabel("Contains HTML Tags"); ?><br>
-  <? $this->locking->display(false); $this->locking->displaylabel("Lock this component"); ?></td>
+  <td><? $this->text->display(); ?><br><? $this->is_html->display(); $this->is_html->displayLabel("Contains HTML Tags"); ?><br>
+  <? $this->locking->display(); $this->locking->displayLabel("Lock this component"); ?></td>
 </tr>
 </table>
-
-
 <?
-  }  
+  }
 }
 
 class HeadingWidget extends ComponentWidget
 {
-  function HeadingWidget(&$component,$prefix,$form,$formmethod)
+  function HeadingWidget(&$component, $name, &$parent)
   {
-    $this->ComponentWidget($component,$prefix,$form,$formmethod);
-    $this->choices = array();
+    $this->ComponentWidget($component, $name, $parent);
   }
-  
-  function loadvalues()
+
+  function printVisible()
   {
+    $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
+    print("<h4>$text</h4>");
   }
-  
-  function display($hidden = false)
-  {
-    if (!$hidden)
-    {
-      $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
-      print("<h4>$text</h4>");
-    }
-  } 
 }
 
 ?>

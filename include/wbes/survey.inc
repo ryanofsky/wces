@@ -16,8 +16,6 @@ function get_base($topic_id)
       return 611;
     else if ($topic_id == 1483)
       return 612;
-    else if ($topic_id == 3111)
-      return 799;
     else
     {
       $r = pg_query("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
@@ -32,10 +30,10 @@ class Survey
   var $components = array();
   var $orig_id = false;
 
-  function insert($component,$position = 0)
+  function insert(&$component,$position = 0)
   {
     $position = ((int)$position < 0) ? count($this->components) + (int)$position + 1 : (int)$position;
-    array_splice($this->components,(int)$position,0,array($component));
+    array_splice($this->components,(int)$position,0,array(&$component));
     return $position;
   }
 

@@ -18,7 +18,7 @@ class ComponentFactory
   function code() { return 0; }
   function name() { return 0; }
   
-  function create()
+  function & create()
   {
   }
   
@@ -29,7 +29,7 @@ class ComponentFactory
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, data FROM generic_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
-    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = unserialize($wr->row['data']);
       $c->revision_id = (int)$wr->row['revision_id'];      
@@ -37,15 +37,15 @@ class ComponentFactory
     }
   }
   
-  function textload(&$components, $ids, $ordinals, $topic_id, $cn)
+  function textLoad(&$components, $ids, $ordinals, $topic_id, $cn)
   {
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
     $r = pg_query("SELECT revision_id, ctext, flags FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
-    for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
+    for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
-      $c = new $cn();
+      $c = & new $cn;
       $c->revision_id = (int)$wr->row['revision_id'];
       $c->text        = $wr->row['ctext'];
       $flagGroup      = $wr->row['flags'];
@@ -68,18 +68,18 @@ class Component
   {
   }
   
-  function geteditor($prefix,$form,$formmethod)
+  function & getEditor($name, &$parent)
   {
-    return new ComponentEditor($this,$prefix,$form,$formmethod);
+    return new ComponentEditor($this,$name,$parent);
   }
 
-  function getwidget($prefix,$form,$formmethod)
+  function & getWidget($name, &$parent)
   {
-    return new ComponentWidget($this,$prefix,$form,$formmethod);
+    return new ComponentWidget($this,$name,$parent);
   }
   
   // save the base fields, $text and $is_html
-  function textsave($topic_id, $save_id, $cn)
+  function textSave($topic_id, $save_id, $cn)
   {
     global $wbes;
 
@@ -98,7 +98,7 @@ class Component
   // todo: this function is very out of date, needs to be updated
   function save($topic_id, $save_id)
   {
-    die("Component::save() method is completely out of date. either rewrite it is a generic save method or write a none generic save for your component.");
+    die("Component::save() method is completely out of date. either rewrite it is a generic save method or write a non generic save for your component. (" . __FILE__ . ":" . __LINE__ . ")");
     
     global $wbes;
 
@@ -150,48 +150,41 @@ class Component
   }
 };
 
-class ComponentEditor extends FormWidget
+class ComponentEditor extends ParentWidget
 {
-  var $text,$is_html,$loadprevious; // Widgets
-  var $errors; // Mistakes in the form
+  // parameters
   var $component; // source component
-  var $locking;
+
+  // widgets
+  var $text, $is_html, $locking;
   
-  function ComponentEditor(&$component,$prefix,$form,$formmethod)
+  // private
+  var $errors = array();
+  
+  function ComponentEditor(&$component, $name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
-    $this->text = new TextBox(4,40,"wrap=virtual",$this->prefix."_text",$this->form,$this->formmethod);
-    $this->is_html = new CheckBox($this->prefix."_usehtml",$this->form,$this->formmethod);
+    $this->ParentWidget($name, $parent);
     $this->component = &$component;
-    $this->locking = new CheckBox($this->prefix."_locked", $this->form, $this->formmethod);  
-    $this->errors = array();
-    
+    $this->is_html = & new CheckBox("usehtml", $this);
+    $this->locking = & new CheckBox("locked", $this);  
+    $this->text = & new TextBox(4, 40, "wrap=virtual", "text", $this);    
     $this->text->broken = false;
   }
   
-  function loadvalues()
+  function loadInitialState()
   {
-    $this->loadprevious = $this->loadattribute("loadprevious");
-    if ($this->loadprevious)
-    {
-      $this->text->loadvalues();
-      $this->is_html->loadvalues();
-      $this->locking->loadvalues();
-    }
-    else
-    {
-      $this->text->text = $this->component->text;
-      $this->is_html->checked = $this->component->is_html ? true : false;
-      $this->locking->checked = $this->component->locked;      
-    }
+    ParentWidget::loadInitialState();
+    $this->text->text = $this->component->text;
+    $this->is_html->checked = (bool)$this->component->is_html;
+    $this->locking->checked = $this->component->locked;      
   }
   
-  function checkvalues()
+  function validate()
   {
     return true;
   }
   
-  function savevalues()
+  function save()
   {
     $this->component->text = $this->text->text;
     $this->component->is_html = $this->is_html->checked;
@@ -199,9 +192,8 @@ class ComponentEditor extends FormWidget
     return true;
   }
 
-  function display()
+  function printErrors()
   {
-    $this->printattribute("loadprevious",1);
     if (count($this->errors) > 0)
     {
       print("<font color=red><ul>\n");
@@ -211,38 +203,34 @@ class ComponentEditor extends FormWidget
     }
   }
   
-  function fieldname($name,$isbroken)
+  function fieldName($name, $isBroken)
   {
-    if ($isbroken)
+    if ($isBroken)
       print("<font color=red>$name</font>");
     else
       print($name);
   }
-  
-  function preview()
-  {
-    if (count($this->errors) > 0)
-    {
-      print("<p><strong>Errors:</strong></p>");
-      ComponentEditor::display();
-    }
-    else
-    {
-      $w = $this->component->getwidget($this->prefix."_preview", $this->form, $this->formmethod);
-      $w->display();
-    }
-  }
 };
 
-class ComponentWidget extends FormWidget
+class ComponentWidget extends ParentWidget
 {
+  // parameters
   var $component;
+  var $showErrors = false;
+  var $preview = false;
+
+  // private
   var $errors = array();
   
-  function ComponentWidget(&$component,$prefix,$form,$formmethod)
+  function ComponentWidget(&$component, $name, &$parent)
   {
-    $this->FormWidget($prefix,$form,$formmethod);
+    $this->ParentWidget($name, $parent);
     $this->component = &$component;
+  }
+
+  function save()
+  {
+    return true;
   }
   
   function validate()
@@ -250,12 +238,7 @@ class ComponentWidget extends FormWidget
     return true;
   }
   
-  function displaypreview()
-  {
-    $this->display();
-  }
-  
-  function display()
+  function printVisible()
   {
     print("<div>");
     if ($this->component->is_html)
@@ -264,16 +247,6 @@ class ComponentWidget extends FormWidget
       print(nl2br(htmlspecialchars($this->component->text)));
     print("</div>\n");
   }
-  
-  function save()
-  {
-    return true;
-  }
-  
-  function loadvalues()
-  {
-  }
-  
 };
 
 ?>
