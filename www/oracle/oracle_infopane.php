@@ -45,7 +45,7 @@ if ($professorid && $info = db_getrow($db,"professors",Array("professorid" => $p
   INNER JOIN answersets AS a USING (classid)
   INNER JOIN courses AS c ON (cl.courseid = c.courseid)
   INNER JOIN subjects AS s USING (subjectid)
-  WHERE cl.professorid = '$professorid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
+  WHERE cl.professorid = '$professorid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4)
   GROUP BY cl.classid 
   ORDER BY cl.year DESC, cl.semester DESC LIMIT 50",$db);
   while ($class = mysql_fetch_array($classes))
@@ -108,7 +108,7 @@ else if ($classid || $courseid)
   SELECT cl.classid, cl.section, cl.year, cl.semester
   FROM classes as cl
   INNER JOIN answersets AS a USING (classid)
-  WHERE cl.courseid = '$courseid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
+  WHERE cl.courseid = '$courseid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4)
   GROUP BY cl.classid
   ORDER BY cl.year DESC, cl.semester, cl.section DESC LIMIT 50
 
@@ -139,7 +139,7 @@ else if ($classid || $courseid)
       $sql_columns .= ", a.MC$i$choice";
   };
   
-  $n = db_exec("SELECT $sql_columns FROM answersets AS a INNER JOIN classes as c USING (classid) LEFT JOIN questionsets as q ON (a.questionsetid = q.questionsetid) WHERE a.questionsetid = '1' AND a.classid = '$classid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2) ORDER BY a.responses DESC LIMIT 1", $db, __FILE__, __LINE__);
+  $n = db_exec("SELECT $sql_columns FROM answersets AS a INNER JOIN classes as c USING (classid) LEFT JOIN questionsets as q ON (a.questionsetid = q.questionsetid) WHERE a.questionsetid = '1' AND a.classid = '$classid' AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4) ORDER BY a.responses DESC LIMIT 1", $db, __FILE__, __LINE__);
   
   if (mysql_num_rows($n) > 0)
   {
