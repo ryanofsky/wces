@@ -1,7 +1,7 @@
-<?
+<%
   require_once("oracle/page.inc");
   page_top("SEAS Oracle Homepage","home.gif");
-?>
+%>
 <font face="Verdana,Trebuchet MS" size="-1">
 <p align="left"><font
 color="red">NOTE:</font> <i>ALL INFORMATION UPDATED as of Nov 11,
@@ -47,4 +47,4 @@ professors. </p>
 questions concerning this webpage, please email the <a href=
 "mailto:wces@columbia.edu">webmaster</a>.</font></p>
 
-<? page_bottom(); ?>
+<% page_bottom(); %>

@@ -1,11 +1,11 @@
-<?
+<%
 
 function taskwindow_start($title, $localtoo = true)
 {
   global $taskwindow_inuse, $taskwindow_localtoo;
   $taskwindow_inuse = true;
   $taskwindow_localtoo = $localtoo ? ", true" : "";
-?>
+%>
 <script>
   function pr(str, localtoo) { if(localtoo) document.write(str); if (window.task) window.taskd.write(str) };
   window.task = window.open("", "task", "width=400,height=400,channelmode=0,dependent=0,directories=0,fullscreen=0,location=0,menubar=0,resizable=1,scrollbars=1,status=1,toolbar=0");
@@ -13,10 +13,10 @@ function taskwindow_start($title, $localtoo = true)
   window.taskd.open(); //("text/html", "replace");
   window.task.isok = false;
   if (!window.task.opener) window.task.opener = window;
-  window.taskd.write('<html><head><title><?=$title?></title></head>');
+  window.taskd.write('<html><head><title><%=$title%></title></head>');
   window.taskd.write('<body><center><form><input type=button value="Close This Window" onclick="if (window.isok) window.close(); else alert(\'Please wait for the task to complete\');"></form></center>');
 </script>
-<?
+<%
 }
 
 function taskwindow_end()
@@ -25,7 +25,7 @@ function taskwindow_end()
   taskwindow_flush();
   if($taskwindow_inuse)
   {
-    ?><script>window.taskd.write('</body></html>'); window.taskd.close(); window.task.isok = true;</script><?  
+    %><script>window.taskd.write('</body></html>'); window.taskd.close(); window.task.isok = true;</script><%  
   };  
 }
 
@@ -38,7 +38,7 @@ function taskwindow_print($str)
   if ($taskwindow_inuse)
   {
     if ($taskwindow_cache) taskwindow_flush();
-    ?><script>pr("<?=addcslashes($str,"\\\"\n\r")?>"<?=$taskwindow_localtoo?>);</script><?  
+    %><script>pr("<%=addcslashes($str,"\\\"\n\r")%>"<%=$taskwindow_localtoo%>);</script><%  
   }
   else
     print($str);

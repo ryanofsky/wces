@@ -1,7 +1,7 @@
-<? 
+<% 
   if (!$uni ) $uni = "";
   if (!$pw ) $pw = "";
-?>
+%>
 
 <HTML>
 <HEAD>
@@ -17,14 +17,14 @@
     <TD>UNI</TD>
     <TD>
     
-    <INPUT type=text name=uni value="<?=$uni?>">
+    <INPUT type=text name=uni value="<%=$uni%>">
     
     </TD></TR>
   <TR>
     <TD>Password</TD>
     <TD>
     
-    <INPUT type=password name=pw value="<?=$pw?>">
+    <INPUT type=password name=pw value="<%=$pw%>">
   </TD></TR>
    <tr>
    <td colspan=2 align=middle><INPUT type="submit" value="Get My Affiliations" id=submit1 name=submit1></td>
@@ -33,7 +33,7 @@
 </P>
 <hr>
 
-<?
+<%
 
 flush();
 
@@ -58,7 +58,7 @@ if($uni != "" || $pw != "")
   unlink($fname);
 }
 
-?>
+%>
 
 </body>
 </html>
