@@ -6,8 +6,8 @@ require_once("widgets/basic.inc");
 $MassEmail_students = array
 (
   "all" => "All Students",
-  "dumb" => "Students who haven't filled out any surveys",
-  "bad" => "Students who haven't filled out all of their surveys",
+  "dumb" => "Students who completed no surveys",
+  "bad" => "Students who completed some surveys",
   "good" => "Students who completed all of their surveys"
 );
 
@@ -20,6 +20,7 @@ class MassEmail extends FormWidget
   var $replyto;
   var $to;
   var $text;
+  var $topicid;
   
   var $action;
   var $errors;
@@ -38,6 +39,7 @@ class MassEmail extends FormWidget
     $this->text = new TextBox(15,60,"", "${prefix}_text", $form, $formmethod);
     $this->action = new ActionButton("${prefix}_action", $form, $formmethod);
     $this->errors = array();
+    $this->topicid = 0;
   }
   
   function loadvalues()
@@ -54,6 +56,7 @@ class MassEmail extends FormWidget
       $this->text->loadvalues();
       $this->action->loadvalues();
       $this->to = $this->loadattribute("to");
+      $this->topicid = $this->loadattribute("topicid");
     }
     else
     {
@@ -71,7 +74,6 @@ class MassEmail extends FormWidget
       $this->replyto->text = "wces@columbia.edu";
       $this->subject->text = "WCES Reminder";
       $this->text->text = "Dear %studentname%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
-      
     }  
 
     if (!emailvalid($this->from->text))
@@ -96,6 +98,7 @@ class MassEmail extends FormWidget
   {
     global $MassEmail_students;
     $prefix = $this->prefix;
+    $db = $this->db;
     $this->form->display();
 
     $go = $this->action->action == MassEmail_preview || $this->action->action == MassEmail_send;
@@ -113,6 +116,7 @@ class MassEmail extends FormWidget
       $this->subject->display(true);
       $this->text->display(true);
       $this->preserveattribute("to");
+      $this->preserveattribute("topicid");
     }
     else
     {
@@ -157,7 +161,19 @@ class MassEmail extends FormWidget
         $selected = $key == $this->to ? " selected" : "";
         print("<option value=\"$key\"$selected>$label</option>");
       }  
-      print("</select>");  
+      print("</select><br>\n");  
+      
+      print("<select name=\"${prefix}_topicid\">");
+      $topics = db_exec("SELECT topicid, name FROM topics", $db, __FILE__, __LINE__);
+      print("<option value=\"0\"$selected>All Students</option>");
+      while($topic = mysql_fetch_assoc($topics))
+      {
+        $topicid = $name = "";
+        extract($topic);
+        $selected = $topicid == $this->topicid ? " selected" : "";
+        print("<option value=\"$topicid\"$selected>$name Students</option>");
+      }
+      print("</select>\n");
     %></td>
   </tr>
   <tr>
@@ -181,7 +197,7 @@ class MassEmail extends FormWidget
   {
     $db = $this->db;
    
-    $questionperiodid = wces_Findquestionsetsta($db,"qsets");        
+    $questionperiodid = wces_Findquestionsetsta($db, "qsets", 0, $this->topicid);        
 
     db_exec("CREATE TEMPORARY TABLE studclasses( userid INTEGER NOT NULL, classid INTEGER NOT NULL, surveyed INTEGER, PRIMARY KEY(userid, classid) )", $db, __FILE__, __LINE__);
     db_exec("
@@ -203,7 +219,7 @@ class MassEmail extends FormWidget
     // COUNT(DISTINCT sc.classid) directly in the HAVING clause
 
     if ($this->to == "good")
-      $having = "HAVING bob = SUM(sc.surveyed)";
+      $having = "HAVING bob <= SUM(sc.surveyed)";
     else if ($this->to == "dumb")
       $having = "HAVING 0 = SUM(sc.surveyed)";
     else if ($this->to == "bad")
