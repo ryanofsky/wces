@@ -3,43 +3,36 @@
 require_once("wces/login.inc");
 require_once("wces/prespond.inc");
 
-login_protect(login_professor);
+LoginProtect(LOGIN_PROFESSOR);
 
-$user_id = login_getuserid();
-$profname = login_getname();
+$user_id = LoginValue('user_id');
+$profname = LoginValue('name');
 
-define('ProfResponseMenu_choose', 1);
-
-class ProfResponseMenu extends StatefullWidget
+class ProfResponseMenu extends ParentWidget
 {
   function ProfResponseMenu($name, &$parent)
   {
-    $this->StatefullWidget($name, $parent);
-    $this->urlShortName("course_id");
+    $this->ParentWidget($name, $parent);
+    $this->shortName("course_id");
   }
 
-  function & handleEvent($event, $param, $isNew)
+  function loadState($new)
   {
-    global $base_branch_id, $user_id, $factories;
-    if ($event == ProfResponseMenu_choose)
-    {
-      $user_id = login_getuserid();
-      ProfResponse::DumpScript();
-      $this->response =& new ProfResponse($param, $user_id, false, 'response', $this);
-      $this->loadChild($this->response, $isNew);
-      return $this->response;
-    }
-  }
-
-  function & loadState()
-  {
-    StatefullWidget::loadState();
+    ParentWidget::loadState($new);
+    if ($new) return;
     
-    $mode = WIDGET_FORM | WIDGET_URL;
-    $course_id = $this->readValue('course_id', $mode);
-
+    $course_id = (int)$this->readValue('course_id');
     if ($course_id)
-      $this->eventLoop(ProfResponseMenu_choose, $course_id, true);
+    {
+      global $user_id;
+      ProfResponse::DumpScript();
+      $this->init =& new InitializerWidget('init', $this);
+      $this->response =& new ProfResponse($course_id, $user_id, false, 
+        'response', $this->init);
+      $this->response->modal = true;
+      $this->loadChild($this->init);
+      if ($this->response->done) unset($this->modalChild);
+    }
   }  
   
   function printVisible()
@@ -49,15 +42,14 @@ class ProfResponseMenu extends StatefullWidget
     if (isset($this->response->message))
       print($this->response->message);
     
-    $uid = (int)login_getuserid();
     wces_connect();
   
     $result = pg_go("
       SELECT cl.course_id, get_course(cl.course_id) AS course_info
-      FROM enrollments AS e
+      FROM enrollments_p AS e
       INNER JOIN ($select_classes) AS l USING (class_id)
       INNER JOIN classes AS cl USING (class_id)
-      WHERE e.user_id = $uid AND e.status = 3
+      WHERE e.user_id = $user_id
       GROUP BY cl.course_id
       ORDER BY course_info
     ", $wces, __FILE__, __LINE__);
@@ -90,7 +82,7 @@ $f->loadState();
 
 page_top("Survey Results");
 
-print("<form method=post action=\"$f->pageName\">\n$ISID\n");
+print("<form method=post>\n$ISID\n");
 $f->display();
 $l->display();
 print("</form>\n");
