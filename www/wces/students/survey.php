@@ -16,23 +16,24 @@ login_protect(login_student);
 
 param($class_id);
 param($save);
-
+param($question_period_id);
 wces_connect();
 
-if ($class_id)
+if ($class_id && $question_period_id)
 {
-  $question_period_id = (int) pg_result(pg_query("SELECT get_question_period()", $wces, __FILE__, __LINE__),0,0);
   $user_id = login_getuserid();
   $class_id = (int)$class_id;
-  $result = pg_query("
-      SELECT t.topic_id, EXISTS (SELECT * FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id)
-      FROM wces_topics AS t
-      INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
-      WHERE e.class_id = $class_id
+  $question_period_id = (int)$question_period_id;
+
+  $result = pg_go("
+    SELECT t.topic_id, EXISTS (SELECT * FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id AND sr.question_period_id = qt.question_period_id AND sr.user_id = $user_id)
+    FROM enrollments AS e
+    INNER JOIN wces_topics AS t USING (class_id)
+    INNER JOIN question_periods_topics AS qt ON qt.question_period_id = $question_period_id AND qt.topic_id = t.topic_id
+    WHERE e.class_id = $class_id AND e.user_id = $user_id AND e.status = 1
   ", $wces, __FILE__, __LINE__);
 
-
-  if(pg_numrows($result) == 1 && pg_result($result,0,1) == 'f')
+  if (pg_numrows($result) == 1 && pg_result($result,0,1) == 'f')
   {
     $topic_id = (int)pg_result($result,0,0);
 
@@ -46,6 +47,7 @@ if ($class_id)
       new AbetFactory()
     );
     $q = new SurveyWidget($topic_id, get_base($topic_id), $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
+    $q->anonymous = true;
     $q->loadvalues();
   }
   else
@@ -62,7 +64,7 @@ if ($class_id)
   else
   {
     page_top("Student Survey");
-    $r = pg_query("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
 
     $class = format_class(pg_result($r,0,0));
     $prof = format_profs(pg_result($r,0,1), false, "<br>Professor ");

@@ -174,7 +174,7 @@ function ShowClass($class_id)
         assert(mysql_numrows($n) == 1);
         $dfg = mysql_fetch_array($n); 
         $responses = (int)$dfg['responses'];
-        $students = (int)$dfg['students'];
+        $students = isset($dfg['students']) ? (int)$dfg['students'] : "??";
         $n = 10;        
       }
       else
@@ -294,13 +294,13 @@ function ShowProfessor($user_id)
   
   print("<h3>$firstname $lastname</h3>\n");
   
-  $result = pg_query("SELECT url, picname, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+  $result = pg_query("SELECT url, picture_id, statement, profile, education FROM professor_data WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
   if (!pg_numrows($result) != 1)
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   else
     $url = $picname = $statement = $profile = $education = NULL;
 
-  if ($picname) print("<p><img src=\"/oracle/prof_images/$picname\"></p>\n");
+  if ($picture_id) print("<p><img src=\"" . picture_src($picture_id) . "\"></p>\n");
   
   $classes = pg_query("
     SELECT e.class_id, get_class(e.class_id) AS class_info

@@ -204,7 +204,7 @@ class SurveyEditor extends FormWidget
 
   function display($hidden = false)
   {
-    global $server_media, $wbes;
+    global $server_media, $wbes, $survey_debug;
     
     $this->printattribute("survey", urlencode(serialize($this->survey)));
     $q = unserialize(serialize($this->survey));
@@ -222,6 +222,7 @@ class SurveyEditor extends FormWidget
 
           foreach($this->factories as $key => $f)
           {
+            if (isset($f->noshow) && $f->noshow) continue;
             if ($first) $first = false; else print("<br>\n");
             $this->insert_type->display($key);
             $this->insert_type->displaylabel($key, $f->name());
@@ -289,6 +290,7 @@ by clicking above and below existing components.</p>
 <?
               if ($i >= $ncomponents) break;
               $component = &$this->survey->components[$i];
+              if ($survey_debug) debugout($component->revision_id, "revision_id = ");
               $w = $component->getwidget("{$this->prefix}_main_qwidget_$i", $this->form, $this->formmethod);
               $w->loadvalues();
 ?>
@@ -303,7 +305,7 @@ if($component->locked && $component->revision_id)
 {
   wbes_connect();
   $sql = "SELECT topic_id FROM branches AS a, revisions AS b WHERE a.branch_id = b.branch_id AND b.revision_id = '$component->revision_id'";
-  $r = pg_query($sql, $wbes, __FILE__, __LINE__);
+  $r = pg_go($sql, $wbes, __FILE__, __LINE__);
   $wr = new pg_wrapper($r);
     
   if($wr->row['topic_id'] != $this->topic_id)

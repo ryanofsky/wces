@@ -16,7 +16,7 @@
     $server_massreply = "wces@columbia.edu";
     $server_feedback = "wces@columbia.edu";
     $server_admin = "wces@columbia.edu";
-    $server_dev = "rey4@columbia.edu, tjw19@columbia.edu";
+    $server_dev = "rey4@columbia.edu";
 
     function server_mysqlinit()
     {

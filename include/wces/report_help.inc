@@ -1,5 +1,7 @@
 <?
 
+require_once("jpgraph/jpgraph.php");
+
 function report_meter($percent)
 {
   global $server_media;
@@ -149,5 +151,57 @@ function MakeGraph($datax, $datay)
     . ">";
 }
 
+function LineGraphSize(&$params, $datax = NULL)
+{
+  $params['angle'] = 50;
+  $params['size'] = 10;
+  $params['family'] = FF_VERDANA;
+  $params['style'] = FS_NORMAL;
+  $params['graphWidth'] = 200;
+  $params['graphHeight'] = 150;
+  $params['graphMargin'] = 20;
+  
+  if (isset($params['width']) && isset($params['height']))
+  {
+    $params['bottom'] = $params['height'] - $params['graphHeight'] - 2 * $params['graphMargin'];
+    $params['left'] = $params['width'] - $params['graphWidth'] - 2 * $params['graphMargin'];
+  }
+  else
+  {
+    $ttf = new TTF();
+    $file = $ttf->File($params['family'], $params['style']);
+  
+    $lowest = -1000; $highest = 1000;
+    $xmargin = 0;
+    $p = 0;
+    $segmentWidth = (double)$params['graphWidth'] / (double)count($datax);
+    foreach($datax as $txt)
+    {
+      $leftest = 1000; $rightest = -1000;
+      $bbox = ImageTTFBBox($params['size'],$params['angle'],$file,$txt);
+      for($i = 0; $i < 4; ++$i)
+      {
+        $x = $bbox[2 * $i];
+        $y = $bbox[2 * $i + 1 ];
+        if ($y > $lowest) $lowest = $y;
+        if ($y < $highest) $highest = $y;
+        if ($x < $leftest) $leftest = $x;
+        if ($x > $rightest) $rightest = $x;
+      };
+      
+      if ($rightest - $leftest)
+      {
+        $nx = $rightest - $leftest - ($p + 0.5 )* $segmentWidth;
+        if ($nx > $xmargin) $xmargin = $nx;
+      }
+      ++$p;
+    };
+    
+    $params['left'] = $xmargin;
+    $params['bottom'] = $lowest - $highest;
+    $params['width'] = (int)($params['graphWidth'] + 2 * $params['graphMargin'] + $params['left']);
+    $params['height'] = (int)($params['graphHeight'] + 2 * $params['graphMargin'] + $params['bottom']);
+  }
+};
 
 ?>

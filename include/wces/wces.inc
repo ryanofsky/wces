@@ -153,4 +153,13 @@ function registrar_clean(&$str)
   $str = str_replace(array(" - ", "Iv", "Iii", "Ii"), array("-", "IV", "III", "II"), ucwords(strtolower(str_replace("-", " - ", $str))));  
 };
 
+function picture_src($id)
+{
+  global $wces;
+  if (!$id) return false;
+  wces_connect();
+  $r = pg_go("SELECT name FROM pictures WHERE file_id = $id", $wces, __FILE__, __LINE__);
+  return "/wces/upload/" . pg_result($r, 0, 0);
+};
+
 ?>

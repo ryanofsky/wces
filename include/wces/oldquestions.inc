@@ -85,7 +85,7 @@ class TARating
       $bsql .= ", $column";
       $msql .= ", '" . addslashes($this->answers[$column]) . "'";
     }
-    return pg_query($bsql . $msql . $esql, $wces, __FILE__, __LINE__);
+    return pg_go($bsql . $msql . $esql, $wces, __FILE__, __LINE__);
   }
 
   function validate()

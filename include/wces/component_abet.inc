@@ -3,12 +3,13 @@
 require_once("wbes/component.inc");
 require_once("wbes/component_choice.inc");
 
-$ABET_REVISION = 31;
-$ABET_TOPIC = 1;
-$ABET_SKIP = array(3);
-
 class AbetFactory extends ChoiceFactory
 {
+  var $ABET_REVISION = 31;
+  var $ABET_TOPIC = 1;
+  var $ABET_SKIP = array(3);
+  var $noshow = true;
+
   function code() { return 10; }
   function name() { return "ABET Question Set"; }
   
@@ -20,9 +21,9 @@ class AbetFactory extends ChoiceFactory
     {
       wbes_connect();
       $cs = array();
-      ChoiceFactory::load($cs, array($ABET_REVISION), array(0), 1, "NULL");
+      ChoiceFactory::load($cs, array($this->ABET_REVISION), array(0), 1, "NULL");
       $prototype = $cs[0];
-      foreach($ABET_SKIP as $s)
+      foreach($this->ABET_SKIP as $s)
       {
         unset($prototype->questions[$s]);
         unset($prototype->question_ids[$s]);
@@ -34,6 +35,7 @@ class AbetFactory extends ChoiceFactory
   function create()
   {
     $c = new Abet($this->prototype());
+    $c->typecode = $this->code();
     foreach(array_keys($c->prototype->questions) AS $k)
       $c->which[$k] = false;
     return $c;
@@ -41,12 +43,12 @@ class AbetFactory extends ChoiceFactory
 
   function load(&$components, $ids, $ordinals, $topic_id, $latest)
   {
-    global $wbes, $ABET_SKIP;
+    global $wbes;
     $cs = array();
     
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, which FROM abet_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, type, which FROM abet_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -54,10 +56,30 @@ class AbetFactory extends ChoiceFactory
       $c->revision_id = (int)$wr->row['revision_id'];
       $which = (int)$wr->row['which'];
       foreach(array_keys($c->prototype->questions) AS $k)
+      {
         $c->which[$k] = (bool)($which & (1 << $k));
+        $c->typecode = (int)$wr->row['type'];
+      }
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
   }
+}
+
+class NewAbetFactory extends AbetFactory
+{
+  var $ABET_REVISION = 1252;
+  var $ABET_SKIP = array();
+  var $noshow = false;
+  function code() { return 100; }
+}
+
+class BioAbetFactory extends AbetFactory
+{
+  var $ABET_REVISION = 1256;
+  var $ABET_SKIP = array();
+  var $noshow = false;
+  function code() { return 101; }
+  function name() { return "ABET Biology Question Set"; }
 }
 
 class Abet extends Component
@@ -100,7 +122,7 @@ class Abet extends Component
     foreach($this->which as $k => $w)
       if ($w) $which |= 1 << (int)$k;
 
-    $result = pg_query("SELECT abet_component_save($topic_id, $r, $save_id, $which)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT abet_component_save($topic_id, $r, $save_id, $which, $this->typecode)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }  
 };

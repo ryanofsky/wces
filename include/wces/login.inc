@@ -36,7 +36,7 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
   global $wces;
   wces_connect();
   
-  $result = pg_query("
+  $result = pg_go("
     select u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
     from users AS u
     left join enrollments AS e ON 
@@ -76,7 +76,7 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 function login_setup($userid, $uni, $status, $name, $deptid, $fake, $fakeuni)
 {
   global $LOGIN_SESSION, $LOGIN_SESSION_VARS;
-  session_initialize($LOGIN_SESSION_VARS, "login/");
+  $LOGIN_SESSION = session_initialize($LOGIN_SESSION_VARS, "login/");
   $LOGIN_SESSION["userid"] = (int)$userid;
   $LOGIN_SESSION["uni"] = $uni;
   $LOGIN_SESSION["status"] = (int)$status;
@@ -187,7 +187,7 @@ function login_validate($uni,$password)
   if (!$dump)
   {
     sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
-    $login_fail = "Authentication Error. Login warning: Could not contact AcIS server.";
+    $login_fail = "Error: Timeout occurred while trying to contact the AcIS authentication server. Please try again.";
     return false;
   }
      
@@ -227,7 +227,7 @@ function login_validate($uni,$password)
   aarray_map('quot',$p);
   
   wces_connect();
-  $result = pg_query("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
+  $result = pg_go("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
   $user_id = (int)pg_result($result,0,0);
   login_update($user_id);
 
@@ -247,7 +247,6 @@ function contains($haystack,$needles)
 function acisget($uni,$pw)
 {
   global $server_win32, $server_tempdir;
-  
   if ($server_win32)
   {
     $grabber = new COM("Oracle.AffilGrabber");
@@ -259,11 +258,11 @@ function acisget($uni,$pw)
     $fname = tempnam($server_tempdir, "booty");
 
     $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
-    $fp = fopen ($fname, "w");
-    curl_setopt ($ch, CURLOPT_FILE, $fp);
-    curl_setopt ($ch, CURLOPT_USERPWD, "$uni:$pw");
-    curl_setopt ($ch, CURLOPT_HEADER, 1);
-    curl_setopt ($ch, CURLOPT_TIMEOUT, 5);
+    $fp = fopen($fname, "w");
+    curl_setopt($ch, CURLOPT_FILE, $fp);
+    curl_setopt($ch, CURLOPT_USERPWD, "$uni:$pw");
+    curl_setopt($ch, CURLOPT_HEADER, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
     curl_exec ($ch);
     curl_close ($ch);
     fclose ($fp);
@@ -283,7 +282,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
 {
   global $login_fail, $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING, $LOGIN_SESSION, $LOGIN_SESSION_VARS;
   $LOGIN_PROMPTING = true;
-  session_initialize($LOGIN_SESSION_VARS, "login/");
+  $LOGIN_SESSION = session_initialize($LOGIN_SESSION_VARS, "login/");
 
   page_top("Login Page");  
 

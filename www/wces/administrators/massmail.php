@@ -65,7 +65,7 @@ class MassEmail extends FormWidget
       $user_id = login_getuserid();
       $name = login_getname();
       $name = ucwords(strtolower($name));
-      $email = pg_result(pg_query("SELECT email FROM users WHERE user_id = $user_id", $wces, __FILE__, __LINE__),0,0);
+      $email = pg_result(pg_go("SELECT email FROM users WHERE user_id = $user_id", $wces, __FILE__, __LINE__),0,0);
       if ($email)
       {
         if ($name)
@@ -171,7 +171,7 @@ class MassEmail extends FormWidget
       print("</select><br>\n");
 
       wces_connect();
-      $survey_categories = pg_query("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
+      $survey_categories = pg_go("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
       $n = pg_numrows($survey_categories);
 
       print("<select name=\"${prefix}_survey_category_id\">");
@@ -180,7 +180,7 @@ class MassEmail extends FormWidget
       {
         extract(pg_fetch_array($survey_categories,$i,PGSQL_ASSOC));
         $selected = $survey_category_id == $this->survey_category_id ? " selected" : "";
-        print("<option value=\"$survey_category_id\"$selected>$name Students</option>");
+        print("<option value=\"$survey_category_id\"$selected>$name Classes</option>");
       }
       print("</select>\n");
     ?></td>
@@ -218,17 +218,17 @@ class MassEmail extends FormWidget
       $subject = addslashes($this->subject->text);
       $body = addslashes($this->text->text);
 
-      pg_query("
+      pg_go("
         INSERT INTO sent_mails (user_id, mail_from, reply_to, mail_to, subject, body)
         VALUES ($user_id, '$from', '$reply_to', '$mail_to', '$subject', '$body');
       ", $wces, __FILE__, __LINE__); 
       
     }
     
-    $result = pg_query("
+    $result = pg_go("
       SELECT question_period_id, displayname, year, semester
       FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_question_period())
+      WHERE question_period_id = 23 -- (SELECT get_question_period())
     ", $wces, __FILE__, __LINE__);
     extract(pg_fetch_array($result,0,PGSQL_ASSOC));
     
@@ -236,7 +236,7 @@ class MassEmail extends FormWidget
 
     $status = $this->to == "prof" ? 3 : 1;
 
-    $result = pg_query("
+    $result = pg_go("
       CREATE TEMPORARY TABLE studclasses AS
       SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
       FROM wces_topics AS t
@@ -256,14 +256,14 @@ class MassEmail extends FormWidget
     else
       $having = "";
 
-    pg_query("
+    pg_go("
       CREATE TEMPORARY TABLE recipients AS
       SELECT user_id, COUNT(DISTINCT sc.class_id) AS surveys, SUM(sc.surveyed) AS surveyed
       FROM studclasses AS sc GROUP BY sc.user_id
       $having
     ",$wces, __FILE__, __LINE__);
 
-    $users = pg_query("
+    $users = pg_go("
       SELECT r.user_id, r.surveys, r.surveyed, u.uni AS cunix, u.email, u.firstname || ' ' || u.lastname AS name
       FROM recipients AS r
       INNER JOIN users AS u USING (user_id)
@@ -271,7 +271,7 @@ class MassEmail extends FormWidget
       ORDER BY r.user_id
     ", $wces, __FILE__, __LINE__);
 
-    $classes = pg_query("
+    $classes = pg_go("
       SELECT sc.user_id AS cluser_id, sc.surveyed, cl.class_id, cl.section, c.code, c.name AS cname, s.code AS scode, p.firstname || ' ' || p.lastname as pname
       FROM recipients AS r
       INNER JOIN studclasses AS sc USING (user_id)

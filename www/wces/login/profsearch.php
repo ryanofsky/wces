@@ -34,7 +34,7 @@ if ($lastname)
 
   wces_connect();
 
-  $professors = pg_query("SELECT user_id, lastname, firstname FROM users WHERE flags & 4 = 4 AND lastname ILIKE '%" . addslashes($lastname) . "%' LIMIT 30",$wces,__FILE__,__LINE__);
+  $professors = pg_go("SELECT user_id, lastname, firstname FROM users WHERE flags & 4 = 4 AND lastname ILIKE '%" . addslashes($lastname) . "%' LIMIT 30",$wces,__FILE__,__LINE__);
   $sems = array(0 => "Spring", 1 => "Summer", 2 => "Fall");
   if (($ps = pg_numrows($professors)) > 0)
   {
@@ -43,7 +43,7 @@ if ($lastname)
     {
       extract(pg_fetch_array($professors,$p,PGSQL_ASSOC));
       print("<TR><TD>$firstname $lastname [<a href=\"profbounce.php?user_id=$user_id&url=$url\">Use This Listing</a>]<UL>");
-      $classes = pg_query("
+      $classes = pg_go("
         SELECT cl.section, cl.year, cl.semester, c.code, c.name, s.code as scode
         FROM enrollments AS e
         INNER JOIN classes as cl USING (class_id)

@@ -19,7 +19,7 @@ class TextResponseFactory extends ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, flags, rows, cols FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, ctext, flags, rows, cols FROM textresponse_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -75,7 +75,7 @@ class TextResponse extends Component
     if ($this->locked)      $flagGroup |= FLAG_LOCKED;
     if ($this->label_align) $flagGroup |= FLAG_ALIGN;
 
-    $result = pg_query("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $flagGroup, $rows, $cols)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }  
 };
@@ -207,7 +207,7 @@ class TextResponseWidget extends ComponentWidget
     $t = addslashes(trim($this->response->text));
     
     if ($t)
-      return (boolean) pg_query("
+      return (boolean) pg_go("
         INSERT INTO textresponse_responses(revision_id, parent, rtext)
         VALUES ({$this->component->revision_id}, $parent, '$t')
       ", $wbes, __FILE__, __LINE__);

@@ -15,6 +15,8 @@ define("DEPARTMENTS",      0x08);
 define("PROFESSORS",       0x10);
 define("CATEGORIES",       0x20);
 
+$report_debug = false;
+
 function report_findtopics($tempname, $criteria, $needprof = true)
 {
   global $wces;
@@ -66,7 +68,7 @@ function report_findtopics($tempname, $criteria, $needprof = true)
   // the subselect in the FROM clause is only there as an optimization. ~ 4.5 times faster
   wces_connect();
 
-  pg_query("
+  pg_go("
     CREATE TEMPORARY TABLE $tempname AS
     SELECT NULL::INTEGER AS ordinal, r.topic_id, r.question_period_id, t.class_id, cl.course_id, cl.department_id$pselect
     FROM (SELECT question_period_id, topic_id FROM survey_responses {$twhere}GROUP BY question_period_id, topic_id) AS r
@@ -166,7 +168,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
   }
   if (!$group_s)
   {
-    pg_query("UPDATE $topicstable SET ordinal = 1", $wces, __FILE__, __LINE__);
+    pg_go("UPDATE $topicstable SET ordinal = 1", $wces, __FILE__, __LINE__);
     return true;
   }
   else
@@ -196,7 +198,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
 
     $tempname = substr(md5(uniqid(rand(),1)),0,20);
 
-    pg_query("
+    pg_go("
       CREATE TEMPORARY TABLE tab$tempname AS
       SELECT $tcols
       FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
@@ -284,9 +286,11 @@ class Sections
 // possible options:
 // - "pies"
 
+$report_always_graph = false;
+
 function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professors, &$departments, &$questionperiods, &$textresponses, &$choices, &$ords, &$taresponses)
 {
-  global $wces_path, $TAQUESTIONS, $TAVALUES;
+  global $wces_path, $TAQUESTIONS, $TAVALUES, $report_debug, $report_always_graph;
 
   $outhtml = is_string($pagehtml);
   $outtext = is_string($pagetext);
@@ -374,20 +378,18 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
   if ($outhtml)
   {
-    $pagehtml .= "<h4>Response Statistics</h4>";
+    $pagehtml .= "<h4>Response Statistics</h4>\n";
     $pagehtml .= "<table border=0 summary=\"number of responses\">\n";
     $pagehtml .= "<tr><td>Total Surveys:</td><td><b>$students</b></td></tr>\n";
     $pagehtml .= "<tr><td>Evaluated Surveys:</td><td><b>$responses</b></td></tr>\n";
-    $pagehtml .= "</table>\n";
+    $pagehtml .= "</table>\n<br>\n";
     $pagehtml .= '<img src="' . "${wces_path}media/graphs/susagegraph.php?blank=" . ($students-$responses) . "&filled=$responses\" width=200 height=200><img src=\"${wces_path}media/graphs/susagelegend.gif\" width=147 height=31>";
+    $pagehtml .= "<h4>Responses</h4>\n";
   }
 
   ///////////////////////////////// COURSE RATINGS /////////////////////////////////////
 
   $sections = new Sections($branchorder);
-
-  if (isset($choices->row) && $choices->row['ordinal'] == $ordinal)
-    $is_single_question = $choices->peek(0) || $choices->peek(1);
 
   while(isset($choices->row) && $choices->row['ordinal'] == $ordinal)
   {
@@ -395,7 +397,13 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
     if ($choices->split[1])
     {
+      $is_single_question = $choices->peek(0) || $choices->peek(1);
+      if ($choices->row['qrevision_id'] == 221) $is_single_question = false;
+      if ($report_always_graph) $is_single_question = true;
+      $s = '; page-break-before: always';
+
       $sectionhtml = $sectiontext = "";
+      $sectionhtml .= "<div style=\"page-break-inside: avoid$s\">\n";
 
       // set variables which will be used to interpret data and print headers:
       // $headings, $component_choices, $values, $showstats, $textformat, $textrows
@@ -446,12 +454,18 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
         $vheadings[$hk] = $str;
       }
 
-      // information about the question set is now readily available, so
+      // information about the question set is now available, so
       // begin doing html / text formatting
 
       // do html header
       if ($outhtml)
       {
+        if ($report_debug) 
+        {
+          $sectionhtml .= "<h5><font color=red><i>Component revision_id = $crevision_id</i></font></h5>\n";        
+        }
+        
+        if ($ctext)   $sectionhtml .= "$ctext<br>";
         if (!$is_single_question)
         {
           if ($flags & FLAG_ISNUMERIC)
@@ -528,6 +542,12 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
       }
     } // if ($choices->split[1])
 
+    
+    if ($report_debug)
+    {
+      $qtext = "<font color=red><i>revision_id = $qrevision_id</i></font> $qtext";
+    }
+
     // done with header, format individual questions within the set
 
     // get the numbers
@@ -597,6 +617,8 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
     if ($choices->split[1])
     {
       if ($outhtml && !$is_single_question) $sectionhtml .= "</table>\n";
+      $sectionhtml .= "</div>\n";
+      if ($outhtml) $sectionhtml .= "<br>\n";
       if ($outtext)
       {
         $sectiontext .= texttable($textrows,$textformat);
@@ -615,6 +637,10 @@ function report_makepage(&$pagetext, &$pagehtml, &$stats, &$classes, &$professor
 
     if ($textresponses->split[1])
     {
+      if ($report_debug)
+      {
+        $ctext = "<font color=red><i>revision_id = $revision_id</i></font> $ctext";
+      }
       $sectionhtml = $sectiontext = "";
       if ($outhtml) $sectionhtml .= "<h5>$ctext</h5>\n<ul>\n";
       if ($outtext) $sectiontext .= "$ctext\n\n";

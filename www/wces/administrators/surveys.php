@@ -19,6 +19,7 @@ $pagename = $server_url->toString(false, true, false);
 param($topic_id);
 param($bbid);
 if ($bbid) $bbid = (int)$bbid; else $bbid = 1;
+$question_period_id = 23;
 
 $factories = array
 (
@@ -27,7 +28,9 @@ $factories = array
   new TextFactory(),
   new HeadingFactory(),
   new PageBreakFactory(),
-  new AbetFactory()
+  new AbetFactory(),
+  new NewAbetFactory(),
+  new BioAbetFactory()
 );
 
 if($topic_id)
@@ -38,6 +41,7 @@ if($topic_id)
 else 
   $q = false;
 
+$survey_debug = 0;
 
 if ($q && $q->barepage) 
 {
@@ -84,23 +88,31 @@ if (!$q || $q->state == SurveyEditor_done)
   
   print("<p>Choose a survey to edit.</p>");
   
-  $result = pg_query("SELECT topic_id, 'Base Questions' AS name FROM wces_topics WHERE category_id IS NULL AND class_id IS NULL", $wces, __FILE__, __LINE__);
+  $result = pg_go("
+    --SELECT topic_id, 'Base Questions' AS name 
+    --FROM wces_topics WHERE category_id IS NULL AND class_id IS NULL
+    SELECT * FROM
+    (
+      SELECT 1 AS topic_id, 'Base Questions' AS name, 1 AS ordinal
+      UNION
+      SELECT 3736, 'Base Engineering Questions', 2
+      UNION
+      SELECT 3733, 'Base Bioengineering Questions', 3
+    ) AS t ORDER BY ordinal
+   ", $wces, __FILE__, __LINE__);
+    
+    
   topics_link($result);
   
   print("<h5>Individual Classes</h5>\n");
 
-  $result = pg_query("
-    SELECT question_period_id, displayname, year, semester
-    FROM semester_question_periods
-    WHERE question_period_id = (SELECT get_question_period())
-  ", $wces, __FILE__, __LINE__);
-  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-  
-  $result = pg_query("
+  $result = pg_go("
     SELECT t.topic_id, get_class(t.class_id) AS name
-    FROM wces_topics AS t
+    FROM question_periods AS q
+    INNER JOIN question_periods_topics AS qt USING (question_period_id)
+    INNER JOIN wces_topics AS t USING (topic_id)
     INNER JOIN classes AS cl USING (class_id)
-    WHERE t.category_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester AND category_id <> 103
+    WHERE q.enddate > (select now()) AND t.category_id IS NOT NULL AND category_id <> 103
     ORDER BY name
   ", $wces, __FILE__, __LINE__);
   topics_link($result, true);

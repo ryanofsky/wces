@@ -84,19 +84,14 @@ if (!$q || $q->state == SurveyEditor_done)
   $user_id = login_getuserid();
   wces_connect();
   
-  $result = pg_query("
-    SELECT question_period_id, displayname, year, semester
-    FROM semester_question_periods
-    WHERE question_period_id = (SELECT get_question_period())
-  ", $wces, __FILE__, __LINE__);
-  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-
-  $result = pg_query("
+  $result = pg_go("
     SELECT t.topic_id, get_class(t.class_id) AS name
-    FROM wces_topics AS t
+    FROM question_periods AS q
+    INNER JOIN question_periods_topics AS qt USING (question_period_id)
+    INNER JOIN wces_topics AS t USING (topic_id)
     INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 3
     INNER JOIN classes AS cl ON cl.class_id = e.class_id
-    WHERE t.category_id IS NOT NULL AND t.class_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
+    WHERE q.enddate > (select now()) AND t.category_id IS NOT NULL
     ORDER BY name
   ", $wces, __FILE__, __LINE__);
 

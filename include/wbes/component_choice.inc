@@ -31,7 +31,7 @@ class ChoiceFactory extends ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -59,7 +59,7 @@ class ChoiceFactory extends ComponentFactory
 
       // todo: optimize. these queries can be performed once outside of the for loop
 
-      $result = pg_query("
+      $result = pg_go("
         CREATE TEMPORARY TABLE tmp$c->revision_id AS
         SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
         FROM list_items AS li
@@ -71,7 +71,7 @@ class ChoiceFactory extends ComponentFactory
         ORDER BY ordinal
       ", $wbes, __FILE__, __LINE__);
 
-      pg_query("DROP TABLE tmp$c->revision_id", $wbes, __FILE__, __LINE__);
+      pg_go("DROP TABLE tmp$c->revision_id", $wbes, __FILE__, __LINE__);
 
       $n = pg_numrows($result);
 
@@ -157,7 +157,7 @@ class Choice extends Component
     if ($this->locked)      $flagGroup |= FLAG_LOCKED;
     if ($this->is_html)     $flagGroup |= FLAG_ISHTML;
 
-    $result = pg_query("
+    $result = pg_go("
       SELECT choice_component_save($topic_id, $revision_id, $save_id, '$ctext',
         $questions::text[], $question_ids::integer[],
         $choices::text[], '$other_choice'::text, $first_number, $last_number,
@@ -830,7 +830,7 @@ class ChoiceWidget extends ComponentWidget
   {
     global $wbes;
 
-    $result = pg_query("
+    $result = pg_go("
       INSERT INTO choice_responses(revision_id, parent) VALUES ({$this->component->revision_id}, $parent);
       SELECT currval('response_ids');
     ", $wbes, __FILE__, __LINE__);
@@ -855,7 +855,7 @@ class ChoiceWidget extends ComponentWidget
         else
           $answer = quot($a);
 
-        $success = $success && pg_query("
+        $success = $success && pg_go("
           INSERT INTO $table(revision_id, parent, answer, other)
           VALUES ({$this->component->question_ids[$i]}, $nparent, $answer, '$other');
         ", $wbes, __FILE__, __LINE__);

@@ -4,7 +4,7 @@ require_once("wbes/server.inc");
 require_once("wbes/general.inc");
 require_once("wbes/taskwindow.inc");
 
-function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
+function pg_go($sql, $db, $file = __FILE__, $line = __LINE__)
 {
   global $db_debug, $server_isproduction;
 
@@ -55,7 +55,7 @@ function pg_show($result,$name = "Result", $showtypes = false)
           if (!isset($row[$c]))
             $str = "<i><small><small>null</small></small></i>";
           else if (!$showtypes)
-            $str = htmlspecialchars($row[$c]);
+            $str = strlen($row[$c]) ? htmlspecialchars($row[$c]) : '&nbsp;';
           else
             $str = htmlspecialchars($row[$c]) . " <small><small><i>" . gettype($row[$c]) . "</i></small></small>";  
           print("  <td>$str</td>\n");
@@ -94,10 +94,10 @@ class pg_wrapper
   }
 }
 
-function array_fill($num, $val)
-{
-  return array_pad(array(), $num, $val); 
-}
+//function array_fill($num, $val)
+//{
+//  return array_pad(array(), $num, $val); 
+//}
 
 class pg_segmented_wrapper
 {

@@ -6,13 +6,118 @@ require_once("wces/oracle.inc");
 
 $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
-$wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
+$wces_ns4 = isset($HTTP_SERVER_VARS["HTTP_USER_AGENT"]) && substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
 $absolutePrintStr = $headPrintStr = "";
 
+$page_links = 'page_links';
+
+function page_links()
+{
+  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $absolutePrintStr, $headPrintStr;      
+  $uni = login_getuni();
+  $user_id = login_getuserid();
+  $status = login_getstatus();
+
+  if ($user_id)
+  {
+    page_link("Log off $uni","login/logout.php$QSID",true);
+    if ($fake = login_getfakeuni())
+      page_link("Log on as $fake", "administrators/info.php?nofake=1$ASID", true);
+  }
+  else
+    page_link("Log In","index.php$QSID", !$LOGIN_PROMPTING);
+
+  if ($user_id)
+    page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
+
+  if ($status & login_administrator)
+  {
+    page_spacer();
+    page_link("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
+    page_link("Student Usage",    "administrators/susage.php", $QSID);
+    page_link("Professor Usage",  "administrators/pusage.php", $QSID);
+    page_link("Course Database",  "administrators/info.php", $QSID);
+    page_link("Reporting Wizard", "administrators/choose.php", $QSID);
+    page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
+    page_link("Data Import",      "administrators/import.php", $QSID);
+    page_link("Question Periods", "administrators/questionperiods.php", $QSID);
+    page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
+  }
+
+  if ($status & login_deptadmin)
+  {
+    page_spacer();
+    page_link("Reporting Wizard", "administrators/report.php", $QSID);
+  }
+
+  if ($status & login_professor)
+  {
+    if ($status & login_knownprofessor)
+    {
+      page_spacer();
+      page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
+      page_link("Survey Results",   "professors/seeresults.php", $QSID);
+      //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
+      //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
+      //page_link("Edit Profile",     "professors/infoedit.php", $QSID);
+    }
+  }
+
+  if ($status & login_student)
+  {
+    wces_connect();
+    
+    $result = pg_go("
+      SELECT question_period_id, displayname, year, semester
+      FROM semester_question_periods 
+      WHERE begindate < (SELECT NOW()) AND enddate > (SELECT NOW())
+    ", $wces, __FILE__, __LINE__);
+
+    $wces_closed = pg_numrows($result) == 0;
+  }
+  
+  if (!$wces_closed && ($status & login_student))
+  {  
+    $user_id = login_getuserid();
+
+    $survey_listing = pg_go("
+      SELECT q.question_period_id, t.class_id, get_class(t.class_id) AS name,
+        CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
+      FROM question_periods AS q
+      INNER JOIN question_periods_topics AS qt USING (question_period_id)
+      INNER JOIN wces_topics AS t USING (topic_id)
+      INNER JOIN classes AS cl USING (class_id)
+      INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = cl.class_id AND e.status = 1
+      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = q.question_period_id AND sr.user_id = $user_id
+      WHERE q.begindate < (SELECT NOW()) AND q.enddate > (SELECT NOW())
+      GROUP BY q.question_period_id, sr.user_id, t.class_id
+      ORDER BY surveyed, name
+    ", $wces, __FILE__, __LINE__);
+    
+    if ($GLOBALS['db_debug'])
+      pg_show($survey_listing);
+    
+    $n = pg_numrows($survey_listing);
+
+    for($i = 0; $i < $n; ++$i)
+    {
+      extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
+      if ($surveyed) break;
+      if ($i == 0) page_spacer();
+      page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id&question_period_id=$question_period_id", $QSID, "");
+    }
+  }
+
+  page_spacer();
+  page_link("System Overview", "about/overview.php", $QSID);
+  page_link("Feedback", "about/feedback.php", $QSID);
+  page_link("Credits", "about/credits.php", $QSID);
+}
+
 function page_top($title, $minimal = false)
 {
-  global $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $absolutePrintStr, $headPrintStr;
+  global $page_links, $wces_this, $wces_path, $LOGIN_PROMPTING, $wces_ns4, $QSID, $ASID, $survey_listing, $wces, $wces_closed, $absolutePrintStr, $headPrintStr;
   $bgcolor = $minimal ? "FFFFFF" : "0065AD";
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
 <html>
@@ -69,110 +174,7 @@ function showhelp(topic)
 <? } else { ?>
 <tr>
   <td valign=top bgcolor="#DEDEDE" class=sidelinks>
-<?
-  $uni = login_getuni();
-  $user_id = login_getuserid();
-  $status = login_getstatus();
-
-  if ($user_id)
-  {
-    page_link("Log off $uni","login/logout.php$QSID",true);
-    if ($fake = login_getfakeuni())
-      page_link("Log on as $fake", "administrators/info.php?nofake=1$ASID", true);
-  }
-  else
-    page_link("Log In","index.php$QSID", !$LOGIN_PROMPTING);
-
-  if ($user_id)
-    page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
-
-  if ($status & login_administrator)
-  {
-    page_spacer();
-    page_link("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
-    page_link("Student Usage",    "administrators/susage.php", $QSID);
-    page_link("Professor Usage",  "administrators/pusage.php", $QSID);
-    page_link("Course Database",  "administrators/info.php", $QSID);
-    page_link("Reporting Wizard", "administrators/choose.php", $QSID);
-    page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
-    page_link("Data Import",      "administrators/import.php", $QSID);
-    page_link("Question Periods", "administrators/questionperiods.php", $QSID);
-    page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
-  }
-
-  if ($status & login_deptadmin)
-  {
-    page_spacer();
-    page_link("Reporting Wizard", "administrators/report.php", $QSID);
-  }
-
-  if ($status & login_professor)
-  {
-    if ($status & login_knownprofessor)
-    {
-      page_spacer();
-      page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
-      page_link("Survey Results",   "professors/seeresults.php", $QSID);
-      //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
-      //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
-      //page_link("Edit Profile",     "professors/infoedit.php", $QSID);
-    }
-  }
-
-  if ($status & login_student)
-  {
-    wces_connect();
-    
-    $result = pg_query("
-      SELECT question_period_id, displayname, year, semester, 
-        CASE WHEN begindate < NOW() THEN 0 ELSE 1 END AS closed
-      FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_next_question_period())
-    ", $wces, __FILE__, __LINE__);
-
-    if (pg_numrows($result) == 0)
-    {
-      $wces_closed = true;
-      $year = $semester = 0;
-    }
-    else
-    {
-      extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-      $wces_closed = (bool)$closed;
-    }
-  }
-
-  if (!$wces_closed && ($status & login_student))
-  {  
-    $user_id = login_getuserid();
-    
-    $survey_listing = pg_query("
-      SELECT t.class_id, get_class(t.class_id) AS name,
-        CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
-      FROM wces_topics AS t
-      INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
-      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id
-      INNER JOIN classes AS cl ON cl.class_id = e.class_id AND cl.year = $year AND cl.semester = $semester
-      GROUP BY sr.user_id, t.class_id
-      ORDER BY surveyed, name
-    ", $wces, __FILE__, __LINE__);
-    
-    $n = pg_numrows($survey_listing);
-
-    for($i = 0; $i < $n; ++$i)
-    {
-      extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
-      if ($surveyed) break;
-      if ($i == 0) page_spacer();
-      page_link(format_class($name,'%n'), "students/survey.php?class_id=$class_id", $QSID, "");
-    }
-  }
-
-  page_spacer();
-  page_link("System Overview", "about/overview.php", $QSID);
-  page_link("Feedback", "about/feedback.php", $QSID);
-  page_link("Credits", "about/credits.php", $QSID);
-?>
+<? $page_links(); ?>
   </td>
   <td valign="top" width="99%" background="<?=$wces_path?>media/page/Background_Logo.gif">
     <table width="100%" border=0 cellspacing=0 cellpadding=0>

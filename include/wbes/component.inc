@@ -28,7 +28,7 @@ class ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, data FROM generic_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+    $r = pg_go("SELECT revision_id, data FROM generic_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = unserialize($wr->row['data']);
@@ -42,7 +42,7 @@ class ComponentFactory
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, flags FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
+    $r = pg_go("SELECT revision_id, ctext, flags FROM text_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);  
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = new $cn();
@@ -90,7 +90,7 @@ class Component
     if ($this->is_html) $flagGroup |= FLAG_ISHTML;
     if ($this->locked)  $flagGroup |= FLAG_LOCKED;
 
-    $result = pg_query("SELECT text_component_save($topic_id, $r, $save_id, $cn, '$t', $flagGroup)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT text_component_save($topic_id, $r, $save_id, $cn, '$t', $flagGroup)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
   }
   
@@ -116,7 +116,7 @@ class Component
     $changed = true;
     if ($revision_id)
     {
-      $r = pg_query("SELECT data, branch_id FROM generic_components WHERE revision_id = $revision_id", $wbes, __FILE__, __LINE__);
+      $r = pg_go("SELECT data, branch_id FROM generic_components WHERE revision_id = $revision_id", $wbes, __FILE__, __LINE__);
       if (pg_numrows($r) == 1)
       {
         $changed = $s == pg_result($r,0,0);
@@ -128,7 +128,7 @@ class Component
     
     if (!$branch_id)
     {
-      $result = pg_query("
+      $result = pg_go("
         INSERT INTO branches(branch, parent) VALUES(branch_nextval(NULL), NULL);
         SELECT currval('branch_ids');
       ", $wbes, __FILE__, __LINE__);
@@ -138,12 +138,12 @@ class Component
       
     $r = $revision_id ? $revision_id : "NULL";
     
-    $result = pg_query("SELECT revision_save_start($branch_id, $r, $cn, $save_id)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT revision_save_start($branch_id, $r, $cn, $save_id)", $wbes, __FILE__, __LINE__);
     $revision_id = pg_result($result, 0, 0);
     
-    pg_query("UPDATE generic_components SET data = '$s' WHERE revision_id = $revision_id", $wbes, __FILE__, __LINE__);
+    pg_go("UPDATE generic_components SET data = '$s' WHERE revision_id = $revision_id", $wbes, __FILE__, __LINE__);
     
-    $result = pg_query("SELECT revision_save_end($branch_id, $revision_id)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT revision_save_end($branch_id, $revision_id)", $wbes, __FILE__, __LINE__);
     $revision_id = pg_result($result,0,0);
     
     return $branch_id;

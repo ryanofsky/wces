@@ -146,14 +146,14 @@ class ReportWizard extends Wizard
       if ($this->depts)
         $t = false;
       else
-        $t = array((int)pg_result(pg_query("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
+        $t = array((int)pg_result(pg_go("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
     }
     else if (in_array("all",$t)) $t = false;
 
     if (!is_array($q) || !(count($q) > 0))
     {
       wces_connect();
-      //todo: restore this default $q = array((int)pg_result(pg_query("SELECT MAX(question_period_id) FROM question_periods", $wces, __FILE__, __LINE__),0,0));
+      //todo: restore this default $q = array((int)pg_result(pg_go("SELECT MAX(question_period_id) FROM question_periods", $wces, __FILE__, __LINE__),0,0));
       $q = false;
     }
     else if (in_array("all",$q)) $q = false;
@@ -214,7 +214,7 @@ class ReportWizard extends Wizard
       report_findtopics("rwtopics", $c, $needprof);
     }
 
-    return pg_query($sql, $wces, __FILE__, __LINE__);
+    return pg_go($sql, $wces, __FILE__, __LINE__);
   }
 
   function selectshow($which, $result, $name, $all)
@@ -240,7 +240,7 @@ class ReportWizard extends Wizard
   {
     global $wces;
 
-    $result = pg_query($sql, $wces, __FILE__, __LINE__);
+    $result = pg_go($sql, $wces, __FILE__, __LINE__);
     $n = pg_numrows($result);
     for($i = 0; $i < $n; ++$i)
     {

@@ -12,7 +12,7 @@
     if ($curuser != $user_id)
     {
       wces_connect();
-      $r = pg_query("SELECT cunix_associate($curuser,$user_id)", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT cunix_associate($curuser,$user_id)", $wces, __FILE__, __LINE__);
       $user_id = pg_result($r, 0, 0);
       if ($user_id) login_update($user_id); else die("Failed to update cunix association.");
     } 

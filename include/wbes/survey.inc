@@ -2,6 +2,8 @@
 
 require_once("wbes/wbes.inc");
 
+$survey_debug = false;
+
 function get_base($topic_id)
 {
   global $wces;
@@ -16,11 +18,15 @@ function get_base($topic_id)
       return 611;
     else if ($topic_id == 1483)
       return 612;
-    else if ($topic_id == 3111)
-      return 799;
+    else if ($topic_id == 3117)
+      return 873;
+    else if ($topic_id == 3566)
+      return 943;
+    else if ($topic_id == 3567)
+      return 944;
     else
     {
-      $r = pg_query("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
       if (pg_numrows($r) == 0) return 1;
       $topic_id = (int)pg_result($r, 0, 0);
     }
@@ -73,10 +79,10 @@ class Survey
     if (!$latest) $latest = "NULL";
 
     $topic_id = (int)$topic_id;
-    $result = pg_query("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
     $existing_topic = (int)pg_result($result,0,0);
 
-    $result = pg_query("SELECT branch_latest($base_branch_id, $existing_topic, $latest)", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT branch_latest($base_branch_id, $existing_topic, $latest)", $wbes, __FILE__, __LINE__);
 
     $this->orig_id = (int)pg_result($result,0,0);
 
@@ -85,7 +91,7 @@ class Survey
     // in postgres a select statement will never return rows that are inserted
     // in the course of the query's execution.
 
-    $result = pg_query("
+    $result = pg_go("
 
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
       SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
@@ -100,7 +106,7 @@ class Survey
 
     ", $wbes, __FILE__, __LINE__);
 
-    pg_query("DROP TABLE tmp$this->orig_id", $wbes, __FILE__, __LINE__);
+    pg_go("DROP TABLE tmp$this->orig_id", $wbes, __FILE__, __LINE__);
 
     $n = pg_numrows($result);
     $this->components = array_pad(array(), $n, false);
@@ -127,6 +133,7 @@ class Survey
             print("<tr><td>" . $v->code() . "</td><td>" . get_class($v) . "</td><td>" . $v->name() . "</td></tr>");
           }
           print("</table>\n");
+          print("<p>The revision_id of the component being loaded was $revision_id.</p>");
           die(); 
         }
         $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $latest);
@@ -155,15 +162,15 @@ class Survey
 
     $this->orig_id = (int)$this->orig_id;
 
-    $result = pg_query("SELECT branch_id FROM revisions WHERE revision_id = $this->orig_id", $wbes, __FILE__, __LINE__);
+    $result = pg_go("SELECT branch_id FROM revisions WHERE revision_id = $this->orig_id", $wbes, __FILE__, __LINE__);
     $branch_id = pg_numrows($result) == 1 ? (int)pg_result($result,0,0) : "NULL";
 
-    $components = pg_query("SELECT item_id FROM list_items WHERE revision_id = $this->orig_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
+    $components = pg_go("SELECT item_id FROM list_items WHERE revision_id = $this->orig_id ORDER BY ordinal", $wbes, __FILE__, __LINE__);
     $components_num = pg_numrows($components);
 
     if(!$save_id)
     {
-      $result = pg_query("
+      $result = pg_go("
         BEGIN WORK;
         INSERT INTO saves (user_id) VALUES ($user_id);
         SELECT currval('save_ids')
@@ -191,12 +198,12 @@ class Survey
 
     if ($list_changed || $this->orig_id == 0)
     {
-      $result = pg_query("SELECT branch_save($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
+      $result = pg_go("SELECT branch_save($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
       $branch_id = (int)pg_result($result,0,0);
 
       $o = $this->orig_id ? $this->orig_id : "NULL";
 
-      $result = pg_query("SELECT revision_save_start($branch_id, $o, 1, $save_id)", $wbes, __FILE__, __LINE__);
+      $result = pg_go("SELECT revision_save_start($branch_id, $o, 1, $save_id)", $wbes, __FILE__, __LINE__);
       $saved_id = (int)pg_result($result,0,0);
       $sql = "";
       foreach($ncomponents as $i => $id)
@@ -205,12 +212,12 @@ class Survey
         $sql .= "INSERT INTO list_items(revision_id, ordinal, item_id) VALUES ($saved_id, $ordinal, $id);\n";
       }
       $sql .= "SELECT revision_save_end($branch_id, $saved_id)";
-      pg_query($sql, $wbes, __FILE__, __LINE__);
+      pg_go($sql, $wbes, __FILE__, __LINE__);
     }
     else
-      pg_query("SELECT branch_topics_add($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
+      pg_go("SELECT branch_topics_add($topic_id, $branch_id)", $wbes, __FILE__, __LINE__);
 
-    pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+    pg_go("COMMIT", $wbes, __FILE__, __LINE__);
 
     $this->orig_id = 0;
     $this->components = array();

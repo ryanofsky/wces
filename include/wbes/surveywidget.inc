@@ -21,6 +21,8 @@ class SurveyWidget extends FormWidget
   var $user_id;
   var $question_period_id;
   var $factories;
+  var $anonymous = false;
+  var $replacements = false;
 
   var $action; // ActionButton widget
   var $form; // Form widget
@@ -31,6 +33,8 @@ class SurveyWidget extends FormWidget
   var $backup = true;
   var $sawlastpage = false;
   var $message = "";
+  var $save_id = false;
+
 
   // to add a ta section to the survey, assign an instance of TASurvey to this: 
   // $abc = new SurveyWidget(...);
@@ -89,6 +93,13 @@ class SurveyWidget extends FormWidget
       $this->action->loadvalues();
       $this->handleactions();
     }
+    
+    if (count($this->questionwidgets) == 0)
+    {
+      $this->message = "<p><font color=red>Survey is empty.</font></p>";
+      $this->finished = true;
+      return;
+    }
   }
 
   function handleactions()
@@ -114,14 +125,14 @@ class SurveyWidget extends FormWidget
     global $wbes;
     wbes_connect();
     $this->survey = new Survey();
-    $this->survey->load($this->topic_id,$this->base_branch_id,$this->factories);
+    $this->survey->load($this->topic_id,$this->base_branch_id,$this->factories,$this->save_id);
   }
 
   function save()
   {
     global $wbes, $HTTP_POST_VARS, $server_feedback;
 
-    $anonymous = true; // todo: decide how to make this this configurable
+    $anonymous = $this->anonymous; // todo: decide how to make this this configurable
     global $wbes;
 
     $this->showerrors = true;
@@ -136,10 +147,10 @@ class SurveyWidget extends FormWidget
       $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, date, topic_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->topic_id);\n";
     }
     else
-      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $question_period_id, $this->topic_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, $this->topic_id, $this->user_id);\n";
 
     $sql .= "SELECT currval('response_ids')";
-    $result = pg_query($sql, $wbes, __FILE__, __LINE__);
+    $result = pg_go($sql, $wbes, __FILE__, __LINE__);
 
     $response_id = (int)pg_result($result, 0, 0);
 
@@ -163,16 +174,16 @@ class SurveyWidget extends FormWidget
     //
     if ($this->backup)
     {
-      $failure = $failure || !pg_query("
+      $failure = $failure || !pg_go("
         INSERT INTO safe_backup (user_id, topic_id, question_period_id, form_vals)
         VALUES ($this->user_id, $this->topic_id, $this->question_period_id, $fields)
       ", $wbes, __FILE__, __LINE__);
     }
 
     if ($failure)
-      pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
+      pg_go("ROLLBACK", $wbes, __FILE__, __LINE__);
     else
-      $failure = $failure || !pg_query("COMMIT", $wbes, __FILE__, __LINE__);
+      $failure = $failure || !pg_go("COMMIT", $wbes, __FILE__, __LINE__);
 
     if ($failure)
     {
@@ -192,12 +203,6 @@ class SurveyWidget extends FormWidget
     $this->printattribute("page", $this->page);
 
     if ($this->failure) return;
-
-    if (count($this->questionwidgets) == 0)
-    {
-      print("<p><strong>No surveys can be found.</strong></p>");
-      return;
-    }
 
     $this->form->display();
     $this->action->display();
@@ -233,7 +238,15 @@ class SurveyWidget extends FormWidget
       if ($q->page == $this->page)
       {
         print("<div>");
+        if ($this->replacements) ob_start();
         $q->display(false, $this->showerrors);
+        if ($this->replacements)
+        {
+          $contents = ob_get_contents();
+          ob_end_clean();
+          print(str_replace(array_keys($this->replacements), array_values($this->replacements), $contents));
+        }
+        
         print("</div>\n<br>\n");
       }
       else
@@ -264,7 +277,7 @@ class SurveyWidget extends FormWidget
     <? if ($prev) $this->action->display("Previous Page", SurveyWidget_previous, false, ""); ?>
     <? if ($next) $this->action->display("Next Page", SurveyWidget_next, false, ""); ?>
     <? if ($save) $this->action->display("Save responses", SurveyWidget_save, false, ""); ?>
-    <? if ($save) $this->action->display("Return without saving", SurveyWidget_cancel, false, ""); ?>
+    <? if ($save) $this->action->display("Cancel", SurveyWidget_cancel, false, " onclick=\"return confirm('You survey responses will be not be saved if you continue.\\n\\nPress OK to continue, or Cancel to keep filling out the survey.');\""); ?>
   </td>
 </tr>
 </table>
