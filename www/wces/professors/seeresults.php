@@ -46,7 +46,7 @@ function report_display($db,$answersetids,$showresponses,$listclasses,$showgraph
     while($result = mysql_fetch_array($y))
     {
       extract($result);
-      print("<li><a href=\"${server_wcespath}students/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$pname</a></li>");
+      print("<li><a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$pname</a></li>");
     };
     print("</ul>");
   };
@@ -129,7 +129,7 @@ Students Evaluated: <b><%=$answers["responses"]%></b><br>
       if ($FR1 || $FR2)
       {
         if ($first) { $first= false; print("<h4>Text Responses</h4>"); }
-        print("<h5><a href=\"${server_wcespath}students/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}students/profinfo.php?professorid=$professorid\">$pname</a></h5>");
+        print("<h5><a href=\"${server_wcespath}info/classinfo.php?classid=$classid\">$scode$code$section <i>$name</i></a> - Professor <a href=\"${server_wcespath}info/profinfo.php?professorid=$professorid\">$pname</a></h5>");
         if ($FR1)
         {
           print("<h5>" . $questions["FR1"] . "</h5>");

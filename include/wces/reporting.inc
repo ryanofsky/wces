@@ -204,7 +204,7 @@ function report_makequery(
  
   if($groups["classes"])
   {
-    $main->addcolumn("CONCAT('<a href=\"${server_wcespath}students/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
+    $main->addcolumn("CONCAT('<a href=\"${server_wcespath}info/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
     $main->addjoin("courses AS c",db_SelectMonster_left,"c.courseid","cl.courseid");
     $main->addjoin("subjects AS s",db_SelectMonster_left,"s.subjectid","c.subjectid");  
     $main->addgroup("cl.classid");
@@ -220,7 +220,7 @@ function report_makequery(
   
   if($groups["professors"])
   {
-    $main->addcolumn("CONCAT('<a href=\"${server_wcespath}students/profinfo.php?professorid=', p.professorid, '\">', p.name, '</a>') AS professorname");
+    $main->addcolumn("CONCAT('<a href=\"${server_wcespath}info/profinfo.php?professorid=', p.professorid, '\">', p.name, '</a>') AS professorname");
     $main->addjoin("professors AS p",db_SelectMonster_inner,"p.professorid","cl.professorid");
     $main->addgroup("p.professorid");
   };
@@ -300,7 +300,7 @@ function report_makequery(
   {
     $list = new db_SelectMonster();
     $list->addgroup("cl.classid");
-    $list->addcolumn("CONCAT('<a href=\"${server_wcespath}students/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
+    $list->addcolumn("CONCAT('<a href=\"${server_wcespath}info/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
     $main->makechild($list);
   }
 
@@ -309,8 +309,8 @@ function report_makequery(
     $main->addcolumn("qs.FR1, qs.FR2");
     $textresponses = new db_SelectMonster();
     $textresponses->addgroup("a.answersetid");
-    $textresponses->addcolumn("CONCAT('<a href=\"${server_wcespath}students/profinfo.php?professorid=', p.professorid, '\">', p.name, '</a>') AS professorname");
-    $textresponses->addcolumn("CONCAT('<a href=\"${server_wcespath}students/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
+    $textresponses->addcolumn("CONCAT('<a href=\"${server_wcespath}info/profinfo.php?professorid=', p.professorid, '\">', p.name, '</a>') AS professorname");
+    $textresponses->addcolumn("CONCAT('<a href=\"${server_wcespath}info/classinfo.php?classid=',cl.classid,'\">',s.code, c.code, ' <i>', c.name, '</i> (', cl.semester, ' ', cl.year, ' section ', cl.section, ')</a>') AS classname");
     $textresponses->addcolumn("qp.description");
     $textresponses->addcolumn("a.FR1, a.FR2");
     $main->makechild($textresponses);
@@ -907,7 +907,7 @@ class Report extends FormWidget
         $email = "Unknown"; $name="Unknown";
         extract($q->row);
         if (!$email) $email = "Unknown";
-        print("Professor <a href=\"{$server_wcespath}students/profinfo.php?professorid=$professorid\">$pname</a> - email <a href=\"mailto:$email\">$email</a> - $pages classes<br>");
+        print("Professor <a href=\"{$server_wcespath}info/profinfo.php?professorid=$professorid\">$pname</a> - email <a href=\"mailto:$email\">$email</a> - $pages classes<br>");
       };  
       print("</ul>\n");
 %>
