@@ -44,18 +44,39 @@ class SqlBox extends Widget
       }
     }
   }
+
+  function displayUrl()
+  {
+    if (isset($this->selected))
+    {
+      if (!$this->multiple)
+        $this->printValue('', (int)$this->selected, WIDGET_URL);
+      else
+      {
+        foreach($this->selected as $s)
+          $this->printValue('', (int)$s, WIDGET_URL);
+      }
+    }    
+  }
+  
+  function result()
+  {
+    if (isset($this->result)) return ($this->result);
+    global $wces;
+    wces_connect(); 
+    $this->result = pg_go($this->sql, $wces, __FILE__, __LINE__);
+    return $this->result;
+  }
   
   function display($params="")
   {
-    global $wces;
+    
     $name = $this->name() . ($this->multiple ? '[]' : '');
     if ($params) $params = " $params";
 
     wces_connect();
-    $result = pg_go($this->sql, $wces, __FILE__, __LINE__);
+    $result = $this->result();
     $n = pg_numrows($result);
-    
-    
     
     print("<select name=$name$params>\n");
     for($i = 0; $i < $n; ++$i)
