@@ -13,20 +13,25 @@ function CSVify(s:string):string;
 // ---------------------------------------------------------- Data Storage Types
 
 type TClassinfo = record
-    coursename: string; // course name
-    coursedesc: string; // brief course description, optional
-    instructor: string; // full name
-    department: string; // department
-    students: string;   // number of students
-    subject: string;    // full name
-    division: string;   // full name
-    school: string;     // full name
-    year: string;       // four digit year
-    semester: string;   // 'spring', 'fall', 'summer'
-    subj: string;       // 4 letter subject abbreviation
-    courseno: string;   // course number, 1 letter 4 digits like W1007
-    section: string;    // 3 digit section ie  '001', '002', 'R01'
-    dept: string;       // 4 letter department abbreviation. Not on page, taken from department hash table deptlist
+    course: string;         // course name
+    coursecode: string;     // 4 digit course number
+    department: string;     // department name
+    departmentcode: string; // 4 letter department abbreviation. Not on page, taken from department hash table deptlist
+    subject: string;        // full subject name
+    subjectcode: string;    // 4 letter subject abbreviation
+    division: string;       // division name
+    divisioncode:string;    // 1 or 2 letter division code
+    divisionscode:string;   // 1 letter division code
+    classname: string;      // class name
+    classsection: string;   // 3 digit section ie  '001', '002', 'R01'
+    year: string;           // four digit year
+    semester: string;       // 'spring', 'fall', 'summer'
+    instructor: string;     // full name
+    students: string;       // number of students
+    school: string;         // school name
+    time: string;           // class time
+    location:string;        // class location
+    callnumber:string;      // 5 digit call number
   end;
 
 type SubjectItem = class(TCollectionItem)
@@ -52,18 +57,9 @@ type TSpider = class
   destructor Destroy; override;
 end;
 
-
 implementation
 
-uses Windows,
-     wininet,
-     Messages,
-     SysUtils,
-     Graphics,
-     Controls,
-     Forms,
-     Dialogs,
-     StdCtrls;
+uses Windows, wininet, Messages, SysUtils, Graphics, Controls, Forms, Dialogs, StdCtrls;
 type
   WinException = class
     private
@@ -98,7 +94,7 @@ function GetURL(url:string): string;
   var size: DWORD;
 begin
   return := '';
-  ihandle := InternetOpen('regripper 1.0',INTERNET_OPEN_TYPE_PRECONFIG,nil,nil,0);
+  ihandle := InternetOpen('regripper 1.1',INTERNET_OPEN_TYPE_PRECONFIG,nil,nil,0);
   fhandle := InternetOpenUrl(ihandle,pchar(url),nil,0,INTERNET_FLAG_RAW_DATA, 0);
   try
     try
@@ -151,7 +147,6 @@ begin
   result := s;
 end;
 
-
 function StringPos(subst: string; s: string; startat:integer):integer;
 {
    StringPos searches for a substring, subst, within a string, s,
@@ -176,10 +171,10 @@ end;
 
 function StripHTML(s:string):string;
 {
-  StripHTML will remove any text that falls between '<' and '>'
-  in a string. It replaces any whitespace in the middle of a string
-  with a single space (' ') and trims all whitespace from the
-  beginning and end.
+   StripHTML will remove any text that falls between '<' and '>'
+   in a string. It replaces any whitespace in the middle of a string
+   with a single space (' ') and trims all whitespace from the
+   beginning and end.
 }
 var i:integer;
     return: string;
@@ -230,7 +225,7 @@ begin
   KeepNumbers := return;
 end;
 
-function getvalue(findfirst,opener,closer:string; page:string; startat:integer):string;
+function getvalue(findfirst,opener,closer,page:string; startat:integer):string;
 {
   GetValue is a function that can be used to extract a substring from a
   larger string. It is only useful when the substring is surrounded by
@@ -256,7 +251,6 @@ begin
   getvalue := Copy(page,spos+length(opener),epos-spos-length(opener));
 end;
 
-
 procedure TSpider.ParseDeptPage(page:string);
 var no,nc,vo,vc: string;
     deptname, deptabbv:string;
@@ -269,19 +263,17 @@ begin
   vo := '<a href="';
   vc := '">';
   pos2 := 1;
-
   repeat
     pos1 := StringPos(no,page,pos2);
     pos2 := StringPos(nc,page,pos1);
     deptname := Copy(page,pos1 + length(no), pos2 - pos1 - length(no));
     pos3 := Stringpos(vo,page,pos2);
     pos4 := Stringpos(vc,page,pos3);
-
     pos5 := Stringpos('_',page,pos3);
     if (pos3 + length(vo) + 4 <= pos5) and (pos5 < pos4) then
       deptabbv := Copy(page,pos5-4,4)
     else
-      deptabbv := '';  
+      deptabbv := '';
     deptlist.Value[deptname] := deptabbv;
   until (pos1 = 0) or (pos2=0)
 end;
@@ -299,7 +291,7 @@ begin
   repeat
     pos1 := StringPos(opener,page,pos2);
     pos2 := StringPos(closer,page,pos1);
-    if pos2 - pos1 - length(opener)= 4 then
+    if pos2 - pos1 - length(opener) = 4 then
     begin
      item := SubjectItem(subjectlist.add());
      item.url := baseurl + Copy(page,pos1+length(opener),pos2-pos1-length(opener)) + '/';
@@ -329,9 +321,9 @@ begin
 end;
 
 procedure TSpider.ParseClassPage(page:string);
-var titleopen,tableopen:integer;
+var titleopen,tableopen,pos:integer;
     no,nc,vo,vc:string;
-    key:string;
+    key,coords:string;
 begin
   no := '<tr valign=top><td bgcolor=#99CCFF>'; // name opener
   nc := '</td>';                               // name closer
@@ -339,14 +331,17 @@ begin
   vc := '</td></tr>';                          // value closer
   titleopen  := StringPos('<td colspan=2 bgcolor=#99CCFF><b><br>',page,1);
   tableopen  := StringPos('<tr valign=top><td bgcolor=#99CCFF>',page,1);
-  classinfo.coursename := getvalue('','<font size=+2>','</font><br>',page,titleopen);
-  classinfo.coursedesc := StripHTML(getvalue('<font size=+2>','</font><br>','<tr valign=top><td bgcolor=#99CCFF>',page,titleopen));
+  classinfo.course := getvalue('','<font size=+2>','</font><br>',page,titleopen);
+  classinfo.classname := StripHTML(getvalue('<font size=+2>','</font><br>','<tr valign=top><td bgcolor=#99CCFF>',page,titleopen));
   classinfo.instructor := getvalue(no+'Instructor'+nc,vo,vc,page,tableopen);
   classinfo.department := StripHTML(getvalue(no+'Department'+nc,vo,vc,page,tableopen));
   classinfo.students   := KeepNumbers(getvalue(no+'Enrollment'+nc,vo,vc,page,tableopen));
   classinfo.subject    := getvalue(no+'Subject' + nc,vo,vc,page,tableopen);
   classinfo.division   := getvalue(no+'Division' + nc,vo,vc,page,tableopen);
   classinfo.school     := StripHTML(getvalue(no+'School'+nc,vo,vc,page,tableopen));
+  classinfo.callnumber := getvalue(no + 'Call Number' + nc,vo,vc,page,tableopen);
+  classinfo.divisioncode := getvalue(no + 'Number' + nc,vo,vc,page,tableopen);
+  classinfo.divisioncode := Copy(classinfo.divisioncode,1,length(classinfo.divisioncode)-4);
   key := getvalue(no+'Section key'+nc,vo,vc,page,tableopen);
   if length(key) = 17 then
   begin
@@ -358,11 +353,16 @@ begin
     else
       classinfo.semester := 'unknown';
     end;
-    classinfo.subj := Copy(key,6,4);
-    classinfo.courseno := key[14] + Copy(key,10,4);
-    classinfo.section := Copy(key,15,3);
+    classinfo.subjectcode := Copy(key,6,4);
+    classinfo.coursecode := Copy(key,10,4);
+    classinfo.divisionscode := string(key[14]);
+    classinfo.classsection := Copy(key,15,3);
   end;
-  classinfo.dept := string(deptlist.Value[classinfo.department]);
+  classinfo.departmentcode := string(deptlist.Value[classinfo.department]);
+  coords := getvalue(no + 'Day &amp; Time<br>Location' + nc,vo,vc,page,tableopen);
+  pos := StringPos('<br>',coords,1);
+  classinfo.time := Copy(coords,0,pos-1);
+  classinfo.location := Copy(coords,pos+4,length(coords)-pos-3);
 end;
 
 destructor TSpider.Destroy;
