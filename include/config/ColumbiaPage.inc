@@ -11,7 +11,7 @@ class ColumbiaPage extends WcesPage
     // not neccessary but makes output less cluttered when db_debug is enabled
     //get_surveys();
     
-?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 <title><?=$title?></title>
@@ -91,14 +91,14 @@ function showhelp(topic)
 <table width="100%" border=0 cellpadding=0 cellspacing=0>
 <? } else { ?>
       </td>
-      <td background="<?=$WCES_CONFIG_MEDIA_PATH?>page/Right_LengthBanner.gif"><img src="<?=$WCES_CONFIG_MEDIA_PATH?>nada.gif" width="44" height="8"></td>
+      <td background="<?=$WCES_CONFIG_MEDIA_PATH?>page/Right_LengthBanner.gif"><img src="<?=$WCES_CONFIG_MEDIA_PATH?>nada.gif" width=44 height=8 alt=""></td>
     </tr>
     </table>
   </td>
 </tr>
 <? } // $this->mode != WCES_PAGE_PRINTABLE ?>
   <tr>
-    <td colspan=2 bgcolor="#000000"><img src="<?=$WCES_CONFIG_MEDIA_PATH?>nada.gif" width="1" height="3"></td>
+    <td colspan=2 bgcolor="#000000"><img src="<?=$WCES_CONFIG_MEDIA_PATH?>nada.gif" width=1 height=3 alt=""></td>
   </tr>
 </table>
 <? } // $this->mode != WCES_PAGE_BARE ?>
@@ -219,7 +219,7 @@ function showhelp(topic)
     if ($first)
       $first = false;
     else
-      print("    <p><img src=\"{$WCES_CONFIG_MEDIA_PATH}0x000000.gif\" align=absmiddle width=140 height=2 alt=\"\"></p>\n");
+      print("<hr noshade>\n");
   }
 
   function printHelp($topic)
