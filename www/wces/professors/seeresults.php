@@ -154,42 +154,42 @@ function listclasses()
 {
   global $profid,$profname,$db;
 
-  $sql = 
-  "SELECT a.answersetid, a.questionperiodid, qp.year, qp.semester, qp.description, cl.classid, s.code as scode, c.code as code, cl.section, c.name
-  FROM classes as cl 
-  INNER JOIN answersets AS a USING (classid)
-  LEFT JOIN questionperiods as qp USING (questionperiodid)
-  LEFT JOIN courses AS c ON (cl.courseid = c.courseid)
-  LEFT JOIN subjects AS s USING (subjectid)
-  WHERE cl.professorid = $profid
-  ORDER BY qp.year DESC, qp.semester DESC, qp.questionperiodid DESC, cl.classid";
-  
   print("<h3>$profname - Survey Responses</h3>\n");
-  
-  $y = mysql_query($sql,$db);
-  $oldquestionperiodid = 0;
-  $oldclassid = 0;
-  while($result = mysql_fetch_array($y))
+
+  $questionperiods = db_exec("SELECT questionperiodid, semester, year, description FROM questionperiods ORDER BY year DESC, semester DESC, questionperiodid DESC", $db, __FILE__, __LINE__);
+  while($questionperiod = mysql_fetch_assoc($questionperiods))
   {
-    extract($result);
-    if ($oldquestionperiodid != $questionperiodid)
+    $questionperiodid = $semester = $year = $description = "";
+    extract($questionperiod);
+    print("<h4>" . ucfirst($semester) . " $year - $description</h4>\n");
+    print("<ul>\n");
+
+    $classes = db_exec("
+    SELECT cl.classid, s.code as scode, c.code, cl.section, c.name, cl.name as clname, IF(a.answersetid IS NULL, 0, 1) AS hasanswers
+    FROM classes AS cl
+    INNER JOIN courses AS c USING (courseid)
+    INNER JOIN subjects AS s USING (subjectid)
+    LEFT JOIN answersets AS a ON (a.classid = cl.classid AND a.questionperiodid = '$questionperiodid')
+    WHERE cl.year = '$year' AND cl.semester = '$semester' AND cl.professorid = '$profid'
+    ORDER BY hasanswers DESC, s.code, c.code, cl.section", $db, __FILE__, __LINE__);
+
+    $count = 0;
+    while($cl = mysql_fetch_assoc($classes))
     {
-      if ($oldquestionperiodid != 0) print("  <li><a href=\"?questionperiodid=$oldquestionperiodid\">All classes Combined</a></li>\n</ul>\n");
-      $semester = ucwords($semester);
-      print("<h4>$semester $year - $description</h4>\n<ul>");    
+      $classid = $scode = $code = $section = $name = $clname = $hasanswers = "";
+      extract($cl);
+      if ($clname) $name .= " - $clname";
+      if ($hasanswers)
+      {
+        ++$count;
+        print("  <li><a href=\"?questionperiodid=$questionperiodid&classid=$classid\">$scode$code$section <i>$name</i></a></li>");  
+      }
+      else
+        print("  <li>$scode$code$section <i>$name</i> (No Responses Available)</li>");
     }
-    if ($classid != $oldclassid || $oldquestionperiodid != $questionperiodid)
-    {
-      print("  <li><a href=\"?questionperiodid=$questionperiodid&classid=$classid\">$scode$code$section <i>$name</i></a></li>");  
-    };
-    $oldquestionperiodid = $questionperiodid;
-    $oldclassid = $classid;
-  };
-  if ($first)
-    print("<p><b>No Responses Found</b></p>");
-  else  
-    print("  <li><a href=\"?questionperiodid=$oldquestionperiodid\">All classes Combined</a></li>\n</ul>");
-      
+    if ($count > 1) print("  <li><a href=\"?questionperiodid=$questionperiodid\">All classes Combined</a></li>\n</ul>");      
+    print("</ul>\n");
+  }
 };  
   
 function printresults($questionperiodid,$classid)
