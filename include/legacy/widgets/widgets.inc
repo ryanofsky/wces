@@ -187,7 +187,7 @@ class legacy_ImageButton extends legacy_Widget
 </script>
 <!-- End legacy_ImageButton Script -->
 EOS;
-    headPrint($str);
+    html_head_append($str);
   }
 }
 

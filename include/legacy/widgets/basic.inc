@@ -231,7 +231,7 @@ class legacy_ActionButton extends legacy_FormWidget
 </script>
 <!-- End legacy_ActionButton Script -->
 EOD;
-    headprint($str);
+    html_head_append($str);
   }
 
   function display($label = false, $action = false, $object = false, $attribs = "")

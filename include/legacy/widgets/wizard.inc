@@ -234,7 +234,7 @@ function hide(id)
 //-->
 </script>
 EOS;
-    headPrint($str);  
+    html_head_append($str);  
   }
 }
 ?>

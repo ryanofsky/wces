@@ -289,9 +289,9 @@ EOD;
 <layer id=SurveyEditor_insert visibility=hide z-index=5><img src="$server_media/editor/insertcomponent.gif" width=145 height=15 alt="Insert a component"></layer>
 EOD;
     }
-    absolutePrint($str);
+    html_body_append($str);
 
-    absolutePrint("<script language=javascript>
+    html_body_append("<script language=javascript>
 SurveyEditor_inserte = $ins;
 SurveyEditor_modify = $mod;
 SurveyEditor_delete = $del;
@@ -302,7 +302,7 @@ SurveyEditor_menu = SurveyEditor_Menu();
 
     if ($SurveyEditor_ns4)
     {
-      absolutePrint("
+      html_body_append("
 window.SurveyEditor_loadpackage = new Array();
 window.SurveyEditor_spots = new Array();
 window.SurveyEditor_onload_old = window.onload;
@@ -310,7 +310,7 @@ window.SurveyEditor_hotspot = 0;
 window.onload = SurveyEditor_onload;
 ");
     }
-    absolutePrint("</script>");
+    html_body_append("</script>");
 
   }
 }
@@ -412,7 +412,7 @@ class SurveyEditorModify extends ParentWidget
     $this->event =& new EventWidget("event", $this);
     $this->editor =& $component->getEditor("editor", $this);
   }
-
+  
   function loadState()
   {
     ParentWidget::loadState();

@@ -310,7 +310,7 @@ class EventWidget extends Widget
 </script>
 <!-- End EventWidget Script -->
 EOD;
-    headprint($str);
+    html_head_append($str);
   }
 };
 
@@ -622,7 +622,7 @@ class ImageButton extends Widget
 </script>
 <!-- End ImageButton Script -->
 EOS;
-    headPrint($str);
+    html_head_append($str);
   }
 }
 

@@ -353,7 +353,7 @@ class DynamicList extends Widget
 </script>
 <!-- end DynamicList FormWidget script -->
 EOD;
-    headPrint($str);
+    html_head_append($str);
   }
 };
 
