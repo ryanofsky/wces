@@ -323,11 +323,11 @@ class MassEmail extends ParentWidget
     }
   }
 
-  // TODO: domail() is a very quick and dirty port to postgres, needs to be optimized and tested for bugs
+  
   function doMail($send = false)
   {
     global $wces;
-    
+
     $topics = $this->topics->selected;
     assert(is_array($topics));
     if (in_array(0, $topics)) $topics = array();
@@ -366,16 +366,28 @@ class MassEmail extends ParentWidget
     
     $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
     $topic = count($topics) ? ("AND t.topic_id IN (" . implode(",", $topics) . ")") : "";
-    $status = $this->to == "prof" ? 3 : 1;
-
+    
+    if ($this->to == "prof")
+    {
+      $je = "INNER JOIN enrollments_p AS e ON e.class_id = cl.class_id";
+      $surveyed = "1";
+      $responses = "";
+    }
+    else
+    {
+      $je = "INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status & 1 <> 0";
+      $surveyed = "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END";
+      $responses = "LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id";
+    }
+    
     $result = pg_go("
       CREATE TEMPORARY TABLE studclasses AS
-      SELECT e.class_id, e.user_id, " . ($status == 1 ? "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END" : "1") . " AS surveyed
+      SELECT e.class_id, e.user_id, $surveyed AS surveyed
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status & $status <> 0
-      INNER JOIN users AS u ON u.user_id = e.user_id AND u.flags & 128 = 0" . ($status == 1 ? "
-      LEFT JOIN survey_responses AS s ON (s.user_id = e.user_id AND s.topic_id = t.topic_id)" : "") . "
+      $je
+      INNER JOIN users AS u ON u.user_id = e.user_id AND u.flags & 128 = 0
+      $responses
       WHERE t.question_period_id = " . get_question_period() . " $cat $topic
       GROUP BY e.class_id, e.user_id
     ", $wces, __FILE__, __LINE__);      
