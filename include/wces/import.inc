@@ -5,6 +5,72 @@ require_once("wces/database.inc");
 require_once("wces/wces.inc");
 require_once("wbes/taskwindow.inc");
 
+// CSV Columns
+define ("COURSE",0);             // course name
+define ("COURSECODE",1);         // 4 digit course number
+define ("DEPARTMENT",2);         // department name
+define ("DEPARTMENTCODE",3);     // 4 letter department abbreviation. Not on page, taken from department hash table deptlist
+define ("SUBJECT",4);            // full subject name
+define ("SUBJECTCODE",5);        // 4 letter subject abbreviation
+define ("DIVISION",6);           // division name
+define ("DIVISIONCODE",7);       // 1 or 2 letter division code
+define ("DIVISIONSCODE",8);      // 1 letter division code
+define ("CLASSNAME",9);          // class name
+define ("CLASSSECTION",10);      // 3 digit section ie  '001', '002', 'R01'
+define ("YEAR",11);              // four digit year
+define ("SEMESTER",12);          // 'spring', 'fall', 'summer'
+define ("INSTRUCTOR",13);        // full name
+define ("STUDENTS",14);          // number of students
+define ("SCHOOL",15);            // school name
+define ("TIME",16);              // class time
+define ("LOCATION",17);          // class location
+define ("CALLNUMBER",18);        // 5 digit call number
+
+function importregcsv($filename)
+{
+  taskwindow_start("Progress Window");
+  taskwindow_cprint("<h2>Importing Registrar Data</h2>\n");
+  taskwindow_flush();
+
+  $fp = fopen ($filename,"r");
+  $db = wces_connect();
+  
+  $i = 0;
+  $row = 0;
+  
+  while ($data = fgetcsv ($fp, 8192, ","))
+  {
+    ++$row;
+    if (count($data) != 19 && count($data) != 16)
+    {
+      taskwindow_cprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (19 expected, " . count($data) . " found)<br>\n");
+    }
+    else
+    {
+      $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "" : $data[CLASSNAME];
+      $schoolid     = db_replace($db, "schools",     Array("name" => $data[SCHOOL]),0,"schoolid");
+      $subjectid    = db_replace($db, "subjects",    Array("code" => $data[SUBJECTCODE]), Array("name" => $data[SUBJECT]),"subjectid");
+      $divisionid   = db_replace($db, "divisions",   Array("name" => $data[DIVISION]), array_clean(Array("code" => $data[DIVISIONCODE], "shortcode" => $data[DIVISIONSCODE])), "divisionid");
+      $departmentid = db_replace($db, "departments", Array("code" => $data[DEPARTMENTCODE]), array_clean(Array("name" => $data[DEPARTMENT])), "departmentid");
+      $courseid     = db_replace($db, "courses",     Array("subjectid" => $subjectid, "code" => $data[COURSECODE]), Array("departmentid" => $departmentid, "schoolid" => $schoolid, "name" => $data[COURSE]),"courseid");
+      $classid      = db_replace($db, "classes",     Array("courseid" => $courseid, "section" => $data[CLASSSECTION], "divisioncode" => $data[DIVISIONSCODE], "year" => $data[YEAR], "semester" => $data[SEMESTER]), Array("name" => $cname, "students" => $data[STUDENTS], "time" => $data[TIME], "location" => $data[LOCATION], "callnumber" => $data[CALLNUMBER], "departmentid" => $departmentid, "divisionid" => $divisionid), "classid");
+      prof_parserrname($data[INSTRUCTOR],$full,$email,$url);
+      $pids = prof_findwithfull($db,$full);
+      //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
+      $pid = prof_merge($db, $pids,Array("name" => $full, "email" => $email, "url" => $url),Array("fullname" => $full, "source" => "regweb"));
+      db_updatevalues($db, "classes", Array("classid" => $classid), Array("professorid" => $pid));
+      taskwindow_cprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (classid = $classid, courseid = $courseid,professorid = $pid)<br>\n");
+      if (!$data[COURSE]) taskwindow_cprint("<b>Warning:</b> Coursename not specified in row $row<br>\n");
+      if (!$subjectid || !$classid || !$courseid) taskwindow_cprint("<b>Warning:</b> Insertion error in row $row<br>\n");
+      //if (0 + $data[COURSECODE] < 1000) taskwindow_cprint("<b>Warning:</b> Invalid course number in row $row<br>\n");
+    };
+    if (((++$i) % 10) == 1) taskwindow_flush();  
+  }
+  fclose ($fp); 
+  taskwindow_end("Progress Window");   
+};
+
+
 /**
 * Import one of the dean's excel spreadsheets after they've been exported to csv and uploaded.
 * 
@@ -22,8 +88,6 @@ require_once("wbes/taskwindow.inc");
 *                question periods.
 * @access public
 */	
-
-
 
 function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3), $questionsetid = 0)
 {
@@ -161,73 +225,6 @@ function importdeandata($userfile)
 */  
 };
 
-
-
-// CSV Columns
-define ("COURSE",0);             // course name
-define ("COURSECODE",1);         // 4 digit course number
-define ("DEPARTMENT",2);         // department name
-define ("DEPARTMENTCODE",3);     // 4 letter department abbreviation. Not on page, taken from department hash table deptlist
-define ("SUBJECT",4);            // full subject name
-define ("SUBJECTCODE",5);        // 4 letter subject abbreviation
-define ("DIVISION",6);           // division name
-define ("DIVISIONCODE",7);       // 1 or 2 letter division code
-define ("DIVISIONSCODE",8);      // 1 letter division code
-define ("CLASSNAME",9);          // class name
-define ("CLASSSECTION",10);      // 3 digit section ie  '001', '002', 'R01'
-define ("YEAR",11);              // four digit year
-define ("SEMESTER",12);          // 'spring', 'fall', 'summer'
-define ("INSTRUCTOR",13);        // full name
-define ("STUDENTS",14);          // number of students
-define ("SCHOOL",15);            // school name
-define ("TIME",16);              // class time
-define ("LOCATION",17);          // class location
-define ("CALLNUMBER",18);        // 5 digit call number
-
-function importregcsv($filename)
-{
-  taskwindow_start("Progress Window");
-  taskwindow_cprint("<h2>Importing Registrar Data</h2>\n");
-  taskwindow_flush();
-
-  $fp = fopen ($filename,"r");
-  $db = wces_connect();
-  
-  $i = 0;
-  $row = 0;
-  
-  while ($data = fgetcsv ($fp, 8192, ","))
-  {
-    ++$row;
-    if (count($data) != 19 && count($data) != 16)
-    {
-      taskwindow_cprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (19 expected, " . count($data) . " found)<br>\n");
-    }
-    else
-    {
-      $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "" : $data[CLASSNAME];
-      $schoolid     = db_replace($db, "schools",     Array("name" => $data[SCHOOL]),0,"schoolid");
-      $subjectid    = db_replace($db, "subjects",    Array("code" => $data[SUBJECTCODE]), Array("name" => $data[SUBJECT]),"subjectid");
-      $divisionid   = db_replace($db, "divisions",   Array("name" => $data[DIVISION]), array_clean(Array("code" => $data[DIVISIONCODE], "shortcode" => $data[DIVISIONSCODE])), "divisionid");
-      $departmentid = db_replace($db, "departments", Array("code" => $data[DEPARTMENTCODE]), array_clean(Array("name" => $data[DEPARTMENT])), "departmentid");
-      $courseid     = db_replace($db, "courses",     Array("subjectid" => $subjectid, "code" => $data[COURSECODE]), Array("departmentid" => $departmentid, "schoolid" => $schoolid, "name" => $data[COURSE]),"courseid");
-      $classid      = db_replace($db, "classes",     Array("courseid" => $courseid, "section" => $data[CLASSSECTION], "divisioncode" => $data[DIVISIONSCODE], "year" => $data[YEAR], "semester" => $data[SEMESTER]), Array("name" => $cname, "students" => $data[STUDENTS], "time" => $data[TIME], "location" => $data[LOCATION], "callnumber" => $data[CALLNUMBER], "departmentid" => $departmentid, "divisionid" => $divisionid), "classid");
-      prof_parserrname($data[INSTRUCTOR],$full,$email,$url);
-      $pids = prof_findwithfull($db,$full);
-      //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
-      $pid = prof_merge($db, $pids,Array("name" => $full, "email" => $email, "url" => $url),Array("fullname" => $full, "source" => "regweb"));
-      db_updatevalues($db, "classes", Array("classid" => $classid), Array("professorid" => $pid));
-      taskwindow_cprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (classid = $classid, courseid = $courseid,professorid = $pid)<br>\n");
-      if (!$data[COURSE]) taskwindow_cprint("<b>Warning:</b> Coursename not specified in row $row<br>\n");
-      if (!$subjectid || !$classid || !$courseid) taskwindow_cprint("<b>Warning:</b> Insertion error in row $row<br>\n");
-      //if (0 + $data[COURSECODE] < 1000) taskwindow_cprint("<b>Warning:</b> Invalid course number in row $row<br>\n");
-    };
-    if (((++$i) % 10) == 1) taskwindow_flush();  
-  }
-  fclose ($fp); 
-  taskwindow_end("Progress Window");   
-};
-
 function arrayagrees($base,$newbie)
 {
   foreach($newbie as $key => $value)
@@ -363,6 +360,24 @@ function prof_parsemiddlei(&$first,&$middlei)
   }
   else
     $middlei = "";
+}
+
+function prof_parsefull($name)
+{
+  $p = strrpos($name,' ');
+  if ($p === false)
+  {
+    $first = $middlei = "";
+    $last = $name;
+  }
+  else
+  {
+    $first = substr($name,0,$p);
+    $last = substr($name,$p+1);
+    prof_parsemiddlei($first,$middlei);
+  }
+  return array($first,$middlei,$last);
+  
 }
 
 function prof_parsepidname($name,&$first,&$last,&$middlei,&$dept)
