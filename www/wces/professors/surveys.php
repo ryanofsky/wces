@@ -98,7 +98,7 @@ if (!$q || $q->state == SurveyEditor_done)
     INNER JOIN classes AS cl ON cl.class_id = e.class_id
     INNER JOIN courses AS c USING (course_id)
     INNER JOIN subjects AS s USING (subject_id)
-    WHERE t.class_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
+    WHERE t.category_id IS NOT NULL AND t.class_id IS NOT NULL AND cl.year = $year AND cl.semester = $semester
     ORDER BY s.code, c.code
   ", $wces, __FILE__, __LINE__);
   
