@@ -274,6 +274,8 @@ class ChoiceEditor extends ComponentEditor
       "vertical"  => "vertically",
       "horiz"  => "horizontally"
     ), $this->prefix . "_orientation", $this->form, $this->formmethod);
+    
+    DynamicList::dumpscript();
   }
 
   function loadvalues()
@@ -557,8 +559,6 @@ class ChoiceEditor extends ComponentEditor
 
     ComponentEditor::display();
     $p = $this->prefix;
-
-    DynamicList::dumpscript();
 
     $show_sing = $this->qtype->selected == "single";
     $show_mult = $this->qtype->selected == "multiple";

@@ -28,7 +28,7 @@
 </form>
 <? if ($newemail) print("<p><font color=red>Address Change Pending</font></p>"); ?>
 <h3>Permanent Opt-Out</h3>
-If you never want to recieve a WCES email again, send a message to <a href="mailto:admin@thayer.dartmouth.edu">admin@thayer.dartmouth.edu</a>.
+If you never want to recieve a WCES email again, send a message to <a href="mailto:<?=$server_feedback?>"><?=$server_feedback?></a>.
 
 
 <? page_bottom(); ?>  

@@ -95,6 +95,7 @@ and make the rest of the site accessible to you.
       for($i = 0; $i < $n; ++$i)
       {
         extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
+        $name = format_class($name);
         $found = true;
         $complete = true;
         if ($surveyed)  

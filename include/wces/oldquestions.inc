@@ -217,7 +217,7 @@ class OldSurvey extends FormWidget
           }  
         }    
       }
-      if ($failure) print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:admin@thayer.dartmouth.edu">admin@thayer.dartmouth.edu</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
+      if ($failure) print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:' . $server_feedback . '">' . $server_feedback . '</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
       $this->finished = true;
     }
     else if ($this->action->action == OldSurvey_cancel)

@@ -37,7 +37,7 @@ define("FORMAT_PROF_USER_ID",        0);
 define("FORMAT_PROF_LASTNAME",       1);
 define("FORMAT_PROF_FIRSTNAME",      2);
 
-function format_class($class, $link = false, $code = true, $name = true, $semester = false, $sectionname = false)
+function format_class($class, $link = false, $code = true, $name = true, $semester = false, $sectionname = false, $section = true)
 {
   global $wces_path;
   $c = explode("\n", $class);
@@ -55,8 +55,13 @@ function format_class($class, $link = false, $code = true, $name = true, $semest
     if ($sectionname && $c[FORMAT_CLASS_SNAME])
       $str .= ": {$c[FORMAT_CLASS_SNAME]}";
   }
-  if ($str) $str .= " ";
-  $str .= "Section {$c[FORMAT_CLASS_SECTION]}";
+
+  if ($section)
+  {
+    if ($str) $str .= " ";
+    $str .= "Section {$c[FORMAT_CLASS_SECTION]}";
+  }
+
   if ($semester)
   {
     if ($str) $str .= " ";

@@ -1652,11 +1652,11 @@ CREATE FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGER, INTEGER)
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      ctext, flags, rows, cols FROM text_components WHERE revision_id = orig_id;
-    SELECT INTO primary_row   ctext, flags, rows, cols FROM text_components WHERE revision_id = primary_id;
-    SELECT INTO secondary_row ctext, flags, rows, cols FROM text_components WHERE revision_id = secondary_id;
+    SELECT INTO orig_row      ctext, flags, rows, cols FROM textresponse_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   ctext, flags, rows, cols FROM textresponse_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row ctext, flags, rows, cols FROM textresponse_components WHERE revision_id = secondary_id;
 
-    UPDATE text_components SET
+    UPDATE textresponse_components SET
       ctext = text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
       flags = bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags),
       rows  = integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t''),

@@ -108,6 +108,7 @@ class ProfessorInfo extends FormWidget
     $this->professorid = false;
     $this->printable = false;
     $this->action = new ActionButton($prefix . "_action",$form,$formmethod);
+    ActionButton::dumpscript();
   }
   
   function loadvalues()
@@ -170,8 +171,7 @@ class ProfessorInfo extends FormWidget
         GROUP BY p.professorid
         ORDER BY last, first
       ",$this->db,__FILE__,__LINE__);
-      
-      ActionButton::dumpscript();
+
       $this->action->display(false,"","");
 ?>
 <table><tr><td height=50>

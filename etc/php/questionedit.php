@@ -23,21 +23,25 @@ require_once("wbes/component_text.inc");
 require_once("wbes/component_heading.inc");
 require_once("wbes/component_choice.inc");
 require_once("wbes/component_textresponse.inc");
+require_once("wbes/component_subsurvey.inc");
 
 require_once("wbes/server.inc");
 require_once("wbes/surveyeditor.inc");
 require_once("wces/page.inc");
 require_once("wces/wces.inc");
 
+$db_debug = true;
+
 $factories = array
 (
   new ChoiceFactory(),
   new TextResponseFactory(),
   new TextFactory(),
-  new HeadingFactory()
+  new HeadingFactory(),
+  new SubSurveyFactory()
 );
 
-$q = new SurveyEditor(1, 1, $factories, "prefix","f",WIDGET_POST);
+$q = new SurveyEditor(1, 1, 0, $factories, "prefix","f",WIDGET_POST);
 $q->loadvalues();
 
 if ($q->barepage) 
@@ -51,8 +55,8 @@ if ($q->barepage)
 }
 else
 {
-  page_top("Survey Builder");
   $q->dumpscript();
+  page_top("Survey Builder");
 }  
 
 print("<form name=f method=post>");

@@ -44,7 +44,7 @@ class MassEmail extends FormWidget
 
   function loadvalues()
   {
-    global $MassEmail_students, $wces;
+    global $MassEmail_students, $wces, $server_massreply;
 
     $this->form->loadvalues();
 
@@ -74,7 +74,7 @@ class MassEmail extends FormWidget
           $this->from->text = $email;
       }
       $this->to = "";
-      $this->replyto->text = "registrar@thayer.dartmouth.edu";
+      $this->replyto->text = $server_massreply;
       $this->subject->text = "WCES Reminder";
 	/*
       $this->text->text = "Dear %name%,\n\nCome to http://eval.thayer.dartmouth.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";

@@ -22,7 +22,7 @@ if (!$comments)
 else
 {
   sendfeedback($comments, $email);
-  print('Your comments have been sent to <a href="mailto:websage@thayer.dartmouth.edu">websage@thayer.dartmouth.edu</a>. Thank you for taking the time to help us.');
+  print('Your comments have been sent to <a href="mailto:' . $server_feedback . '">' . $server_admin . '</a>. Thank you for taking the time to help us.');
 };
 page_bottom();
 ?>

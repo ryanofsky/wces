@@ -14,11 +14,12 @@ require_once("wces/database.inc");
 */
 function sendwarning($dump, $file, $line)
 {
-  global $server_url, $server_isproduction;
+  global $server_url, $server_isproduction, $server_dev;
 
   $errorid = 0;
   $url = $server_url->toString(true,true,true);
   $uni = function_exists("login_getuni") ? login_getuni() : "";
+  $user_id = function_exists("login_getuserid") ? login_getuserid() : "";
 
   if ($server_isproduction && function_exists("wces_oldconnect"))
   {
@@ -26,20 +27,21 @@ function sendwarning($dump, $file, $line)
     $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
   }
 
-  if ($uni) $uni = "'$uni' was logged in at the time\n";
+  if ($user_id) $uni = "'$uni' ($user_id) was logged in at the time\n";
   $message = "An error was encountered at $file:$line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
 
   if ($server_isproduction)
-    mail("admin@thayer.dartmouth.edu", "WCES Warning from $file in line $line", wordwrap($message));
+    mail($server_dev, "WCES Warning from $file in line $line", wordwrap($message));
   else
     print("<pre>" . wordwrap($message) . "</pre>");
 }
 
 function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
 {
-  global $HTTP_SERVER_VARS, $LOGIN_SESSION;
+  global $HTTP_SERVER_VARS, $LOGIN_SESSION, $server_dev, $server_feedback;
   if (!$from) $from = "Anonymous";
-  mail("websage@thayer.dartmouth.edu",$subject,"Feedback from $from\n\n$comments");
+  if ($server_dev != $server_feedback)
+    mail($server_feedback,$subject,"Feedback from $from\n\n$comments");
   $comments .= "\n\n----------------------------------------\n";
 
   if (isset($HTTP_SERVER_VARS) && is_array($HTTP_SERVER_VARS))
@@ -59,7 +61,7 @@ function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
       $comments .= "$key = $value\n";
     }
   }
-  mail("admin@thayer.dartmouth.edu","$subject+","WCES Feedback from $from\n\n$comments");
+  mail($server_dev,"$subject+","WCES Feedback from $from\n\n$comments");
 }
 
 /**
@@ -288,6 +290,39 @@ function bprint($str, $mod = 10)
   {
     $i = 0;
     flush(); 
+  }
+}
+
+$absolutePrintStr = "";
+function absolutePrint($str)
+{
+  global $absolutePrintStr;
+  $absolutePrintStr .= $str;
+}
+
+$headPrintStr = "";
+function headPrint($str)
+{
+  global $headPrintStr;
+  $headPrintStr .= $str;
+}
+
+$inlineScript = false;
+//$inlineScript = "L:/server/shares/russ.esurveys.hn.org/www";
+
+function includeScript($src, $print="headPrint", $version="javascript")
+{
+  global $inlineScript;
+  if (!$inlineScript)
+    $print("<script language=$version src=\"$src\"></script>");
+  else
+  {
+    $filename = "$inlineScript$src";
+    $fp = fopen($filename, "rt");
+    $print("<script language=$version>\n<!--\n");
+    $print(fread($fp, filesize($filename)));
+    $print("// -->\n</script>");
+    fclose($fp);
   }
 }
 

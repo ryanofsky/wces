@@ -23,34 +23,34 @@ class Widget //abstract
   }
 }
 
-class FormWidget // abstract, extends Widget
+class FormWidget
 {
   var $prefix;
   var $form;
   var $formmethod;
     
-  function FormWidget($prefix,$form,$formmethod) // public constructor
+  function FormWidget($prefix,$form,$formmethod)
   {
     $this->prefix = $prefix;
     $this->form = $form;
     $this->formmethod = $formmethod;
   }
   
-  function loadvalues() // public abstract
+  function loadvalues()
   {
     assert(0);
   }
   
-  function display($hidden) // public abstract
+  function display($hidden)
   {
     assert(0);
   }
   
-  function dumpscript() // public static virtual
+  function dumpscript()
   {
   }
   
-  function loadattribute($attrname = "") // protected
+  function loadattribute($attrname = "")
   {
     global $HTTP_POST_VARS, $HTTP_GET_VARS;
     $attrname = $attrname ? $this->prefix . "_$attrname" : $this->prefix;
@@ -105,22 +105,21 @@ class ImageButton extends Widget
     $this->pushedsrc = $pushedsrc;
     $this->iparams = $iparams;
     $this->aparams = $aparams;
+    $this->dumpscript();
   }
 
-  function display($hidden = false) // public inherited
+  function display($hidden = false)
   {
     if ($hidden) return;
-    $this->dumpscript();
     ?><a onmousedown="button_push('<?=$this->prefix?>')" onmouseup="button_unpush('<?=$this->prefix?>')" onmouseout="button_unpush('<?=$this->prefix?>')" <?=$this->aparams?>"><img name="<?=$this->prefix?>" src="<?=$this->raisedsrc?>" border=0 <?=$this->iparams?>"></a><script>AttachPushed('<?=$this->prefix?>','<?=$this->pushedsrc?>')</script><?  
   }
   
-  function dumpscript() // public static inherited
+  function dumpscript()
   {
-    global $ImageButton_dumped;
-    if (!$ImageButton_dumped)
-    {
-      $ImageButton_dumped = true;
-?>
+    static $dumped = false;
+    if ($dumped) return; else $dumped = true;
+
+    $str = <<<EOS
 <!-- Begin ImageButton Script -->
 <script>
 <!--
@@ -136,7 +135,7 @@ class ImageButton extends Widget
   function getImage(oldimage,filename)
   {
     var p = oldimage.src.lastIndexOf("/");
-    var q = oldimage.src.lastIndexOf("\\");
+    var q = oldimage.src.lastIndexOf("\\\\");
     var i = new Image();
     i.src = oldimage.src.slice(0,(p>q && p>0) ? p+1 : (q>0)?q+1 : 0) + filename;;
     return i;
@@ -187,8 +186,8 @@ class ImageButton extends Widget
 // -->
 </script>
 <!-- End ImageButton Script -->
-<?
-    }  
+EOS;
+    headPrint($str);
   }
 }
 

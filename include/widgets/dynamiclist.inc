@@ -23,6 +23,7 @@ class DynamicList extends FormWidget
       $this->items = array_values($orderonlyitems);
       $this->orderonly = true;
     }
+    $this->dumpscript();    
   }
   
   function loadstrarray($attr, $separator = "\t")
@@ -59,14 +60,15 @@ class DynamicList extends FormWidget
     }   
   }
  
-  function dumpscript() //public static inherited
+  function dumpscript()
   {
-    global $DynamicList_dumped, $server_media;
-    if (!$DynamicList_dumped)
-    {
-      $DynamicList_dumped = true;
-      ImageButton::dumpscript();
-?>
+    global $server_media;
+    static $dumped = false;
+    if ($dumped) return false; else $dumped = true;
+    
+    ImageButton::dumpscript();
+
+    $str = <<<EOD
 <!-- begin DynamicList FormWidget script -->
 <script language="javascript">
 <!--
@@ -77,10 +79,13 @@ class DynamicList extends FormWidget
     var box = form[prefix + "_box"];
     box.items = form[prefix + "_items"];
     box.keys = form[prefix + "_keys"];
-    box.add = DynamicList_add;
-    box.remove = DynamicList_remove;
+    // members 'add' and 'remove' are apparently reserved on ie for mac
+    box.madd = DynamicList_add;
+    box.mremove = DynamicList_remove;
     box.modify = DynamicList_modify;
     box.move = DynamicList_move;
+    box.moveup = DynamicList_moveup;
+    box.movedown = DynamicList_movedown;
     box.save = DynamicList_save;
     
     if (!form.DynamicList_lists)
@@ -91,9 +96,9 @@ class DynamicList extends FormWidget
     }
 
     form.DynamicList_lists[form.DynamicList_lists.length] = box;
-    DynamicList_GenericButton(form[prefix + "_additem"]    , box, "this.list.add()");
+    DynamicList_GenericButton(form[prefix + "_additem"]    , box, "this.list.madd()");
     DynamicList_GenericButton(form[prefix + "_modifyitem"] , box, "this.list.modify()");
-    DynamicList_GenericButton(form[prefix + "_removeitem"] , box, "this.list.remove()");
+    DynamicList_GenericButton(form[prefix + "_removeitem"] , box, "this.list.mremove()");
     return box;
   };
 
@@ -148,17 +153,25 @@ class DynamicList extends FormWidget
     {
       var s = prompt("Change the name of this item",this.options[this.selectedIndex].text);
       if (s == "")
-        this.remove();
+        this.mremove();
       else if (s)
         this.options[this.selectedIndex].text = s;
     }
   }
 
-  function DynamicList_move(direction)
+  function DynamicList_move()
   {
     var o = this.options;
     var a = this.selectedIndex;
-    var b = this.selectedIndex+direction;
+
+    // why is moveDirection a property instead of an argument?
+    // because of a bizarre javascript bug in IE5 for mac (build 2022)
+    // On this platform, the call to this function is completely
+    // ignored whenever any argument is specified. by ignored I mean
+    // that the function returns null, and its body is never executed.
+    // it works just fine though, when called with no arguments
+    var b = this.selectedIndex+this.moveDirection;
+
     if (a>=0 && b>=0 && b<o.length)
     {
       var tv = o[a].value; var tt = o[a].text;
@@ -166,6 +179,18 @@ class DynamicList extends FormWidget
       o[b].value = tv; o[b].text = tt;
       this.selectedIndex = b;
     };
+  }
+
+  function DynamicList_moveup()
+  {
+    this.moveDirection = -1;
+    this.move();
+  }
+
+  function DynamicList_movedown()
+  {
+    this.moveDirection = 1;
+    this.move();
   }
 
   function DynamicList_GenericButton(button,list,action)
@@ -180,8 +205,8 @@ class DynamicList extends FormWidget
 // -->
 </script>
 <!-- end DynamicList FormWidget script -->
-<? 
-    }
+EOD;
+    headPrint($str);
   }
   
   function display($hidden = false) // public inherited
@@ -194,8 +219,6 @@ class DynamicList extends FormWidget
       $this->preserveattribute("items");
       return;
     }
-    
-    $this->dumpscript();
     
     $dowidth = $this->width > 0 && count($this->items) <= 0;
 ?>  
@@ -226,8 +249,18 @@ class DynamicList extends FormWidget
 <? } ?>          
   </tr>
   <tr><td align=center>
-    <a onmousedown="button_push('<?=$this->prefix?>_moveup');   <?=$this->prefix?>_controller.move(-1)" onmouseup="button_unpush('<?=$this->prefix?>_moveup')"   onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_moveup"   src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
-    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.move( 1)" onmouseup="button_unpush('<?=$this->prefix?>_movedown')" onmouseout="button_unpush('<?=$this->prefix?>_moveup')" href="javascript:void(<?=$this->prefix?>_controller.move(-1))" onclick="return false;"><img name="<?=$this->prefix?>_movedown" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->prefix?>_moveup'); <?=$this->prefix?>_controller.moveup();"
+       onmouseup="button_unpush('<?=$this->prefix?>_moveup')"
+       onmouseout="button_unpush('<?=$this->prefix?>_moveup')"
+       href="javascript:void(<?=$this->prefix?>_controller.moveup())"
+       onclick="return false;"
+    ><img name="<?=$this->prefix?>_moveup"   src="<?=$server_media?>/dynamiclist/moveup.gif" border=0></a>
+    <a onmousedown="button_push('<?=$this->prefix?>_movedown'); <?=$this->prefix?>_controller.movedown();"
+       onmouseup="button_unpush('<?=$this->prefix?>_movedown')"
+       onmouseout="button_unpush('<?=$this->prefix?>_movedown')"
+       href="javascript:void(<?=$this->prefix?>_controller.movedown())"
+       onclick="return false;"
+    ><img name="<?=$this->prefix?>_movedown" src="<?=$server_media?>/dynamiclist/movedown.gif" border=0></a>
     <script>
     <!--
       AttachPushed('<?=$this->prefix?>_moveup',  "moveup_pushed.gif");

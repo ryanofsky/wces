@@ -1170,6 +1170,9 @@ CREATE FUNCTION get_profs(INTEGER) RETURNS TEXT AS '
       INNER JOIN users AS u USING (user_id)
       WHERE e.class_id = classid AND e.status = 3
     LOOP
+      IF char_length(list) > 0 THEN
+        list := list || ''\n'';
+      END IF;
       list := list || rec.user_id || ''\\n'' || COALESCE(rec.lastname, '''') 
         || ''\\n'' || COALESCE(rec.firstname, '''');
     END LOOP;

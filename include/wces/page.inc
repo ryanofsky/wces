@@ -31,8 +31,9 @@ function showhelp(topic)
 
 // -->
 </script>
+<?=$headPrintStr?>
 </head>
-<body class=main>
+<body class=main><?=$absolutePrintStr?>
 <table width="100%" border=0 cellspacing=0 cellpadding=0>
 <tr>
   <td colspan=2 bgcolor="#007700" class=sidelinks><img src="<?=$wces_path?>media/nada.gif" width=1 height=10 alt=spacer></td>
@@ -75,11 +76,9 @@ function showhelp(topic)
   if ($user_id)
     page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
 
-  $nospace = true;
-
   if ($status & login_administrator)
   {
-    if ($nospace) $nospace = false; else page_spacer();
+    page_spacer();
     page_link("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
@@ -87,6 +86,7 @@ function showhelp(topic)
     page_link("Reporting Wizard", "administrators/report.php", $QSID);
     page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
     page_link("Data Import",      "administrators/import.php", $QSID);
+    page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
   }
 
   if ($status & login_professor)
@@ -118,16 +118,14 @@ function showhelp(topic)
     wces_connect();
     
     $survey_listing = pg_query("
-      SELECT cl.class_id, (s.code || to_char(c.code::int4,'0000')) AS code, c.name,
+      SELECT t.class_id, get_class(t.class_id) AS name,
         CASE WHEN sr.user_id IS NULL THEN 0 ELSE 1 END AS surveyed
       FROM wces_topics AS t
       INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
       LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id
       INNER JOIN classes AS cl ON cl.class_id = e.class_id AND cl.year = $year AND cl.semester = $semester
-      INNER JOIN courses AS c USING (course_id)
-      INNER JOIN subjects AS s USING (subject_id)
-      GROUP BY cl.class_id, c.code, s.code, c.name, sr.user_id
-      ORDER BY surveyed, s.code, c.code
+      GROUP BY sr.user_id, t.class_id
+      ORDER BY surveyed, name
     ", $wces, __FILE__, __LINE__);
     
     $n = pg_numrows($survey_listing);
@@ -137,7 +135,7 @@ function showhelp(topic)
       extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
       if ($surveyed) break;
       if ($i == 0) page_spacer();
-      page_link($name, "students/survey.php?class_id=$class_id", $QSID, "");
+      page_link(format_class($name,0,0,1,0,0,0), "students/survey.php?class_id=$class_id", $QSID, "");
     }
   }
 
@@ -180,6 +178,7 @@ function page_bottom($minimal = false)
 </body>
 </html>
 <?
+  $headPrintStr = $absolutePrintStr = false;
 }
 
 function page_link($caption,$link,$extlink = "",$params='style="white-space: nowrap;"')

@@ -253,7 +253,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
 ?><font size="-1"><b>Note:</b> The information entered in this form will
 be transmitted using your browser's SSL encryption. If you would like to
 connect with no encryption, click
-<a onclick="alert('Due to security concerns, this function has been disabled. Sending your DND username and password over a public network without encryption puts your information and Dartmouth\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
+<a href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
 If you would like to view a secure version of this page so you can examine
 our site's certificate before entering your password, click
 <a href="<?= $securesite . $urlargs ?>">here</a>. If your browser does not recognize our
