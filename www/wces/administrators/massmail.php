@@ -16,6 +16,8 @@ $MassEmail_students = array
 define("MassEmail_send",1);
 define("MassEmail_preview",2);
 define("MassEmail_back",3);
+define("MassEmail_choose", 4);
+define("MassEmail_load", 5);
 
 class MassEmail extends ParentWidget
 {
@@ -32,11 +34,11 @@ class MassEmail extends ParentWidget
   function MassEmail($name, &$parent)
   {
     $this->ParentWidget($name, $parent);
-    $this->from =& new TextBox(0,60,"", "from", $parent);
-    $this->replyto =& new TextBox(0,60,"", "replyto", $parent);
-    $this->subject =& new TextBox(0,60,"", "subject", $parent);
-    $this->text =& new TextBox(15,60,"", "text", $parent);
-    $this->event =& new EventWidget("event", $parent);
+    $this->from =& new TextBox(0,60,"", "from", $this);
+    $this->replyto =& new TextBox(0,60,"", "replyto", $this);
+    $this->subject =& new TextBox(0,60,"", "subject", $this);
+    $this->text =& new TextBox(15,60,"", "text", $this);
+    $this->event =& new EventWidget("event", $this);
     $this->errors = array();
     $this->survey_category_id = 0;
   }
@@ -66,9 +68,31 @@ class MassEmail extends ParentWidget
 
   function loadState()
   {
+    global $wces;
+    
     ParentWidget::loadState();
     $this->to = $this->readValue("to");
     $this->survey_category_id = $this->readValue("survey_category_id");
+
+    if ($this->event->event == MassEmail_load && $this->event->param)
+    {
+      $sent_mail_id = (int)$this->event->param;
+      $r = pg_go("
+        SELECT sent_mail_id, mail_from, reply_to, mail_to, subject, body
+        FROM sent_mails WHERE sent_mail_id = $sent_mail_id
+      ", $wces, __FILE__, __LINE__);
+      assert(pg_numrows($r) == 1);
+      
+      $row = pg_fetch_row($r, 0, PGSQL_ASSOC);
+      
+      $this->from->text = $row['mail_from'];
+      $this->replyto->text = $row['reply_to'];
+      $this->subject->text = $row['subject'];
+      $this->text->text = $row['body'];
+      $to = explode(" ", $row['mail_to']);
+      $this->to = $to[0];
+      $this->survey_category_id = (int)$to[1];
+    }
   }
 
   function checkErrors()
@@ -89,11 +113,7 @@ class MassEmail extends ParentWidget
       $this->errors[] = "Subject is blank.";    
   }
 
-  function printHidden()
-  {
-  }
-
-  function display()
+  function printVisible()
   {
     global $MassEmail_students, $wces;
     $prefix = $this->name;
@@ -114,6 +134,64 @@ class MassEmail extends ParentWidget
       $this->text->displayHidden();
       $this->printValue("to", $this->to);
       $this->printValue("survey_category_id", $this->survey_category_id);
+    }
+    else if ($this->event->event == MassEmail_choose)
+    {
+      print('Open a previously sent message to edit and resend it, or choose '
+        .  '"Cancel" to return to the mass mailing form.');
+      print("<p>");
+      $this->event->displayButton('Cancel', MassEmail_back);
+      print("</p>");
+      
+      $r = pg_go("
+        SELECT survey_category_id AS id, name FROM survey_categories
+      ", $wces, __FILE__, __LINE__);
+      
+      $cats = array();
+      
+      $n = pg_numrows($r);
+      for($i = 0; $i < $n; ++$i)
+      {
+        $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
+        $cats[$row['id']] = $row['name']; 
+      }
+      
+      $r = pg_go("
+        SELECT m.sent_mail_id, EXTRACT(EPOCH FROM m.sent) AS date,
+          m.mail_from, m.reply_to, m.mail_to, m.subject, m.body, u.uni
+        FROM sent_mails AS m
+        LEFT JOIN users AS u USING (user_id)
+        ORDER BY m.sent DESC
+      ", $wces, __FILE__, __LINE__);
+      
+      $n = pg_numrows($r);
+      
+      for($i = 0; $i < $n; ++$i)
+      {
+        $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
+        $toa = explode(" ", $row['mail_to']);
+        assert(count($toa) == 2);
+        
+        $cat = (int)$toa[1];
+        $to = isset($cats[$cat]) ? "$cats[$cat] " : '';
+        $to .= $MassEmail_students[$toa[0]];
+        
+        print("<hr>\n");
+        print("<p>");
+        $this->event->displayButton("Open this email.", MassEmail_load, $row['sent_mail_id']);
+        print("</p>\n<pre>");
+        print("<b>Date:</b> " . date('l, F j, Y g:i a', $row['date']) . "\n");
+        print("<b>Sent By:</b> " . htmlspecialchars($row['uni']) . "\n");
+        print("<b>To:</b> " . htmlspecialchars($to) . "\n");
+        print("<b>From:</b> " . htmlspecialchars($row['mail_from']) . "\n");
+        print("<b>Reply To:</b> " . htmlspecialchars($row['reply_to']) . "\n");
+        print("<b>Subject:</b> " . htmlspecialchars($row['subject']) . "\n\n");
+        print(htmlspecialchars(wordwrap($row['body'])));
+        print("</pre>\n");
+      }
+      
+      
+      
     }
     else
     {
@@ -145,7 +223,12 @@ class MassEmail extends ParentWidget
 </pre>
 </div>
 <hr>
+
 <table>
+  <tr>
+    <td>&nbsp;</td>
+    <td><? $this->event->displayButton("Load a previously sent email...", MassEmail_choose); ?></td>
+  </tr>
   <tr>
     <td valign=top align=right><STRONG>From:</STRONG></td>
     <td><? $this->from->display(); ?></td>
