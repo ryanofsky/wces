@@ -1024,6 +1024,7 @@ class ChoiceWidget extends ComponentWidget
       print("<table border=1 cellspacing=3 cellpadding=3 width=100%>");
       foreach ($this->questions as $i => $text)
       {
+        if (isset($this->errors[$i]) && $showerrors) $text = "<b><font color=red>$text</font></b>";
         print("<tr>");
         print("<td valign=top>");
 
