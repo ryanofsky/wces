@@ -244,6 +244,11 @@ function nullquot($str)
   return isset($str) ? ("'" . addslashes($str) . "'") : "NULL";
 }
 
+function nulldate($timestamp)
+{
+  return $timestamp ? "'" . date("Y-m-d G:i:s", $timestamp) . "'" : "NULL"; 
+}
+
 function mnullquot($str)
 {
   return isset($str) && $str ? ("'" . addslashes($str) . "'") : "NULL";
