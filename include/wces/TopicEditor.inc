@@ -29,8 +29,8 @@ class TopicEditor extends StatefullWidget
     $this->StatefullWidget($name, $parent);
     if (!$professor_mode)
       $this->question_period =& new QuestionPeriodSelector("Display surveys for", "qps", $this);
-    $this->urlShortName('item_id'); 
-    $this->urlShortName('specialization_id');
+    $this->shortName('item_id'); 
+    $this->shortName('specialization_id');
     $this->professor_mode = (bool)$professor_mode;
   }
 
@@ -48,9 +48,9 @@ class TopicEditor extends StatefullWidget
         wces_connect();
         $r = pg_result(pg_go("
           SELECT EXISTS 
-          ( SELECT * FROM enrollments AS e
+          ( SELECT * FROM enrollments_p AS e
             INNER JOIN wces_topics AS t USING (class_id)
-            WHERE e.user_id = $user_id AND e.status = 3
+            WHERE e.user_id = $user_id
                AND t.item_id = $item_id
                AND t.specialization_id = $specialization_id
           )
@@ -69,13 +69,13 @@ class TopicEditor extends StatefullWidget
     }
   }
 
-  function & loadState()
+  function loadState($new)
   {
-    StatefullWidget::loadState();
+    StatefullWidget::loadState($new);
+    if ($new) return;
     
-    $mode = WIDGET_FORM | WIDGET_URL;
-    $item_id = $this->readValue('item_id', $mode);
-    $specialization_id = $this->readValue('specialization_id', $mode);
+    $item_id = $this->readValue('item_id');
+    $specialization_id = $this->readValue('specialization_id');
     if ($item_id && $specialization_id)
       $this->eventLoop(TopicEditor_choose, array($item_id, $specialization_id), true);
   }
@@ -128,10 +128,10 @@ class TopicEditor extends StatefullWidget
       ( array
         ( "", "
             SELECT t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
-            FROM enrollments AS e
+            FROM enrollments_p AS e
             INNER JOIN wces_topics AS t USING (class_id)
             INNER JOIN semester_question_periods AS s USING (question_period_id)
-            WHERE e.user_id = $user_id AND e.status = 3 AND s.enddate > (SELECT NOW())
+            WHERE e.user_id = $user_id AND s.enddate > (SELECT NOW())
             ORDER BY name
           ", TOPICS_CLASS
         )
@@ -171,28 +171,27 @@ class QuestionPeriodSelector extends ParentWidget
 
   function printVisible()
   {
-    print($this->text);
-    print("&nbsp;");
+    if ($this->text)
+    {
+      print($this->text);
+      print("&nbsp;");
+    }
+    $this->box->selected = get_question_period();
     $this->box->display();
     print("&nbsp;");
-    $this->event->displayButton("Update", 1);
+    $this->event->displayButton("Refresh", 1);
     print("<br>\n");
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    ParentWidget::loadInitialState();
-    $this->box->selected = get_question_period();
-  }
-
-  function loadState()
-  {
-    ParentWidget::loadState();
+    ParentWidget::loadState($new);
+    
     if ($this->event->event)
       set_question_period($this->box->selected);
     else
       $this->box->selected = get_question_period();
-  }
+  }  
 }
 
 ?>
