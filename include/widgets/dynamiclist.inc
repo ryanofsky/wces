@@ -274,7 +274,7 @@ EOD;
 <script language="javascript">
 <!--
     <?=$this->prefix?>_controller = DynamicList('<?=$this->form?>','<?=$this->prefix?>');
-    <? if($dowidth) print("{$this->prefix}_controller.selectedIndex = 0;\n    {$this->prefix}_controller.remove();\n"); ?> 
+    <? if($dowidth) print("{$this->prefix}_controller.selectedIndex = 0;\n    {$this->prefix}_controller.mremove();\n"); ?> 
 // -->
 </script>
 <!-- end FormWidget <?=$this->prefix?> -->
