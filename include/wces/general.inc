@@ -35,7 +35,7 @@ function sendwarning($dump, $file, $line)
 *                of the output.
 */	
 
-function simplesplit($splitchar,$name,$first,$last)
+function simplesplit($splitchar,$name,&$first,&$last)
 {
   $p = strrpos($name,$splitchar);
   if ($p === false)

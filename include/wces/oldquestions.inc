@@ -680,7 +680,7 @@ class OldQuestionSet extends FormWidget
     foreach($this->mc as $fieldname => $text)
     {
       $field = "";
-      simplesplit('_',$fieldname,false,&$field);
+      simplesplit('_',$fieldname,$null,$field);
       $choice = $this->answers[$fieldname];
       if (in_array($choice,$choices) && $field)
         $sql .= ", $field$choice = $field$choice + 1";
@@ -691,7 +691,7 @@ class OldQuestionSet extends FormWidget
     foreach($this->fr as $fieldname => $text)
     {
       $field = "";
-      simplesplit('_',$fieldname,false,&$field);
+      simplesplit('_',$fieldname,$null,$field);
       $result = addslashes(addcslashes($this->answers[$fieldname],"\t\\"));
       $sql .= ", $field = concat($field, '\t$result')";
     }
@@ -701,7 +701,7 @@ class OldQuestionSet extends FormWidget
     {
       $choice = $this->answers[$fieldname];
       $field = "";
-      simplesplit('_',$fieldname,false,&$field);
+      simplesplit('_',$fieldname,$null,$field);
       if (in_array($choice,$choices))
       	$sql .= ", $field$choice = $field$choice + 1";
       else
