@@ -2,6 +2,29 @@
 
 require_once("wbes/wbes.inc");
 
+function get_base($topic_id)
+{
+  global $wces;
+  wces_connect();
+  for(;;)
+  {
+    if ($topic_id == 1)
+      return 1;
+    if ($topic_id == 1481)
+      return 609;
+    else if ($topic_id == 1482)
+      return 611;
+    else if ($topic_id == 1483)
+      return 612;
+    else
+    {
+      $r = pg_query("SELECT parent FROM topics WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
+      if (pg_numrows($r) == 0) return 1;
+      $topic_id = (int)pg_result($r, 0, 0);
+    }
+  }
+}
+
 class Survey
 {
   var $components = array();
