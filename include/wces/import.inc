@@ -50,89 +50,99 @@ function importRegCsv($filename, $onlyYear = false, $onlySemester = false)
     if (count($data) != 19 && count($data) != 16)
     {
       bprint("<b>Warning:</b> Row $row does not contain the correct number of fields. (19 expected, " . count($data) . " found)<br>\n");
+      continue;
     }
+
+    if ($data[SEMESTER] == 'spring')
+      $semester = 0;
+    else if ($data[SEMESTER] == 'summer')
+      $semester = 1;
+    else if ($data[SEMESTER] == 'fall')
+      $semester = 2;
     else
     {
-      $semester = $data[SEMESTER] == 'spring' ? 0 : ($data[SEMESTER] == 'summer' ? 1 : 2);
+      bprint("<b>Warning:</b> Uncorecognized semester value '{$data[SEMESTER]}'");
+      continue; 
+    }
+    
+    if ($onlyYear !== false && $onlyYear != $data[YEAR])
+      continue;
       
-      if ($onlyYear !== false && $onlyYear != $data[YEAR])
-        continue;
-        
-      if ($onlySemester !== false && $onlySemester != $semester)
-        continue;
+    if ($onlySemester !== false && $onlySemester != $semester)
+      continue;
 
-      // XXX: our database stores course numbers as integers while the registrar
-      // apparently stores them as strings of 4 characters. our database
-      // should be changed to handle these cases, but in the meantime this import
-      // script will skip over them:
-      if (!is_numeric($data[COURSECODE]))
-      {
-         bprint("<i>Skipping {$data[SUBJECTCODE]} {$data[DIVISIONSCODE]} {$data[COURSECODE]}</i>\n");
-         continue;
-      }
+    // XXX: our database stores course numbers as integers while the registrar
+    // apparently stores them as strings of 4 characters. our database
+    // should be changed to handle these cases, but in the meantime this import
+    // script will skip over them:
+    if (!is_numeric($data[COURSECODE]))
+    {
+       bprint("<i>Skipping {$data[SUBJECTCODE]} {$data[DIVISIONSCODE]} {$data[COURSECODE]} due to non-numeric course code.</i>\n");
+       continue;
+    }
 
-      $divstr = "${data[DIVISIONCODE]},{$data[DIVISIONSCODE]},{$data[DIVISION]}";
-      $pstr = $data[INSTRUCTOR];
-      $sdata = array_map("mnullquot",$data);
+    $divstr = "{$data[DIVISIONCODE]},{$data[DIVISIONSCODE]},{$data[DIVISION]}";
+    $pstr = $data[INSTRUCTOR];
+    $sdata = array_map("mnullquot",$data);
 
-      if (isset($subject_cache[$data[SUBJECTCODE]]))
-        $subject_id = $subject_cache[$data[SUBJECTCODE]];
-      else
-        $subject_id = $subject_cache[$data[SUBJECTCODE]] = (int)pg_result(pg_go("
-          SELECT subject_update({$sdata[SUBJECTCODE]},{$sdata[SUBJECT]},'f')
-        ", $wces, __FILE__, __LINE__),0,0);
+    if (isset($subject_cache[$data[SUBJECTCODE]]))
+      $subject_id = $subject_cache[$data[SUBJECTCODE]];
+    else
+      $subject_id = $subject_cache[$data[SUBJECTCODE]] = (int)pg_result(pg_go("
+        SELECT subject_update({$sdata[SUBJECTCODE]},{$sdata[SUBJECT]})
+      ", $wces, __FILE__, __LINE__),0,0);
 
-      if (!$subject_id) die("subject_id not found for subject {$data[SUBJECTCODE]} on row $row");
+    if (!$subject_id) die("subject_id not found for subject {$data[SUBJECTCODE]} on row $row");
 
-      if (isset($school_cache[$data[SCHOOL]]))
-        $school_id = $school_cache[$data[SCHOOL]];
-      else
-        $school_id = $school_cache[$data[SCHOOL]] = (int)pg_result(pg_go("
-          SELECT school_update({$sdata[SCHOOL]})
-        ", $wces, __FILE__, __LINE__),0,0);
+    if (isset($school_cache[$data[SCHOOL]]))
+      $school_id = $school_cache[$data[SCHOOL]];
+    else
+      $school_id = $school_cache[$data[SCHOOL]] = (int)pg_result(pg_go("
+        SELECT school_update({$sdata[SCHOOL]})
+      ", $wces, __FILE__, __LINE__),0,0);
 
-      if (isset($dept_cache[$data[DEPARTMENTCODE]]))
-        $dept_id = $dept_cache[$data[DEPARTMENTCODE]];
-      else
-        $dept_id = $dept_cache[$data[DEPARTMENTCODE]] = (int)pg_result(pg_go("
-          SELECT department_update({$sdata[DEPARTMENTCODE]},{$sdata[DEPARTMENT]})
-        ", $wces, __FILE__, __LINE__),0,0);
+    if (isset($dept_cache[$data[DEPARTMENTCODE]]))
+      $dept_id = $dept_cache[$data[DEPARTMENTCODE]];
+    else
+      $dept_id = $dept_cache[$data[DEPARTMENTCODE]] = (int)pg_result(pg_go("
+        SELECT department_update({$sdata[DEPARTMENTCODE]},{$sdata[DEPARTMENT]})
+      ", $wces, __FILE__, __LINE__),0,0);
 
-      if (isset($div_cache[$divstr]))
-        $div_id = $div_cache[$divstr];
-      else
-        $div_id = $div_cache[$divstr] = (int)pg_result(pg_go("
-          SELECT division_update({$sdata[DIVISIONCODE]},{$sdata[DIVISIONSCODE]},{$sdata[DIVISION]})
-        ", $wces, __FILE__, __LINE__),0,0);
+    if (isset($div_cache[$divstr]))
+      $div_id = $div_cache[$divstr];
+    else
+      $div_id = $div_cache[$divstr] = (int)pg_result(pg_go("
+        SELECT division_update({$sdata[DIVISIONCODE]},{$sdata[DIVISIONSCODE]},{$sdata[DIVISION]})
+      ", $wces, __FILE__, __LINE__),0,0);
 
-      $course_id = pg_result(pg_go("SELECT course_update($subject_id,{$sdata[COURSECODE]},{$sdata[DIVISIONSCODE]},{$sdata[COURSE]},NULL)", $wces, __FILE__, __LINE__),0,0);
-      if (!$course_id) die("course_id not found for course {$data[SUBJECTCODE]} {$sdata[COURSECODE]} on row $row");
+    $course_id = pg_result(pg_go("SELECT course_update($subject_id,{$sdata[COURSECODE]},{$sdata[DIVISIONSCODE]},{$sdata[COURSE]},NULL)", $wces, __FILE__, __LINE__),0,0);
+    if (!$course_id) die("course_id not found for course {$data[SUBJECTCODE]} {$sdata[COURSECODE]} on row $row");
 
-      $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "NULL" : quot($data[CLASSNAME]);
-      $class_id  = pg_result(pg_go("SELECT class_update($course_id,{$sdata[CLASSSECTION]},{$sdata[YEAR]},$semester,$cname,{$sdata[TIME]},{$sdata[LOCATION]},{$sdata[STUDENTS]},{$sdata[CALLNUMBER]},$dept_id,$div_id,$school_id)", $wces, __FILE__, __LINE__),0,0); //cache
-      if (!$class_id) die("class_id not found for class {$data[SUBJECTCODE]} {$sdata[COURSECODE]} {$sdata[CLASSSECTION]} on row $row");
+    $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "NULL" : quot($data[CLASSNAME]);
+    $class_id  = pg_result(pg_go("SELECT class_update($course_id,{$sdata[CLASSSECTION]},{$sdata[YEAR]},$semester,$cname,{$sdata[TIME]},{$sdata[LOCATION]},{$sdata[STUDENTS]},{$sdata[CALLNUMBER]},$dept_id,$div_id,$school_id)", $wces, __FILE__, __LINE__),0,0); //cache
+    if (!$class_id) die("class_id not found for class {$data[SUBJECTCODE]} {$sdata[COURSECODE]} {$sdata[CLASSSECTION]} on row $row");
 
-      $professors = parse_csv_professor($pstr);
+    $professors = parse_csv_professor($pstr);
+    
+    if (count($professors) > 0)
+      pg_go("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__); 
+    
+    foreach($professors as $p)
+    {
+      $prof = adarray_map("nullquot", $p);
+      $user_id = (int)pg_result(pg_go("SELECT professor_find($prof[full], $prof[first], $prof[middlei], $prof[last], NULL, 1)", $wces, __FILE__, __LINE__),0,0) ;   
+      if (!$user_id) die("user_id not found for professor $prof[last] on row $row");
+      pg_go("INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
+      if ($p['url'])
+        pg_go("SELECT professor_data_update($user_id,$prof[url],NULL,NULL,NULL,NULL)", $wces, __FILE__, __LINE__);
+      if ($p['email'])
+        pg_go("UPDATE users SET email = COALESCE(email,$prof[email]) WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
       
-      if (count($professors) > 0)
-        pg_go("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__); 
-      
-      foreach($professors as $p)
-      {
-        $prof = adarray_map("nullquot", $p);
-        $user_id = (int)pg_result(pg_go("SELECT professor_find($prof[full], $prof[first], $prof[middlei], $prof[last], NULL, 1)", $wces, __FILE__, __LINE__),0,0) ;   
-        if (!$user_id) die("user_id not found for professor $prof[last] on row $row");
-        pg_go("INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
-        if ($p['url'])
-          pg_go("SELECT professor_data_update($user_id,$prof[url],NULL,NULL,NULL,NULL)", $wces, __FILE__, __LINE__);
-        if ($p['email'])
-          pg_go("UPDATE users SET email = COALESCE(email,$prof[email]) WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
-        
-      }
+    }
 
-      bprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (class_id = $class_id, course_id = $course_id,professor_id = $user_id)<br>\n");
-    };
-  }
+    bprint($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (class_id = $class_id, course_id = $course_id,professor_id = $user_id)<br>\n");
+  };
+
   fclose ($fp);
 };
 
@@ -319,7 +329,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
   $gparent_topic = NULL;
   if ($parent_topic)
   {
-    $r = pg_go("SELECT parent FROM topics WHERE topic_id = $parent_topic", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT parent FROM topics WHERE specialization_id = $parent_topic", $wces, __FILE__, __LINE__);
     $gparent_topic = pg_result($r, 0, 0);
   }
   
@@ -387,23 +397,23 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
 
       if ($parent_topic)
       {
-        $result = pg_go("SELECT parent, topic_id FROM wces_topics WHERE class_id = $class_id", $wces, __FILE__, __LINE__);
+        $result = pg_go("SELECT parent, specialization_id FROM wces_topics WHERE class_id = $class_id", $wces, __FILE__, __LINE__);
         if (pg_numrows($result) == 1)
         {
           $parent = (int)pg_result($result, 0, 0);
-          $topic_id = (int)pg_result($result, 0, 1);
+          $specialization_id = (int)pg_result($result, 0, 1);
           
-          pg_go("UPDATE wces_topics SET category_id = $category_id WHERE topic_id = $topic_id", $wces, __FILE__, __LINE__);
+          pg_go("UPDATE wces_topics SET category_id = $category_id WHERE specialization_id = $specialization_id", $wces, __FILE__, __LINE__);
           
           if ($parent == $gparent_topic)
           {
             $r = pg_go("
               UPDATE wces_topics SET 
                 category_id = $category_id, parent = $parent_topic
-              WHERE topic_id = $topic_id;
+              WHERE specialization_id = $specialization_id;
               
               SELECT branch_id, base_branch_id FROM branches
-              WHERE topic_id = $topic_id AND parent IS NOT NULL
+              WHERE specialization_id = $specialization_id AND parent IS NOT NULL
             ", $wces, __FILE__, __LINE__);
 
             $n = pg_numrows($r);
@@ -413,7 +423,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
               $row = pg_fetch_row($r, $i, PGSQL_ASSOC);
               $s = pg_go("
                 SELECT branch_id FROM branches
-                WHERE topic_id = $parent_topic
+                WHERE specialization_id = $parent_topic
                   AND base_branch_id = $row[base_branch_id]
               ", $wces, __FILE__, __LINE__);
               
@@ -428,16 +438,16 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
           }
           else if ($parent != $parent_topic)
           {
-            bprint("<h1>Unable to move topic $parent.$topic_id to $gparent_topic.$parent_topic</h1>\n"); 
+            bprint("<h1>Unable to move topic $parent.$specialization_id to $gparent_topic.$parent_topic</h1>\n"); 
           }  
         }
         else
         {        
           $result = pg_go("
             INSERT INTO wces_topics(parent, class_id, category_id) values ($parent_topic, $class_id, $category_id);
-            SELECT currval('topic_ids');
+            SELECT currval('specialization_ids');
           ", $wces, __FILE__, __LINE__);
-          $topic_id = (int)pg_result($result, 0, 0);
+          $specialization_id = (int)pg_result($result, 0, 0);
         }
       }
 
@@ -445,9 +455,9 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
 
       if ($question_period_id)
       {
-        $result = pg_go("SELECT EXISTS (SELECT * FROM question_periods_topics WHERE question_period_id = $question_period_id AND topic_id = $topic_id)", $wces, __FILE__, __LINE__);
+        $result = pg_go("SELECT EXISTS (SELECT * FROM question_periods_topics WHERE question_period_id = $question_period_id AND specialization_id = $specialization_id)", $wces, __FILE__, __LINE__);
         if (pg_result($result, 0, 0) == 'f')
-          pg_go("INSERT INTO question_periods_topics(topic_id, question_period_id) values ($topic_id, $question_period_id)", $wces, __FILE__, __LINE__);
+          pg_go("INSERT INTO question_periods_topics(specialization_id, question_period_id) values ($specialization_id, $question_period_id)", $wces, __FILE__, __LINE__);
       }
     }
     
