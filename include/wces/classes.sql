@@ -949,6 +949,8 @@ CREATE OR REPLACE FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP W
 CREATE OR REPLACE FUNCTION enrollment_drop_ta(INTEGER, INTEGER) RETURNS VOID AS '
   UPDATE enrollments SET status = status & ~2
   WHERE user_id = $1 AND class_id = $2;
+  DELETE FROM enrollments
+  WHERE status = 0 AND lastseen IS NULL AND user_id = $1 AND class_id = $2;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION enrollment_add_ta(INTEGER, INTEGER) RETURNS VOID AS '
