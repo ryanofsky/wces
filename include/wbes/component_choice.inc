@@ -676,13 +676,11 @@ class ChoiceEditor extends ComponentEditor
 <tr>
   <td valign=top><strong>Appearance:</strong></td>
   <td>
-
     <? if (!$SurveyEditor_ns4 || $show_coun) { ?>
     <div id=<?=$p?>_numberingsection style="display: <?= $show_coun ? "block" : "none" ?>">
     Question Numbering: <? $this->numbering_scheme->display(); ?>
     </div>
     <? } else { $this->numbering_scheme->display(true); } ?>
-
     <table>
     <tr>
       <td>Layout:</td>
@@ -915,14 +913,10 @@ class ChoiceWidget extends ComponentWidget
         }
 
         if (!$c->stacked || $c->vertical)
-        {
           print(" <label for=$id>$choice</label>");
-        }
 
         if ($i == $this->other)
-        {
           print(" <input type=textbox size=20 name=$id value=\"" . htmlspecialchars($this->others[$questionno]) . "\">");
-        }
 
         if ($c->vertical)
           print('</div>');
@@ -977,7 +971,7 @@ class ChoiceWidget extends ComponentWidget
     $n = count($this->choices);
 
     //added to display intro text. [tyler]
-    ?><h3><?= $c->intro_text; ?></h3><?
+    if ($c->intro_text) print("<h3>{$c->intro_text}</h3>");
 
     if ($c->stacked && !$c->vertical)
     {
