@@ -8,7 +8,6 @@ $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
-$wces_closed = false;
 $absolutePrintStr = $headPrintStr = "";
 
 function page_top($title, $minimal = false)
@@ -72,9 +71,10 @@ function showhelp(topic)
   <td valign=top bgcolor="#DEDEDE" class=sidelinks>
 <?
   $uni = login_getuni();
+  $user_id = login_getuserid();
   $status = login_getstatus();
 
-  if ($uni)
+  if ($user_id)
   {
     page_link("Log off $uni","login/logout.php$QSID",true);
     if ($fake = login_getfakeuni())
@@ -83,7 +83,7 @@ function showhelp(topic)
   else
     page_link("Log In","index.php$QSID", !$LOGIN_PROMPTING);
 
-  if ($uni)
+  if ($user_id)
     page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
 
   if ($status & login_administrator)
@@ -93,9 +93,10 @@ function showhelp(topic)
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
     page_link("Course Database",  "administrators/info.php", $QSID);
-    page_link("Reporting Wizard", "administrators/report.php", $QSID);
+    page_link("Reporting Wizard", "administrators/choose.php", $QSID);
     page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
     page_link("Data Import",      "administrators/import.php", $QSID);
+    page_link("Question Periods", "administrators/questionperiods.php", $QSID);
     page_link("Survey Remove",    "administrators/surveyslasher.php", $QSID);
   }
 
@@ -118,20 +119,32 @@ function showhelp(topic)
     }
   }
 
-  if (!$wces_closed && ($status & login_student))
+  if ($status & login_student)
   {
     wces_connect();
     
     $result = pg_query("
-      SELECT question_period_id, displayname, year, semester
+      SELECT question_period_id, displayname, year, semester, 
+        CASE WHEN begindate < NOW() THEN 0 ELSE 1 END AS closed
       FROM semester_question_periods
-      WHERE question_period_id = (SELECT get_question_period())
+      WHERE question_period_id = (SELECT get_next_question_period())
     ", $wces, __FILE__, __LINE__);
 
-    extract(pg_fetch_array($result,0,PGSQL_ASSOC));
-    
+    if (pg_numrows($result) == 0)
+    {
+      $wces_closed = true;
+      $year = $semester = 0;
+    }
+    else
+    {
+      extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+      $wces_closed = (bool)$closed;
+    }
+  }
+
+  if (!$wces_closed && ($status & login_student))
+  {  
     $user_id = login_getuserid();
-    wces_connect();
     
     $survey_listing = pg_query("
       SELECT t.class_id, get_class(t.class_id) AS name,
