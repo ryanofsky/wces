@@ -25,7 +25,7 @@ function cell($width = false, $height = false, $color = false, $tdattr = '', $im
   if ($color !== false) $cell .= " bgcolor=\"#$color\"";
   if ($SurveyEditor_ns4) $cell .= " background=\"$server_media/$color.gif\"";
   $cell .= "$tdattr>";
-  if ($SurveyEditor_ns4)
+  if ($SurveyEditor_ns4 || true)
   {
     if ($width === false) $width = 1;
     if ($height === false) $height = 1;
@@ -146,7 +146,8 @@ class SurveyEditor extends StatefullWidget
   function loadInitialState()
   {
     global $survey_factories;
-    $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
+    if (!isset($this->survey))
+      $this->survey =& LoadSurvey($this->item_id, $this->specialization_id, $survey_factories);
   }
 
   function loadState()
@@ -228,7 +229,7 @@ by clicking above and below existing components.</p>
         print("<tr>\n");
         print("  <td width=40><img src=\"$server_media/editor/$image\" width=40 height=18 border=0 id=$name name=$name align=absmiddle alt=Node></td>\n");
         print("  " . cell(1, false, '000000') . "\n");
-        print("  <td>"); $w->preview = true; $w->display(); print("</td>\n");
+        print("  <td style=\"padding: 10px\">"); $w->preview = true; $w->display(); print("</td>\n");
         print("</tr>\n");
         print($horizontalBorder);
       }
