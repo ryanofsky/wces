@@ -10,6 +10,8 @@
     $server_base = "http://oracle.seas.columbia.edu";
     $server_sbase = "https://oracle.seas.columbia.edu";
     $server_tempdir = "";
+    $server_isproduction = true;
+    $oracleroot = "/oracle/";
         
     function server_getrequest($absolute = false)
     {
@@ -28,7 +30,6 @@
       return mysql_connect("localhost","root","------");
       //return mysql_connect("160.39.128.25","russ","insecure");
     };    
-
   }
   else if (server_mode == "yahweh")
   {
@@ -37,9 +38,12 @@
     $server_wcespath = "/wces/";
     $server_win32 = true;
 
+    $server_isproduction = false;
+
     $server_base = "http://oracle.yahweh.dyndns.org";
     $server_sbase = "https://oracle.yahweh.dyndns.org:999";
     $server_tempdir = "M:/server/shares/temp";
+    $oracleroot = "/oracle/";
        
     function server_getrequest($absolute = false)
     {
@@ -56,8 +60,8 @@
     
     function server_sqlinit()
     {
-      //return mysql_connect("localhost","root","------");
-      return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
+      return mysql_connect("localhost","root","------");
+      //return mysql_connect("oracle.seas.columbia.edu","russ","insecure");
     };    
 
   }
