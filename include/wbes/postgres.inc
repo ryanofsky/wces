@@ -107,7 +107,7 @@ function pg_explode($sa)
     {
       $c = $sa[$i];
       $is_comma = $c == ',';
-      $is_quote = $c == '"';
+      $is_quote = $c == '"';   //"  fix for bad editiors which don't properly handle quote escaping. :-)
       $is_escape = $c == '\\';
     
       if ($is_comma && !$quoted)
