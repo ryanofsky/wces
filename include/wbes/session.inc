@@ -49,4 +49,13 @@ function session_kill()
   $_SESSION = null;
 }
 
+function sid($url)
+{
+  global $QSID, $ASID;
+  if ($QSID)
+    return $url . (strrpos($url, '?') === false ? $QSID : $ASID);
+  else
+    return $url;
+}
+
 ?>

@@ -100,13 +100,13 @@ class WcesLogin
     
     if ($bounce)
     {
-      sloppyredirect($w->bounceUrl());
+      sloppyredirect(sid($w->bounceUrl()));
       exit();
     }
     
     if ($w->done && $w->destUrl)
     {
-      sloppyredirect($w->base . $w->destUrl);
+      sloppyredirect(sid($w->base . $w->destUrl));
       exit();
     }
 
