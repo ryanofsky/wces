@@ -127,7 +127,7 @@ if ($mode == "search")
         INNER JOIN users AS u USING (user_id)
         WHERE $search
         GROUP BY u.user_id, u.lastname, u.firstname
-        ORDER BY lastname, firstname
+        ORDER BY u.lastname, u.firstname
       ",$wces,__FILE__,__LINE__);
     }  
     else // $searchin == 1
