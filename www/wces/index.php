@@ -26,6 +26,7 @@
   <li><a href="<?=$wces_path?>administrators/pusage.php<?=$QSID?>">Professor Usage</a> - See a detailed report of professor usage of WCES during the current question period.</li>
   <li><a href="<?=$wces_path?>administrators/info.php<?=$QSID?>">Course Database</a> - See courses and enrollments.</li>
   <li><a href="<?=$wces_path?>administrators/report.php<?=$QSID?>">Reporting Wizard</a> - View and print past results.</li>
+  <li><a href="<?=$wces_path?>administrators/textreport.php<?=$QSID?>">Text Reports</a> - Download summarized results as plain text.</li>
   <li><a href="<?=$wces_path?>administrators/massmail.php<?=$QSID?>">Mass Mail</a> - Send reminder and thank-you emails to students.</li>
   <li><a href="<?=$wces_path?>administrators/import.php<?=$QSID?>">Data Import</a> - Upload data into the WCES course database.</li>
   

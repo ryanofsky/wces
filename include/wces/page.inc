@@ -85,6 +85,7 @@ function showhelp(topic)
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
     page_link("Course Database",  "administrators/info.php", $QSID);
     page_link("Reporting Wizard", "administrators/report.php", $QSID);
+    page_link("Text Reports", "administrators/textreport.php", $QSID);
     page_link("Mass Mailing",     "administrators/massmail.php", $QSID);
     page_link("Data Import",      "administrators/import.php", $QSID);
     page_link("Question Periods", "administrators/questionperiods.php", $QSID);
