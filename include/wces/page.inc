@@ -145,6 +145,7 @@ function showhelp(topic)
       INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = t.class_id AND e.status = 1
       LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.question_period_id = $question_period_id AND sr.user_id = $user_id
       INNER JOIN classes AS cl ON cl.class_id = e.class_id AND cl.year = $year AND cl.semester = $semester
+      WHERE t.category_id IS NOT NULL
       GROUP BY sr.user_id, t.class_id
       ORDER BY surveyed, name
     ", $wces, __FILE__, __LINE__);
