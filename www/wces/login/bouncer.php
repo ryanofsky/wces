@@ -1,5 +1,5 @@
 <?
   require_once('wces/login.inc');
   $login =& LoginInstance();
-  $login->handle();
+  $login->bounce();
 ?>
