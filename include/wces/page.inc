@@ -102,11 +102,11 @@ function showhelp(topic)
     if ($nospace) $nospace = false; else page_spacer();
     if ($status & login_knownprofessor)
     {
-      page_link("Upcoming Surveys", "professors/editsurveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
-      page_link("Survey Results",   "professors/seeresults.php$QSID");
-      //page_link("Survey Responses", "professors/respond/multiclasses.php$QSID");
-      //page_link("Past Averages",    "professors/respond/historygraph.php$QSID");
-      //page_link("Edit Profile",     "professors/infoedit.php$QSID");
+      page_link("Upcoming Surveys", "professors/editsurveys.php", ($wces_ns4 ? "/ns4?auto=1$ASID" : $QSID));
+      page_link("Survey Results",   "professors/seeresults.php", $QSID);
+      //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
+      //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
+      //page_link("Edit Profile",     "professors/infoedit.php", $QSID);
     }
     page_link("Update Association", "login/profsearch.php$QSID");
   }
