@@ -251,6 +251,7 @@ class ProfessorEditor extends FormWidget
       $this->cunix = new TextBox(0,50,"",$prefix . "_cunix",$form,$formmethod);
     $this->pictureupload = new ImageUpload($profimages_physical, 250000, $this->prefix . "_picture", $form, $formmethod);
     $this->departmentid = 0;
+    $this->picture = "";
   }
   
   function loadvalues()
@@ -343,7 +344,7 @@ class ProfessorEditor extends FormWidget
     <tr><td valign=top><strong>Email:</strong></td><td><? $this->email->display(); ?></td></tr>
     <tr><td valign=top><strong>Department:</strong></td><td>
 <?
-$departments = db_exec("SELECT departmentid, code, name FROM Departments", $this->db, __FILE__, __LINE__);
+$departments = db_exec("SELECT departmentid, code, name FROM Departments ORDER BY code", $this->db, __FILE__, __LINE__);
 print('<SELECT name=' . $this->prefix . "_departmentid\">\n");
 while($department = mysql_fetch_assoc($departments))
 {
