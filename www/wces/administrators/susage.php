@@ -29,7 +29,7 @@ while($topic = mysql_fetch_assoc($topics))
     print($topic["name"]);
   }
   else
-    print('<a href="susage.php?topicid=' . $topic["topicid"] . '">' . $topic["name"] . "</a>");
+    print('<a href="susage.php?topicid=' . $topic["topicid"] . $ASID . '">' . $topic["name"] . "</a>");
 }
 if (!$first) print (" | ");
 if (!$foundfilter)
@@ -38,14 +38,12 @@ if (!$foundfilter)
   print("None</p>");
 }
 else
-  print('<a href="susage.php">None</a></p>');
+  print('<a href="susage.php' . $QSID . '">None</a></p>');
 
 ///////////////////////////////////////////////////////////////////////////////
 
 $times = array();
 $times["begin"] = microtime();
-$questionperiodid = wces_Findquestionsetsta($db,"qsets",false,$topicid);
-$times["findquestionsets"] = microtime();
 
 db_exec("
   CREATE TEMPORARY TABLE surveyclasses(
@@ -55,25 +53,26 @@ db_exec("
   PRIMARY KEY(classid))
 ",$db,__FILE__, __LINE__);
 
-$times["createtable"] = microtime();
+$times["sql1_create_table_aggregate"] = microtime();
 
 db_exec("
   REPLACE INTO surveyclasses (courseid, classid, section, scode, code, name, pname, professorid, students, responses)
-  SELECT c.courseid, cc.classid, cl.section, s.code, c.code, c.name, p.name, p.professorid, IFNULL(cl.students,0), IFNULL(MAX(a.responses),0)
-  FROM qsets AS cc
-  INNER JOIN classes AS cl ON (cl.classid = cc.classid)
+  SELECT c.courseid, cl.classid, cl.section, s.code , c.code, c.name, p.name, p.professorid, IFNULL(cl.students,0), COUNT(distinct a.userid)
+  FROM groupings AS g
+  INNER JOIN classes AS cl ON (cl.classid = g.linkid)
   INNER JOIN courses AS c ON (c.courseid = cl.courseid)
   INNER JOIN subjects AS s ON (s.subjectid = c.subjectid)
   LEFT JOIN professors AS p ON (cl.professorid = p.professorid)
-  LEFT JOIN answersets AS a ON (cc.questionsetid = a.questionsetid AND cl.classid = a.classid AND a.questionperiodid = '$questionperiodid')
-  WHERE cc.classid NOT IN (11499, 1653)
-  GROUP BY cl.classid",$db,__FILE__, __LINE__);
+  LEFT JOIN cheesyresponses AS a ON (g.linkid = a.classid AND a.questionperiodid = '$questionperiodid')
+  WHERE g.linktype = 'classes' " . ($topicid ? " AND g.topicid = $topicid " : "") . "
+  GROUP BY g.linkid
+",$db,__FILE__, __LINE__);
 
-$times["getbigclasslist"] = microtime();
+$times["sql2_get_big_class_list_aggregate"] = microtime();
 
 $y = db_exec("SELECT SUM(students) as students, SUM(responses) as responses FROM surveyclasses",$db,__FILE__, __LINE__);
 
-$times["sumclasslist"] = microtime();
+$times["sql3_sum_class_list_aggregate"] = microtime();
 
 extract(mysql_fetch_array($y));
 
@@ -100,7 +99,7 @@ while ($class = mysql_fetch_array($classes))
   $students = $responses = $classid = $professorid = 0; $scode = $code = $section = $name = $pname = "Unknown";
   extract($class);
   $numbers = $students == 0 ? "$responses surveys completed" : (($students - $responses) . " / $students surveys left");
-  print ("  <li>$numbers, <a href=\"info.php?classid=$classid&surveys=1\">$scode$code$section <i>$name</i></a> - Professor <a href=\"info.php?professorid=$professorid&surveys=1\">$pname</a></li>\n");
+  print ("  <li>$numbers, <a href=\"info.php?classid=$classid&surveys=1$ASID\">$scode$code$section <i>$name</i></a> - Professor <a href=\"info.php?professorid=$professorid&surveys=1$ASID\">$pname</a></li>\n");
 }
 print("</ul>");
 
@@ -108,24 +107,22 @@ flush();
 
 ///////////////////////////////////////////////////////////////////////////////
 
-db_exec("CREATE TEMPORARY TABLE studsurvs( cunix TINYTEXT, surveys INTEGER, surveyed INTEGER )", $db, __FILE__, __LINE__);
+$times["print_aggregate"] = microtime();
+
 db_exec("
-
-  REPLACE INTO studsurvs(cunix, surveys, surveyed)
-  SELECT u.cunix, COUNT(DISTINCT q.questionsetid), COUNT(DISTINCT cs.answersetid)
-  FROM qsets AS qs
-  INNER JOIN enrollments AS e ON e.classid = qs.classid
+  CREATE TEMPORARY TABLE studsurvs AS
+  SELECT u.cunix AS cunix, COUNT(DISTINCT g.linkid) AS surveys, COUNT(DISTINCT a.classid) AS surveyed
+  FROM groupings AS g
+  INNER JOIN enrollments AS e ON e.classid = g.linkid
   INNER JOIN users AS u ON u.userid = e.userid
-  INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
-  LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
-  LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
-  GROUP BY u.userid
-  
+  LEFT JOIN cheesyresponses AS a ON a.userid = e.userid AND a.classid = g.linkid AND a.questionperiodid = '$questionperiodid'" . ($topicid ? "
+  WHERE g.topicid = $topicid " : "") . "  
+  GROUP BY e.userid
 ", $db, __FILE__, __LINE__);
-
-$times["getstudentusage"] = microtime();
+$times["sql1_individual"] = microtime();
 
 $students = db_exec("SELECT cunix, IF(surveys-surveyed<=0,1,0) AS didall, IF(surveyed>0,1,0) AS didone FROM studsurvs ORDER BY didall DESC, didone DESC, RAND()", $db, __FILE__, __LINE__);
+$times["sql2_individual"] = microtime();
 
 print("<h3>Individual Student Usage</h3>\n");
 
@@ -149,10 +146,12 @@ while ($student = mysql_fetch_array($students))
     $first = true;
   }  
   if ($first) $first = false; else print(", ");
-  print("\n  <a href=\"${wces_path}administrators/enrollment.php?unilist=$cunix\">$cunix</a>");
+  print("\n  <a href=\"${wces_path}administrators/info.php?cunix=$cunix&surveys=1&$ASID\">$cunix</a>");
   $oldlevel = $level;
 }
 print("</blockquote>");
+$times["print_individual"] = microtime();
+
 
 printtimes($times);
 

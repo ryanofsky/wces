@@ -3,7 +3,8 @@ require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 
-login_protect(login_administrator);
+if (!isset($HTTP_POST_VARS["pass"]) || md5($HTTP_POST_VARS["pass"]) != "5d41402abc4b2a76b9719d911017c592")
+  login_protect(login_administrator);
 
 param($unilist);
 param($debug);
@@ -14,7 +15,7 @@ $data = false;
 if ($unilist)
 {
   $result = db_exec("
-    SELECT u.userid, u.isprofessor, u.isadmin, IFNULL(p.professorid,0) AS profid
+    SELECT u.status, u.userid, u.isprofessor, u.isadmin, IFNULL(p.professorid,0) AS profid
     FROM users AS u
     LEFT JOIN professors AS p ON u.userid = p.userid
     WHERE u.cunix = '" . addslashes($unilist) . "'", $db, __FILE__, __LINE__);
@@ -31,17 +32,18 @@ if ($data)
     $status |= login_knownprofessor;
   if ($data["isadmin"] == "true")
     $status |= login_administrator;
-
+  if ($data["status"] == "student")
+    $status |= login_student;
   login_setup
   (
     $db,
     $data["userid"],
-    $uni,
+    $unilist,
     $status,
     "Impersonator",
     $data["profid"]
   );
-  redirect($wces_path);
+  redirect("{$wces_path}index.php$QSID");
   page_top("Fake Logon Success!");
   print("You are now logged in as '" . login_getuni() . ",' with " . login_whoami() . " privileges.<br>Use the links at the left to navigate the site as this user.");
 }
@@ -137,6 +139,7 @@ type in a username that is unknown, you will have the option of adding that
 username to the database.
 
 <form name=fakelogin action="fakelogin.php" method=get>
+<?=$ISID?>
 <table>
 <tr>
 <td valign=top>Username:</td>
