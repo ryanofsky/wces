@@ -221,11 +221,6 @@ $db = wces_connect();
 $questionperiodid = wces_GetQuestionPeriod($db);
 wces_Findquestionsets($db,"qsets");
 
-
-print('<i>The Spring 2001 Final Evaluation period has not yet begun. Check back soon and email any questions to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>.</i>');
-page_bottom();
-exit();
-
 if ($classid)
 {
   if ($qsets = getquestionsets($classid))
