@@ -5,7 +5,18 @@
   login_protect(login_professor);
   $profid = login_getprofid();
 
+  param($previewclass);
+  param($editclass);
+  param($cancel);
+  param($save);
+
   page_top("Professors Page","0010");
+
+print("<p>This function is not available during the evaluation period</p>");
+page_bottom();
+exit();
+
+
 
   $db = wces_connect();
   $profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
@@ -95,7 +106,7 @@
  
   function editquestions()
   {
-    global $db,$editclass,$profid,$profname,$ABETQUESTIONS;      
+    global $db,$editclass,$profid,$profname,$ABETQUESTIONS, $server_wcespath;      
    
     $classname = getclassname($editclass);
 
@@ -117,7 +128,7 @@
 <p>Students will be asked, "<b>To what degree did this course enhance your ability to:</b>"</p>
 <table cellpadding=0 cellspacing=2>
 <%
-  $a = $questionset["ABET"] ? explode(",",$questionset["ABET"]) : array();
+  $a = isset($questionset["ABET"]) ? explode(",",$questionset["ABET"]) : array();
   foreach($ABETQUESTIONS as $k => $v)
     print('  <tr><td bgcolor="#DDDDDD" background="' . $server_wcespath . 'media/0xDDDDDD.gif" width="100%"><p style="margin-left: 30px; text-indent: -30px"><input id="ABET' . $k . '" name="ABET' . $k . '" value=1 type=checkbox style="width: 30px"' . (is_array($a) && in_array($k,$a) ? " checked" : "") . '><label for="ABET' . $k . '"><b>' . $v . "</b></label></p></td></tr>\n");
 %>
@@ -125,9 +136,6 @@
 <hr>
 <h3>Custom Questions</h3>
 <% } %>
-
-
-
 
 <p>From this page, you can edit the text of up to 10 ratings
 style questions and up to 2 free response questions. On the ratings questions,
@@ -144,13 +152,13 @@ of text in response to your questions.</p>
 <% for($i=1; $i<=10; ++$i) { %>
 <tr>
   <td valign=top>Ratings Question <%=$i%>:</td>
-  <td><textarea name=ratings<%=$i%> wrap=virtual rows=3 cols=80><%=htmlspecialchars($questionset["MC$i"])%></textarea></td>
+  <td><textarea name=ratings<%=$i%> wrap=virtual rows=3 cols=80><%=isset($questionset["MC$i"]) ? htmlspecialchars($questionset["MC$i"]) : ""%></textarea></td>
 </tr>
 <% } %>
 <% for($i=1; $i<=2; ++$i) { %>
 <tr>
   <td valign=top>Free Response <%=$i%>:</td>
-  <td><textarea name=freeresponse<%=$i%> wrap=virtual rows=3 cols=80><%=htmlspecialchars($questionset["FR$i"])%></textarea></td>
+  <td><textarea name=freeresponse<%=$i%> wrap=virtual rows=3 cols=80><%=isset($questionset["FR$i"]) ? htmlspecialchars($questionset["FR$i"]) : ""%></textarea></td>
 </tr>
 <% } %>
 <tr><td colspan=2><input type=submit name=save value="Submit Changes"> <input type=submit name=cancel value="Cancel"><td></tr>
@@ -261,7 +269,8 @@ of text in response to your questions.</p>
       print("<form>");
       foreach($questionsets as $k => $qid)
       { 
-        $q = new OldQuestionWidget($db,$qid, 0, 0, "preview$k","prv",WIDGET_GET);
+        $q = new OldQuestionSet($db,$qid, 0, 0, "preview$k","prv",WIDGET_GET);
+        $q->loadvalues();
         $q->display();
       }  
       print("</form>");

@@ -7,10 +7,6 @@
   login_protect(login_professor);
   $profid = login_getprofid();
 
-  page_top("Survey Results","0010");
-  $db = wces_connect();
-  $profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
-
 function report_display($db,$answersetids,$showresponses,$listclasses,$showgraph)
 {
   global $server_wcespath;
@@ -239,6 +235,13 @@ function printresults($questionperiodid,$classid)
   
 };
 
+
+page_top("Survey Results","0010");
+$db = wces_connect();
+$profname = db_getvalue($db,"professors",Array("professorid" => $profid),"name");
+print("<p>This function is not available during the evaluation period</p>");
+page_bottom();
+exit();
 
 if ($questionperiodid)
   printresults($questionperiodid,$classid);

@@ -12,6 +12,14 @@
 <p>Welcome to the Professors page.</p>
 <p>Currently, these options are available:</p>
 <ul>
+<li>Closed during the evaluation period</li>
+</ul>
+
+<%
+page_bottom();
+exit();
+%>
+
 <li><a href="<%=$server_wcespath%>professors/editsurveys.php">Edit and Preview Upcoming Surveys</a></li>
 <li><a href="<%=$server_wcespath%>professors/seeresults.php">See Survey Results</a></li>
 </ul>
