@@ -50,6 +50,7 @@ class QuestionPeriodEditor extends FormWidget
     $this->year = new TextBox(0, 4, "", "{$prefix}_year", $form, $formmethod);
     $this->semester = new DropBox($dartSemesters, "{$prefix}_semester", $form, $formmethod);
     $this->action = new ActionButton("{$prefix}_action", $form, $formmethod);
+    $this->profDate = new TextBox(0, 30, "", "{$prefix}_profDate", $form, $formmethod);
   }
 
   function loadDefaults()
@@ -58,7 +59,7 @@ class QuestionPeriodEditor extends FormWidget
     if ($this->question_period_id > 0)
     {
       wces_connect();     
-      $r = pg_query("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, EXTRACT(EPOCH FROM prizedate) AS prizedate, prize, year, semester FROM dartmouth_question_periods WHERE question_period_id = $this->question_period_id", $wces, __FILE__, __LINE__);
+      $r = pg_query("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, EXTRACT(EPOCH FROM prizedate) AS prizedate, prize, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate FROM dartmouth_question_periods WHERE question_period_id = $this->question_period_id", $wces, __FILE__, __LINE__);
       assert(pg_numrows($r) == 1);
       extract(pg_fetch_row($r, 0, PGSQL_ASSOC));
       $this->displayName->text = $displayname;
@@ -68,13 +69,15 @@ class QuestionPeriodEditor extends FormWidget
       $this->prize->text = $prize;
       $this->year->text = $year;
       $this->semester->selected = $semester;
+      $this->profDate->text = format_date($profdate);
     }
     else
     {
       $y = date("Y");
-      $this->beginDate->text = "$y-01-01 00:00:00";
-      $this->endDate->text = "$y-01-31 00:00:00";
-      $this->prizeDate->text = "$y-02-01";
+      $this->beginDate->text = "1/1/$y 12:00 am";
+      $this->endDate->text = "1/31/$y 12:00 am";
+      $this->prizeDate->text = "2/1/$y";
+      $this->profDate->text = "2/7/$y 12:00 am";
       $this->year->text = $y;
     }
   }
@@ -86,10 +89,11 @@ class QuestionPeriodEditor extends FormWidget
 
     $bd = parse_date($this->beginDate->text);
     $ed = parse_date($this->endDate->text);
+    $rd = parse_date($this->profDate->text);
     if ($bd === false) $this->errors[] = "Unable to parse begin date";
     if ($bd === false) $this->errors[] = "Unable to parse end date";
-    
-    if (strlen(trim($this->prizeDate->text)))
+    if ($rd === false) $this->errors[] = "Unable to parse professor date";
+    if (strlen(trim($this->prizeDate->text)) > 0)
     {
       $pd = parse_date($this->prizeDate->text);  
       if ($pd === false) $this->errors[] = "Unable to parse prize date";
@@ -102,6 +106,7 @@ class QuestionPeriodEditor extends FormWidget
     $bd = nulldate($bd);
     $ed = nulldate($ed);
     $pd = nulldate($pd);
+    $rd = nulldate($rd);
     
     $dn = quot($this->displayName->text);
     $pz = quot($this->prize->text);
@@ -111,7 +116,7 @@ class QuestionPeriodEditor extends FormWidget
     {
       $r = pg_query("
         INSERT INTO dartmouth_question_periods(displayname, begindate, enddate,
-        semester, year, prize, prizedate) VALUES ($dn, $bd, $ed, $sm, $yr, $pz, $pd);
+        semester, year, prize, prizedate, profdate) VALUES ($dn, $bd, $ed, $sm, $yr, $pz, $pd, $rd);
         SELECT currval('question_period_ids');
       ", $wces, __FILE__, __LINE__);
       if (!$r) return false;
@@ -123,7 +128,8 @@ class QuestionPeriodEditor extends FormWidget
       return (bool)pg_query("
         UPDATE dartmouth_question_periods SET
           displayname = $dn, begindate = $bd, enddate = $ed,
-          semester = $sm, year = $yr, prize = $pz, prizedate = $pd
+          semester = $sm, year = $yr, prize = $pz, prizedate = $pd,
+          profdate = $rd
         WHERE question_period_id = $this->question_period_id
       ", $wces, __FILE__, __LINE__);  
     }
@@ -139,6 +145,7 @@ class QuestionPeriodEditor extends FormWidget
     $this->prize->loadValues();
     $this->year->loadValues();
     $this->semester->loadValues();
+    $this->profDate->loadValues();
     if ($this->action->action == QuestionPeriodEditor_save)
     {
       if ($this->save())
@@ -172,6 +179,7 @@ class QuestionPeriodEditor extends FormWidget
 <tr><td>End Time:</td><td><? $this->endDate->display(); ?></td></tr>
 <tr><td>Prize:</td><td><? $this->prize->display(); ?></td></tr>
 <tr><td>Prize Date:</td><td><? $this->prizeDate->display(); ?></td></tr>
+<tr><td>Professor Results Date:</td><td><? $this->profDate->display(); ?></td></tr>
 <tr><td>&nbsp;</td><td><? $this->action->display("Save", QuestionPeriodEditor_save); $this->action->display("Cancel", QuestionPeriodEditor_cancel); ?></td></tr>
 </table>
 <?
