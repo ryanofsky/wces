@@ -57,13 +57,14 @@ CREATE TABLE AnswerSets (
   FR1 mediumtext,
   FR2 mediumtext,
   PRIMARY KEY (answersetid),
-  KEY questionperiodid(questionperiodid,questionsetid,classid)
+  UNIQUE KEY code(questionperiodid,questionsetid,classid)
 );
 
 CREATE TABLE Classes (
   classid int(11) NOT NULL auto_increment,
   courseid int(11) NOT NULL default '0',
   section char(3) NOT NULL default '',
+  divisioncode char(1) NOT NULL default '',
   year year(4) NOT NULL default '0000',
   semester enum('spring','summer','fall') NOT NULL default 'spring',
   name tinytext,
@@ -75,7 +76,7 @@ CREATE TABLE Classes (
   departmentid int(11) default NULL,
   divisionid int(11) default NULL,
   PRIMARY KEY (classid),
-  KEY courseid(courseid,section,year,semester)
+  UNIQUE KEY code(courseid,section,divisioncode,year,semester)
 );
 
 CREATE TABLE CompleteSurveys (
@@ -87,14 +88,13 @@ CREATE TABLE CompleteSurveys (
 CREATE TABLE Courses (
   courseid int(11) NOT NULL auto_increment,
   subjectid int(11) NOT NULL default '0',
-  code int(11) default NULL,
+  code int(11) NOT NULL default '0',
   name tinytext,
   information text,
   departmentid int(11) default NULL,
-  divisionid int(11) default NULL,
   schoolid int(11) default NULL,
   PRIMARY KEY (courseid),
-  KEY subjectid(subjectid,code)
+  UNIQUE KEY code(subjectid,code)
 );
 
 CREATE TABLE Departments (
@@ -102,26 +102,22 @@ CREATE TABLE Departments (
   code varchar(4) NOT NULL default '',
   name tinytext,
   PRIMARY KEY (departmentid),
-  KEY code(code)
+  UNIQUE KEY code(code)
 );
 
 CREATE TABLE Divisions (
   divisionid int(11) NOT NULL auto_increment,
-  code char(2) default NULL,
-  shortcode char(1) default NULL,
+  code char(2) NOT NULL default '',
+  shortcode char(1) NOT NULL default '',
   name tinytext NOT NULL,
-  PRIMARY KEY (divisionid)
+  PRIMARY KEY (divisionid),
+  UNIQUE KEY name(name(255))
 );
 
 CREATE TABLE Enrollments (
   userid int(11) NOT NULL default '0',
   classid int(11) NOT NULL default '0',
   PRIMARY KEY (userid,classid)
-);
-
-CREATE TABLE ErrorLog (
-  time timestamp(14) NOT NULL,
-  description text
 );
 
 CREATE TABLE Groupings (
@@ -138,7 +134,14 @@ CREATE TABLE ProfessorDupeData (
   last tinytext,
   fullname tinytext,
   source enum('regweb','regpid','oracle','oldclasses') default NULL,
-  pid varchar(10) default NULL
+  pid varchar(10) default NULL,
+  KEY professorid(professorid),
+  KEY first(first(255)),
+  KEY middle(middle),
+  KEY last(last(255)),
+  KEY fullname(fullname(255)),
+  KEY source(source),
+  KEY pid(pid)
 );
 
 CREATE TABLE Professors (
@@ -152,7 +155,8 @@ CREATE TABLE Professors (
   profile text,
   education text,
   departmentid int(11) default NULL,
-  PRIMARY KEY (professorid)
+  PRIMARY KEY (professorid),
+  UNIQUE KEY userid(userid)
 );
 
 CREATE TABLE QuestionPeriods (
@@ -187,8 +191,9 @@ CREATE TABLE QuestionSets (
 
 CREATE TABLE Schools (
   schoolid int(11) NOT NULL auto_increment,
-  name tinytext NOT NULL default '',
-  PRIMARY KEY (schoolid)
+  name tinytext NOT NULL,
+  PRIMARY KEY (schoolid),
+  UNIQUE KEY name(name(255))
 );
 
 CREATE TABLE Subjects (
@@ -196,14 +201,17 @@ CREATE TABLE Subjects (
   code varchar(4) NOT NULL default '',
   name tinytext,
   PRIMARY KEY (subjectid),
-  KEY code(code)
+  UNIQUE KEY code(code)
 );
 
 CREATE TABLE Users (
   userid int(11) NOT NULL auto_increment,
   cunix varchar(15) default NULL,
   email tinytext,
+  status set('student','professor','administrator','barnard') NOT NULL default '',
+  lastlogin datetime default NULL,
   isprofessor enum('false','true') NOT NULL default 'false',
   isadmin enum('false','true') NOT NULL default 'false',
-  PRIMARY KEY (userid)
+  PRIMARY KEY (userid),
+  UNIQUE KEY cunix(cunix)
 );
