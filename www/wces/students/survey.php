@@ -19,16 +19,8 @@ param($save);
 
 wces_connect();
 
-$server_isproduction = false; 
-
 if ($class_id)
 {
-if (login_getfake())
-{
-  
-  //$db_debug = true;
-}
-
   $question_period_id = (int) pg_result(pg_query("SELECT get_question_period()", $wces, __FILE__, __LINE__),0,0);
   $user_id = login_getuserid();
   $class_id = (int)$class_id;
@@ -43,8 +35,6 @@ if (login_getfake())
   if(pg_numrows($result) == 1 && pg_result($result,0,1) == 'f')
   {
     $topic_id = (int)pg_result($result,0,0);
-//if (login_getfake()) debugout($parent, "parent = ");
-
 
     $factories = array
     (
