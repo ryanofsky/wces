@@ -2,6 +2,9 @@
 
 require_once("wbes/component.inc");
 
+$Heading_code = 3;                
+$Heading_name = "Heading Component";
+
 class Heading extends Component
 {
   function Heading()

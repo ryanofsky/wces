@@ -2,6 +2,9 @@
 
 require_once("wbes/component.inc");
 
+$Text_code = 4;                
+$Text_name = "Text Component";
+
 class Text extends Component
 {
   function Text()

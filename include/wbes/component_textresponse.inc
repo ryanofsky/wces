@@ -1,5 +1,10 @@
 <?
 
+require_once("wbes/component.inc");
+
+$TextResponse_code = 2;                
+$TextResponse_name = "Text Response Question";
+
 class TextResponse extends Component
 {
   var $rows, $cols;
