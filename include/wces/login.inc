@@ -10,14 +10,21 @@ define("login_student","1");
 define("login_professor", "3");
 define("login_administrator", "4");
 
-if (isset($HTTP_COOKIE_VARS[session_name()]))
+if (isset($SESSION_TRANSFER_ID) && $SESSION_TRANSFER_ID)
+  session_id($SESSION_TRANSFER_ID);
+
+if (isset($HTTP_COOKIE_VARS[session_name()]) || (isset($SESSION_TRANSFER_ID) && $SESSION_TRANSFER_ID))
 {
   $login_sessionstarted = true;
   session_start();
 
   //workaround. copy obnoxious globals into HTTP_SESSION_VARS
   $a = array("login_userid","login_cunixid","login_isstudent","login_isprofessor","login_isadministrator","login_profid");
-  foreach($a as $b) $HTTP_SESSION_VARS[b] = ${$b};
+  foreach($a as $b)
+  {
+    if (isset( ${$b} ))
+      $HTTP_SESSION_VARS[$b] = ${$b};
+  }  
   unset($a,$b);
 }
 else
@@ -26,7 +33,7 @@ else
 function login_protect($requiredstatus)
 {
   if (!login_isvalid($requiredstatus))
-    login_prompt(server_getrequest(),$requiredstatus,"");
+    login_prompt(server_getrequest(true),$requiredstatus,"");
 };
 
 //-----------------------------------------------------------------------------
@@ -64,8 +71,8 @@ function login_logout()
 
 function login_prompt($url,$status,$uni)
 {
-  global $server_wcespath;
-  $destination = $server_wcespath . "login/login.php?destination=" . urlencode($url) . "&requestedstatus=" .urlencode($status) . "&uni=" . urlencode($uni);
+  global $server_sbase, $server_wcespath;
+  $destination = $server_sbase . $server_wcespath . "login/login.php?destination=" . urlencode($url) . "&requestedstatus=" .urlencode($status) . "&uni=" . urlencode($uni) . "&SESSION_TRANSFER_ID=" . urlencode(session_id());
   if (!redirect($destination)) sloppyredirect($destination);
   exit();
 };
@@ -141,16 +148,25 @@ function login_validate($uni,$password,$requiredstatus)
 
   if (!(strpos($dump,"no soup for you") === false))
     return false; // BAD PASSWORD
-  
+
+/*
+
   if (ereg(".*REMOTE_USER=([^<>]+)<br>",$dump,$result))
     $cunix = $result[1];
   else
+  {
+    debugout("???" . $result[1]);
     return false; // OK PASSWORD, BAD LOGIN?
+  }
 
   if (ereg(".*USER_EMAIL=([^<>]+)<br>",$dump,$result))
     $email = $result[1];
   else
     $email = "";
+
+*/
+
+  $cunix = $uni;
     
   $db = wces_connect();
   

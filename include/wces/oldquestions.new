@@ -1,0 +1,566 @@
+<%
+
+require_once("widgets/widgets.inc");
+require_once("widgets/basic.inc");
+
+$ABETQUESTIONS = array(
+  "Design experiments",
+  "Analyze and interpret data",
+  "Conduct experiments",
+  "Analyze and interpret data",
+  "Design a system, component, or process to meet desired needs",
+  "Function on multidisciplinary teams",
+  "Identify or formulate engineering problems",
+  "Solve engineering problems",
+  "Understand ethical responsibilities",
+  "Understand the impact of engineering solutions in a global/societal context",
+  "Use modern engineering tools",
+  "Communicate using oral presentations",
+  "Communicate using written reports",
+  "Pilot test a component prior to implementation",
+  "Use text materials to support project design",
+  "Integrate knowledge of mathematics, science, and engineering in engineering solutions",
+  "Apply knowledge of contemporary issues to engineering solutions",
+  "Recognize need to engage in lifelong learning"
+);
+
+$TAQUESTIONS = array
+(
+  "overall" => "Overall Quality",
+  "knowledgeability" => "Knowledgeability",
+  "approachability" => "Approachability",
+  "availability" => "Availability",
+  "communication" => "Communication"
+);
+
+$TAVALUES = array
+(
+  "a" => "excellent",
+  "b" => "very good",
+  "c" => "satisfactory",
+  "d" => "poor",
+  "e" => "disastrous",
+  "f" => "n/a"
+);
+
+$TASCALE = array
+(
+  "a" => 5,
+  "b" => 4,
+  "c" => 3,
+  "d" => 2,
+  "e" => 1,
+  "f" => 0
+);
+
+define("OldQuestionSet_save",1);
+define("OldQuestionSet_cancel",2);
+define("OldQuestionSet_editta",3);
+define("OldQuestionSet_deleteta",4);
+define("OldQuestionSet_newta",5);
+
+class OldQuestionSet extends FormWidget
+{
+  var $pagename;
+  
+  var $db;
+  var $classid;
+  var $userid;
+  
+  var $questionsets;
+  var $tas;
+  var $activeta;
+  
+  var $finished;
+  var $action;
+  
+  var $form;
+  var $errors;
+  
+  var $done;
+  
+  function OldQuestionSet($db,$classid,$userid,$pagename, $prefix, $form, $formmethod)
+  {
+    $this->db = $db;
+    $this->classid = $classid;
+    $this->userid = $userid;
+    $this->pagename = $pagename;
+    $this->FormWidget($prefix, $form, $formmethod);
+
+    $this->form = new Form("${prefix}_form",$form,$formmethod);
+
+    $questionperiodid = wces_Findquestionsets($db,"qsets",$classid);
+
+    $classes = db_exec(
+    "SELECT qs.questionsetid, q.tarate
+    FROM enrollments AS e 
+    INNER JOIN qsets AS qs ON e.classid = qs.classid
+    INNER JOIN questionsets AS q ON q.questionsetid = qs.questionsetid
+    LEFT JOIN answersets AS a ON a.questionsetid = q.questionsetid AND a.classid = e.classid AND a.questionperiodid = '$questionperiodid'
+    LEFT JOIN completesurveys AS cs ON cs.userid = e.userid AND cs.answersetid = a.answersetid
+    WHERE e.userid = '$userid' AND e.classid = '$classid' AND cs.userid IS NULL
+    LIMIT 50",$db,__FILE__,__LINE__);
+    
+    $dota = false;
+    $this->questionsets = array();
+    while($row = mysql_fetch_assoc($classes))
+    {
+      $questionsetid = $row["questionsetid"];
+      if ($row["tarate"] == "yes") $dota = true;
+      $this->questionsets[] = new OldQuestionWidget($db, $questionsetid, $classid, $questionperiodid, "${prefix}_Q$questionsetid", $form, $formmethod);
+    }  
+    
+    db_exec("DROP TABLE qsets", $db, __FILE__, __LINE__);
+    
+    $this->questionperiodid = $questionperiodid;
+    $this->tas = $dota ? array() : false;
+    $this->activeta = false;
+    $this->finished = false;
+    
+    $this->errors = array();
+    $this->action = new ActionButton("${prefix}_action",$form,$formmethod);
+  }
+  
+  function handleactions()
+  {
+    if ($this->action->action == OldQuestionSet_save)
+    {
+      if (is_array($this->errors) && count($this->errors) == 0)
+      {
+        $this->save();	
+      }
+    }
+    else if ($this->action->action == OldQuestionSet_cancel)
+    {
+    }
+    else if ($this->action->action == OldQuestionSet_editta)
+    {
+      $key = $this->action->object;
+      if ($this->tas[$key]) $this->activeta = $key;
+    }
+    else if ($this->action->action == OldQuestionSet_deleteta)
+    {
+    }
+    else if ($this->action->action == OldQuestionSet_newta)
+    {
+      if (!$this->activeta)
+      {
+        $key = array_push($this->tas,1);
+        $this->tas[$key] = new TARate($this->db, $this->classid, $this->questionperiodid, $this->prefix . "_ta$key", $this->form, $this->formmethod);
+        $this->tas[$key]->loadvalues();
+        $this->activeta = $key;
+      }
+      $ta = & $this->tas[$this->activeta];
+      if ($ta->done)
+      {
+        if ($ta->cancelled)
+          array_splice($this->tas,$this->activeta,1);
+        $this->activeta = false;          
+      }
+    }
+    else
+    {
+      $this->action->action = "";	
+      $this->action->object = "";
+    }
+  }
+
+  function loadvalues()
+  {
+    $this->form->loadvalues();
+    
+    $this->errors = $this->form->isstale ? array() : false;
+    
+    $this->tas = unserialize($this->loadvalues("tas"));
+    foreach($this->questionsets as $key => $value)
+    {
+      $this->questionset[$key]->loadvalues(is_array($this->errors));
+      if (is_array($this->errors))
+        array_splice($this->errors,count($this->errors),0,$this->questionset->errors);
+    }
+    
+    $this->action->loadvalues();   
+    $this->handleactions();  
+  }
+  
+  function display()
+  {
+    global $server_wcespath;
+    
+    if ($this->action->action)
+      $this->action->display();
+    
+    $this->printattribute("takeys",serialize(array_keys($this->tas)));
+    
+    if ($this->activeta === false)
+    {
+      foreach($this->questionsets as $key => $value)
+      $this->questionsets[$key]->display(false);
+      
+      if (is_array($this->tas))
+      {
+        print("<h4>TA Ratings</h4>");	
+      	print("<p>If your class has teaching assistants you can rate them individually or all at once by clicking the button below:</p>");
+      	print("<blockquote>");
+      	$this->action->display("Rate a new TA...",OldQuestionSet_newta);
+      	print("</blockquote>");
+      }
+      
+    }
+    else
+    {
+      foreach($this->questionsets as $key => $value)
+      $this->questionsets[$key]->display(true);
+      $this->tas[$this->activeta]->display(false,false);
+    }
+  }
+}
+
+class TAResponse
+{
+
+  var $answers;
+
+  function TAResponse($answers)
+  {
+    $this->answers = $answers;
+  }
+  
+  function save($db, $classid, $questionperiod)
+  {
+    global $TASCALE, $TAQUESTIONS;
+    $a = array("name" => $this->answers["taname"], "comments" => $this->answers["comments"]);
+    foreach($TAQUESTIONS as $column => $text)
+      $a[$column] = $TASCALE[$this->answers];
+    return db_addrow($db,"taratings",$a);  	
+  }
+}
+
+class TARate extends FormWidget
+{
+
+
+  var $answers;
+  var $errors;
+
+  function TARate($prefix, $form, $formmethod)
+  {
+    $this->db = $db;
+    $this->classid = $classid;
+    $this->questionperiod = $questionperiod;
+    $this->FormWidget($prefix,$form,$formmethod);
+    
+    $this->answers = array();
+    $this->errors = array();
+  }	
+  
+  function loadvalues($errorcheck = false)
+  {
+    global $TAQUESTIONS;
+
+    foreach($TAQUESTIONS as $fieldname => $text)
+    {
+      $val = $this->loadattribute("ta$fieldname");
+      if (!isset($TACHOICES[$val]))
+      	$this->answers[$fieldname] = $val;
+      else if ($errorcheck)
+      {
+      	$this->answers[$fieldname] = "";
+        $this->errors[$fieldname] = "Missing response for <i>$text</i>";
+      }  
+    }
+    $this->answers["comments"] = trim($this->loadattribute("tacomments"));
+    $this->answers["taname"] = trim($this->loadattribute("taname"));
+  }
+
+  function display($hidden = false, $readonly = true)
+  {
+    global $TAQUESTIONS, $TAVALUES;
+    
+    $prefix = $this->prefix;
+    
+    if ($hidden || $readonly)
+    {
+      foreach($TAQUESTIONS AS $key => $text)
+        print("<input type=hidden name=\"${prefix}_ta$key\" value=\"" . htmlspecialchars($this->answers[$key]) . "\">\n");
+      print("<input type=hidden name=\"${prefix}_tacomments\" value=\"" . htmlspecialchars($this->answers["comments"]) . "\">\n");
+      print("<input type=hidden name=\"${prefix}_tacomments\" value=\"" . htmlspecialchars($this->answers["taname"]) . "\">\n");
+      if ($readonly)
+      {
+      	$taname = $this->taname ? $this->taname : "ALL TAs";
+      	print("<table>\n");
+      	print("<tr><td colspan=2 bgcolor=black background=\"${server_wcespath}media/0x000000.gif\"><font color=white><strong>$taname</strong></font></td></tr>\n");
+      	foreach($TAQUESTIONS AS $key => $text)
+      	{
+      	  print("<tr>\n");
+      	  print("  <td bgcolor=\"0xEEEEEE\" background=\"${server_wcespath}media/0xEEEEEE.gif\">$text</td>\n");
+      	  print("  <td bgcolor=white background=\"${server_wcespath}media/0xFFFFFF.gif\">" . $TAVALUES[$this->answers[$key]] . "</td>\n");
+      	  print("</tr>");
+      	};
+      	if ($this->answers["comments"])
+      	{
+      	  print("<tr>\n");
+      	  print("  <td bgcolor=\"0xEEEEEE\" background=\"${server_wcespath}media/0xEEEEEE.gif\">Comments</td>\n");
+      	  print("  <td bgcolor=white background=\"${server_wcespath}media/0xFFFFFF.gif\">" . htmlspecialchars(nl2br($this->comments)) . "</td>\n");
+      	  print("</tr>");      	  	
+      	};
+      	print("</table>\n");
+      }  
+    }
+    else
+    {
+      print("<p><strong>Enter a TA Name:</strong> <input name=\"${prefix}_taname\" size=25><br>\n");
+      print("<font size=-1>(Leave blank to rate all TA's together)</font></p>");
+      
+      foreach($TAQUESTIONS AS $key => $text)
+      {
+        print("<p><b>$text</b></p>\n");
+        print("<blockquote>\n");
+        foreach($TAVALUES AS $vkey => $vtext)
+        {
+          $selected = $vkey == $this->answers[$key] ? " checked" : "";
+          print("<input type=radio name=\"${prefix}_ta$key\" id=\"${prefix}_ta$key$vkey\" value=\"$vkey\"$selected><label for=\"${prefix}_ta$key$vkey\">$vtext</label>\n");
+        }
+        print("</blockquote>\n");
+      }
+      print("<p><b>Comments</b></p>\n");
+      print("<blockquote><textarea name=\"${prefix}_tacomments\" rows=8 cols=50 wrap=virtual>" . htmlspecialchars($this->answers["comments"]) . "</textarea></blockquote>\n");
+    }  
+  }
+  
+  function save()
+  {
+
+  } 
+}
+
+class OldQuestionWidget extends FormWidget
+{
+  var $errors; // string array containing error messages if question is not filled out properly, indexed by question name;
+  var $questionsetid, $classid, $questionperiodid; // database identifiers
+
+  var $db; //database handle
+  var $action;
+ 
+  var $displayname;
+  var $mc;
+  var $fr;
+  var $abet;
+  var $answers;
+  var $dota;
+  
+  function OldQuestionWidget($db, $questionsetid, $classid, $questionperiodid, $prefix, $form, $formmethod)
+  {
+    $this->db = $db;
+    $this->questionsetid = $questionsetid;
+    $this->classid = $classid;
+    $this->questionperiodid = $questionperiodid;
+    $this->FormWidget($prefix, $form, $formmethod);
+    
+    $this->displayname = "";
+    $this->mc = array();
+    $this->fr = array();
+    $this->abet = array();
+    $this->answers = array();
+    $this->dota = false;
+  }
+  
+  function loadvalues($errorcheck = false)
+  {
+    global $ABETQUESTIONS;
+    
+    if ($errorcheck)
+      $this->errors = array();
+    else
+      $this->errors = false;
+    
+    $db = $this->db;
+    $questionset = db_getrow($db,"questionsets",Array("questionsetid" => $this->questionsetid), 0);
+    
+    $this->displayname = $questionset["displayname"];
+    
+    $choices = array(1 => "a", 2 => "b", 3 => "c", 4 => "d", 5 => "e");
+    for($i = 1; $i <= 10; ++$i)
+    {
+      $fieldname = $this->prefix . "_MC$i";
+      if ($questionset["MC$i"])
+      {
+        $this->mc[$fieldname] = $questionset["MC$i"];
+        $this->answers[$fieldname] = $this->loadattribute("MC$i");
+        if ($errorcheck && !in_array($this->answers[$fieldname], $choices))
+          $this->errors[$fieldname] = "Missing response for ratings question #$i under '" . $this->displayname . "'";
+      }
+    }
+
+    for($i = 1; $i <= 2; ++$i)
+    {
+      $fieldname = $this->prefix . "_FR$i";
+      $text = $questionset["FR$i"];
+      if ($text)
+      { 
+        $this->fr[$fieldname] = $text;
+        $this->answers[$fieldname] = trim($this->loadattribute("FR$i"));
+      }  
+    }
+
+    if ($questionset["ABET"])
+    {
+      $choices = array(0 => "a", 1 => "b", 2 => "c", 3 => "d", 4 => "e", 5 => "f");
+      $abet = explode(",",$questionset["ABET"]);
+      foreach ($abet as $v)
+      {
+        $fieldname = $this->prefix . "_ABET$v";
+        if ($ABETQUESTIONS[$v])
+        {
+          $this->abet[$fieldname] = $ABETQUESTIONS[$v];
+          $this->answers[$fieldname] = $this->loadattribute("ABET$v");
+          if ($errorcheck && !in_array($this->answers[$fieldname], $choices))
+            $this->errors[$fieldname] = "Missing response for ABET Question #$cnt";
+        }
+      }  
+    }
+  }
+  
+  function display($hidden = false)
+  {
+    global $server_wcespath;
+    if ($hidden)
+    {
+      foreach($this->answers as $key => $value)
+        print("<input type=hidden name=\"$key\" value=\"" . htmlspecialchars($value) . "\">\n");
+    }
+    else
+    {
+      if (count($this->mc) + count($this->fr) > 0)
+      {
+        print("<h4>" . $this->displayname . "</h4>\n");
+        
+        foreach($this->mc as $fieldname => $text)
+        {
+          $val = $this->answers[$fieldname];
+          $text = $this->errors[$fieldname] ? "<font color=red>" . htmlspecialchars($text) . "</font>" : htmlspecialchars($text);
+%>
+<p><b><%=$text%></b></p>
+<blockquote>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>a" value="a" <%=$val == "a" ? "checked" : ""%>><label for="<%=$fieldname%>a">excellent</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>b" value="b" <%=$val == "b" ? "checked" : ""%>><label for="<%=$fieldname%>b">very good</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>c" value="c" <%=$val == "c" ? "checked" : ""%>><label for="<%=$fieldname%>c">satisfactory</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>d" value="d" <%=$val == "d" ? "checked" : ""%>><label for="<%=$fieldname%>d">poor</label>
+  <input type=radio name="<%=$fieldname%>" id="<%=$fieldname%>e" value="e" <%=$val == "e" ? "checked" : ""%>><label for="<%=$fieldname%>e">disastrous</label>
+</blockquote>
+<%
+        }  
+    
+        foreach($this->fr as $fieldname => $text)
+        {
+%>
+<p><b><%=$text%></b></p>
+<blockquote><textarea name="<%=$fieldname%>" rows=8 cols=50 wrap=virtual><%=htmlspecialchars($this->answers[$fieldname])%></textarea></blockquote>
+<%
+        }  
+      };
+  
+      if (count($this->abet) > 0)
+      {  
+%>
+<h4>ABET Questions</h4>
+<table bordercolor=black cellspacing=0 cellpadding=3 RULES="groups" FRAME=box STYLE="border: none">
+<thead>
+<tr>
+<td colspan=2 align=left STYLE="border: none"><b>To what degree did this course enhance your ability to ...</b></td>
+<td colspan=9 align=right STYLE="border: none"><b>(0 = <i>not at all</i>, 5 = <i>a great deal</i>)</b></td>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif">&nbsp;</td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>0</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>1</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>2</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>3</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>4</STRONG></font></td>
+  <td bgcolor=black background="<%=$server_wcespath%>media/0x000000.gif" align=center><font color=white><STRONG>5</STRONG></font></td>
+</tr>
+<%
+        $choices = array(0 => "a", 1 => "b", 2 => "c", 3 => "d", 4 => "e", 5 => "f");
+        $row = true;
+        foreach ($this->abet as $fieldname => $text)
+        {
+          $text = $this->errors[$fieldname] ? "<font color=red>" . htmlspecialchars($text) . "</font>" : htmlspecialchars($text);
+          $val = $this->answers[$fieldname];
+          $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $server_wcespath . 'media/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $server_wcespath . 'media/0xEEEEEE.gif"';
+          print("<tr><td colspan=5 $color>$text</td>");
+          foreach($choices as $choice)
+          {
+            $selected = ($val == $choice) ? "" : " selected";
+            print("<td align=center $color><input name=\"$fieldname\" value=\"$choice\" type=radio$selected></td>");
+          }  
+          print("</tr>\n");
+        }
+        print("\n</tbody>\n</table>\n");
+      }
+    }  
+  }
+
+  function save($userid)
+  {
+    if (!is_array($this->errors) || count($this->errors != 0))
+      return false;
+    
+    $db = $this->db;
+    
+    $sql = "UPDATE answersets SET responses = responses + 1";
+    
+    $choices = array(1 => "a", 2 => "b", 3 => "c", 4 => "d", 5 => "e");
+    
+    foreach($this->mc as $fieldname => $text)
+    {
+      simplesplit('_',$fieldname,false,$field);
+      $choice = $this->answers[$fieldname];
+      if (in_array($choice,$choices) && $field)
+        $sql .= ", $field$choice = $field$choice + 1";
+      else
+        return false;
+    };
+
+    foreach($this->fr as $fieldname => $text)
+    {
+      simplesplit('_',$fieldname,false,$field);
+      $result = addslashes(addcslashes($answers[$fieldname],"\t\\"));
+      $sql .= ", $field = concat($field, '$result')";
+    }
+
+    $choices = array(0 => "a", 1 => "b", 2 => "c", 3 => "d", 4 => "e", 5 => "f");
+    foreach ($this->abet as $fieldname => $text)
+    {
+      $choice = $answers[$fieldname];
+      simplesplit('_',$fieldname,false,$field);
+      if (in_array($choice,$choices))
+      	$sql .= ", $field$choice = $field$choice + 1";
+      else
+        return false;
+    }        
+        
+    if (!($questionset && $this->questionsetid && $this->classid && $this->questionperiodid))
+      return false;
+          
+    $keys = Array("questionsetid" => $this->questionsetid, "questionperiodid" => $this->questionperiodid, "classid" => $this->classid);
+    $answersetid = db_replace($db, "answersets", $keys, false, "answersetid");
+
+    $sql .= " WHERE answersetid = $answersetid";
+
+    if (!db_exec($sql,$db,__FILE__,__LINE__))
+      return false;
+
+    if (!db_exec("INSERT INTO completesurveys(userid,answersetid) VALUES ($userid,$answersetid)",$db,__FILE__,__LINE__))
+      return false;    
+    
+    return true;
+  }
+}
+
+%>

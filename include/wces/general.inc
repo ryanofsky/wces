@@ -4,6 +4,46 @@
 // calling exit() after this function will cause redirect
 // to take place
 
+/**
+* Constructs an absolute URL. If any of the parameters is false, then the
+* function uses information from the current page.
+* 
+* @param string  Protocol, normally "http://" or "https://" 
+* @param string  Server name.
+* @param string  Port, if 0 then the port is omitted.
+* @param string  Request string such as "/folder/file?name1=value1"
+* @return string An absolute URL constructed from the parameters
+* @access public
+*/	
+function absurl($protocol = false, $server = false, $port = false, $request = false)
+{
+  global $HTTP_ENV_VARS;
+  
+  if ($protocol === false)
+  {
+    if ($HTTP_ENV_VARS["HTTPS"] == "on")
+    {
+      $protocol = "https://";
+      if ($port === false) $port = 0;
+    }  
+    else
+    {
+      $protocol = "http://";
+      if ($port == false) $port = 0;
+    }  
+  }
+  if ($server === false) $server = $HTTP_ENV_VARS["SERVER_NAME"];
+  if ($port === false) $port = $HTTP_ENV_VARS["SERVER_PORT"];
+  if ($request === false) $request = server_getrequest(); 
+}
+
+function simplesplit($splitchar,$name,$first,$last)
+{
+  $p = strrpos($splitchar,$name);
+  $first = substr($name,0,$p);
+  $last = substr($name,$p+1);
+}
+
 function redirect($url)
 {
   return false;
@@ -29,6 +69,13 @@ function sloppyredirect($url)
 function goup($path)
 {
   return substr($path,0,max(strrpos($path,"\\"),strrpos($path,"/")));
+}
+
+function array_clean($arr)
+{
+  foreach($arr as $key => $value)
+    if (!$value) unset($arr[$key]);
+  return $arr;
 }
 
 function getAbsUrl($relurl)
