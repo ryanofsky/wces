@@ -11,6 +11,7 @@ require_once("wbes/component_choice.inc");
 require_once("wbes/component_textresponse.inc");
 require_once("wbes/component_pagebreak.inc");
 require_once("wces/component_abet.inc");
+require_once("wces/oldquestions.inc");
 
 login_protect(login_student);
 
@@ -44,10 +45,17 @@ if ($class_id && $question_period_id)
       new TextFactory(),
       new HeadingFactory(),
       new PageBreakFactory(),
-      new AbetFactory()
+      new AbetFactory(),
+      new NewAbetFactory(),
+      new BioAbetFactory()      
     );
     $q = new SurveyWidget($topic_id, get_base($topic_id), $user_id, $question_period_id, $factories, "prefix","f",WIDGET_POST);
     $q->anonymous = true;
+    if ($class_id != 33802 && $class_id != 22753 && $class_id != 33732)
+    {
+      $ta =& new TASurvey($class_id, "prefix-ta", "f", WIDGET_POST);
+      $q->ta =& $ta;
+    }
     $q->loadvalues();
   }
   else
@@ -63,6 +71,12 @@ if ($class_id)
   }
   else
   {
+    $seconds = 3600;
+    session_cache_limiter('public');
+    header('Cache-Control: public');
+    header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
+    header('Last-Modified: ' . gmdate('D, d M Y H:i:s', getlastmod()) . ' GMT');
+
     page_top("Student Survey");
     $r = pg_go("SELECT get_class($class_id), get_profs($class_id)", $wces, __FILE__, __LINE__);
 
@@ -72,6 +86,25 @@ if ($class_id)
     print("<h3>$class$prof</h3>");
 
     print("<form name=f method=post>");
+?>
+<script>
+<!--
+  
+  function handleSubmit()
+  {
+    window.onbeforeunload = null;
+  }
+  
+  function handleBeforeUnload()
+  {
+    return "If you do, your survey responses will not be saved."; 
+  }
+  
+  window.onbeforeunload = handleBeforeUnload
+  document.forms.f.onsubmit = handleSubmit;
+// -->
+</script>
+<?
     print($ISID);
     $q->display();
     print("</form>");
