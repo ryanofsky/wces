@@ -1,4 +1,4 @@
-<%
+<?
 
 require_once("wces/server.inc");
 
@@ -67,4 +67,4 @@ if ($uni)
     }
   }
 }
-%>
+?>
