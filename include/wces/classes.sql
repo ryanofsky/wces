@@ -671,21 +671,23 @@ CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VA
 
     -- is student or professor?
 
-    SELECT INTO rec aa.user_id
-    FROM acis_affiliations AS aa
-    INNER JOIN acis_groups AS ag ON aa.acis_group_id = ag.acis_group_id
-    WHERE
-      aa.user_id = userid
-      AND
-      (
-        ag.code = ''CUinstructor'' OR
-        ag.code = ''BCinstructor''
-      );
-
-    IF FOUND THEN
+    IF EXISTS (
+      SELECT * FROM acis_affiliations AS aa
+      INNER JOIN acis_groups AS ag ON aa.acis_group_id = ag.acis_group_id
+      WHERE
+        aa.user_id = userid
+        AND
+        (
+          ag.code = ''CUinstructor'' OR
+          ag.code = ''BCinstructor''
+        )) OR EXISTS (
+      SELECT * FROM enrollments_p WHERE user_id = userid)
+    THEN
       flags_s := flags_s | 4;
-    ELSE
-      SELECT INTO rec aa.user_id
+    END IF;
+    
+    IF EXISTS (
+      SELECT *
       FROM acis_affiliations AS aa
       INNER JOIN acis_groups AS ag ON aa.acis_group_id = ag.acis_group_id
       WHERE
@@ -698,22 +700,14 @@ CREATE OR REPLACE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VA
           ag.code = ''CPMCstudent'' OR
           ag.code = ''TCstudent''   OR
           ag.code = ''UTSstudent''
-        );
-      IF FOUND THEN
-        flags_s := flags_s | 8;
-      ELSE
-        IF EXISTS (SELECT * FROM enrollments_p WHERE user_id = userid) THEN
-          flags_s := flags_s | 4;
-        END IF;
-
-        IF EXISTS (SELECT * FROM enrollments WHERE user_id = userid AND status & 1 <> 0) THEN
-          flags_s := flags_s | 8;
-        END IF;
-
-        IF EXISTS (SELECT * FROM enrollments WHERE user_id = userid AND status & 2 <> 0) THEN
-          flags_s := flags_s | 16;
-        END IF;
-      END IF;
+        )) OR EXISTS (
+      SELECT * FROM enrollments WHERE user_id = userid AND status & 1 <> 0)
+    THEN
+      flags_s := flags_s | 8;
+    END IF;
+    
+    IF EXISTS (SELECT * FROM enrollments WHERE user_id = userid AND status & 2 <> 0) THEN
+      flags_s := flags_s | 16;
     END IF;
 
     UPDATE users SET flags = flags_s WHERE user_id = userid;
