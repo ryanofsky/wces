@@ -125,9 +125,9 @@ class pg_segmented_wrapper
       $this->split = true;
   } 
   
-  function advance()
+  function advance($skip = false)
   {
-    $this->last = $this->row;
+    if (!$skip) $this->last = $this->row;
     ++$this->rkey;
     if ($this->rkey < $this->rows)
     {
@@ -152,6 +152,11 @@ class pg_segmented_wrapper
     }
   }
   
+  function skipAdvance()
+  {
+    $this->advance(true);
+  }
+
   function peek($split_num = 0)
   {
     if ($this->rkey+1 >= $this->rows)
@@ -217,6 +222,23 @@ function pg_implode($a)
     $r .= '"' . addslashes($v) . '"';
   }
   return "'\{" . addslashes($r) . "}'";
+}
+
+// takes timestamp as seconds past epoch, returns representation
+// as postgres string. Call with no arguments to return current 
+// time. 
+function pg_date($time = false)
+{
+  if (isset($time))
+  {
+    $format = 'Y-m-d H:i:s-00';
+    if ($time !== false)
+      $date = gmdate($format, $time);
+    else
+      $date = gmdate($format);
+    return "'$date'";   
+  }
+  return "NULL";
 }
 
 ?>
