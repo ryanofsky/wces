@@ -18,7 +18,7 @@ class TextResponseFactory extends ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, ctext, flags, rows, cols FROM textresponse_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, ctext, flags, rows, cols FROM components_text_question WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c =& new TextResponse;
@@ -174,7 +174,7 @@ class TextResponseWidget extends ComponentWidget
 
     if ($t)
       return (boolean) pg_go("
-        INSERT INTO textresponse_responses(revision_id, item_id, parent, rtext)
+        INSERT INTO responses_text_question(revision_id, item_id, parent, rtext)
         VALUES ({$this->component->revision_id}, {$this->component->item_id}, $parent, '$t')
       ", $wbes, __FILE__, __LINE__);
     else

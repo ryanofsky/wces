@@ -130,7 +130,7 @@ class TopicEditor extends StatefullWidget
             SELECT t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified
             FROM enrollments_p AS e
             INNER JOIN wces_topics AS t USING (class_id)
-            INNER JOIN semester_question_periods AS s USING (question_period_id)
+            INNER JOIN question_periods AS s USING (question_period_id)
             WHERE e.user_id = $user_id AND s.enddate > (SELECT NOW())
             ORDER BY name
           ", TOPICS_CLASS
@@ -162,7 +162,7 @@ class QuestionPeriodSelector extends ParentWidget
     $this->text = $text;
     $sql = "
       SELECT question_period_id AS id, displayname AS name
-      FROM semester_question_periods
+      FROM question_periods
       ORDER BY begindate DESC
      ";
     $this->box =& new SqlBox($sql, false, 'box', $this);

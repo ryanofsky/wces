@@ -130,11 +130,11 @@ class SurveyWidget extends ParentWidget
     $sql = "BEGIN;\n";
     if ($this->anonymous)
     {
-      $sql .= "INSERT INTO survey_responses(revision_id, item_id, topic_id, response_id, specialization_id, user_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, NULL, $this->specialization_id, $this->user_id);\n";
-      $sql .= "INSERT INTO survey_responses(revision_id, item_id, topic_id, date, specialization_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, NULL, $this->specialization_id);\n";
+      $sql .= "INSERT INTO responses_survey(revision_id, item_id, topic_id, response_id, specialization_id, user_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, NULL, $this->specialization_id, $this->user_id);\n";
+      $sql .= "INSERT INTO responses_survey(revision_id, item_id, topic_id, date, specialization_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, NULL, $this->specialization_id);\n";
     }
     else
-      $sql .= "INSERT INTO survey_responses(revision_id, item_id, topic_id, specialization_id, user_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, $this->specialization_id, $this->user_id);\n";
+      $sql .= "INSERT INTO responses_survey(revision_id, item_id, topic_id, specialization_id, user_id) VALUES ($s->revision_id, $s->item_id, $this->topic_id, $this->specialization_id, $this->user_id);\n";
 
     $sql .= "SELECT currval('response_ids')";
     $result = pg_go($sql, $wbes, __FILE__, __LINE__);

@@ -138,8 +138,8 @@ class ReportWizard extends Wizard
       $dwhere = "";
 
     $this->queries = array(
-      CATEGORIES => "SELECT survey_category_id AS id, name FROM survey_categories ORDER BY survey_category_id",
-      QUESTION_PERIODS => "SELECT question_period_id AS id, displayname AS name FROM semester_question_periods ORDER BY question_period_id DESC",
+      CATEGORIES => "SELECT category_id AS id, name FROM categories ORDER BY category_id",
+      QUESTION_PERIODS => "SELECT question_period_id AS id, displayname AS name FROM question_periods WHERE year IS NOT NULL ORDER BY question_period_id DESC",
       DEPARTMENTS => "
         SELECT t.department_id AS id, d.code::text || ' - ' || d.name::text AS name
         FROM rwtopics AS t
@@ -206,7 +206,7 @@ class ReportWizard extends Wizard
       if ($this->depts)
         $t = false;
       else
-        $t = array((int)pg_result(pg_go("SELECT survey_category_id FROM survey_categories ORDER BY survey_category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
+        $t = array((int)pg_result(pg_go("SELECT category_id FROM categories ORDER BY category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
     }
     else if (in_array("all",$t)) $t = false;
 
@@ -440,7 +440,7 @@ class ReportWizard extends Wizard
     if ($list)
     {
       $group = db_set($list);
-      $this->printCriteria("SELECT survey_category_id AS id, name FROM survey_categories WHERE survey_category_id IN $group ORDER BY survey_category_id", $report, "Category");
+      $this->printCriteria("SELECT category_id AS id, name FROM categories WHERE category_id IN $group ORDER BY category_id", $report, "Category");
     }
     else
       $report .= "Category: ANY\n";

@@ -97,7 +97,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
     COURSES          => "course_id",
     DEPARTMENTS      => "department_id",
     PROFESSORS       => "user_id",
-    CATEGORIES       => "survey_category_id"
+    CATEGORIES       => "category_id"
   );
 
   $order = array(
@@ -105,7 +105,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
     COURSES          => "s.code, c.code, cl.section",
     DEPARTMENTS      => "d.code",
     PROFESSORS       => "u.lastname, firstname",
-    CATEGORIES       => "t.survey_category_id"
+    CATEGORIES       => "t.category_id"
   );
 
   $orderfields = array(
@@ -122,8 +122,8 @@ function report_findgroups($topicstable, $groupings, $orderings)
     DEPARTMENTS      => "MIN(d.code)",
     PROFESSORS       => "MIN(u.lastname)",
     CATEGORIES       => NULL
-    //XXX: no category field in rwtopics CATEGORIES       => "MIN(t.survey_category_id)"
-    //CATEGORIES       => "MIN(t.survey_category_id)"
+    //XXX: no category field in rwtopics CATEGORIES       => "MIN(t.category_id)"
+    //CATEGORIES       => "MIN(t.category_id)"
   );
 
   $badorder = false;

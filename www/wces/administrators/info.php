@@ -128,14 +128,14 @@ function PrintEnrollments($user_id)
 
   $question_period_name = pg_result(pg_go("
     SELECT displayname
-     FROM semester_question_periods
+     FROM question_periods
     WHERE question_period_id = $question_period_id
   ", $wces, __FILE__, __LINE__), 0, 0);
 
   $classes = pg_go("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",
       t.topic_id IS NOT NULL AND e.status = 1 AS survey,
-      EXISTS(SELECT * FROM survey_responses WHERE topic_id = t.topic_id AND user_id = $user_id) AS response" : "") . "
+      EXISTS(SELECT * FROM responses_survey WHERE topic_id = t.topic_id AND user_id = $user_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN classes AS cl USING (class_id)" . ($restricted ? "
     LEFT JOIN enrollments AS my ON my.user_id = $userid AND my.class_id = e.class_id" : "") . ($surveys ? "
@@ -370,7 +370,7 @@ function PrintClassInfo($class_id)
 
   $result = pg_go("
     SELECT e.user_id, e.status, u.uni, (u.lastname || ', ' || u.firstname) AS name " . ($surveys ? ",
-      EXISTS(SELECT * FROM survey_responses WHERE user_id = e.user_id AND topic_id = $topic_id) AS response" : "") . "
+      EXISTS(SELECT * FROM responses_survey WHERE user_id = e.user_id AND topic_id = $topic_id) AS response" : "") . "
     FROM enrollments AS e
     INNER JOIN users AS u USING (user_id)
     WHERE e.class_id = $class_id" . ($restricted ? "

@@ -61,7 +61,7 @@ function get_surveys()
       INNER JOIN wces_topics AS t USING (question_period_id)
       INNER JOIN classes AS cl USING (class_id)
       INNER JOIN enrollments AS e ON e.user_id = $user_id AND e.class_id = cl.class_id AND e.status & 1 <> 0
-      LEFT JOIN survey_responses AS sr ON sr.topic_id = t.topic_id AND sr.user_id = $user_id
+      LEFT JOIN responses_survey AS sr ON sr.topic_id = t.topic_id AND sr.user_id = $user_id
       WHERE q.begindate < (SELECT NOW()) AND q.enddate > (SELECT NOW()) AND NOT t.cancelled
       GROUP BY q.question_period_id, t.topic_id, t.item_id, t.specialization_id, t.class_id, sr.user_id
       ORDER BY surveyed, name
@@ -70,7 +70,7 @@ function get_surveys()
     if (pg_numrows($survey_listing) == 0)
     {
       $result = pg_go("
-        SELECT EXISTS(SELECT * FROM semester_question_periods 
+        SELECT EXISTS(SELECT * FROM question_periods 
           WHERE begindate < (SELECT NOW()) AND enddate > (SELECT NOW()))
       ", $wces, __FILE__, __LINE__);
       if (pg_result($result,0,0) == 'f') $survey_listing = false;

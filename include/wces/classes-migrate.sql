@@ -169,7 +169,7 @@ CREATE FUNCTION temp_questionperiodr(integer) RETURNS integer AS '
 CREATE TABLE temp_topic
 (
   oldid INTEGER NOT NULL PRIMARY KEY,
-  newid INTEGER UNIQUE NOT NULL REFERENCES survey_categories(survey_category_id)
+  newid INTEGER UNIQUE NOT NULL REFERENCES categories(category_id)
 );
 
 CREATE FUNCTION temp_topici(integer, integer) RETURNS integer AS '

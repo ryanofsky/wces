@@ -7,7 +7,7 @@ require_once("wces/wces.inc");
 // retrieving responses to base questions
 
 //$select_classes = "SELECT DISTINCT class_id FROM wces_topics WHERE make_public";
-$select_classes = "SELECT class_id FROM wces_topics AS tsct WHERE tsct.make_public AND EXISTS (SELECT * FROM semester_question_periods AS tscq WHERE tscq.question_period_id = tsct.question_period_id AND tscq.oracledate < (SELECT NOW()))";
+$select_classes = "SELECT class_id FROM wces_topics AS tsct WHERE tsct.make_public AND EXISTS (SELECT * FROM question_periods AS tscq WHERE tscq.question_period_id = tsct.question_period_id AND tscq.oracledate < (SELECT NOW()))";
 $set_question_periods = "(2,23)";
 $base_item_id = 14; // comments
 $oracle_item_id = 13; // multiple choice except for quality of text question
@@ -48,7 +48,7 @@ class SimpleResults
       SELECT cl.class_id, cl.students, COUNT(DISTINCT r.user_id) AS responses
       FROM classes AS cl
       INNER JOIN wces_topics AS t USING (class_id)
-      INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id AND r.user_id IS NOT NULL
+      INNER JOIN responses_survey AS r ON r.topic_id = t.topic_id AND r.user_id IS NOT NULL
       WHERE cl.class_id IN ($classes) AND t.question_period_id IN $set_question_periods
       GROUP BY cl.class_id, cl.students
     ", $wces, __FILE__, __LINE__);
@@ -66,13 +66,13 @@ class SimpleResults
     $r = pg_go("
       SELECT t.class_id, first(c.choices) AS cchoices, q.qtext, choice_dist(qr.answer) AS rdist
       FROM wces_topics AS t
-      INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
-      INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+      INNER JOIN responses_survey AS r ON r.topic_id = t.topic_id
+      INNER JOIN responses_choice AS cr ON cr.parent = r.response_id
       INNER JOIN revisions AS crv ON crv.revision_id = cr.revision_id
-      INNER JOIN choice_components AS c ON c.component_id = crv.component_id
-      INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+      INNER JOIN components_choice AS c ON c.component_id = crv.component_id
+      INNER JOIN responses_choice_question AS qr ON qr.parent = cr.response_id
       INNER JOIN revisions AS qrv ON qrv.revision_id = qr.revision_id
-      INNER JOIN choice_questions AS q ON q.component_id = qrv.component_id
+      INNER JOIN components_choice_question AS q ON q.component_id = qrv.component_id
       WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND cr.item_id IN ($oracle_item_id, $oracle_quality_of_text)
       GROUP BY t.class_id, q.qtext, qr.revision_id
       ORDER BY qr.revision_id
@@ -101,10 +101,10 @@ class SimpleResults
       $r = pg_go("
         SELECT DISTINCT t.class_id, tr.revision_id, c.ctext, c.flags, tr.rtext
         FROM wces_topics AS t
-        INNER JOIN survey_responses AS r ON r.topic_id = t.topic_id
-        INNER JOIN textresponse_responses AS tr ON tr.parent = r.response_id
+        INNER JOIN responses_survey AS r ON r.topic_id = t.topic_id
+        INNER JOIN responses_text_question AS tr ON tr.parent = r.response_id
         INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
-        INNER JOIN textresponse_components AS c USING (component_id)
+        INNER JOIN components_text_question AS c USING (component_id)
         WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND tr.item_id = $base_item_id
       ", $wces, __FILE__, __LINE__);
 

@@ -16,7 +16,7 @@ class PageBreakFactory extends ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, renumber FROM pagebreak_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, renumber FROM components_pagebreak WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {

@@ -81,13 +81,13 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 //     display page numbers
 //   skipClassList: boolean, default false
 //     don't display list of classes
-//   surveyResponses: string, default 'survey_responses'
+//   surveyResponses: string, default 'responses_survey'
 //     table to select responses from
 //     $makeall_survey_responses
-//   textResponses: string, default 'textresponse_responses'
+//   textResponses: string, default 'responses_text_question'
 //     table to select text responses from
 //     $makeall_text_responses
-//   choiceResponses: string, default 'choice_responses'
+//   choiceResponses: string, default 'responses_choice'
 //     table to select choice responses from
 //     $makeall_choice_responses
 //   choiceCache: boolean, default true
@@ -109,11 +109,11 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   global $wces_path, $wces, $line;
 
   if (!isset($options['textResponses']))
-    $options['textResponses'] = 'textresponse_responses';
+    $options['textResponses'] = 'responses_text_question';
   if (!isset($options['choiceResponses']))
-    $options['choiceResponses'] = 'choice_responses';
+    $options['choiceResponses'] = 'responses_choice';
   if (!isset($options['surveyResponses']))
-    $options['surveyResponses'] = 'survey_responses';
+    $options['surveyResponses'] = 'responses_survey';
   if (!isset($options['topicsTable']))
     $options['topicsTable'] = 'wces_topics';
 
@@ -228,7 +228,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       INNER JOIN $options[surveyResponses] AS r USING (topic_id)
       INNER JOIN $options[textResponses] AS tr ON tr.parent = r.response_id
       INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
-      INNER JOIN textresponse_components AS c ON c.component_id = rv.component_id
+      INNER JOIN components_text_question AS c ON c.component_id = rv.component_id
       ORDER BY t.ordinal, tr.item_id, tr.revision_id
     ", $wces, __FILE__, __LINE__);
 
@@ -259,9 +259,9 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
     //    cr.revision_id AS crevision_id, qr.item_id AS qitem_id,                                                       
     //    qr.revision_id AS qrevision_id, choice_dist(qr.answer) AS dist                                                
     //  FROM report_topics AS t                                                                                         
-    //  INNER JOIN survey_responses AS r USING (topic_id)                                                               
-    //  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id                                                  
-    //  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id                                        
+    //  INNER JOIN responses_survey AS r USING (topic_id)                                                               
+    //  INNER JOIN responses_choice AS cr ON cr.parent = r.response_id                                                  
+    //  INNER JOIN responses_choice_question AS qr ON qr.parent = cr.response_id                                        
     //  GROUP BY t.topic_id, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id,                                    
     
     $tabname = substr(uniqid('tab'),0,31);
@@ -277,7 +277,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
         FROM (SELECT DISTINCT ordinal, topic_id FROM rwtopics) AS t
         INNER JOIN $options[surveyResponses] AS r USING (topic_id)
         INNER JOIN $options[choiceResponses] AS cr ON cr.parent = r.response_id
-        INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+        INNER JOIN responses_choice_question AS qr ON qr.parent = cr.response_id
         GROUP BY t.ordinal, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id;
       ", $wces, __FILE__, __LINE__);
     }
@@ -299,7 +299,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
         c.first_number, c.last_number, c.other_choice, c.ctext
       FROM $tabname AS t
       INNER JOIN revisions AS r ON r.revision_id = t.crevision_id
-      INNER JOIN choice_components AS c USING (component_id)
+      INNER JOIN components_choice AS c USING (component_id)
       ORDER BY t.ordinal, t.citem_id, t.crevision_id, t.qitem_id, t.qrevision_id;
     ", $wces, __FILE__, __LINE__);
 
@@ -310,7 +310,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
         t.qrevision_id, q.qtext
       FROM $tabname AS t
       INNER JOIN revisions AS r ON r.revision_id = t.qrevision_id
-      INNER JOIN choice_questions AS q USING (component_id)
+      INNER JOIN components_choice_question AS q USING (component_id)
       ORDER BY t.ordinal, t.citem_id, t.crevision_id, t.qitem_id, t.qrevision_id;
     ", $wces, __FILE__, __LINE__);
     
@@ -341,7 +341,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       INNER JOIN $options[topicsTable] AS t USING (topic_id)      
     ) AS tp
     INNER JOIN revisions AS r USING (revision_id)
-    INNER JOIN list_items AS l USING (component_id)
+    INNER JOIN component_items AS l USING (component_id)
     ORDER BY tp.ordinal;
   ", $wces, __FILE__, __LINE__);
   

@@ -38,8 +38,8 @@ class UsageOptions extends Widget
     $this->categoryChoices = pg_select_array("
       SELECT 0 AS id, 'None'
       UNION
-      SELECT c.survey_category_id, c.name
-      FROM survey_categories AS c
+      SELECT c.category_id, c.name
+      FROM categories AS c
       ORDER BY id
     ", $wces, __FILE__, __LINE__);
 
@@ -124,7 +124,7 @@ class StudentUsage extends ParentWidget
       SELECT t.class_id, COUNT(DISTINCT response_id)::INTEGER AS responses
       FROM wces_topics AS t
       INNER JOIN classes AS cl USING (class_id)
-      LEFT JOIN survey_responses AS s USING (topic_id)
+      LEFT JOIN responses_survey AS s USING (topic_id)
       WHERE t.question_period_id = {$this->options->question_period_id} AND NOT t.cancelled $cat
       GROUP BY t.class_id
     ", $wces, __FILE__, __LINE__);
@@ -191,7 +191,7 @@ Number of surveys completed: <b><?=$responses?></b><br>
         (SELECT e.user_id, COUNT (DISTINCT t.topic_id) AS classes, COUNT(DISTINCT s.topic_id) AS responses
         FROM wces_topics AS t
         INNER JOIN enrollments AS e ON e.class_id = t.class_id AND e.status & 1 <> 0
-        LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id
+        LEFT JOIN responses_survey AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id
         WHERE t.question_period_id = {$this->options->question_period_id} AND NOT t.cancelled $cat
         GROUP BY e.user_id) AS i
       INNER JOIN users AS u USING (user_id)

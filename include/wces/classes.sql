@@ -237,21 +237,13 @@ CREATE TABLE wces_topics
   cancelled BOOLEAN NOT NULL
 );
 
-CREATE TABLE survey_categories
+CREATE TABLE categories
 (
-  survey_category_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('survey_category_ids'),
+  category_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('survey_category_ids'),
   name TEXT
 );
 
 CREATE SEQUENCE survey_category_ids INCREMENT 1 START 100;
-
-CREATE TABLE semester_question_periods
-(
-  semester INTEGER,
-  year INTEGER,
-  profdate TIMESTAMP WITH TIME ZONE
-) INHERITS (question_periods);
-
 
 CREATE TABLE ta_ratings
 (
@@ -282,19 +274,19 @@ ALTER TABLE acis_groups ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCE
 ALTER TABLE acis_affiliations ADD CONSTRAINT acis_group_fk FOREIGN KEY (acis_group_id) REFERENCES acis_groups;
 ALTER TABLE acis_affiliations ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 ALTER TABLE sent_mails ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
-ALTER TABLE sent_mails ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
-ALTER TABLE sent_mails ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE sent_mails ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES categories;
 ALTER TABLE sent_mails_topics ADD CONSTRAINT sent_mail_fk FOREIGN KEY (sent_mail_id) REFERENCES sent_mails(sent_mail_id);
 ALTER TABLE users ADD CONSTRAINT departmentfk FOREIGN KEY (department_id) REFERENCES departments;
 ALTER TABLE wces_topics ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations(specialization_id);
 ALTER TABLE ta_ratings ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE sent_mails ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
 
 -- can't currently create these due to errors in data
 ALTER TABLE wces_topics ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
-ALTER TABLE wces_topics ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
-ALTER TABLE wces_topics ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE wces_topics ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES categories;
 ALTER TABLE saves ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
-ALTER TABLE survey_responses ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+ALTER TABLE responses_survey ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+
 
 -- might someday create an items table...
 --ALTER TABLE wces_topics ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
@@ -307,7 +299,7 @@ ALTER TABLE temp_dept ADD CONSTRAINT department_fk FOREIGN KEY (newid) REFERENCE
 ALTER TABLE temp_div ADD CONSTRAINT division_fk FOREIGN KEY (newid) REFERENCES divisions(division_id);
 ALTER TABLE temp_sch ADD CONSTRAINT school_fk FOREIGN KEY (newid) REFERENCES schools(school_id);
 ALTER TABLE temp_subj ADD CONSTRAINT subject_fk FOREIGN KEY (newid) REFERENCES subjects(subject_id);
-ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES survey_categories(survey_category_id);
+ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES categories(category_id);
 ALTER TABLE temp_prof ADD CONSTRAINT prof_fk FOREIGN KEY (newid) REFERENCES users(user_id);
 ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
 ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;

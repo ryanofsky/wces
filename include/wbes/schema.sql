@@ -35,7 +35,7 @@ CREATE TABLE specializations
   parent INTEGER
 );
 
-CREATE TABLE list_items
+CREATE TABLE component_items
 (
   component_id INTEGER NOT NULL,
   ordinal SMALLINT NOT NULL,
@@ -72,52 +72,52 @@ CREATE TABLE components
 );
 
 
-CREATE TABLE generic_components
+CREATE TABLE components_generic
 (
   data TEXT
 ) INHERITS (components);
 
-CREATE TABLE text_components
+CREATE TABLE components_text
 (
   ctext TEXT,
   flags INTEGER
 ) INHERITS (components);
 
-CREATE TABLE survey_components
+CREATE TABLE components_survey
 (
-) INHERITS (text_components);
+) INHERITS (components_text);
 
-CREATE TABLE subsurvey_components
+CREATE TABLE components_subsurvey
 (
   specialization_id INTEGER
-) INHERITS (survey_components);
+) INHERITS (components_survey);
 
-CREATE TABLE choice_components
+CREATE TABLE components_choice
 (
   choices      TEXT[],
   other_choice TEXT,
   first_number INTEGER,
   last_number  INTEGER,
   rows         INTEGER
-) INHERITS (text_components);
+) INHERITS (components_text);
 
-CREATE TABLE choice_questions
+CREATE TABLE components_choice_question
 (
   qtext TEXT
 ) INHERITS (components);
 
-CREATE TABLE textresponse_components
+CREATE TABLE components_text_question
 (
   rows INTEGER,
   cols INTEGER
-) INHERITS (text_components);
+) INHERITS (components_text);
 
-CREATE TABLE abet_components
+CREATE TABLE components_abet
 (
   which INTEGER -- bitmask
 ) INHERITS (components);
 
-CREATE TABLE pagebreak_components
+CREATE TABLE components_pagebreak
 (
   renumber BOOLEAN
 ) INHERITS (components);
@@ -130,7 +130,7 @@ CREATE TABLE saves
 );
 
 -- this entire table is redundant
-CREATE TABLE branch_ancestor_cache
+CREATE TABLE cached_branch_ancestors
 (
   ancestor_id INTEGER NOT NULL,
   descendant_id INTEGER NOT NULL
@@ -151,7 +151,7 @@ CREATE TABLE responses
   parent INTEGER
 );
 
-CREATE TABLE survey_responses
+CREATE TABLE responses_survey
 (
   topic_id INTEGER NOT NULL,
   specialization_id INTEGER NOT NULL, -- redudant
@@ -159,23 +159,23 @@ CREATE TABLE survey_responses
   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) INHERITS (responses);
 
-CREATE TABLE choice_responses
+CREATE TABLE responses_choice
 (
 ) INHERITS (responses);
 
-CREATE TABLE choice_question_responses
+CREATE TABLE responses_choice_question
 (
   answer INTEGER,
   other TEXT
 ) INHERITS (responses);
 
-CREATE TABLE mchoice_question_responses
+CREATE TABLE responses_mchoice_question
 (
   answer INTEGER[],
   other TEXT
 ) INHERITS (responses);
 
-CREATE TABLE textresponse_responses
+CREATE TABLE responses_text_question
 (
   rtext TEXT
 ) INHERITS (responses);
@@ -190,19 +190,18 @@ CREATE TABLE cached_choice_responses
   dist INTEGER[] NOT NULL
 );
 
--- drastically speeds up mass mailing
-CREATE INDEX survey_response_m ON survey_responses(topic_id, user_id);
-CREATE INDEX survey_response_ut ON survey_responses(user_id, topic_id);
-CREATE INDEX survey_response_u ON survey_responses(user_id);
+CREATE INDEX survey_response_ut ON responses_survey(user_id, topic_id);
+CREATE INDEX survey_response_u ON responses_survey(user_id);
+CREATE INDEX survey_response_t ON responses_survey(topic_id);
 
-CREATE INDEX response_topic_idx ON survey_responses (topic_id);
-CREATE UNIQUE INDEX choice_component_idx ON choice_components(component_id);
-CREATE UNIQUE INDEX choice_question_idx ON choice_questions(component_id);
+CREATE INDEX response_topic_idx ON responses_survey (topic_id);
+CREATE UNIQUE INDEX choice_component_idx ON components_choice(component_id);
+CREATE UNIQUE INDEX choice_question_idx ON components_choice_question(component_id);
 
-CREATE INDEX text_responses_parent_idx ON textresponse_responses (parent);
-CREATE INDEX choice_responses_parent_idx ON choice_responses (parent);
-CREATE INDEX choiceq_responses_parent_idx ON choice_question_responses (parent);
-CREATE INDEX mchoiceq_responses_parent_idx ON mchoice_question_responses (parent);
+CREATE INDEX text_responses_parent_idx ON responses_text_question (parent);
+CREATE INDEX choice_responses_parent_idx ON responses_choice (parent);
+CREATE INDEX choiceq_responses_parent_idx ON responses_choice_question (parent);
+CREATE INDEX mchoiceq_responses_parent_idx ON responses_mchoice_question (parent);
 
 ALTER TABLE revisions ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES revisions(revision_id);
 ALTER TABLE revisions ADD CONSTRAINT branch_fk FOREIGN KEY (branch_id) REFERENCES branches;
@@ -212,8 +211,8 @@ ALTER TABLE branches ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES br
 ALTER TABLE branches ADD CONSTRAINT latest_fk FOREIGN KEY (latest_id) REFERENCES revisions(revision_id) DEFERRABLE INITIALLY DEFERRED;
 ALTER TABLE specializations ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES specializations(specialization_id);
 ALTER TABLE item_specializations ADD CONSTRAINT branch_fk FOREIGN KEY (branch_id) REFERENCES branches;
-ALTER TABLE branch_ancestor_cache ADD CONSTRAINT ancestor_fk FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
-ALTER TABLE branch_ancestor_cache ADD CONSTRAINT descendant_fk FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
+ALTER TABLE cached_branch_ancestors ADD CONSTRAINT ancestor_fk FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
+ALTER TABLE cached_branch_ancestors ADD CONSTRAINT descendant_fk FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
 ALTER TABLE responses ADD CONSTRAINT revision_fk FOREIGN KEY (revision_id) REFERENCES revisions;
 ALTER TABLE cached_choice_responses ADD CONSTRAINT crevision_fk FOREIGN KEY (crevision_id) REFERENCES revisions(revision_id);
 ALTER TABLE cached_choice_responses ADD CONSTRAINT qrevision_fk FOREIGN KEY (qrevision_id) REFERENCES revisions(revision_id);
@@ -221,18 +220,18 @@ ALTER TABLE cached_choice_responses ADD CONSTRAINT qrevision_fk FOREIGN KEY (qre
 -- can't currently create these due to errors
 ALTER TABLE item_specializations ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations;
 --  select * from item_specializations AS i where not exists(select * from specializations AS s where s.specialization_id = i.specialization_id);
-ALTER TABLE survey_responses ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations;
---  select * from survey_responses AS i where not exists(select * from specializations AS s where s.specialization_id = i.specialization_id);
+ALTER TABLE responses_survey ADD CONSTRAINT specialization_fk FOREIGN KEY (specialization_id) REFERENCES specializations;
+--  select * from responses_survey AS i where not exists(select * from specializations AS s where s.specialization_id = i.specialization_id);
 
 --requires unique index on inherited tables, so can't work in postgres 7.3 
 --ALTER TABLE revisions ADD CONSTRAINT component_fk FOREIGN KEY (component_id) REFERENCES components;
---ALTER TABLE list_items ADD CONSTRAINT component_fk FOREIGN KEY (component_id) REFERENCES components;
+--ALTER TABLE component_items ADD CONSTRAINT component_fk FOREIGN KEY (component_id) REFERENCES components;
 --ALTER TABLE responses ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERENCES responses(response_id);
 
 -- might someday create items and topics tables...
---ALTER TABLE list_items ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
+--ALTER TABLE component_items ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
 --ALTER TABLE item_specializations ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
---ALTER TABLE survey_responses ADD CONSTRAINT topic_fk FOREIGN KEY (topic_id) REFERENCES ???;
+--ALTER TABLE responses_survey ADD CONSTRAINT topic_fk FOREIGN KEY (topic_id) REFERENCES ???;
 --ALTER TABLE cached_choice_responses ADD CONSTRAINT topic_fk FOREIGN KEY (topic_id) REFERENCES ???;
 --ALTER TABLE cached_choice_responses ADD CONSTRAINT item_fk FOREIGN KEY (citem_id) REFERENCES ???;
 --ALTER TABLE cached_choice_responses ADD CONSTRAINT item_fk FOREIGN KEY (qitem_id) REFERENCES ???;
@@ -286,9 +285,9 @@ CREATE OR REPLACE FUNCTION references_branch(INTEGER) RETURNS INTEGER AS '
   CASE WHEN EXISTS (SELECT * FROM branches WHERE branch_id = $1)                    THEN 2 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM branches WHERE parent = $1)                       THEN 4 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM item_specializations WHERE branch_id = $1)        THEN 8 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM branch_ancestor_cache WHERE ancestor_id = $1)     THEN 16 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM branch_ancestor_cache WHERE descendant_id = $1)   THEN 32 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM list_items WHERE item_id = $1)                    THEN 64 ELSE 0 END;
+  CASE WHEN EXISTS (SELECT * FROM cached_branch_ancestors WHERE ancestor_id = $1)     THEN 16 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM cached_branch_ancestors WHERE descendant_id = $1)   THEN 32 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM component_items WHERE item_id = $1)                    THEN 64 ELSE 0 END;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION references_revisions(INTEGER) RETURNS INTEGER AS '
@@ -302,14 +301,14 @@ CREATE OR REPLACE FUNCTION references_revisions(INTEGER) RETURNS INTEGER AS '
 CREATE OR REPLACE FUNCTION references_specialization(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM item_specializations WHERE specialization_id = $1) THEN 1 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE specialization_id = $1)     THEN 2 ELSE 0 END |
+  CASE WHEN EXISTS (SELECT * FROM responses_survey WHERE specialization_id = $1)     THEN 2 ELSE 0 END |
   CASE WHEN EXISTS (SELECT * FROM specializations WHERE parent = $1)                 THEN 4 ELSE 0 END;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION references_component(INTEGER) RETURNS INTEGER AS '
   SELECT
   CASE WHEN EXISTS (SELECT * FROM revisions WHERE component_id = $1)  THEN 1 ELSE 0 END |
-  CASE WHEN EXISTS (SELECT * FROM list_items WHERE component_id = $1) THEN 2 ELSE 0 END;
+  CASE WHEN EXISTS (SELECT * FROM component_items WHERE component_id = $1) THEN 2 ELSE 0 END;
 ' LANGUAGE 'sql';
 
 -- update redundant fields in branches table
@@ -364,7 +363,7 @@ CREATE OR REPLACE FUNCTION branch_ancestor_generate() RETURNS INTEGER AS '
     rec RECORD;
   BEGIN
     LOCK TABLE branches IN SHARE ROW EXCLUSIVE MODE;
-    TRUNCATE branch_ancestor_cache;
+    TRUNCATE cached_branch_ancestors;
     FOR rec IN SELECT branch_id FROM BRANCHES WHERE parent IS NULL LOOP
       PERFORM branch_ancestor_generate(rec.branch_id);
     END LOOP;
@@ -391,7 +390,7 @@ CREATE OR REPLACE FUNCTION branch_ancestor_generate(INTEGER, INTEGER) RETURNS IN
     rec RECORD;
     eq BOOLEAN;
   BEGIN
-    INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+    INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
     VALUES(ancestor_id_, branch_id_);
 
     FOR rec IN SELECT branch_id FROM branches WHERE parent = branch_id_ LOOP
@@ -742,11 +741,11 @@ CREATE OR REPLACE FUNCTION branch_create_child(INTEGER) RETURNS INTEGER AS '
     VALUES (bid, branch_id_, ''f'', NULL);
 
     IF branch_id_ IS NOT NULL THEN
-      INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+      INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
       VALUES (branch_id_, bid);
 
-      INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
-      SELECT ancestor_id, bid FROM branch_ancestor_cache
+      INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
+      SELECT ancestor_id, bid FROM cached_branch_ancestors
       WHERE descendant_id = branch_id_;
     END IF;
 
@@ -828,7 +827,7 @@ CREATE OR REPLACE FUNCTION branch_contains_child_specialzn(INTEGER, INTEGER, INT
       ( SELECT branch_id_ AS branch_id
         UNION
         SELECT descendant_id
-        FROM branch_ancestor_cache AS c
+        FROM cached_branch_ancestors AS c
         WHERE c.ancestor_id = branch_id_
       ) AS b
       INNER JOIN item_specializations AS i USING (branch_id)
@@ -977,14 +976,14 @@ CREATE OR REPLACE FUNCTION branch_move(INTEGER, INTEGER, INTEGER) RETURNS INTEGE
       PERFORM branch_set_outdated(branch_id_);
     END IF;
 
-    -- update branch_ancestor_cache
+    -- update cached_branch_ancestors
 
-    INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+    INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
     VALUES (new_parent_branch, branch_id_)
 
-    INSERT INTO branch_ancestor_cache (ancestor_id, descendant_id)
+    INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
     SELECT new_parent_branch, descendant_id
-    FROM branch_ancestor_cache
+    FROM cached_branch_ancestors
     WHERE ancestor_id = branch_id_;
 
     RETURN 1;
@@ -1322,14 +1321,14 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
 
 CREATE OR REPLACE FUNCTION branch_descendants_set_outdated(INTEGER) RETURNS INTEGER AS '
   UPDATE branches SET outdated = ''t'' WHERE branch_id IN
-    (SELECT descendant_id FROM branch_ancestor_cache WHERE ancestor_id = $1);
+    (SELECT descendant_id FROM cached_branch_ancestors WHERE ancestor_id = $1);
   SELECT 1;
 ' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION branch_set_outdated(INTEGER) RETURNS INTEGER AS '
   UPDATE branches SET outdated = ''t'' WHERE branch_id = $1;
   UPDATE branches SET outdated = ''t'' WHERE branch_id IN
-    (SELECT descendant_id FROM branch_ancestor_cache WHERE ancestor_id = $1);
+    (SELECT descendant_id FROM cached_branch_ancestors WHERE ancestor_id = $1);
   SELECT 1;
 ' LANGUAGE 'sql';
 
@@ -1388,7 +1387,7 @@ CREATE OR REPLACE FUNCTION list_changed(INTEGER, INTEGER[]) RETURNS BOOLEAN AS '
       -- see if question ordering changed
       i := 1;
 
-      FOR rec IN SELECT item_id FROM list_items WHERE component_id = component_id_ ORDER BY ordinal LOOP
+      FOR rec IN SELECT item_id FROM component_items WHERE component_id = component_id_ ORDER BY ordinal LOOP
         --RAISE NOTICE ''question % changed? %'', i;
         j := numbers[i];
         IF j IS NULL OR j <> rec.item_id THEN changed := ''t''; EXIT; END IF;
@@ -1411,7 +1410,7 @@ CREATE OR REPLACE FUNCTION list_insert(INTEGER, INTEGER[]) RETURNS INTEGER AS '
     LOOP
       j := numbers[i];
       EXIT WHEN j IS NULL;
-      INSERT INTO list_items (component_id, ordinal, item_id)
+      INSERT INTO component_items (component_id, ordinal, item_id)
       VALUES (component_id_, i, j);
       i := i + 1;
     END LOOP;
@@ -1425,7 +1424,7 @@ CREATE OR REPLACE FUNCTION survey_save(INTEGER, INTEGER[]) RETURNS INTEGER AS '
     item_ids      ALIAS FOR $2;
   BEGIN
     IF list_changed(component_id_, item_ids) THEN
-      INSERT INTO survey_components (type) VALUES (1);
+      INSERT INTO components_survey (type) VALUES (1);
       RETURN list_insert(currval(''component_ids'')::integer, item_ids);
     ELSE
       RETURN component_id_;
@@ -1457,7 +1456,7 @@ CREATE OR REPLACE FUNCTION choice_component_save(INTEGER, TEXT,
       changed := list_changed(component_id_, question_ids);
 
       IF NOT changed THEN
-        SELECT INTO r ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE component_id = component_id_;
+        SELECT INTO r ctext, choices, other_choice, first_number, last_number, flags, rows FROM components_choice WHERE component_id = component_id_;
         IF NOT FOUND THEN
           RAISE EXCEPTION ''choice_component_save(%,%,%,%,%,%,%,%,%) fails. orig_id not found'', $1, $2, $3, $4, $5, $6, $7, $8, $9;
         END IF;
@@ -1473,7 +1472,7 @@ CREATE OR REPLACE FUNCTION choice_component_save(INTEGER, TEXT,
 
     cid := nextval(''component_ids'');
 
-    INSERT INTO choice_components (component_id, type, ctext, flags, choices, other_choice, first_number, last_number, rows)
+    INSERT INTO components_choice (component_id, type, ctext, flags, choices, other_choice, first_number, last_number, rows)
     VALUES (cid, 2, ctext_, flags_, choices_, other_choice_, first_number_, last_number_, rows_);
 
     PERFORM list_insert(cid, question_ids);
@@ -1493,7 +1492,7 @@ CREATE OR REPLACE FUNCTION text_component_save(INTEGER, INTEGER, TEXT, INTEGER) 
   BEGIN
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec ctext, flags FROM text_components WHERE component_id = component_id_;
+      SELECT INTO rec ctext, flags FROM components_text WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''text_component_save(%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4;
       END IF;
@@ -1502,7 +1501,7 @@ CREATE OR REPLACE FUNCTION text_component_save(INTEGER, INTEGER, TEXT, INTEGER) 
 
     IF NOT changed THEN RETURN component_id_; END IF;
 
-    INSERT INTO choice_components(type, ctext, flags)
+    INSERT INTO components_choice(type, ctext, flags)
     VALUES (type_, ctext_, flags_);
 
     RETURN currval(''component_ids'');
@@ -1521,7 +1520,7 @@ CREATE OR REPLACE FUNCTION textresponse_component_save(INTEGER, TEXT, INTEGER, I
   BEGIN
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec ctext, flags, rows, cols FROM textresponse_components WHERE component_id = component_id_;
+      SELECT INTO rec ctext, flags, rows, cols FROM components_text_question WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''textresponse_component_save(%,%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4, $5;
       END IF;
@@ -1530,7 +1529,7 @@ CREATE OR REPLACE FUNCTION textresponse_component_save(INTEGER, TEXT, INTEGER, I
 
     IF NOT changed THEN RETURN component_id_; END IF;
 
-    INSERT INTO textresponse_components (type, ctext, flags, rows, cols)
+    INSERT INTO components_text_question (type, ctext, flags, rows, cols)
     VALUES (3, ctext_, flags_, rows_, cols_);
 
     RETURN currval(''component_ids'');
@@ -1546,7 +1545,7 @@ CREATE OR REPLACE FUNCTION pagebreak_component_save(INTEGER, BOOLEAN) RETURNS IN
   BEGIN
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec renumber FROM pagebreak_components WHERE component_id = component_id_;
+      SELECT INTO rec renumber FROM components_pagebreak WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''pagebreak_component_save(%,%) fails. bad orig_id'', $1, $2;
       END IF;
@@ -1555,7 +1554,7 @@ CREATE OR REPLACE FUNCTION pagebreak_component_save(INTEGER, BOOLEAN) RETURNS IN
 
     IF NOT changed THEN RETURN component_id_; END IF;
 
-    INSERT INTO pagebreak_components(type, renumber)
+    INSERT INTO components_pagebreak(type, renumber)
     VALUES (9, renumber_);
 
     RETURN currval(''component_ids'');
@@ -1572,7 +1571,7 @@ CREATE OR REPLACE FUNCTION choice_question_save(INTEGER, TEXT) RETURNS INTEGER A
     -- RAISE NOTICE ''choice_question_save(%,%) called'', $1, $2;
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec qtext FROM choice_questions WHERE component_id = component_id_;
+      SELECT INTO rec qtext FROM components_choice_question WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''choice_question_save(%,%) fails. bad orig_id'', $1, $2;
       END IF;
@@ -1581,7 +1580,7 @@ CREATE OR REPLACE FUNCTION choice_question_save(INTEGER, TEXT) RETURNS INTEGER A
 
     IF NOT changed THEN RETURN component_id_; END IF;
 
-    INSERT INTO choice_questions(type, qtext)
+    INSERT INTO components_choice_question(type, qtext)
     VALUES (6, qtext_);
 
     RETURN currval(''component_ids'');
@@ -1599,7 +1598,7 @@ CREATE OR REPLACE FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER) RETURN
     -- RAISE NOTICE ''abet_component_save(%,%) called'', $1, $2;
     changed := component_id_ IS NULL;
     IF NOT changed THEN
-      SELECT INTO rec which FROM abet_components WHERE component_id = component_id_;
+      SELECT INTO rec which FROM components_abet WHERE component_id = component_id_;
       IF NOT FOUND THEN
         RAISE EXCEPTION ''abet_component_save(%,%) fails. bad orig_id'', $1, $2;
       END IF;
@@ -1608,7 +1607,7 @@ CREATE OR REPLACE FUNCTION abet_component_save(INTEGER, INTEGER, INTEGER) RETURN
 
     IF NOT changed THEN RETURN component_id_; END IF;
 
-    INSERT INTO abet_components(type, which)
+    INSERT INTO components_abet(type, which)
     VALUES (type_, which_);
 
     RETURN currval(''component_ids'');
@@ -1624,10 +1623,10 @@ CREATE OR REPLACE FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER) RETU
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      qtext FROM choice_questions WHERE component_id = orig_id;
-    SELECT INTO primary_row   qtext FROM choice_questions WHERE component_id = primary_id;
-    SELECT INTO secondary_row qtext FROM choice_questions WHERE component_id = secondary_id;
-    INSERT INTO choice_questions (type, qtext) VALUES
+    SELECT INTO orig_row      qtext FROM components_choice_question WHERE component_id = orig_id;
+    SELECT INTO primary_row   qtext FROM components_choice_question WHERE component_id = primary_id;
+    SELECT INTO secondary_row qtext FROM components_choice_question WHERE component_id = secondary_id;
+    INSERT INTO components_choice_question (type, qtext) VALUES
     ( 6,
       text_merge(orig_row.qtext, primary_row.qtext, secondary_row.qtext, ''t'')
     );
@@ -1644,10 +1643,10 @@ CREATE OR REPLACE FUNCTION abet_component_merge(INTEGER, INTEGER, INTEGER) RETUR
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      which FROM abet_components WHERE component_id = orig_id;
-    SELECT INTO primary_row   which FROM abet_components WHERE component_id = primary_id;
-    SELECT INTO secondary_row which FROM abet_components WHERE component_id = secondary_id;
-    INSERT INTO abet_components (type, which) VALUES
+    SELECT INTO orig_row      which FROM components_abet WHERE component_id = orig_id;
+    SELECT INTO primary_row   which FROM components_abet WHERE component_id = primary_id;
+    SELECT INTO secondary_row which FROM components_abet WHERE component_id = secondary_id;
+    INSERT INTO components_abet (type, which) VALUES
     ( 10,
       bitmask_merge(orig_row.which, primary_row.which, secondary_row.which)
     );
@@ -1665,11 +1664,11 @@ CREATE OR REPLACE FUNCTION survey_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEG
     secondary_row RECORD;
     new_id        INTEGER;
   BEGIN
-    SELECT INTO orig_row      ctext, flags FROM survey_components WHERE component_id = orig_id;
-    SELECT INTO primary_row   ctext, flags FROM survey_components WHERE component_id = primary_id;
-    SELECT INTO secondary_row ctext, flags FROM survey_components WHERE component_id = secondary_id;
+    SELECT INTO orig_row      ctext, flags FROM components_survey WHERE component_id = orig_id;
+    SELECT INTO primary_row   ctext, flags FROM components_survey WHERE component_id = primary_id;
+    SELECT INTO secondary_row ctext, flags FROM components_survey WHERE component_id = secondary_id;
 
-    INSERT INTO survey_components (type, ctext, flags) VALUES
+    INSERT INTO components_survey (type, ctext, flags) VALUES
     ( 1,
       text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
@@ -1691,11 +1690,11 @@ CREATE OR REPLACE FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER) RET
     secondary_row RECORD;
     new_id        INTEGER;
   BEGIN
-    SELECT INTO orig_row      ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE component_id = orig_id;
-    SELECT INTO primary_row   ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE component_id = primary_id;
-    SELECT INTO secondary_row ctext, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE component_id = secondary_id;
+    SELECT INTO orig_row      ctext, choices, other_choice, first_number, last_number, flags, rows FROM components_choice WHERE component_id = orig_id;
+    SELECT INTO primary_row   ctext, choices, other_choice, first_number, last_number, flags, rows FROM components_choice WHERE component_id = primary_id;
+    SELECT INTO secondary_row ctext, choices, other_choice, first_number, last_number, flags, rows FROM components_choice WHERE component_id = secondary_id;
 
-    INSERT INTO choice_components (type, ctext, flags, choices, other_choice, first_number, last_number, rows) VALUES
+    INSERT INTO components_choice (type, ctext, flags, choices, other_choice, first_number, last_number, rows) VALUES
     ( 2,
       text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags),
@@ -1722,11 +1721,11 @@ CREATE OR REPLACE FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEG
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      ctext, flags FROM text_components WHERE component_id = orig_id;
-    SELECT INTO primary_row   ctext, flags FROM text_components WHERE component_id = primary_id;
-    SELECT INTO secondary_row ctext, flags FROM text_components WHERE component_id = secondary_id;
+    SELECT INTO orig_row      ctext, flags FROM components_text WHERE component_id = orig_id;
+    SELECT INTO primary_row   ctext, flags FROM components_text WHERE component_id = primary_id;
+    SELECT INTO secondary_row ctext, flags FROM components_text WHERE component_id = secondary_id;
 
-    INSERT text_components (type, ctext, flags) VALUES
+    INSERT components_text (type, ctext, flags) VALUES
     ( type_
       text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
@@ -1745,11 +1744,11 @@ CREATE OR REPLACE FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGE
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      ctext, flags, rows, cols FROM textresponse_components WHERE component_id = orig_id;
-    SELECT INTO primary_row   ctext, flags, rows, cols FROM textresponse_components WHERE component_id = primary_id;
-    SELECT INTO secondary_row ctext, flags, rows, cols FROM textresponse_components WHERE component_id = secondary_id;
+    SELECT INTO orig_row      ctext, flags, rows, cols FROM components_text_question WHERE component_id = orig_id;
+    SELECT INTO primary_row   ctext, flags, rows, cols FROM components_text_question WHERE component_id = primary_id;
+    SELECT INTO secondary_row ctext, flags, rows, cols FROM components_text_question WHERE component_id = secondary_id;
 
-    INSERT INTO textresponse_components (type, ctext, flags, rows, cols) VALUES
+    INSERT INTO components_text_question (type, ctext, flags, rows, cols) VALUES
     ( 3,
       text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags),
@@ -1770,11 +1769,11 @@ CREATE OR REPLACE FUNCTION pagebreak_merge(INTEGER, INTEGER, INTEGER) RETURNS IN
     primary_row   RECORD;
     secondary_row RECORD;
   BEGIN
-    SELECT INTO orig_row      renumber FROM text_components WHERE component_id = orig_id;
-    SELECT INTO primary_row   renumber FROM text_components WHERE component_id = primary_id;
-    SELECT INTO secondary_row renumber FROM text_components WHERE component_id = secondary_id;
+    SELECT INTO orig_row      renumber FROM components_text WHERE component_id = orig_id;
+    SELECT INTO primary_row   renumber FROM components_text WHERE component_id = primary_id;
+    SELECT INTO secondary_row renumber FROM components_text WHERE component_id = secondary_id;
 
-    INSERT INTO choice_questions (type, renumber) VALUES
+    INSERT INTO components_choice_question (type, renumber) VALUES
     ( 6,
       boolean_merge(orig_row.renumber, primary_row.renumber, secondary_row.renumber, ''t'')
     );
@@ -1794,7 +1793,7 @@ CREATE OR REPLACE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
     ck INTEGER;
     nk INTEGER;
   BEGIN
-    SELECT INTO ck COUNT(*) FROM list_items WHERE component_id = new_id;
+    SELECT INTO ck COUNT(*) FROM component_items WHERE component_id = new_id;
     IF NOT ck = 0 THEN
       RAISE EXCEPTION ''list_merge(%,%,%,%) failed. List % is not empty.'', $1, $2, $3, $4, $4;
     END IF;
@@ -1803,35 +1802,35 @@ CREATE OR REPLACE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
 
     FOR rec IN
       SELECT li.item_id
-      FROM list_items AS li
+      FROM component_items AS li
       WHERE
         li.component_id = primary_id
       AND -- not deleted
       (
-        NOT EXISTS (SELECT 1 FROM list_items AS c WHERE c.component_id = common_id AND c.item_id = li.item_id)
+        NOT EXISTS (SELECT 1 FROM component_items AS c WHERE c.component_id = common_id AND c.item_id = li.item_id)
         OR
-        EXISTS (SELECT 1 FROM list_items AS h WHERE h.component_id = secondary_id AND h.item_id = li.item_id)
+        EXISTS (SELECT 1 FROM component_items AS h WHERE h.component_id = secondary_id AND h.item_id = li.item_id)
       )
       ORDER BY li.ordinal
     LOOP
-      INSERT INTO list_items(component_id, ordinal, item_id) VALUES (new_id, ord, rec.item_id);
+      INSERT INTO component_items(component_id, ordinal, item_id) VALUES (new_id, ord, rec.item_id);
       ord := ord + 1;
     END LOOP;
 
     -- Insert new items from secondary into the new list
 
     ord := 1;
-    FOR rec IN SELECT ordinal, item_id FROM list_items WHERE component_id = secondary_id ORDER BY ordinal LOOP
+    FOR rec IN SELECT ordinal, item_id FROM component_items WHERE component_id = secondary_id ORDER BY ordinal LOOP
 
-      SELECT INTO ck ordinal FROM list_items WHERE component_id = common_id AND item_id = rec.item_id;
+      SELECT INTO ck ordinal FROM component_items WHERE component_id = common_id AND item_id = rec.item_id;
       IF NOT FOUND THEN ck := NULL; END IF;
 
-      SELECT INTO nk ordinal FROM list_items WHERE component_id = new_id AND item_id = rec.item_id;
+      SELECT INTO nk ordinal FROM component_items WHERE component_id = new_id AND item_id = rec.item_id;
       IF NOT FOUND THEN nk := NULL; END IF;
 
       IF ck IS NULL AND nk IS NULL THEN -- needs to be inserted
-        UPDATE list_items SET ordinal = ordinal + 1 WHERE component_id = new_id AND ordinal >= ord;
-        INSERT INTO list_items(component_id, ordinal, item_id) VALUES (new_id, ord, rec.item_id);
+        UPDATE component_items SET ordinal = ordinal + 1 WHERE component_id = new_id AND ordinal >= ord;
+        INSERT INTO component_items(component_id, ordinal, item_id) VALUES (new_id, ord, rec.item_id);
         nk := ord;
       END IF;
 
@@ -1903,9 +1902,9 @@ CREATE OR REPLACE FUNCTION cached_choice_responses_update() RETURNS INTEGER AS '
   INSERT INTO cached_choice_responses (topic_id, citem_id, crevision_id, qitem_id, qrevision_id, dist)
   SELECT r.topic_id, cr.item_id, cr.revision_id, qr.item_id,
     qr.revision_id, choice_dist(qr.answer)
-  FROM survey_responses AS r
-  INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
-  INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
+  FROM responses_survey AS r
+  INNER JOIN responses_choice AS cr ON cr.parent = r.response_id
+  INNER JOIN responses_choice_question AS qr ON qr.parent = cr.response_id
   GROUP BY r.topic_id, cr.item_id, cr.revision_id, qr.item_id, qr.revision_id;
   SELECT 1;
 ' LANGUAGE 'sql'; 
@@ -2099,7 +2098,7 @@ CREATE OR REPLACE FUNCTION base_survey_create(INTEGER, INTEGER) RETURNS VOID AS 
     INSERT INTO item_specializations (item_id, specialization_id, branch_id)
     VALUES (iid, sid, bid);
 
-    INSERT INTO survey_components (component_id, type, ctext, flags)
+    INSERT INTO components_survey (component_id, type, ctext, flags)
     VALUES (cid, 1, '''', 0);
   
     INSERT INTO revisions (revision_id, parent, branch_id, revision, save_id, merged, component_id)

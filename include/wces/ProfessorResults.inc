@@ -64,10 +64,10 @@ class ProfessorResults extends ParentWidget
 
     $result = pg_go("
       SELECT t.topic_id, t.class_id, get_class(t.class_id) AS class_info, q.question_period_id, q.displayname,
-        (SELECT COUNT(DISTINCT user_id) FROM survey_responses AS sr WHERE sr.topic_id = t.topic_id) AS responses
+        (SELECT COUNT(DISTINCT user_id) FROM responses_survey AS sr WHERE sr.topic_id = t.topic_id) AS responses
       FROM enrollments_p AS e
       INNER JOIN wces_topics AS t USING (class_id)
-      INNER JOIN semester_question_periods AS q USING (question_period_id)
+      INNER JOIN question_periods AS q USING (question_period_id)
       WHERE e.user_id = $user_id AND q.profdate < (SELECT NOW())
       ORDER BY q.enddate DESC, q.question_period_id DESC, class_info
     ", $wces, __FILE__, __LINE__);

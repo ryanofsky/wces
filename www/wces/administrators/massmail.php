@@ -28,7 +28,7 @@ class MassEmail extends ParentWidget
   var $replyto;
   var $to;
   var $text;
-  var $survey_category_id;
+  var $category_id;
 
   var $event;
   var $errors;
@@ -50,7 +50,7 @@ class MassEmail extends ParentWidget
 
     $this->event =& new EventWidget("event", $this);
     $this->errors = array();
-    $this->survey_category_id = 0;
+    $this->category_id = 0;
   }
 
   function loadInitialState()
@@ -83,7 +83,7 @@ class MassEmail extends ParentWidget
     
     global $wces;
     $this->to = $this->readValue("to");
-    $this->survey_category_id = (int)$this->readValue("survey_category_id");
+    $this->category_id = (int)$this->readValue("category_id");
 
     if ($this->event->event == MassEmail_load && $this->event->param)
     {
@@ -101,7 +101,7 @@ class MassEmail extends ParentWidget
       $this->subject->text = $row['subject'];
       $this->text->text = $row['body'];
       $this->to = $row['mail_to'];
-      $this->survey_category_id = (int)$row['category_id'];
+      $this->category_id = (int)$row['category_id'];
       if ($row['question_period_id'])
         set_question_period($row['question_period_id']);
       
@@ -156,7 +156,7 @@ class MassEmail extends ParentWidget
       $this->question_periods->displayHidden();
       $this->topics->displayHidden();
       $this->printValue("to", $this->to);
-      $this->printValue("survey_category_id", $this->survey_category_id);
+      $this->printValue("category_id", $this->category_id);
     }
     else if ($this->event->event == MassEmail_choose)
     {
@@ -167,7 +167,7 @@ class MassEmail extends ParentWidget
       $this->question_periods->displayHidden();
       $this->topics->displayHidden();      
       $this->printValue("to", $this->to);
-      $this->printValue("survey_category_id", $this->survey_category_id);
+      $this->printValue("category_id", $this->category_id);
 
       print('Open a previously sent message to edit and resend it, or choose '
         .  '"Cancel" to return to the mass mailing form.');
@@ -176,7 +176,7 @@ class MassEmail extends ParentWidget
       print("</p>");
       
       $r = pg_go("
-        SELECT survey_category_id AS id, name FROM survey_categories
+        SELECT category_id AS id, name FROM categories
       ", $wces, __FILE__, __LINE__);
       
       $cats = array();
@@ -194,7 +194,7 @@ class MassEmail extends ParentWidget
         FROM sent_mails AS m
         LEFT JOIN users AS u USING (user_id)
         LEFT JOIN question_periods AS q USING (question_period_id)
-        LEFT JOIN survey_categories AS c ON c.survey_category_id = m.category_id
+        LEFT JOIN categories AS c ON c.category_id = m.category_id
         ORDER BY m.sent DESC
       ", $wces, __FILE__, __LINE__);
       
@@ -280,16 +280,16 @@ class MassEmail extends ParentWidget
       print("</select><br>\n");
 
       wces_connect();
-      $survey_categories = pg_go("SELECT survey_category_id, name FROM survey_categories", $wces, __FILE__, __LINE__);
+      $survey_categories = pg_go("SELECT category_id, name FROM categories", $wces, __FILE__, __LINE__);
       $n = pg_numrows($survey_categories);
 
-      print("<select name=\"" . $this->name('survey_category_id') . "\">");
+      print("<select name=\"" . $this->name('category_id') . "\">");
       print("<option value=0$selected>All Class Categories</option>");
       for($i=0; $i<$n; ++$i)
       {
         extract(pg_fetch_array($survey_categories,$i,PGSQL_ASSOC));
-        $selected = $survey_category_id == $this->survey_category_id ? " selected" : "";
-        print("<option value=$survey_category_id$selected>$name Classes</option>");
+        $selected = $category_id == $this->category_id ? " selected" : "";
+        print("<option value=$category_id$selected>$name Classes</option>");
       }
       print("</select><br>\n");
       
@@ -339,7 +339,7 @@ class MassEmail extends ParentWidget
       $from = addslashes($this->from->text);
       $reply_to = addslashes($this->replyto->text);
       $mail_to = addslashes($this->to);
-      $category_id = (int)$this->survey_category_id;
+      $category_id = (int)$this->category_id;
       $subject = addslashes($this->subject->text);
       $body = addslashes($this->text->text);
       $question_period_id = get_question_period();
@@ -364,7 +364,7 @@ class MassEmail extends ParentWidget
       pg_go("COMMIT;", $wces, __FILE__, __LINE__); 
     }
     
-    $cat = $this->survey_category_id ? "AND t.category_id = $this->survey_category_id" : "";
+    $cat = $this->category_id ? "AND t.category_id = $this->category_id" : "";
     $topic = count($topics) ? ("AND t.topic_id IN (" . implode(",", $topics) . ")") : "";
     
     if ($this->to == "prof")
@@ -377,7 +377,7 @@ class MassEmail extends ParentWidget
     {
       $je = "INNER JOIN enrollments AS e ON e.class_id = cl.class_id AND e.status & 1 <> 0";
       $surveyed = "CASE WHEN COUNT(DISTINCT s.user_id) > 0 THEN 1 ELSE 0 END";
-      $responses = "LEFT JOIN survey_responses AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id";
+      $responses = "LEFT JOIN responses_survey AS s ON s.user_id = e.user_id AND s.topic_id = t.topic_id";
     }
     
     $result = pg_go("

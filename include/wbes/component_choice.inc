@@ -25,7 +25,7 @@ class ChoiceQuestionFactory extends ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, qtext FROM choice_questions WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, qtext FROM components_choice_question WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -50,7 +50,7 @@ class ChoiceFactory extends ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, ctext, choices, other_choice, first_number, last_number, rows, flags FROM components_choice WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -792,7 +792,7 @@ class ChoiceWidget extends ComponentWidget
     global $wbes;
 
     $result = pg_go("
-      INSERT INTO choice_responses(item_id, revision_id, parent)
+      INSERT INTO responses_choice(item_id, revision_id, parent)
       VALUES ({$this->component->item_id}, {$this->component->revision_id}, $parent);
       SELECT currval('response_ids');
     ", $wbes, __FILE__, __LINE__);
@@ -800,7 +800,7 @@ class ChoiceWidget extends ComponentWidget
     if (!$result) return false;
 
     $nparent = (int)pg_result($result, 0, 0);
-    $table = $this->component->select_many ? "mchoice_question_responses" : "choice_question_responses";
+    $table = $this->component->select_many ? "responses_mchoice_question" : "responses_choice_question";
     $success = true;
 
     foreach(array_keys($this->questions) as $i)

@@ -83,10 +83,10 @@ class ComponentFactory
           // created during the execution of branch_latest() from showing up in
           // the resultset.
           $sql .= "CREATE TEMPORARY TABLE $table AS ";
-          $sql .= "SELECT $key AS load, ordinal, item_id, branch_latest(item_id, $load->specialization_id, $save_id) AS revision_id FROM list_items WHERE component_id = $load->component_id";
+          $sql .= "SELECT $key AS load, ordinal, item_id, branch_latest(item_id, $load->specialization_id, $save_id) AS revision_id FROM component_items WHERE component_id = $load->component_id";
         }
         else
-          $sql .= "\nUNION SELECT $key, ordinal, item_id, branch_latest(item_id, $load->specialization_id, $save_id) FROM list_items WHERE component_id = $load->component_id";
+          $sql .= "\nUNION SELECT $key, ordinal, item_id, branch_latest(item_id, $load->specialization_id, $save_id) FROM component_items WHERE component_id = $load->component_id";
       }
 
       $sql .= ";
@@ -126,7 +126,7 @@ class ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, data FROM generic_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, data FROM components_generic WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
       $components[$wr->row['component_id']] = unserialize($wr->row['data']);
@@ -136,7 +136,7 @@ class ComponentFactory
   {
     global $wbes;
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, ctext, flags FROM text_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, ctext, flags FROM components_text WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {
       $c = & new $cn;

@@ -187,7 +187,7 @@ function get_question_period()
 
     $result = pg_go("
       SELECT question_period_id, begindate, enddate
-      FROM semester_question_periods
+      FROM question_periods
       ORDER BY 
         CASE WHEN enddate < (SELECT NOW()) THEN 3   -- past
              WHEN begindate > (SELECT NOW()) THEN 2 -- future
@@ -211,7 +211,7 @@ function get_question_periods()
   wces_connect();
   return pg_select_array("
     SELECT q.question_period_id, q.displayname
-    FROM semester_question_periods AS q
+    FROM question_periods AS q
     WHERE EXISTS (SELECT * FROM wces_topics AS t WHERE t.question_period_id = q.question_period_id AND NOT cancelled)
     ORDER BY begindate
   ", $wces, __FILE__, __LINE__);

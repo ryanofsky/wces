@@ -19,7 +19,7 @@ class SubsurveyFactory extends ComponentFactory
 
     $ids = implode(",", array_keys($loads));
 
-    $r = pg_go("SELECT revision_id, ctext, flags, specialization_id FROM subsurvey_components WHERE revision_id IN ($ids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT revision_id, ctext, flags, specialization_id FROM components_subsurvey WHERE revision_id IN ($ids)", $wbes, __FILE__, __LINE__);
     $n = pg_numrows($r);
 
     $components = array();
@@ -45,7 +45,7 @@ class SubsurveyFactory extends ComponentFactory
     $r = pg_go("
       CREATE TEMPORARY TABLE $tmpname AS
       SELECT li.revision_id AS prevision_id, branch_latest(find_specialization_branch(li.item_id, $specialization_id), $surveyGlobals->slatest) AS revision_id, li.ordinal
-      FROM list_items AS li
+      FROM component_items AS li
       WHERE li.revision_id IN ($ids);
 
       SELECT t.prevision_id, t.ordinal, t.revision_id, r.type

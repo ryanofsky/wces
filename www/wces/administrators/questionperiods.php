@@ -66,7 +66,7 @@ class QuestionPeriodEditor extends StatefullWidget
     if ($this->question_period_id > 0)
     {
       wces_connect();     
-      $r = pg_go("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate, EXTRACT(EPOCH FROM oracledate) AS oracledate FROM semester_question_periods WHERE question_period_id = $this->question_period_id ORDER BY begindate", $wces, __FILE__, __LINE__);
+      $r = pg_go("SELECT displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, year, semester, EXTRACT(EPOCH FROM profdate) AS profdate, EXTRACT(EPOCH FROM oracledate) AS oracledate FROM question_periods WHERE question_period_id = $this->question_period_id ORDER BY begindate", $wces, __FILE__, __LINE__);
       assert(pg_numrows($r) == 1);
       extract(pg_fetch_row($r, 0, PGSQL_ASSOC));
       $this->displayName->text = $displayname;
@@ -116,7 +116,7 @@ class QuestionPeriodEditor extends StatefullWidget
     if ($this->question_period_id <= 0)
     {
       $r = pg_go("
-        INSERT INTO semester_question_periods(displayname, begindate, enddate,
+        INSERT INTO question_periods(displayname, begindate, enddate,
         semester, year, profdate, oracledate) VALUES ($dn, $bd, $ed, $sm, $yr, $rd, $od);
         SELECT currval('question_period_ids');
       ", $wces, __FILE__, __LINE__);
@@ -127,7 +127,7 @@ class QuestionPeriodEditor extends StatefullWidget
     else
     {
       return (bool)pg_go("
-        UPDATE semester_question_periods SET
+        UPDATE question_periods SET
           displayname = $dn, begindate = $bd, enddate = $ed,
           semester = $sm, year = $yr, profdate = $rd, oracledate = $od
         WHERE question_period_id = $this->question_period_id
@@ -212,7 +212,7 @@ class QuestionPeriodList extends StatefullWidget
     wces_connect();
     $ref = (int)pg_result(pg_go("SELECT references_question_period($question_period_id)", $wces, __FILE__, __LINE__),0,0);
     if ($ref == 0)
-      pg_go("DELETE FROM semester_question_periods WHERE question_period_id = $question_period_id", $wces, __FILE__, __LINE__);
+      pg_go("DELETE FROM question_periods WHERE question_period_id = $question_period_id", $wces, __FILE__, __LINE__);
     else
       $this->message = "<p><font color=red>Unable to delete question period $question_period_id because there are survey responses associated with it.</font></p>";
   }
@@ -228,7 +228,7 @@ class QuestionPeriodList extends StatefullWidget
       print($this->message);
 
     wces_connect();
-    $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods ORDER BY begindate, enddate", $wces, __FILE__, __LINE__);
+    $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM question_periods WHERE year IS NOT NULL ORDER BY begindate, enddate", $wces, __FILE__, __LINE__);
     $n = pg_numrows($r);
 
     print("<table border=1>\n");

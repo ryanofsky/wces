@@ -57,7 +57,7 @@ class AbetFactory extends ComponentFactory
     $cs = array();
 
     $cids = implode(',', array_keys($components));
-    $r = pg_go("SELECT component_id, type, which FROM abet_components WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
+    $r = pg_go("SELECT component_id, type, which FROM components_abet WHERE component_id IN ($cids)", $wbes, __FILE__, __LINE__);
 
     for($wr = & new pg_wrapper($r); $wr->row; $wr->advance())
     {

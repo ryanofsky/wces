@@ -14,7 +14,7 @@ $f->loadState();
 // get information about selected question period
 $result = pg_go("
   SELECT displayname
-  FROM semester_question_periods
+  FROM question_periods
   WHERE question_period_id = {$u->options->question_period_id}
 ", $wces, __FILE__, __LINE__);
 
