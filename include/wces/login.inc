@@ -16,7 +16,7 @@ define("login_professor",      0x00000004);
 define("login_administrator",  0x00000008);
 define("login_any",            0x0000000F);
 
-$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts");
+$LOGIN_SESSION_VARS = array("userid", "uni", "status", "name", "depts", "fake");
 $LOGIN_SESSION = session_restore($LOGIN_SESSION_VARS, "login/");
 $LOGIN_PROMPTING = false;
 
@@ -30,7 +30,7 @@ function login_protect($requiredstatus)
     login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
 };
 
-function login_update($user_id)
+function login_update($user_id, $fake = false)
 {
   global $wces;
   
@@ -62,10 +62,10 @@ function login_update($user_id)
     
   $p['user_id'] = $user_id;
   
-  login_setup($user_id,$row['uni'],$status,$row['name'],(int)$row['dept']);
+  login_setup($user_id,$row['uni'],$status,$row['name'],(int)$row['dept'],$fake);
 }
 
-function login_setup($userid, $uni, $status, $name, $deptid)
+function login_setup($userid, $uni, $status, $name, $deptid, $fake)
 {
   global $LOGIN_SESSION, $LOGIN_SESSION_VARS;
   session_initialize($LOGIN_SESSION_VARS, "login/");
@@ -74,6 +74,7 @@ function login_setup($userid, $uni, $status, $name, $deptid)
   $LOGIN_SESSION["status"] = (int)$status;
   $LOGIN_SESSION["name"] = $name;
   $LOGIN_SESSION["depts"] = $deptid ? array($deptid) : false;
+  $LOGIN_SESSION["fake"] = $fake;
 };
 
 function login_logout()
@@ -118,6 +119,12 @@ function login_getname()
 {
   global $LOGIN_SESSION;
   return isset($LOGIN_SESSION["name"]) ? $LOGIN_SESSION["name"] : false;
+};
+
+function login_getfake()
+{
+  global $LOGIN_SESSION;
+  return isset($LOGIN_SESSION["fake"]) ? $LOGIN_SESSION["fake"] : false;
 };
 
 function login_whoami()
@@ -202,7 +209,7 @@ function login_validate($uni,$password)
   $user_id = (int)pg_result($result,0,0);
   login_update($user_id);
 
-  if ($LOGIN_SESSION["userid"] == 0)
+  if ($LOGIN_SESSION["status"] == 0)
     sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
  
   return true;

@@ -11,12 +11,12 @@ param($course_id);
 param($user_id);
 param($uni);
 param($surveyid);
-param($back);
 param($fake);
+param($nofake);
 
 function PrintUser(&$uni, &$user_id)
 {
-  global $wces;
+  global $wces, $ASID;
   
   if ($uni)
     $query = "WHERE u.uni = '" . addslashes($uni) . "'";
@@ -56,7 +56,7 @@ function PrintUser(&$uni, &$user_id)
   print("<h3>$head</h3>\n");
 
   if ((login_getstatus() & login_administrator) && ($user_id != login_getuserid()) && $row['uni'])
-    print("<p><a href=\"info.php?fake=$user_id\">Log on as this user...</a></p>\n");
+    print("<p><a href=\"info.php?fake=$user_id$ASID\">Log on as this user...</a></p>\n");
 
   print("<table>\n");
   
@@ -86,7 +86,7 @@ function PrintUser(&$uni, &$user_id)
 
 function PrintEnrollments($user_id)
 {
-  global $wces, $wces_path, $server_url;
+  global $wces, $wces_path, $server_url, $ASID;
   
   print("<h3>Known Enrollments</h3>");
   
@@ -134,11 +134,11 @@ function PrintEnrollments($user_id)
     $row = pg_fetch_array($classes,$i,PGSQL_ASSOC);
     $name = $row['clname'] ? "$row[cname]: $row[clname]" : $row['cname'];
     $sem = $sems[$row['semester']];
-    print("  <tr><td>$row[year]</td><td>$sem</td><td><a href=\"info.php?course_id=$row[course_id]\">$row[code]</a></td><td><a href=\"info.php?class_id=$row[class_id]\">$row[section]</a></td><td>$name</td><td>");
+    print("  <tr><td>$row[year]</td><td>$sem</td><td><a href=\"info.php?course_id=$row[course_id]$ASID\">$row[code]</a></td><td><a href=\"info.php?class_id=$row[class_id]$ASID\">$row[section]</a></td><td>$name</td><td>");
     for($firstp = true; $prow && $row['class_id'] == $prow['class_id']; $profs->advance())
     {
       if ($firstp) $firstp = false; else print("<br>");
-      print("<a href=\"info.php?user_id=$prow[user_id]\">$prow[name]</a>");
+      print("<a href=\"info.php?user_id=$prow[user_id]$ASID\">$prow[name]</a>");
     }
     if ($firstp) print("&nbsp;");
     
@@ -150,7 +150,7 @@ function PrintEnrollments($user_id)
   
   if ($restricted)
   {
-    print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "\">Log in as an administrator to see more enrollments...</a></p>\n");
+    print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "$ASID\">Log in as an administrator to see more enrollments...</a></p>\n");
   }  
  
   print("<hr>\n");
@@ -269,7 +269,7 @@ function PrintProfessorInfo($user_id)
 
 function PrintClassInfo($class_id)
 {
-  global $wces, $wces_path, $server_url;
+  global $wces, $wces_path, $server_url, $ASID;
   
   $class_id = (int)$class_id;
   
@@ -302,7 +302,7 @@ function PrintClassInfo($class_id)
     if ($time) print ("<p><i>Time:</i> $time</p>");
     if ($location) print ("<p><i>Location:</i> $location</p>");
     if ($callnumber) print ("<p><i>Call Number:</i> $callnumber</p>");
-    if ($code) print ("<p><i>Course Code:</i> <a href=\"info.php?course_id=$course_id\">$code</a></p>");
+    if ($code) print ("<p><i>Course Code:</i> <a href=\"info.php?course_id=$course_id$ASID\">$code</a></p>");
   }
   
   print("<hr>\n<h3>Known Enrollments</h3>");
@@ -335,13 +335,13 @@ function PrintClassInfo($class_id)
     extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
     if (!$uni) $uni = "<i>unknown</i>";
     if (!$name) $name = "&nbsp;";
-    print("<td>$stat[$status]</td><td><a href=\"info.php?user_id=$user_id\">$uni</a></td><td>$name</td></tr>\n");
+    print("<td>$stat[$status]</td><td><a href=\"info.php?user_id=$user_id$ASID\">$uni</a></td><td>$name</td></tr>\n");
   }
   print("</table>\n");
   
   if ($restricted)
   {
-    print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "\">Log in as an administrator to see more enrollments...</a></p>\n");
+    print("<p><a href=\"${wces_path}login/login.php?url=" . urlencode($server_url->toString(true, true, true)) . "$ASID\">Log in as an administrator to see more enrollments...</a></p>\n");
   }  
  
   print("<hr>\n");
@@ -349,7 +349,7 @@ function PrintClassInfo($class_id)
 
 function PrintCourseInfo($course_id)
 {
-  global $surveys, $back, $wces;
+  global $surveys, $wces, $ASID;
   
   $course_id = (int)$course_id;
   
@@ -383,14 +383,14 @@ function PrintCourseInfo($course_id)
   {
     extract(pg_fetch_array($result,$i,PGSQL_ASSOC));
     
-    print("  <li><a href=\"info.php?class_id=$class_id$surveys\">$sems[$semester] $year - Section $section" . ($name ? " - $name" : "") . "</a>");
+    print("  <li><a href=\"info.php?class_id=$class_id$surveys$ASID\">$sems[$semester] $year - Section $section" . ($name ? " - $name" : "") . "</a>");
     $p = explode("\n",$pname);
     $first = true;
     while(count($p) >= 3)
     {
       if ($first) { print (" - Professor "); $first = false; } else print(", ");
       $q = array_splice($p, 0, 3);
-      print("<a href=\"info.php?user_id=$q[0]\">$q[2] $q[1]</a>");
+      print("<a href=\"info.php?user_id=$q[0]$ASID\">$q[2] $q[1]</a>");
     }
     print("</li>\n");
   }
@@ -398,7 +398,7 @@ function PrintCourseInfo($course_id)
 
 function SearchPage()
 {
-  global $wces, $user_uni, $user_last, $course_subject, $course_code, $course_name, $user_find, $course_find;
+  global $wces, $user_uni, $user_last, $course_subject, $course_code, $course_name, $user_find, $course_find, $ISID, $ASID;
 
   if ($user_find)
   {
@@ -425,8 +425,6 @@ function SearchPage()
     }  
     else
       $usern = 0;
-      
-    if ($usern == 1) return PrintUser($uni = "",pg_result($users,0,"user_id"));
   }
  
   if ($course_find)
@@ -473,13 +471,12 @@ function SearchPage()
     }  
     else
       $coursen = 0;
-      
-    if ($coursen == 1) return PrintCourseInfo(pg_result($result,0,"course_id"));
   } 
   
   if (!$course_find) {
 ?>
 <form method=get>
+<?=$ISID?>
 <input type=hidden name=user_find value=1>
 <h4>Search for a user...</h4>
 <table>
@@ -503,6 +500,7 @@ function SearchPage()
   if (!$user_find) {
 ?>
 <form method=get>
+<?=$ISID?>
 <input type=hidden name=course_find value=1>
 <h4>Search for a course...</h4>
 <table>
@@ -553,7 +551,7 @@ function SearchPage()
       {
         $row = pg_fetch_array($users,$i,PGSQL_ASSOC);
         
-        print("  <li><a href=\"info.php?user_id=$row[user_id]\">");
+        print("  <li><a href=\"info.php?user_id=$row[user_id]$ASID\">");
         if ($row['lastname'])
         {
           print(trim("$row[firstname] $row[lastname]</a>"));
@@ -582,7 +580,7 @@ function SearchPage()
       for($i = 0; $i < $coursen; ++$i)
       {
         $row = pg_fetch_array($courses,$i,PGSQL_ASSOC);
-        print("  <li><a href=\"info.php?course_id=$row[course_id]\">$row[scode]$row[divisioncode]$row[code] $row[name]</a></li>\n");
+        print("  <li><a href=\"info.php?course_id=$row[course_id]$ASID\">$row[scode]$row[divisioncode]$row[code] $row[name]</a></li>\n");
       }  
       print("</ul>\n");  
     }
@@ -593,11 +591,21 @@ wces_connect();
 
 if ($fake && (login_getstatus() & login_administrator))
 {
-  login_update($fake);
-  redirect($wces_path);  
+  global $QSID;
+  login_update($fake, login_getuserid());
+  redirect("{$wces_path}index.php$QSID");  
 }
-else
-  page_top("Information Viewer");
+
+if ($nofake && ($fake = login_getfake()))
+{
+  $user_id = login_getuserid();
+  login_update($fake);
+}
+
+page_top("Information Viewer");
+
+if ($uni || $user_id || $class_id || $course_id)
+  print("<p><a href=info.php$QSID>Search</a></p>");  
 
 if ($uni || $user_id) 
 {
@@ -609,6 +617,7 @@ else if ($course_id)
   PrintCourseInfo($course_id);
 else
   SearchPage();
+  
 page_bottom();
 
 ?>

@@ -16,7 +16,7 @@
     $status = login_getstatus();
     if ($rs & $status || !$rs) // ($status meets at least one required flag) || (there aren't any required flags)
     {
-      if ($url) sloppyredirect(addurlparam($url,$PSID));
+      if ($url) sloppyredirect(addurlparam($url,$USID));
     }
     else if (($status & login_professor) && ($rs & login_knownprofessor))
       sloppyredirect($server_sbase . $wces_path . "login/profsearch.php?url=" . urlencode($url));
