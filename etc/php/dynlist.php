@@ -4,8 +4,6 @@
   require_once("widgets/dynamiclist.inc");
   require_once("widgets/basic.inc");
   
-  page_top("hello?");
- 
   $form = new Form("form", "f", WIDGET_GET);
   $form->loadvalues();
   
@@ -21,6 +19,8 @@
     $mc1->items = array("check","the","cards","at","the","table");
     $mc1->keys = array(9,8,7,6,5,4);
   }  
+
+page_top("hello?");
 ?>
 <form name="f" method=get>
 <? $form->display(); ?>
