@@ -46,7 +46,7 @@ function session_kill()
   session_destroy();
   $p = session_get_cookie_params();
   setcookie(session_name(), '', 0, $p['path'], $p['domain']);
-  unset($_SESSION);
+  $_SESSION = null;
 }
 
 ?>
