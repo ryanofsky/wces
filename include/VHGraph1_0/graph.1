@@ -1,0 +1,811 @@
+.rn '' }`
+''' $RCSfile$$Revision$$Date$
+'''
+''' $Log$
+'''
+.de Sh
+.br
+.if t .Sp
+.ne 5
+.PP
+\fB\\$1\fR
+.PP
+..
+.de Sp
+.if t .sp .5v
+.if n .sp
+..
+.de Ip
+.br
+.ie \\n(.$>=3 .ne \\$3
+.el .ne 3
+.IP "\\$1" \\$2
+..
+.de Vb
+.ft CW
+.nf
+.ne \\$1
+..
+.de Ve
+.ft R
+
+.fi
+..
+'''
+'''
+'''     Set up \*(-- to give an unbreakable dash;
+'''     string Tr holds user defined translation string.
+'''     Bell System Logo is used as a dummy character.
+'''
+.tr \(*W-|\(bv\*(Tr
+.ie n \{\
+.ds -- \(*W-
+.ds PI pi
+.if (\n(.H=4u)&(1m=24u) .ds -- \(*W\h'-12u'\(*W\h'-12u'-\" diablo 10 pitch
+.if (\n(.H=4u)&(1m=20u) .ds -- \(*W\h'-12u'\(*W\h'-8u'-\" diablo 12 pitch
+.ds L" ""
+.ds R" ""
+'''   \*(M", \*(S", \*(N" and \*(T" are the equivalent of
+'''   \*(L" and \*(R", except that they are used on ".xx" lines,
+'''   such as .IP and .SH, which do another additional levels of
+'''   double-quote interpretation
+.ds M" """
+.ds S" """
+.ds N" """""
+.ds T" """""
+.ds L' '
+.ds R' '
+.ds M' '
+.ds S' '
+.ds N' '
+.ds T' '
+'br\}
+.el\{\
+.ds -- \(em\|
+.tr \*(Tr
+.ds L" ``
+.ds R" ''
+.ds M" ``
+.ds S" ''
+.ds N" ``
+.ds T" ''
+.ds L' `
+.ds R' '
+.ds M' `
+.ds S' '
+.ds N' `
+.ds T' '
+.ds PI \(*p
+'br\}
+.\"	If the F register is turned on, we'll generate
+.\"	index entries out stderr for the following things:
+.\"		TH	Title 
+.\"		SH	Header
+.\"		Sh	Subsection 
+.\"		Ip	Item
+.\"		X<>	Xref  (embedded
+.\"	Of course, you have to process the output yourself
+.\"	in some meaninful fashion.
+.if \nF \{
+.de IX
+.tm Index:\\$1\t\\n%\t"\\$2"
+..
+.nr % 0
+.rr F
+.\}
+.TH GRAPH 1 "1.0 Beta Release 2" "30/May/99" "PHP Graph Class"
+.UC
+.if n .hy 0
+.if n .na
+.ds C+ C\v'-.1v'\h'-1p'\s-2+\h'-1p'+\s0\v'.1v'\h'-1p'
+.de CQ          \" put $1 in typewriter font
+.ft CW
+'if n "\c
+'if t \\&\\$1\c
+'if n \\&\\$1\c
+'if n \&"
+\\&\\$2 \\$3 \\$4 \\$5 \\$6 \\$7
+'.ft R
+..
+.\" @(#)ms.acc 1.5 88/02/08 SMI; from UCB 4.2
+.	\" AM - accent mark definitions
+.bd B 3
+.	\" fudge factors for nroff and troff
+.if n \{\
+.	ds #H 0
+.	ds #V .8m
+.	ds #F .3m
+.	ds #[ \f1
+.	ds #] \fP
+.\}
+.if t \{\
+.	ds #H ((1u-(\\\\n(.fu%2u))*.13m)
+.	ds #V .6m
+.	ds #F 0
+.	ds #[ \&
+.	ds #] \&
+.\}
+.	\" simple accents for nroff and troff
+.if n \{\
+.	ds ' \&
+.	ds ` \&
+.	ds ^ \&
+.	ds , \&
+.	ds ~ ~
+.	ds ? ?
+.	ds ! !
+.	ds /
+.	ds q
+.\}
+.if t \{\
+.	ds ' \\k:\h'-(\\n(.wu*8/10-\*(#H)'\'\h"|\\n:u"
+.	ds ` \\k:\h'-(\\n(.wu*8/10-\*(#H)'\`\h'|\\n:u'
+.	ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'^\h'|\\n:u'
+.	ds , \\k:\h'-(\\n(.wu*8/10)',\h'|\\n:u'
+.	ds ~ \\k:\h'-(\\n(.wu-\*(#H-.1m)'~\h'|\\n:u'
+.	ds ? \s-2c\h'-\w'c'u*7/10'\u\h'\*(#H'\zi\d\s+2\h'\w'c'u*8/10'
+.	ds ! \s-2\(or\s+2\h'-\w'\(or'u'\v'-.8m'.\v'.8m'
+.	ds / \\k:\h'-(\\n(.wu*8/10-\*(#H)'\z\(sl\h'|\\n:u'
+.	ds q o\h'-\w'o'u*8/10'\s-4\v'.4m'\z\(*i\v'-.4m'\s+4\h'\w'o'u*8/10'
+.\}
+.	\" troff and (daisy-wheel) nroff accents
+.ds : \\k:\h'-(\\n(.wu*8/10-\*(#H+.1m+\*(#F)'\v'-\*(#V'\z.\h'.2m+\*(#F'.\h'|\\n:u'\v'\*(#V'
+.ds 8 \h'\*(#H'\(*b\h'-\*(#H'
+.ds v \\k:\h'-(\\n(.wu*9/10-\*(#H)'\v'-\*(#V'\*(#[\s-4v\s0\v'\*(#V'\h'|\\n:u'\*(#]
+.ds _ \\k:\h'-(\\n(.wu*9/10-\*(#H+(\*(#F*2/3))'\v'-.4m'\z\(hy\v'.4m'\h'|\\n:u'
+.ds . \\k:\h'-(\\n(.wu*8/10)'\v'\*(#V*4/10'\z.\v'-\*(#V*4/10'\h'|\\n:u'
+.ds 3 \*(#[\v'.2m'\s-2\&3\s0\v'-.2m'\*(#]
+.ds o \\k:\h'-(\\n(.wu+\w'\(de'u-\*(#H)/2u'\v'-.3n'\*(#[\z\(de\v'.3n'\h'|\\n:u'\*(#]
+.ds d- \h'\*(#H'\(pd\h'-\w'~'u'\v'-.25m'\f2\(hy\fP\v'.25m'\h'-\*(#H'
+.ds D- D\\k:\h'-\w'D'u'\v'-.11m'\z\(hy\v'.11m'\h'|\\n:u'
+.ds th \*(#[\v'.3m'\s+1I\s-1\v'-.3m'\h'-(\w'I'u*2/3)'\s-1o\s+1\*(#]
+.ds Th \*(#[\s+2I\s-2\h'-\w'I'u*3/5'\v'-.3m'o\v'.3m'\*(#]
+.ds ae a\h'-(\w'a'u*4/10)'e
+.ds Ae A\h'-(\w'A'u*4/10)'E
+.ds oe o\h'-(\w'o'u*4/10)'e
+.ds Oe O\h'-(\w'O'u*4/10)'E
+.	\" corrections for vroff
+.if v .ds ~ \\k:\h'-(\\n(.wu*9/10-\*(#H)'\s-2\u~\d\s+2\h'|\\n:u'
+.if v .ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'\v'-.4m'^\v'.4m'\h'|\\n:u'
+.	\" for low resolution devices (crt and lpr)
+.if \n(.H>23 .if \n(.V>19 \
+\{\
+.	ds : e
+.	ds 8 ss
+.	ds v \h'-1'\o'\(aa\(ga'
+.	ds _ \h'-1'^
+.	ds . \h'-1'.
+.	ds 3 3
+.	ds o a
+.	ds d- d\h'-1'\(ga
+.	ds D- D\h'-1'\(hy
+.	ds th \o'bp'
+.	ds Th \o'LP'
+.	ds ae ae
+.	ds Ae AE
+.	ds oe oe
+.	ds Oe OE
+.\}
+.rm #[ #] #H #V #F C
+.SH "NAME"
+PHP Graph \- Graph Plotting Class for PHP3
+.SH "SYNOPSIS"
+\fIinclude\fR\|("/patch/to/the/class/class.graph");
+.SH "DESCRIPTION"
+\fBPHP Graph\fR is a \fIPHP3\fR class to create and display GIF graph
+The following classes for graphs are defined:
+.Ip "\f(CWbargraph\fR" 4
+Create a bar (column) char.
+.Ip "\f(CWlinepoints\fR" 4
+Create line graph, linepoints graph and points graph.
+.Ip "\f(CWareagraph\fR" 4
+Create an area graph.
+.Ip "\f(CWmixgraph\fR" 4
+Actually there is no mixgraph. But you can create a mixture of
+different chart on top of each other.
+.Ip "\f(CWpiegraph\fR" 4
+Create a pie chart.
+.SH "EXAMPLES"
+Please check out http://www.vhconsultants.com/graph.htm or see
+examples in the distribution.
+.SH "USAGE"
+Only 4 function calls are needed to plot a graph. You need an 
+array of data either from database or other sources. Define the
+x values first, and followed by arrays of y values.
+.PP
+.Vb 5
+\&    $data = array( 
+\&              array("Jan","Feb","March","April","May","June"),
+\&              array( 1.0 , 2.3 ,  4.1  , -1.8  , 0.4 , 2.8  ),
+\&              array( 1.2 , 0.3 ,  3.2  ,  1.7  , 1.4 , 1.8  ),
+\&              array( 0.3 , 3.2 ,  2.5  ,  1.9  , 1.9 , 2.0  ));
+.Ve
+Start a new graph with the \fBphpplot()\fR call and followed by \fBphpdata()\fR
+to parse the data.
+.PP
+.Vb 10
+\&    phpplot(array(
+\&                     "grid"       => true,
+\&                     "cubic"      => true,
+\&                     "size"       => array(400,250),
+\&                     "box_showbox"=> true,
+\&                     "title_text" => "Bar Graph",
+\&                     "yaxis_labeltext"=> "Revenue (in million $)",
+\&                     "xaxis_labeltext"=> "Months",
+\&                     "legend_shift"   => array(-300,10)
+\&            ));
+.Ve
+.Vb 1
+\&    phpdata($data);
+.Ve
+\fBphpplot()\fR takes an optional argument, an array, to define global settings
+for the graph. Individual object's attributes need to be set in this 
+function call also. Like \fIxaxis_labeltext\fR, where \fIxaxis\fR is the object,
+and \fIlabeltext\fR is the attribute to define the x label.
+.PP
+\fBphpdata()\fR takes one required argument, the data array. If the range of
+y axis or y2 axis is not set in \fBphpplot()\fR, it will auto generate the
+range.
+.PP
+Plotting the graph is simply call one of the predefined drawing classes
+with \fBphpdraw()\fR
+.PP
+.Vb 7
+\&     phpdraw(bargraph,
+\&             array("drawsets" => array(1,2),
+\&                   "legend"=> array("First Half Revenue",
+\&                                    "Last Year Result"),
+\&                   "barspacing"=> 8,
+\&                   "showvalue"=> false )
+\&             );
+.Ve
+\fBphpdraw()\fR takes two arguments. The first one should be one of the
+followings: \fBbargraph\fR, \fBlinepoints\fR, \fBareagraph\fR, \fBpiegraph\fR.
+Multipul \fBphpdraw()\fRs can be called to draw a mixed chart.
+.PP
+The last call to complete this graph is \fBphpshow()\fR which takes an
+optional argument \- the output gif filename. If called without argument,
+the gif data will be output to stdout and proceeded by 
+\fI"Content-type: image/gif\*(R"\fR.
+.SH "DEFTAIL"
+.Sh "Global attributes"
+.Ip "interlace \fItrue|false\fR" 4
+Set gif output to interlace if set to \fItrue\fR. Default is \fItrue\fR.
+.Ip "transparent \fItrue|false\fR" 4
+Set background to transparent. Default is \fIfalse\fR.
+.Ip "background \fIcolor\fR" 4
+Default background is \fIwhite\fR. Colors are defined in global variable
+\f(CW$RGB\fR which can be overwrite by users in the script. 
+.Sp
+Available colors are 
+\fI"white\*(R","black\*(R","gray\*(R","lgray\*(R","dgray\*(R","blue\*(R","lblue\*(R","dblue\*(R",
+\*(L"yellow\*(R","lyellow\*(R","dyellow\*(R","green\*(R","lgreen\*(R","dgreen\*(R","red\*(R",
+\*(L"lred\*(R","dred\*(R","purple\*(R","lpurple\*(R","dpurple\*(R","gold\*(R","pink\*(R","dpink\*(R",
+\*(L"marine\*(R","cyan\*(R","lcyan\*(R","maroon\*(R","olive\*(R","navy\*(R","teal\*(R","silver\*(R",
+\*(L"lime\*(R","khaki\*(R","lsteelblue\*(R","seagreen\*(R","lseagreen\*(R","skyblue\*(R",
+\*(L"lskyblue\*(R","slateblue\*(R","slategray\*(R","steelblue\*(R","tan\*(R","violet\*(R",
+\*(L"wheat\*(R"\fR
+.Sp
+Redefine \f(CW$RGB\fR like the following,
+.Sp
+.Vb 4
+\&     $RGB = array(
+\&                    "slategray" => array(0x70,0x80,0x90),
+\&                    "steelblue" => array(0x46,0x82,0xB4)
+\&             );
+.Ve
+.Ip "size \fIarray(width,height)\fR" 4
+Set the size of the gif graph. Default to \fIarray(400,300)\fR.
+.Ip "cubic \fItrue|false\fR" 4
+If true, draw 3 D plots. Default to \fIfalse\fR
+.Ip "box \fItrue|false\fR" 4
+If true, draw the outline box. Default to \fItrue\fR. If in \fB3 D\fR
+mode, draw box. Default for piegraph is \fIfalse\fR.
+.Ip "grid \fItrue|false\fR" 4
+Draw grid. Default to \fItrue\fR. Default for piegraph is \fIfalse\fR.
+.Ip "title \fItrue|false\fR" 4
+Draw title. Default to \fItrue\fR
+.Ip "xaxis \fItrue|false\fR" 4
+Draw xaxis. Default to \fItrue\fR. Default for piegraph is \fIfalse\fR.
+.Ip "yaxis \fItrue|false\fR" 4
+Draw yaxis. Default to \fItrue\fR. Default for piegraph is \fIfalse\fR.
+.Ip "y2axis \fItrue|false\fR \- obsolete" 4
+This attributes is no longer honored in the format of global attributes
+starting from 1.0Beta Release 2.  You may use it in \fBphpdraw()\fR to 
+draw a second Y axis.
+.Ip "legend \fItrue|false\fR" 4
+Draw legend for each dataset. Default to \fItrue\fR.
+.Ip "ymarkset \fIarray()\fR" 4
+Set the marks for y axis. Default will be generated from \fBphpdata()\fR
+call.
+.Ip "y2markset \fIarray()\fR" 4
+Set the marks for the second y axis. Default will be generated from
+\fBphpdata()\fR call.
+.Ip "yrange \fIarray(start,end,stip)\fR" 4
+Set the range for y axis. If ymarkset is not set, the markset will
+be generated from yrange. Default is set in \fBphpdata()\fR.
+.Ip "y2range \fIarray(start,end,stip)\fR" 4
+Range for the second y axis.
+.Ip "colorset \fIarray(color1,color2,..)\fR" 4
+The colors for the datasets. Default is \fIarray("cyan\*(R","lred\*(R","green\*(R","lblue\*(R","pink\*(R","purple\*(R","gold")\fR. Sorry not much taste in color. You can redefine it.
+.Ip "ttf \fIfontname\fR" 4
+The font file name without the ttf suffix. Need to set the global
+\s-1ENV\s0 \f(CW$fontpath\fR which is default to \*(L"./\*(R".
+.Ip "zeroline \fItrue|false\fR" 4
+Draw the zero line. Default to \fItrue\fR.
+.Ip "zeroaxis \fItrue|false\fR" 4
+Draw x axis at the zero line. Default to \fIfalse\fR.
+.Ip "lepos \fIarray(x,y)\fR" 4
+Set the legend's position in the plot. Left up corner is (0,0).
+Default is set by the program.
+.Ip "ledir \fIx|y\fR" 4
+Direction of the legend. Default is set by the program.
+.Sh "Objects\*(S' attributes"
+.Ip "Base object attributes" 4
+Base object attributes is inherited by all the objects.
+.Ip "\(bu color \fIcolor\fR" 8
+Set the color for the object. Default to \fIblack\fR.
+.Ip "\(bu text \fIstring\fR" 8
+Set the string. Default to \fI"My Plot\*(R"\fR.
+.Ip "\(bu textcolor \fIcolor\fR" 8
+Set the color of the string. Default to \fIblack\fR.
+.Ip "\(bu textsize \fIint\fR" 8
+Set the size of the ttf font size. Default \fI12\fR.
+.Ip "\(bu pos \fIarray(x,y)\fR" 8
+Set the position of the object in the plot. Default is auto placement.
+.Ip "\(bu shift \fIarray(x,y)\fR" 8
+Set relative x and y shifting from the position. Default is \fIarray(0,0)\fR.
+.Ip "\(bu scale \fIfloat\fR" 8
+Scale the size of the object. May not applicable in all the cases. Default
+value is \fI1.0\fR.
+.Ip "\(bu ttf \fI\s-1TTF\s0 font\fR" 8
+Set the true type font for this object. Default to the global ttf settings
+if it is set.
+.Ip "box object" 4
+.Ip "\(bu showbox \fItrue|false\fR" 8
+Draw the box if set to true. Default to \fIfalse\fR.
+.Ip "\(bu boxsize \fIsmall|medium|big\fR" 8
+Set the box size which define the drawing region of the plot. Default
+to \fImedium\fR.
+.Ip "\(bu xscale \fIfloat\fR" 8
+Setting the x direction scale for the box. Default to \fI1.0\fR.
+.Ip "\(bu yscale \fIfloat\fR" 8
+Setting the y direction scale for the box. Default to \fI1.0\fR.
+.Ip "\(bu shadow \fItrue|false\fR" 8
+Draw a shadow for the box. Not appliable in \fB3 D\fR mode. Default to 
+\fIfalse\fR.
+.Ip "grid object" 4
+.Ip "\(bu xgrid \fItrue|false\fR" 8
+Turn x direction grid on if set true. Default is \fItrue\fR.
+.Ip "\(bu ygrid \fItrue|false\fR" 8
+Turn y direction grid on if set true. Default is \fItrue\fR.
+.Ip "\(bu xdash \fItrue|false\fR" 8
+Draw x direction grid as dashed line. Default is \fIfalse\fR.
+.Ip "\(bu ydash \fItrue|false\fR" 8
+Draw y direction grid as dashed line. Default is \fIfalse\fR.
+.Ip "\(bu mxgrid \fInumber\fR" 8
+Number of grids for each x tick. Default to \fI1\fR.
+.Ip "\(bu mygrid \fInumber\fR" 8
+Number of grids for each y tick. Default to \fI1\fR.
+.Ip "title object" 4
+.Ip "\(bu location \fItopcenter|bottomcenter\fR" 8
+Location of the title. Default to \fItopcenter\fR.
+.Ip "\(bu textfont \fI1-5\fR" 8
+Use build-in textfont is ttf is not set. Default is \fI4\fR.
+.Ip "\(bu textsize \fIint\fR" 8
+\s-1TTF\s0 font size.  Default to \fI18\fR.
+.Ip "\(bu border \fItrue|false\fR" 8
+Draw border around the title. Default to \fIfalse\fR. 
+.Ip "\(bu degree \fI0-360\fR" 8
+Only meaningful when used with \s-1TTF\s0 fonts. Default to \fIzero\fR.
+For build in fonts, draw a verticle string for any \fIdegree\fR != 0.
+.Ip "xaxis object" 4
+.Ip "\(bu axis \fItrue|false\fR" 8
+Draw the axis line. Default to \fItrue\fR.
+.Ip "\(bu tick \fItrue|false\fR" 8
+Draw ticks. Default to \fItrue\fR.
+.Ip "\(bu ticklength \fInumber\fR" 8
+Length of the ticks.  Default to \fI4\fR.
+.Ip "\(bu tickskip \fInumber\fR" 8
+Skip of ticks. Default is no skip and value is set to \fI1\fR.
+.Ip "\(bu mark \fItrue|false\fR" 8
+Draw the mark. Default to \fItrue\fR.
+.Ip "\(bu markcolor \fIcolor\fR" 8
+Mark color. Default to \fIblack\fR.
+.Ip "\(bu markfont \fI1-5\fR" 8
+Build in font for mark. Default to \fI2\fR.
+.Ip "\(bu markttf \fI\s-1TTF\s0 font\fR" 8
+Use \s-1TTF\s0 font for the mark. Default to global attribute \fIttf\fR
+if it is set.
+.Ip "\(bu marksize \fI\s-1TTF\s0 size\fR" 8
+Size of the \s-1TTF\s0 font for mark. Default value is \fI10\fR.
+.Ip "\(bu markshift \fIarray(x,y)\fR" 8
+Shift value for the mark. Default to \fIarray(0,0)\fR.
+.Ip "\(bu label \fItrue|false\fR" 8
+Draw label. Default to \fItrue\fR.
+.Ip "\(bu labelfont \fI1-5\fR" 8
+Build in font for label. Default to \fI3\fR.
+.Ip "\(bu labeltext \fIstring\fR" 8
+Text string for the label. Default is \fIX axis\fR.
+.Ip "\(bu labelcolor \fIcolor\fR" 8
+Color for the label text. Default is \fIblack\fR.
+.Ip "\(bu labelsize \fI\s-1TTF\s0 font size\fR" 8
+\s-1TTF\s0 font size for the label. Default value is \fI14\fR.
+.Ip "\(bu labelpos \fIcenter|right\fR" 8
+Position of the label. Default to \fIcenter\fR.
+.Ip "\(bu labeldegree \fI0-360\fR" 8
+Rotating the label. Only meaningful in \s-1TTF\s0 fonts situation.
+Default is \fI0\fR.
+.Ip "\(bu labelshift \fIarray(x,y)\fR" 8
+Relative shift for label. Default is \fIarray(0,0)\fR.
+.Ip "\(bu labelttf \fI\s-1TTF\s0 font\fR" 8
+\s-1TTF\s0 font for label. Default to global \fIttf\fR value if it is
+set.
+.Ip "\(bu fillcolor \fIcolor\fR" 8
+Set the fillcolor for \fB3 D\fR mode. Default to \fIlgray\fR.
+.Ip "yaxis object" 4
+.Ip "\(bu Note" 8
+Most of attributes are sames as those of xaxis object.
+.Ip "\(bu labeltext \fIstring\fR" 8
+Text string for the label. Default is \fIY axis\fR.
+.Ip "\(bu labeldegree \fI0-360\fR" 8
+Default to \fI90\fR.
+.Ip "\(bu fillcolor \fIcolor\fR" 8
+Default value is \fIwhite\fR.
+.Ip "y2axis object" 4
+.Ip "\(bu Note" 8
+Same as the yaxis object.
+.Ip "legend object" 4
+.Ip "\(bu type \fI1-4,10\fR" 8
+The legend point type. Default is \fI10\fR \- a square.
+.Ip "\(bu width \fInumber\fR" 8
+Size of the legend point type. Default value \fI10\fR.
+.Ip "\(bu filled \fItrue|false\fR" 8
+Use filled point. Default is \fItrue\fR.
+.Sh "Classes"
+Currently, there are \fBbargraph\fR,\fBlinepoints\fR,\fBareagraph\fR,
+\fBpiegraph\fR.
+.Ip "\fBcommon attributes for all the classes\fR" 4
+.Ip "\(bu drawsets \fIarray(n1,n2,...)\fR" 8
+Draw the datasets \fIn1,n2 ...\fR. Default to \fIarray(1)\fR.
+.Ip "\(bu y2axis \fItrue|false\fR" 8
+Draw the second Y axis. Default value is \fIfalse\fR. Second Y axis
+is used for the last set of dataset for this graph.
+.Ip "\(bu showvalue \fItrue|false\fR" 8
+Plot the value for each point/bar also. Default is \fIfalse\fR
+.Ip "\(bu valuefont \fI1-5\fR" 8
+Build in font for the plotting the value. Default to \fI3\fR.
+.Ip "\(bu valuecolor \fIcolor\fR" 8
+Color of the value. Default to \fIblack\fR.
+.Ip "\(bu valuesize \fI\s-1TTF\s0 font size\fR" 8
+\s-1TTF\s0 font size for the value. Default is \fI10\fR.
+.Ip "\(bu valuettf \fI\s-1TTF\s0 font\fR" 8
+\s-1TTF\s0 font for the value. Default is the global \fIttf\fR font if
+it is set.
+.Ip "\(bu legend \fIarray(string,string,...)\fR" 8
+Legend text for the datasets. Default is \fInone\fR.
+.Ip "\(bu legendfont \fI1-5\fR" 8
+Build in font. Default is \fI3\fR.
+.Ip "\(bu legendsize \fI\s-1TTF\s0 font size\fR" 8
+Default is \fI10\fR.
+.Ip "\(bu legendttf \fI\s-1TTF\s0 font\fR" 8
+Default is the global \fIttf\fR font if it is set.
+.Ip "\(bu legendscale \fInumber\fR" 8
+Size of the legend point. Default to \fI1\fR.
+.Ip "\fBbargraph\fR" 4
+.Ip "\(bu barmode \fIside|stack|overwrite\fR" 9
+Drawing mode for multipul columns. Default is \fIside\fR.
+.Ip "\(bu barspacing \fIint\fR" 9
+Space between bars. Default is \fIzero\fR. 
+.Ip "\fBlinepoints\fR" 4
+.Ip "\(bu showline \fItrue|false\fR" 8
+Draw line. Default is \fItrue\fR.
+.Ip "\(bu showpoint \fItrue|false\fR" 8
+Draw points. Default is \fItrue\fR.
+.Ip "\(bu linewidth \fInumber\fR" 8
+Width of the lines. Default is \fI1\fR.
+.Ip "\(bu filled \fItrue|false\fR" 8
+Draw filled points. Default is \fItrue\fR.
+.Ip "\fBareagraph\fR" 4
+.Ip "\(bu Note." 8
+Most of the linepoints attributes are valid here.
+.Ip "\fBpiegraph\fR" 4
+.Ip "\(bu showmark \fItrue|false\fR" 8
+Show the percentage on the pie. Default to \fItrue\fR.
+.Ip "\(bu markfont \fI1-5\fR" 8
+Font for the mark. Default to \fI3\fR.
+.Ip "\(bu markcolor \fIcolor\fR" 8
+Color for the mark. Default to \fIblack\fR.
+.Ip "\(bu marksize \fI\s-1TTF\s0 font size\fR." 8
+\s-1TTF\s0 font size. Default to \fI10\fR.
+.Ip "\(bu markshift \fIarray(x,y)\fR" 8
+Shift for the mark. Default to \fIarray(0,0)\fR.
+.Ip "\(bu markttf \fI\s-1TTF\s0 font\fR" 8
+\s-1TTF\s0 font for the mark.
+.Ip "\(bu showlabel \fItrue|false\fR" 8
+Show the label. Default to \fItrue\fR. You can define label attributes
+labelfont, labelcolor, labelshift, labelsize, labelttf.
+.Ip "\(bu scale \fIfloat\fR" 8
+Scale the size of the pie. Default to \fI1.0\fR.
+.Ip "\(bu radius \fIint\fR" 8
+Set the size of the pie. Default is generated by program.
+.Ip "\(bu thickness \fIint\fR" 8
+Set the thickness of the 3D pie. Default to \fI12\fR.
+.SH "Contact info"
+\fBemail\fR: php@earthlink.net
+.PP
+\fBweb\fR:  http://www.vhconsultants.com/
+.SH "Copyright"
+Copyright (C) 1999 - 2000 Robbin Zhang  All rights reserved. 
+.PP
+This package is free for personal usage. See the COPYRIGHT
+in the package for detail.
+
+.rn }` ''
+.IX Title "GRAPH 1"
+.IX Name "PHP Graph - Graph Plotting Class for PHP3"
+
+.IX Header "NAME"
+
+.IX Header "SYNOPSIS"
+
+.IX Header "DESCRIPTION"
+
+.IX Item "\f(CWbargraph\fR"
+
+.IX Item "\f(CWlinepoints\fR"
+
+.IX Item "\f(CWareagraph\fR"
+
+.IX Item "\f(CWmixgraph\fR"
+
+.IX Item "\f(CWpiegraph\fR"
+
+.IX Header "EXAMPLES"
+
+.IX Header "USAGE"
+
+.IX Header "DEFTAIL"
+
+.IX Subsection "Global attributes"
+
+.IX Item "interlace \fItrue|false\fR"
+
+.IX Item "transparent \fItrue|false\fR"
+
+.IX Item "background \fIcolor\fR"
+
+.IX Item "size \fIarray(width,height)\fR"
+
+.IX Item "cubic \fItrue|false\fR"
+
+.IX Item "box \fItrue|false\fR"
+
+.IX Item "grid \fItrue|false\fR"
+
+.IX Item "title \fItrue|false\fR"
+
+.IX Item "xaxis \fItrue|false\fR"
+
+.IX Item "yaxis \fItrue|false\fR"
+
+.IX Item "y2axis \fItrue|false\fR \- obsolete"
+
+.IX Item "legend \fItrue|false\fR"
+
+.IX Item "ymarkset \fIarray()\fR"
+
+.IX Item "y2markset \fIarray()\fR"
+
+.IX Item "yrange \fIarray(start,end,stip)\fR"
+
+.IX Item "y2range \fIarray(start,end,stip)\fR"
+
+.IX Item "colorset \fIarray(color1,color2,..)\fR"
+
+.IX Item "ttf \fIfontname\fR"
+
+.IX Item "zeroline \fItrue|false\fR"
+
+.IX Item "zeroaxis \fItrue|false\fR"
+
+.IX Item "lepos \fIarray(x,y)\fR"
+
+.IX Item "ledir \fIx|y\fR"
+
+.IX Subsection "Objects\*(S' attributes"
+
+.IX Item "Base object attributes"
+
+.IX Item "\(bu color \fIcolor\fR"
+
+.IX Item "\(bu text \fIstring\fR"
+
+.IX Item "\(bu textcolor \fIcolor\fR"
+
+.IX Item "\(bu textsize \fIint\fR"
+
+.IX Item "\(bu pos \fIarray(x,y)\fR"
+
+.IX Item "\(bu shift \fIarray(x,y)\fR"
+
+.IX Item "\(bu scale \fIfloat\fR"
+
+.IX Item "\(bu ttf \fI\s-1TTF\s0 font\fR"
+
+.IX Item "box object"
+
+.IX Item "\(bu showbox \fItrue|false\fR"
+
+.IX Item "\(bu boxsize \fIsmall|medium|big\fR"
+
+.IX Item "\(bu xscale \fIfloat\fR"
+
+.IX Item "\(bu yscale \fIfloat\fR"
+
+.IX Item "\(bu shadow \fItrue|false\fR"
+
+.IX Item "grid object"
+
+.IX Item "\(bu xgrid \fItrue|false\fR"
+
+.IX Item "\(bu ygrid \fItrue|false\fR"
+
+.IX Item "\(bu xdash \fItrue|false\fR"
+
+.IX Item "\(bu ydash \fItrue|false\fR"
+
+.IX Item "\(bu mxgrid \fInumber\fR"
+
+.IX Item "\(bu mygrid \fInumber\fR"
+
+.IX Item "title object"
+
+.IX Item "\(bu location \fItopcenter|bottomcenter\fR"
+
+.IX Item "\(bu textfont \fI1-5\fR"
+
+.IX Item "\(bu textsize \fIint\fR"
+
+.IX Item "\(bu border \fItrue|false\fR"
+
+.IX Item "\(bu degree \fI0-360\fR"
+
+.IX Item "xaxis object"
+
+.IX Item "\(bu axis \fItrue|false\fR"
+
+.IX Item "\(bu tick \fItrue|false\fR"
+
+.IX Item "\(bu ticklength \fInumber\fR"
+
+.IX Item "\(bu tickskip \fInumber\fR"
+
+.IX Item "\(bu mark \fItrue|false\fR"
+
+.IX Item "\(bu markcolor \fIcolor\fR"
+
+.IX Item "\(bu markfont \fI1-5\fR"
+
+.IX Item "\(bu markttf \fI\s-1TTF\s0 font\fR"
+
+.IX Item "\(bu marksize \fI\s-1TTF\s0 size\fR"
+
+.IX Item "\(bu markshift \fIarray(x,y)\fR"
+
+.IX Item "\(bu label \fItrue|false\fR"
+
+.IX Item "\(bu labelfont \fI1-5\fR"
+
+.IX Item "\(bu labeltext \fIstring\fR"
+
+.IX Item "\(bu labelcolor \fIcolor\fR"
+
+.IX Item "\(bu labelsize \fI\s-1TTF\s0 font size\fR"
+
+.IX Item "\(bu labelpos \fIcenter|right\fR"
+
+.IX Item "\(bu labeldegree \fI0-360\fR"
+
+.IX Item "\(bu labelshift \fIarray(x,y)\fR"
+
+.IX Item "\(bu labelttf \fI\s-1TTF\s0 font\fR"
+
+.IX Item "\(bu fillcolor \fIcolor\fR"
+
+.IX Item "yaxis object"
+
+.IX Item "\(bu Note"
+
+.IX Item "\(bu labeltext \fIstring\fR"
+
+.IX Item "\(bu labeldegree \fI0-360\fR"
+
+.IX Item "\(bu fillcolor \fIcolor\fR"
+
+.IX Item "y2axis object"
+
+.IX Item "\(bu Note"
+
+.IX Item "legend object"
+
+.IX Item "\(bu type \fI1-4,10\fR"
+
+.IX Item "\(bu width \fInumber\fR"
+
+.IX Item "\(bu filled \fItrue|false\fR"
+
+.IX Subsection "Classes"
+
+.IX Item "\fBcommon attributes for all the classes\fR"
+
+.IX Item "\(bu drawsets \fIarray(n1,n2,...)\fR"
+
+.IX Item "\(bu y2axis \fItrue|false\fR"
+
+.IX Item "\(bu showvalue \fItrue|false\fR"
+
+.IX Item "\(bu valuefont \fI1-5\fR"
+
+.IX Item "\(bu valuecolor \fIcolor\fR"
+
+.IX Item "\(bu valuesize \fI\s-1TTF\s0 font size\fR"
+
+.IX Item "\(bu valuettf \fI\s-1TTF\s0 font\fR"
+
+.IX Item "\(bu legend \fIarray(string,string,...)\fR"
+
+.IX Item "\(bu legendfont \fI1-5\fR"
+
+.IX Item "\(bu legendsize \fI\s-1TTF\s0 font size\fR"
+
+.IX Item "\(bu legendttf \fI\s-1TTF\s0 font\fR"
+
+.IX Item "\(bu legendscale \fInumber\fR"
+
+.IX Item "\fBbargraph\fR"
+
+.IX Item "\(bu barmode \fIside|stack|overwrite\fR"
+
+.IX Item "\(bu barspacing \fIint\fR"
+
+.IX Item "\fBlinepoints\fR"
+
+.IX Item "\(bu showline \fItrue|false\fR"
+
+.IX Item "\(bu showpoint \fItrue|false\fR"
+
+.IX Item "\(bu linewidth \fInumber\fR"
+
+.IX Item "\(bu filled \fItrue|false\fR"
+
+.IX Item "\fBareagraph\fR"
+
+.IX Item "\(bu Note."
+
+.IX Item "\fBpiegraph\fR"
+
+.IX Item "\(bu showmark \fItrue|false\fR"
+
+.IX Item "\(bu markfont \fI1-5\fR"
+
+.IX Item "\(bu markcolor \fIcolor\fR"
+
+.IX Item "\(bu marksize \fI\s-1TTF\s0 font size\fR."
+
+.IX Item "\(bu markshift \fIarray(x,y)\fR"
+
+.IX Item "\(bu markttf \fI\s-1TTF\s0 font\fR"
+
+.IX Item "\(bu showlabel \fItrue|false\fR"
+
+.IX Item "\(bu scale \fIfloat\fR"
+
+.IX Item "\(bu radius \fIint\fR"
+
+.IX Item "\(bu thickness \fIint\fR"
+
+.IX Header "Contact info"
+
+.IX Header "Copyright"
+
