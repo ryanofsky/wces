@@ -1,7 +1,7 @@
-<%
+<?
   require_once("wces/page.inc");
   page_top("WCES Mission");
-%>
+?>
 
 <table><tr><td width=590>
 
@@ -32,6 +32,6 @@ or log on without encryption by clicking
 
 </td></tr></table>
 
-<%
+<?
   page_bottom();
-%>
+?>
