@@ -1,4 +1,4 @@
-<%
+<?
 require_once("wces/login.inc");
 require_once("wces/page.inc");
 require_once("wces/profinfo.inc");
@@ -12,4 +12,4 @@ print('<form name=f method=post>');
 $pi->display();
 print('</form>');
 page_bottom($pi->printable ? true : false);
-%>
+?>
