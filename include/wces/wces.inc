@@ -125,14 +125,15 @@ function format_ccourse($c, $format = "%c %n", $link = false)
 
 function format_profs($profs, $link = false, $before = "", $after = "", $between = "")
 {
-  global $wces_path;
+  global $wces_path, $QSID;
   if (strlen($profs) == 0) return "";
   $c = explode("\n", $profs);
   $str = "";
   
   if ($link && !is_string($link))
   {
-    $link = "{$wces_path}administrators/info.php?user_id=";
+    $q = $QSID ? "$QSID&" : "?";
+    $link = "{$wces_path}administrators/info.php{$q}user_id=";
   };
   
   for ($i = 0; $i < count($c); $i += FORMAT_PROF_COUNT)
