@@ -50,6 +50,9 @@ CREATE TABLE item_specializations
   PRIMARY KEY(item_id, specialization_id)
 );
 
+ALTER TABLE item_specializations ADD CONSTRAINT item_branch_idx 
+  UNIQUE (item_id, branch_id);
+
 -- meaning of type field:
 -- 1 = a survey (for now, just an integer list)
 -- 2 = a choice component
@@ -211,7 +214,6 @@ ALTER TABLE specializations ADD CONSTRAINT parent_fk FOREIGN KEY (parent) REFERE
 ALTER TABLE item_specializations ADD CONSTRAINT branch_fk FOREIGN KEY (branch_id) REFERENCES branches;
 ALTER TABLE branch_ancestor_cache ADD CONSTRAINT ancestor_fk FOREIGN KEY (ancestor_id) REFERENCES branches(branch_id);
 ALTER TABLE branch_ancestor_cache ADD CONSTRAINT descendant_fk FOREIGN KEY (descendant_id) REFERENCES branches(branch_id);
-ALTER TABLE responses DROP CONSTRAINT merged_fk;
 ALTER TABLE responses ADD CONSTRAINT revision_fk FOREIGN KEY (revision_id) REFERENCES revisions;
 ALTER TABLE cached_choice_responses ADD CONSTRAINT crevision_fk FOREIGN KEY (crevision_id) REFERENCES revisions(revision_id);
 ALTER TABLE cached_choice_responses ADD CONSTRAINT qrevision_fk FOREIGN KEY (qrevision_id) REFERENCES revisions(revision_id);
@@ -635,13 +637,6 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER, INTEGER, INTEGER) RETURNS INTE
 -- returns NULL if item is not specialized for for specialization_id_ or
 -- any of it's ancestors.
 
--- XXX: Postgres 7.2 does not allow SELECT .. FOR UPDATE on specializations
--- table because it is inherited from. This completely breaks the locking
--- done in this function and others. If this feature isn't added in 7.3, then
--- I'll have to come up with some workaround (such as doing trivial updates
--- on rows which need to be locked. For now, though, the FOR UPDATE clauses
--- are commented out and denoted by ILB (inheritance locking bug)
-
 CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     item_id_ ALIAS FOR $1;
@@ -662,8 +657,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
 
     sid := specialization_id_;
 
-    --ILB
-    --SELECT * FROM specializations WHERE specialization_id = sid FOR UPDATE;
+    SELECT * FROM specializations WHERE specialization_id = sid FOR UPDATE;
 
     LOOP
       SELECT INTO bid branch_id FROM item_specializations
@@ -671,9 +665,8 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
       EXIT WHEN FOUND;
 
       SELECT INTO sid parent FROM specializations WHERE specialization_id = sid
-      --ILB
-      --FOR UPDATE
-      ;
+      FOR UPDATE;
+      
       IF NOT FOUND THEN
         RAISE EXCEPTION ''associated_revision(%,%,%) fails. specialization % or one of its ancestors has no row in the database'', $1, $2, $3;
       END IF;
@@ -1812,11 +1805,11 @@ CREATE OR REPLACE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
       FROM list_items AS li
       WHERE
         li.component_id = primary_id
-      AND NOT -- deleted
+      AND -- not deleted
       (
-        EXISTS (SELECT 1 FROM list_items AS c WHERE c.component_id = common_id AND c.item_id = li.item_id)
-        AND
-        NOT EXISTS (SELECT 1 FROM list_items AS h WHERE h.component_id = secondary_id AND h.item_id = li.item_id)
+        NOT EXISTS (SELECT 1 FROM list_items AS c WHERE c.component_id = common_id AND c.item_id = li.item_id)
+        OR
+        EXISTS (SELECT 1 FROM list_items AS h WHERE h.component_id = secondary_id AND h.item_id = li.item_id)
       )
       ORDER BY li.ordinal
     LOOP
@@ -1848,84 +1841,44 @@ CREATE OR REPLACE FUNCTION list_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURN
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION integer_merge(INTEGER, INTEGER, INTEGER, BOOLEAN) RETURNS INTEGER AS '
-  DECLARE
-    common_val    ALIAS FOR $1;
-    primary_val   ALIAS FOR $2;
-    secondary_val ALIAS FOR $3;
-    favor_primary ALIAS FOR $4;
-  BEGIN
-    IF secondary_val = common_val OR (primary_val <> common_val AND favor_primary) THEN
-      RETURN primary_val;
-    ELSE
-      RETURN secondary_val;
-    END IF;
-  END;
-' LANGUAGE 'plpgsql';
+-- args are common, primary, secondary
+-- if  the primary value is different from the common value than it is returned
+-- if the secondary value is different from the common value then that is returned
+-- if both are different from the common value then the primary is returned
+-- or secondary is different the the common value
+CREATE OR REPLACE FUNCTION integer_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
+    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+  THEN $2 ELSE $3 END;
+' LANGUAGE 'sql';
 
 -- function body is *exactly* the same for merge_integer
-CREATE OR REPLACE FUNCTION text_merge(TEXT, TEXT, TEXT, BOOLEAN) RETURNS TEXT AS '
-  DECLARE
-    common_val    ALIAS FOR $1;
-    primary_val   ALIAS FOR $2;
-    secondary_val ALIAS FOR $3;
-    favor_primary ALIAS FOR $4;
-  BEGIN
-    IF secondary_val = common_val OR (primary_val <> common_val AND favor_primary) THEN
-      RETURN primary_val;
-    ELSE
-      RETURN secondary_val;
-    END IF;
-  END;
-' LANGUAGE 'plpgsql';
+CREATE OR REPLACE FUNCTION text_merge(TEXT, TEXT, TEXT) RETURNS TEXT AS '
+  SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
+    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+  THEN $2 ELSE $3 END;
+' LANGUAGE 'sql';
 
 -- function body is *exactly* the same for merge_integer
-CREATE OR REPLACE FUNCTION boolean_merge(BOOLEAN, BOOLEAN, BOOLEAN, BOOLEAN) RETURNS BOOLEAN AS '
-  DECLARE
-    common_val    ALIAS FOR $1;
-    primary_val   ALIAS FOR $2;
-    secondary_val ALIAS FOR $3;
-    favor_primary ALIAS FOR $4;
-  BEGIN
-    IF secondary_val = common_val OR (primary_val <> common_val AND favor_primary) THEN
-      RETURN primary_val;
-    ELSE
-      RETURN secondary_val;
-    END IF;
-  END;
-' LANGUAGE 'plpgsql';
+CREATE OR REPLACE FUNCTION boolean_merge(BOOLEAN, BOOLEAN, BOOLEAN) RETURNS BOOLEAN AS '
+  SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
+    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+  THEN $2 ELSE $3 END;
+' LANGUAGE 'sql';
 
 -- function body is *exactly* the same for merge_integer
-CREATE OR REPLACE FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[], BOOLEAN) RETURNS INTEGER[] AS '
-  DECLARE
-    common_val    ALIAS FOR $1;
-    primary_val   ALIAS FOR $2;
-    secondary_val ALIAS FOR $3;
-    favor_primary ALIAS FOR $4;
-  BEGIN
-    IF secondary_val = common_val OR (NOT(primary_val = common_val) AND favor_primary) THEN
-      RETURN primary_val;
-    ELSE
-      RETURN secondary_val;
-    END IF;
-  END;
-' LANGUAGE 'plpgsql';
+CREATE OR REPLACE FUNCTION array_merge(INTEGER[], INTEGER[], INTEGER[]) RETURNS INTEGER[] AS '
+  SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
+    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+  THEN $2 ELSE $3 END;
+' LANGUAGE 'sql';
 
 -- function body is *exactly* the same for merge_integer
-CREATE OR REPLACE FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[], BOOLEAN) RETURNS TEXT[] AS '
-  DECLARE
-    common_val    ALIAS FOR $1;
-    primary_val   ALIAS FOR $2;
-    secondary_val ALIAS FOR $3;
-    favor_primary ALIAS FOR $4;
-  BEGIN
-    IF secondary_val = common_val OR (NOT(primary_val = common_val) AND favor_primary) THEN
-      RETURN primary_val;
-    ELSE
-      RETURN secondary_val;
-    END IF;
-  END;
-' LANGUAGE 'plpgsql';
+CREATE OR REPLACE FUNCTION text_array_merge(TEXT[], TEXT[], TEXT[]) RETURNS TEXT[] AS '
+  SELECT CASE WHEN ($1 IS NOT NULL OR $2 IS NOT NULL) 
+    AND ($1 IS NULL OR $2 IS NULL OR $1 <> $2)
+  THEN $2 ELSE $3 END;
+' LANGUAGE 'sql';
 
 CREATE OR REPLACE FUNCTION bitmask_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   SELECT (~ $1 & ($2 | $3)) | ($2 & $3)
@@ -2016,6 +1969,98 @@ CREATE OR REPLACE FUNCTION cached_choice_responses_add(INTEGER, INTEGER, INTEGER
     RETURN 1;
   END;
 ' LANGUAGE 'plpgsql'; 
+
+CREATE TABLE dead_branches
+( save_id INTEGER NOT NULL,
+  branch_id INTEGER NOT NULL,
+  specialization_id INTEGER NOT NULL
+);
+
+CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RETURNS VOID AS '
+  DECLARE
+    specialization_id_ ALIAS FOR $1;
+    old_parent ALIAS FOR $2;
+    new_parent ALIAS FOR $3;
+    rec RECORD;
+    orig_rev RECORD;
+    primary_rev RECORD;
+    secondary_rev RECORD;
+    orig_id INTEGER;
+  BEGIN
+    FOR rec IN
+      -- left join in order to catch errors
+      SELECT i.item_id, i.branch_id, b.latest_id, r.component_id
+      FROM item_specializations AS i
+      LEFT JOIN branches AS b USING (branch_id)
+      LEFT JOIN revisions AS r ON r.revision_id = b.latest_id
+      WHERE i.specialization_id = specialization_id
+    LOOP
+      IF rec.component_id IS NULL THEN
+        RAISE NOTICE ''specialization_move_one(%,%,%) failed. invalid item %'', $1, $2, $3, rec.item_id;
+      END IF;
+
+      SELECT INTO orig_rec revision_id, component_id 
+      FROM revisions
+      WHERE revision_id = (SELECT branch_find(rec.item_id, old_parent));
+
+      SELECT INTO secondary_rec revision_id, component_id
+      FROM revisions
+      WHERE revision_id = (SELECT branch_find(rec.item_id, new_parent);
+
+      -- if original is not null and secondary is null then
+      -- don't bother adding the component
+      IF orig_rec.component_id IS NOT NULL 
+        AND secondary_rec.component_id IS NULL THEN
+        cid := NULL;
+      ELSE
+        cid := component_merge(orig_rec.component_id, primary_rec.component_id,
+          secondary_rec.component_id);
+      END IF;
+
+      IF cid IS NULL THEN
+        INSERT INTO dead_branches (save_id, branch_id, specialization_ids)
+        VALUES (save_id_, rec.branch_id, specialization_id_);
+
+
+        bid := branch_create_child(rec.branch_id);
+        PERFORM branch_add_specialization(bid, rec.item_id, specialization_id_, save_id_);
+
+        bid := nextval(''branch_ids'');
+        rid := nextval(''revision_ids'');
+
+
+        UPDATE branches (branch_id, parent, outdated, latest_id)
+        VALUES (bid, secondary.branch_id, ''f'', rid);
+
+        INSERT INTO revisions (revision_id, parent, branch_id, revision, save_id, merged, component_id)
+        VALUES (rid, secondary.revision_id, bid, 0, save_id_, rec.revision, cid);
+        
+        
+      END IF;
+        
+      
+      
+      SELECT 
+      
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION specialization_move(INTEGER, INTEGER) RETURNS VOID AS '
+  DECLARE
+    specialization_id_ ALIAS FOR $1;
+    new_parent ALIAS FOR $2;
+    rec
+  BEGIN
+    SELECT INTO rec parent FROM specializations WHERE specialization_id = specialization_id_;
+    IF NOT FOUND THEN
+       ...die
+    END IF;
+    
+    specialization_move_one();
+    
+    FOR rec1 IN SELECT * FROM specializations WHERE parent = specialization_id_
+  END;
+' LANGUAGE 'plpgsql'
 
 CREATE OR REPLACE FUNCTION base_survey_create(INTEGER, INTEGER) RETURNS VOID AS '
   DECLARE
