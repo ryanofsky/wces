@@ -102,6 +102,7 @@ and make the rest of the site accessible to you.
       print ("Choose a class to evaluate from the list below.</p>");
       print ("<UL>\n");
 
+      list($question_period_id, $survey_listing) = get_surveys();
       $n = pg_numrows($survey_listing);
 
       $found = false;
