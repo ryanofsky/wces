@@ -7,6 +7,7 @@ require_once('wbes/component_textresponse.inc');
 require_once('wbes/component_text.inc');
 require_once('wces/component_abet.inc');
 require_once('wces/component_instructor.inc');
+require_once('wces/component_ethics.inc');
 
 $WCES_CONFIG_FACTORIES = array
 ( 
@@ -20,7 +21,8 @@ $WCES_CONFIG_FACTORIES = array
   new TextFactory(),
   new HeadingFactory(),
   new PageBreakFactory(),
-  new InstructorSurveyFactory()
+  new InstructorSurveyFactory(),
+  new EthicsSurveyFactory()
 );
 
 ?>
