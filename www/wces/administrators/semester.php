@@ -7,7 +7,6 @@ require_once("wbes/taskwindow.inc");
 require_once("wces/import.inc");
 login_protect(login_administrator);
 page_top("New Semester Initialization");
-
 $i = 0;
 
 if (isset($userfile) && is_uploaded_file($userfile))
@@ -18,7 +17,7 @@ if (isset($userfile) && is_uploaded_file($userfile))
   }
   else
   {
-    importdeancsv($userfile,"2001","1",array("coursecode" => 0, "section" => 1, "professor" => 2, "students" => 3, "cunix" => 4));
+    importdeancsv($userfile,"2001","3",array("coursecode" => 1, "section" => 2, "pfirst" => 6, "plast" => 5, "students" => 4, "cunix" => 0, "junk" => 3),1);
   }      
 }
 else
