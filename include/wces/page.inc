@@ -8,7 +8,7 @@ $wces_path = "/wces/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
-$wces_closed = true;
+$wces_closed = false;
 
 function page_top($title, $minimal = false)
 {
@@ -84,11 +84,9 @@ function showhelp(topic)
   if ($uni)
     page_link("Home", "index.php$QSID", "${wces_path}index.php" == $wces_this || $wces_path == $wces_this ? false : true);
 
-  $nospace = true;
-
   if ($status & login_administrator)
   {
-    if ($nospace) $nospace = false; else page_spacer();
+    page_spacer();
     page_link("Edit Surveys",     "administrators/surveys.php",  $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
     page_link("Student Usage",    "administrators/susage.php", $QSID);
     page_link("Professor Usage",  "administrators/pusage.php", $QSID);
@@ -101,9 +99,9 @@ function showhelp(topic)
 
   if ($status & login_professor)
   {
-    if ($nospace) $nospace = false; else page_spacer();
     if ($status & login_knownprofessor)
     {
+      page_spacer();
       page_link("Upcoming Surveys", "professors/surveys.php", $wces_ns4 ? "/ns4?auto=1$ASID" : $QSID);
       page_link("Survey Results",   "professors/seeresults.php", $QSID);
       //page_link("Survey Responses", "professors/respond/multiclasses.php", $QSID);
@@ -114,8 +112,6 @@ function showhelp(topic)
 
   if (!$wces_closed && ($status & login_student))
   {
-    if ($nospace) $nospace = false; else page_spacer();
-    
     wces_connect();
     
     $result = pg_query("
@@ -143,16 +139,17 @@ function showhelp(topic)
     ", $wces, __FILE__, __LINE__);
     
     $n = pg_numrows($survey_listing);
-    
+
     for($i = 0; $i < $n; ++$i)
     {
       extract(pg_fetch_array($survey_listing,$i,PGSQL_ASSOC));
       if ($surveyed) break;
+      if ($i == 0) page_spacer();
       page_link($name, "students/survey.php?class_id=$class_id", $QSID, "");
     }
   }
 
-  if ($nospace) $nospace = false; else page_spacer();
+  page_spacer();
   page_link("System Overview", "about/overview.php", $QSID);
   page_link("Feedback", "about/feedback.php", $QSID);
   page_link("Credits", "about/credits.php", $QSID);
@@ -216,7 +213,11 @@ function page_link($caption,$link,$extlink = "",$params='style="white-space: now
 function page_spacer()
 {
   global $wces_path;
-  print("    <p><img src=\"{$wces_path}media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
+  static $first = true;
+  if ($first)
+    $first = false;
+  else
+    print("    <p><img src=\"{$wces_path}media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
 }
 
 function page_showhelp($topic)
