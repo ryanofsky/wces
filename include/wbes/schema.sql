@@ -83,6 +83,11 @@ DROP AGGREGATE first text[];
 DROP FUNCTION func_first (text[],text[]);
 DROP FUNCTION func_last (text[],text[]);
 
+DROP FUNCTION references_branch(INTEGER);
+DROP FUNCTION references_revisions(INTEGER);
+DROP FUNCTION references_topic(INTEGER);
+DROP FUNCTION references_question_period(INTEGER);
+
 
 CREATE TABLE saves
 (
@@ -347,6 +352,10 @@ CREATE FUNCTION references_topic(INTEGER) RETURNS INTEGER AS '
   CASE WHEN EXISTS (SELECT * FROM topics WHERE parent = $1)                THEN 8 ELSE 0 END;
 ' LANGUAGE 'sql';
 
+CREATE FUNCTION references_question_period(INTEGER) RETURNS INTEGER AS '
+  SELECT
+  CASE WHEN EXISTS (SELECT * FROM survey_responses WHERE question_period_id = $1) THEN 1 ELSE 0 END;
+' LANGUAGE 'sql';
 
 -- how to wipe out all customizations (ruins results for customizations) for a particular topic
 --
@@ -560,7 +569,8 @@ BEGIN
     IF NOT FOUND THEN RAISE EXCEPTION''topic_contents(%) fails. called with empty topic'', $1; END IF;
   END LOOP;
 END;
-' LANGUAGE 'plpgsql';
+' LANGUAGE 'plpgsql'
+WITH (ISCACHABLE);
 
 -- if revision_id passed is a 0 revision, return the revision_id that contains the revision contents
 
