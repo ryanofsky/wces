@@ -407,4 +407,12 @@ p("DEBUG WINDOW")
 <?
 }
 
+function array_append(&$a1, $a2)
+{
+  if (is_array($a1))
+    array_splice($a1, count($a1), 0, $a2); 
+  else
+    $a1 = $a2;
+}
+
 ?>
