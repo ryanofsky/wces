@@ -187,6 +187,12 @@ CREATE TABLE answersets (
   UNIQUE KEY code(questionperiodid,questionsetid,classid)
 );
 
+CREATE TABLE cheesyclasses(
+  classid int(11),
+  dump text,
+  PRIMARY KEY (classid)
+);
+
 CREATE TABLE classes (
   classid int(11) NOT NULL auto_increment,
   courseid int(11) NOT NULL default '0',
