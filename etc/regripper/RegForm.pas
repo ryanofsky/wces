@@ -27,11 +27,11 @@ type
     SubjURL: TEdit;
     DeptURL: TEdit;
     Source: TGroupBox;
-    Label1: TLabel;
+    SubjectsLabel: TLabel;
     Label2: TLabel;
-    GroupBox1: TGroupBox;
+    DestBox: TGroupBox;
     filename: TEdit;
-    GroupBox2: TGroupBox;
+    StatusBox: TGroupBox;
     Status: TListBox;
     Go: TButton;
     autoscroll: TCheckBox;
@@ -42,6 +42,8 @@ type
     procedure browseClick(Sender: TObject);
     procedure OnCreate(Sender: TObject);
     procedure OnClose(Sender: TObject; var Action: TCloseAction);
+    procedure OnResize(Sender: TObject);
+    procedure WMGetMinMaxInfo( var Message :TWMGetMinMaxInfo ); message WM_GETMINMAXINFO;
   private
     worker: WorkerThread;
   public
@@ -142,34 +144,44 @@ begin
       u := ClassItem(spider.classlist.items[j]).url;
       post('Downloading ' + u);
       spider.ParseClassPage(GetURL(u));
-      post('  coursename = ' + '''' + spider.classinfo.coursename + '''');
-      post('  coursedesc = ' + '''' + spider.classinfo.coursedesc + '''');
-      post('  instructor = ' + '''' + spider.classinfo.instructor + '''');
+      post('  course = ' + '''' + spider.classinfo.course + '''');
+      post('  coursecode = ' + '''' + spider.classinfo.coursecode + '''');
       post('  department = ' + '''' + spider.classinfo.department + '''');
-      post('  students = '   + '''' + spider.classinfo.students   + '''');
-      post('  subject = '    + '''' + spider.classinfo.subject    + '''');
-      post('  division = '   + '''' + spider.classinfo.division   + '''');
-      post('  school = '     + '''' + spider.classinfo.school     + '''');
-      post('  year = '       + '''' + spider.classinfo.year       + '''');
-      post('  semester = '   + '''' + spider.classinfo.semester   + '''');
-      post('  subj = '       + '''' + spider.classinfo.subj       + '''');
-      post('  courseno = '   + '''' + spider.classinfo.courseno   + '''');
-      post('  section = '    + '''' + spider.classinfo.section    + '''');
-      post('  dept = '       + '''' + spider.classinfo.dept       + '''');
-      write(f,CSVify(spider.classinfo.coursename),',');
-      write(f,CSVify(spider.classinfo.coursedesc),',');
-      write(f,CSVify(spider.classinfo.instructor),',');
+      post('  departmentcode = ' + '''' + spider.classinfo.departmentcode + '''');
+      post('  subject = ' + '''' + spider.classinfo.subject + '''');
+      post('  subjectcode = ' + '''' + spider.classinfo.subjectcode + '''');
+      post('  division = ' + '''' + spider.classinfo.division + '''');
+      post('  divisioncode = ' + '''' + spider.classinfo.divisioncode + '''');
+      post('  divisionscode = ' + '''' + spider.classinfo.divisionscode + '''');
+      post('  classname = ' + '''' + spider.classinfo.classname + '''');
+      post('  classsection = ' + '''' + spider.classinfo.classsection + '''');
+      post('  year = ' + '''' + spider.classinfo.year + '''');
+      post('  semester = ' + '''' + spider.classinfo.semester + '''');
+      post('  instructor = ' + '''' + spider.classinfo.instructor + '''');
+      post('  students = ' + '''' + spider.classinfo.students + '''');
+      post('  school = ' + '''' + spider.classinfo.school + '''');
+      post('  time = ' + '''' + spider.classinfo.time + '''');
+      post('  location = ' + '''' + spider.classinfo.location + '''');
+      post('  callnumber = ' + '''' + spider.classinfo.callnumber + '''');
+      write(f,CSVify(spider.classinfo.course),',');
+      write(f,CSVify(spider.classinfo.coursecode),',');
       write(f,CSVify(spider.classinfo.department),',');
-      write(f,CSVify(spider.classinfo.students),',');
+      write(f,CSVify(spider.classinfo.departmentcode),',');
       write(f,CSVify(spider.classinfo.subject),',');
+      write(f,CSVify(spider.classinfo.subjectcode),',');
       write(f,CSVify(spider.classinfo.division),',');
-      write(f,CSVify(spider.classinfo.school),',');
+      write(f,CSVify(spider.classinfo.divisioncode),',');
+      write(f,CSVify(spider.classinfo.divisionscode),',');      
+      write(f,CSVify(spider.classinfo.classname),',');
+      write(f,CSVify(spider.classinfo.classsection),',');
       write(f,CSVify(spider.classinfo.year),',');
       write(f,CSVify(spider.classinfo.semester),',');
-      write(f,CSVify(spider.classinfo.subj),',');
-      write(f,CSVify(spider.classinfo.courseno),',');
-      write(f,CSVify(spider.classinfo.section),',');
-      writeln(f,CSVify(spider.classinfo.dept));
+      write(f,CSVify(spider.classinfo.instructor),',');
+      write(f,CSVify(spider.classinfo.students),',');
+      write(f,CSVify(spider.classinfo.school),',');
+      write(f,CSVify(spider.classinfo.time),',');
+      write(f,CSVify(spider.classinfo.location),',');
+      writeln(f,CSVify(spider.classinfo.callnumber));
       if Terminated then goto byebye;
     end;
   end;
@@ -182,7 +194,7 @@ begin
   end
   else
     Post('It is over for me.');
-  CloseFile(F);
+  CloseFile(f);
   Synchronize(ResetButton);
   //close handles
 end;
@@ -209,6 +221,41 @@ begin
     worker.Destroy;
   end;
 end;
+
+procedure TRegRipper.OnResize(Sender: TObject);
+var width,height:integer;
+    r: TRect;
+begin
+  r := GetClientRect();
+  width := r.right - r.left;
+  height := r.bottom - r.top;
+  self.Source.Width := width - 16;
+  self.SubjURL.Width := width - 132;
+  self.DeptURL.Width := width - 132;
+  self.DestBox.Width := width - 16;
+  self.filename.Width := width - 212;
+  self.browse.Left := width - 99;
+  self.Go.Left := round((width - self.Go.Width) / 2);
+  self.StatusBox.Width := width - 16;
+  self.Status.Width := width - 32;
+  self.StatusBox.Height := height - 244;
+  self.Status.Height :=  height - 292;
+  self.autoscroll.Top :=  height - 269;
+end;
+
+procedure TRegRipper.WMGetMinMaxInfo( var Message :TWMGetMinMaxInfo );
+begin
+  with Message.MinMaxInfo^ do
+  begin
+    ptMinTrackSize.X := 310;
+    ptMinTrackSize.Y := 380;
+  end;
+  Message.Result := 0;
+  inherited;  
+end;
+
+
+
 
 end.
 
