@@ -173,7 +173,7 @@ $login_fail = false;
 
 function login_validate($uni,$password)
 {
-  global $wces, $LOGIN_SESSION, $login_fail;
+  global $wces, $LOGIN_SESSION, $login_fail, $HTTP_SERVER_VARS;
   
   $uni = trim($uni);
   
@@ -182,8 +182,8 @@ function login_validate($uni,$password)
     $user_id = 1;
   else
   {
-    $uni = escapeshellarg($uni);
-    $pw = escapeshellarg($password);
+    $uni = strlen($uni) == 0 ? "''" : escapeshellarg($uni);
+    $password = strlen($password) == 0 ? "''" : escapeshellarg($password);
     $user_id = (int) `/afs/thayer/web/eval/dnd-auth.pl $uni $password`;
   }
 
