@@ -110,7 +110,7 @@ function wces_Findquestionsets($db,$temptable)
 
 function wces_GetQuestionPeriod($db)
 {
-  $result = db_exec("SELECT questionperiodid FROM questionperiods ORDER BY year desc, semester desc, questionperiodid desc LIMIT 1", $db,__FILE__, __LINE__);
+  $result = db_exec("SELECT questionperiodid, year, semester FROM questionperiods ORDER BY year desc, semester desc, questionperiodid desc LIMIT 1", $db,__FILE__, __LINE__);
   return mysql_result($result,0);
 }
 

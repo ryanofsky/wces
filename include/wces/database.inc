@@ -24,7 +24,7 @@ function db_exec($sql,$db,$file = __FILE__,$line = __LINE__)
   if ($db_debug || !$result)
   {
     taskwindow_cprint("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
-    taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "</pre><br>\n");
+    taskwindow_cprint('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");
     taskwindow_cprint($result ? "<font color=blue>Success</font>" : "<font color=red>Failure</font>");
     taskwindow_cprint("</p>\n");
   }
@@ -333,7 +333,12 @@ function db_addrow($db,$table,$values)
     {
       if ($first) $first = false; else { $query .= ", "; $vals .= ", "; }
       $query .= "$key";
-      $vals .= $value === false ? "NULL" : "'" . addslashes($value) . "'";
+      if ($value === false)
+        $vals .= "NULL";
+      else if (is_array($value))
+        $vals .= db_set($value);
+      else
+        $vals .= "'" . addslashes($value) . "'";
     };
     $query = $query . ")" . $vals . ")";
     
@@ -386,7 +391,13 @@ function db_updatevalues($db,$table,$keys,$values)
     foreach($values as $key => $value)
     {
       if ($first) $first = false; else $query .= ", ";
-      $query .= "$key = " . ($value === false ? "NULL" : "'" . addslashes($value) . "'");
+      $query .= "$key = ";
+      if ($value === false)
+        $query .= "NULL";
+      else if (is_array($value))
+        $query .= db_set($value);
+      else
+        $query .= "'" . addslashes($value) . "'";
     }
     $query .= db_whereclause($keys);
   
