@@ -242,6 +242,16 @@ class ComponentWidget extends FormWidget
       print(nl2br(htmlspecialchars($this->component->text)));
     print("</div>\n");
   }
+  
+  function save()
+  {
+    return true;
+  }
+  
+  function loadvalues()
+  {
+  }
+  
 };
 
 ?>

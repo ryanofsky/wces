@@ -6,16 +6,14 @@ class TextResponseFactory extends ComponentFactory
 {
   function code() { return 3; }
   function name() { return "Text Response Question"; }
-
+  
   function create()
   {
     return new TextResponse();
   }
-
+  
   function load(&$components, $ids, $ordinals)
   {
-    //must change for label alignment to be loaded. [tyler] (done)
-
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
@@ -29,47 +27,40 @@ class TextResponseFactory extends ComponentFactory
       $c->text          = $wr->row['ctext'];
       $c->rows          = (int) $wr->row['rows'];
       $c->cols          = (int) $wr->row['cols'];
-
-      //mine [tyler]
       $c->label_align   = $wr->row['align'] == 't';
-
       $components[$ordinals[$rids[$c->revision_id]]] = $c;
     }
-  }
+  }  
 };
 
 class TextResponse extends Component
 {
-  //my addition. (the $label_align part) [tyler]
-  var $rows,$cols,$label_align; //widgets
-
+  var $rows = 5;
+  var $cols = 60;
+  var $label_align = false;
+  
   function TextResponse()
   {
     $this->Component();
     $this->rows = 5;
     $this->cols = 60;
   }
-
+  
   function geteditor($prefix,$form,$formmethod)
   {
      return new TextResponseEditor($this,$prefix,$form,$formmethod);
   }
-
+  
   function getwidget($prefix,$form,$formmethod)
   {
      return new TextResponseWidget($this,$prefix,$form,$formmethod);
   }
-
+  
   function save($topic_id, $save_id)
   {
-    //must change for label alignment to be saved. [tyler] (done)
-
-
     global $wbes;
-
     //mine [tyler]
-    $alignLeft 	= $this->label_align ? "'t'" : "'f'";
-
+    $alignLeft 	= $this->label_align ? "'t'" : "'f'";    
     $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
     $ctext        = addslashes($this->text);
     $is_html      = $this->is_html ? "'t'" : "'f'";
@@ -77,16 +68,14 @@ class TextResponse extends Component
     $cols         = (int) $this->cols;
     $result = pg_query("SELECT textresponse_component_save($topic_id, $revision_id, $save_id, '$ctext', $is_html, $rows, $cols, $alignLeft)", $wbes, __FILE__, __LINE__);
     return (int) pg_result($result, 0, 0);
-  }
+  }  
 };
 
 class TextResponseEditor extends ComponentEditor
 {
-    //my addition. (the $label_align part) [tyler]
+  //my addition. (the $label_align part) [tyler]
   var $rows,$cols,$label_align; //widgets
-
-
-
+  
   function TextResponseEditor(&$component,$prefix,$form,$formmethod)
   {
     $this->ComponentEditor($component,$prefix,$form,$formmethod);
@@ -94,14 +83,11 @@ class TextResponseEditor extends ComponentEditor
     $this->cols = new TextBox(0,10,"",$prefix."_cols",$form,$formmethod);
     $this->rows->broken = false;
     $this->cols->broken = false;
-
-
     //mine [tyler]
     $choices = array("above","left");
     $this->label_align = new DropBox($choices,$prefix."_label_align",$form,$formmethod);
-
   }
-
+  
   function loadvalues()
   {
     ComponentEditor::loadvalues();
@@ -109,55 +95,51 @@ class TextResponseEditor extends ComponentEditor
     {
       $this->rows->loadvalues();
       $this->cols->loadvalues();
-
-    //mine [tyler]
-    $this->label_align->loadvalues();
+      //mine [tyler]
+      $this->label_align->loadvalues();
     }
     else
     {
       $this->rows->text = $this->component->rows;
       $this->cols->text = $this->component->cols;
-
-    //mine [tyler]
-    $this->label_align->selected = $this->component->label_align;
+      //mine [tyler]
+      $this->label_align->selected = $this->component->label_align;
     }
   }
-
+  
   function checkvalues()
   {
     $rows = (int)$this->rows->text;
     $cols = (int)$this->cols->text;
-
+    
     //if ($rows < 1)
     //{
     //  $this->errors[] = "The response box should be at least one row high.";
     //  $this->rows->broken = true;
-    //}
-
+    //}  
+    
     if ($cols < 1)
     {
       $this->errors[] = "The response box should be at least one column wide.";
       $this->cols->broken = true;
     }
-
+    
     return count($this->errors) == 0;
   }
-
+  
   function savevalues()
   {
     $this->component->rows = (int)$this->rows->text;
     $this->component->cols = (int)$this->cols->text;
-
     //mine [tyler]
     $this->component->label_align = $this->label_align->selected;
-
     ComponentEditor::savevalues();
   }
-
+  
   function display()
   {
     global $server_media;
-
+    
     ComponentEditor::display();
 ?>
 <table>
@@ -165,7 +147,6 @@ class TextResponseEditor extends ComponentEditor
   <td valign=top><strong><? $this->fieldname("Component Text:",$this->text->broken); ?></strong></td>
   <td><? $this->text->display(false); ?><br><? $this->is_html->display(false); $this->is_html->displaylabel("Contains HTML Tags"); ?></td>
 </tr>
-
 <?// mine [tyler]
 ?>
 
@@ -189,41 +170,38 @@ class TextResponseEditor extends ComponentEditor
   <td><? $this->cols->display(false); ?></td>
 </tr>
 </table>
-<?
+<?    
   }
 };
 
 class TextResponseWidget extends ComponentWidget
 {
   var $response;
-
     //mine [tyler]
-    var $align = null;
-
+    var $align = null;  
   function TextResponseWidget(&$component,$prefix,$form,$formmethod)
   {
     $this->ComponentWidget($component,$prefix,$form,$formmethod);
     $this->response = new TextBox($component->rows,$component->cols," wrap=virtual",$prefix."_response",$form,$formmethod);
-
     //mine [tyler]
     $this->align = $component->label_align;
   }
-
+  
   function loadvalues()
   {
     $this->response->loadvalues();
   }
 
-  function save($completion_id)
+  function save($parent)
   {
     global $wbes;
     $t = addslashes($this->response->text);
-    pg_query("
-      INSERT INTO text_response(revision_id, completion_id, rtext)
-      VALUES ({$this->component->revision_id}, $completion_id, '$t')
+    return (boolean) pg_query("
+      INSERT INTO textresponse_responses(revision_id, parent, rtext)
+      VALUES ({$this->component->revision_id}, $parent, '$t')
     ", $wbes, __FILE__, __LINE__);
   }
-
+  
   function display($hidden = false, $showerrors = false)
   {
     if ($hidden)
@@ -232,7 +210,7 @@ class TextResponseWidget extends ComponentWidget
     }
     else
     {
-      //mine [tyler]
+     //mine [tyler]
       if($this->align == 1)
       {
 ?>

@@ -95,42 +95,37 @@ class SurveyWidget extends FormWidget
     foreach(array_keys($this->questionwidgets) as $key)
       if (count($this->questionwidgets[$key]->errors) > 0) return;
 
-    $GLOBALS['db_debug'] = true;
-    
     wbes_connect();
     $sql = "BEGIN;\n";
     if ($anonymous)
     {
-      $sql .= "INSERT INTO completions(completion_id, topic_id, user_id) VALUES (NULL, $this->topic_id, $this->user_id);\n";
-      $sql .= "INSERT INTO completions(date, topic_id) VALUES (NULL, $this->topic_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, response_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->topic_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, date, topic_id) VALUES ({$this->survey->orig_id}, $this->question_period_id, NULL, $this->topic_id);\n";
     }
     else
-      $sql .= "INSERT INTO completions(topic_id, user_id) VALUES ($this->topic_id, $this->user_id);\n";
+      $sql .= "INSERT INTO survey_responses(revision_id, question_period_id, topic_id, user_id) VALUES ({$this->survey->orig_id}, $question_period_id, $this->topic_id, $this->user_id);\n";
     
-    $sql .= "SELECT currval('completion_ids')";
+    $sql .= "SELECT currval('response_ids')";
     $result = pg_query($sql, $wbes, __FILE__, __LINE__);
     
-    $completion_id = pg_result($result, 0, 0);
+    $response_id = (int)pg_result($result, 0, 0);
+
+    $failure = false;
     
     foreach(array_keys($this->questionwidgets) as $key)
-      $this->questionwidgets[$key]->save($completion_id);
+      $failure = $failure || !$this->questionwidgets[$key]->save($response_id);
     
-    $result = pg_query("
-      COMMIT;
-      INSERT INTO completions(topic_id, user_id) VALUES ($this->topic_id, $this->user_id);
-      SELECT currval('completion_ids');
-    ", $wbes, __FILE__, __LINE__);    
-    
-    $failure = false;
-
-    // todo: write save code here
-
-    $this->finished = true;
     if ($failure)
+      pg_query("ROLLBACK", $wbes, __FILE__, __LINE__);
+    else
+      $failure = $failure || !pg_query("COMMIT", $wbes, __FILE__, __LINE__);    
+      
+    if ($failure)  
     {
       $this->failure = true;
       print('<p><strong><font size="+2"><font color=red>Warning:</font> Errors were encountered during the save process. Please report this to <a href="mailto:wces@columbia.edu">wces@columbia.edu</a>. Include your user name and text of any error messages that preceded this one.</font></strong></p>' . "\n");
     }
+    $this->finished = true;
   }
 
   function display()

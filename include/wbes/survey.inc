@@ -1,11 +1,6 @@
 <?
 
-$wbes = false;
-function wbes_connect()
-{
-  global $wbes;
-  if (!$wbes) $wbes = server_pginit("wbes");
-}
+require_once("wbes/wbes.inc");
 
 class Survey
 {
@@ -40,7 +35,7 @@ class Survey
     $this->insert($q,$componentno - 1);
   }
 
-  function load($topic_id, $base_branch_id, &$cfactories)
+  function load($topic_id, $base_branch_id, &$cfactories, $save_id = false, $latest = false)
   {
     global $wbes;
     wbes_connect();
@@ -49,13 +44,19 @@ class Survey
     for(reset($cfactories); list($k) = each($cfactories); )
       $factories[$cfactories[$k]->code()] = &$cfactories[$k];
 
+    $save_id = (int)$save_id;
+    if (!$save_id) $save_id = "NULL";
+    
+    $latest = (int)$latest;
+    if (!$latest) $latest = "NULL";    
+
     $topic_id = (int)$topic_id;
     $result = pg_query("SELECT topic_contents($topic_id)", $wbes, __FILE__, __LINE__);
     $existing_topic = (int)pg_result($result,0,0);
 
     $result = pg_query("SELECT branch_latest(
       (SELECT branch_id FROM branch_topics_cache WHERE topic_id = $existing_topic
-        AND base_branch_id = $base_branch_id)
+        AND base_branch_id = $base_branch_id), $latest
     )", $wbes, __FILE__, __LINE__);
     
     $this->orig_id = (int)pg_result($result,0,0);
@@ -68,7 +69,7 @@ class Survey
     $result = pg_query("
  
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
-      SELECT branch_latest(li.item_id) AS revision_id, ordinal
+      SELECT branch_latest(li.item_id, $latest) AS revision_id, ordinal
       FROM list_items AS li, branch_topics_cache AS bt 
       WHERE li.revision_id = (SELECT revision_contents($this->orig_id))
         AND bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic;
@@ -94,7 +95,7 @@ class Survey
         $type = -1;
 
       if ($type !== $lasttype && $lasttype !== false)
-        $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic);
+        $factories[$lasttype]->load($this->components, $ids, $ordinals, $existing_topic, $save_id, $latest);
 
       if ($i >= $n) break;
 

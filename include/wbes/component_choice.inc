@@ -3,9 +3,20 @@
 require_once("wbes/component.inc");
 require_once("Numbers/Roman.php");
 
+define("FLAG_ISHTML",     0x1);
+define("FLAG_ISNUMERIC",  0x2);
+define("FLAG_SELECTMANY", 0x4);
+define("FLAG_STACKED",    0x8);
+define("FLAG_VERTICAL",   0x10);
 
+//numbering options.
+define("MASK_NUMBERING",  0x60);
+define("FLAG_NONUMBERS",  0x00);
+define("FLAG_ROMAN",      0x20);
+define("FLAG_ARABIC",     0x40);
+define("FLAG_ALPHA",      0x60);
 
-
+define("FLAG_NACHOICE",  0x80);
 
 class ChoiceFactory extends ComponentFactory
 {
@@ -17,16 +28,12 @@ class ChoiceFactory extends ComponentFactory
     return new Choice();
   }
 
-  function load(&$components, $ids, $ordinals, $topic_id)
+  function load(&$components, $ids, $ordinals, $topic_id, $latest)
   {
-    //must add database bindings for N/A choice. [tyler] (done)
-    //must add database bindings for intro text. [tyler] (done)
-    //must add database bindings for numbering options. [tyler] (done)
-
     global $wbes;
     $sids = implode($ids, ",");
     $rids = array_flip($ids);
-    $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, flags, rows FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
+    $r = pg_query("SELECT revision_id, ctext, is_html, choices, other_choice, first_number, last_number, rows, flags FROM choice_components WHERE revision_id IN ($sids)", $wbes, __FILE__, __LINE__);
 
     for($wr = new pg_wrapper($r); $wr->row; $wr->advance())
     {
@@ -38,52 +45,27 @@ class ChoiceFactory extends ComponentFactory
       $c->other_choice  = $wr->row['other_choice'];
       $c->first_number  = (int)$wr->row['first_number'];
       $c->last_number   = (int)$wr->row['last_number'];
-
-	/*
-      $c->is_numeric    = $wr->row['is_numeric'] == 't';
-      $c->select_many   = $wr->row['select_many'] == 't';
-      $c->stacked       = $wr->row['stacked'] == 't';
-      $c->vertical      = $wr->row['vertical'] == 't';
-	*/
-    
-    //added to support intro text.
-	$c->intro_text = $wr->row['ctext'];
-
-
-	$flagGroup 	= $wr->row['flags'];
-
-	//new system for storing booleans.
-      $c->is_numeric    = ($flagGroup & $c->FLAG_ISNUMERIC) > 0;
-      $c->select_many   = ($flagGroup & $c->FLAG_SELECTMANY) > 0;
-      $c->stacked       = ($flagGroup & $c->FLAG_STACKED) > 0;
-      $c->vertical      = ($flagGroup & $c->FLAG_VERTICAL) > 0;
-      $c->na_choice 	= ($flagGroup & $c->FLAG_NACHOICE) > 0;
-
-    /*
-	Be careful, FLAG_ALPHA is the composite of FLAG_ARABIC and FLAG_ROMAN.
-	therefore it must be checked first, and since it's two bits it must be
-	checked for equality, not just existence to ensure that both bits are
-	set.
-    */
-
-	if(($flagGroup & $c->FLAG_ALPHA) == $c->FLAG_ALPHA)
-	    {$c->numbering_scheme = "alpha";}
-	else if(($flagGroup & $c->FLAG_ARABIC) > 0)
-	    {$c->numbering_scheme = "arabic";}
-	else if(($flagGroup & $c->FLAG_ROMAN) > 0)
-	    {$c->numbering_scheme = "roman";}
-	else
-	    {$c->numbering_scheme = "none";}
-
-
       $c->rows          = $wr->row['rows'];
+
+      //added to support intro text.
+      $c->intro_text    = $wr->row['ctext'];
+
+      $flagGroup        = $wr->row['flags'];
+
+      //new system for storing booleans.
+      $c->is_numeric    = (bool)($flagGroup & FLAG_ISNUMERIC);
+      $c->select_many   = (bool)($flagGroup & FLAG_SELECTMANY);
+      $c->stacked       = (bool)($flagGroup & FLAG_STACKED);
+      $c->vertical      = (bool)($flagGroup & FLAG_VERTICAL);
+      $c->na_choice     = (bool)($flagGroup & FLAG_NACHOICE);
+      $c->numbering_scheme = $flagGroup & MASK_NUMBERING;
 
       // todo: optimize. these queries can be performed once outside of the for loop
 
       $result = pg_query("
 
         CREATE TEMPORARY TABLE tmp$c->revision_id AS
-        SELECT branch_latest(li.item_id) AS revision_id, ordinal
+        SELECT branch_latest(li.item_id,$latest) AS revision_id, ordinal
         FROM list_items AS li, branch_topics_cache AS bt
         WHERE li.revision_id = (SELECT revision_contents($c->revision_id))
           AND bt.base_branch_id = li.item_id AND bt.topic_id = $topic_id;
@@ -113,23 +95,6 @@ class ChoiceFactory extends ComponentFactory
 
 class Choice extends Component
 {
-    var $FLAG_ISHTML = 1;
-    var $FLAG_ISNUMERIC = 2;
-    var $FLAG_SELECTMANY = 4;
-    var $FLAG_STACKED = 8;
-    var $FLAG_VERTICAL = 16;
-
-//numbering options.
-    var $FLAG_ROMAN = 32;
-    var $FLAG_ARABIC = 64;
-    var $FLAG_ALPHA = 96;
-
-    var $FLAG_NACHOICE = 128;
-
-
-
-
-
   // array of stringed items to rate
   var $questions = array();
   var $question_ids = array();
@@ -173,11 +138,6 @@ class Choice extends Component
 
   function save($topic_id, $save_id)
   {
-    //must add database bindings for N/A choice [tyler] (done)
-    //must add database bindings for intro text. [tyler] (done)
-    //must add database bindings for numbering schemes. [tyler] (done)
-
-
     global $wbes;
     $revision_id  = $this->revision_id ? $this->revision_id : 'NULL';
     $ctext        = addslashes($this->intro_text);
@@ -188,31 +148,18 @@ class Choice extends Component
     $other_choice = addslashes($this->other_choice);
     $first_number = $this->first_number;
     $last_number  = $this->last_number;
-    $rows         = $this->rows;
-
-    /*
-    //replaced by the new flags system.
-
     $is_numeric   = $this->is_numeric ? "'t'" : "'f'";
     $select_many  = $this->select_many ? "'t'" : "'f'";
     $stacked      = $this->stacked ? "'t'" : "'f'";
     $vertical     = $this->vertical ? "'t'" : "'f'";
-    */
+    $rows         = $this->rows;
 
-    $flagGroup = $this->is_numeric ? $this->FLAG_ISNUMERIC : 0;
-    $flagGroup += $this->select_many ? $this->FLAG_SELECTMANY : 0;
-    $flagGroup += $this->stacked ? $this->FLAG_STACKED : 0;
-    $flagGroup += $this->vertical ? $this->FLAG_VERTICAL : 0;
-    $flagGroup += $this->na_choice ? $this->FLAG_NACHOICE : 0;
-
-
-    if($this->numbering_scheme == "alpha")
-	{$flagGroup += $this->FLAG_ALPHA;}
-    else if($this->numbering_scheme == "arabic")
-	{$flagGroup += $this->FLAG_ARABIC;}
-    else if($this->numbering_scheme == "roman")
-	{$flagGroup += $this->FLAG_ROMAN;}
-
+    $flagGroup = (int) $this->numbering_scheme;
+    if ($this->is_numeric)  $flagGroup |= FLAG_ISNUMERIC;
+    if ($this->select_many) $flagGroup |= FLAG_SELECTMANY;
+    if ($this->stacked)     $flagGroup |= FLAG_STACKED;
+    if ($this->vertical)    $flagGroup |= FLAG_VERTICAL;
+    if ($this->na_choice)   $flagGroup |= FLAG_NACHOICE;
 
     $result = pg_query("
       SELECT choice_component_save($topic_id, $revision_id, $save_id, '$ctext',
@@ -295,10 +242,10 @@ class ChoiceEditor extends ComponentEditor
 
     //added numbering support. [tyler]
     $this->numbering_scheme = new DropBox(array(
-      "none" => "None",
-      "arabic" => "Arabic numbers",
-      "alpha" => "Letters",
-      "roman" => "Roman Numerals"
+      FLAG_NONUMBERS => "None",
+      FLAG_ARABIC => "Arabic numbers",
+      FLAG_ALPHA => "Letters",
+      FLAG_ROMAN => "Roman Numerals"
     ),$this->prefix."_numbering", $this->form, $this->formmethod);
 
     $this->layout = new DropBox(array(
@@ -333,6 +280,7 @@ class ChoiceEditor extends ComponentEditor
   function loadvalues()
   {
     ComponentEditor::loadvalues();
+
     if ($this->loadprevious)
     {
       $this->qtype->loadvalues();
@@ -798,9 +746,9 @@ class ChoiceWidget extends ComponentWidget
   var $other;
   var $legend;
 
-  var $answers = array();
-  var $others = array();
-  var $errors = array();
+  var $answers = NULL;
+  var $others = NULL;
+  var $errors = NULL;
 
   function ChoiceWidget(&$c,$prefix,$form,$formmethod)
   {
@@ -812,13 +760,13 @@ class ChoiceWidget extends ComponentWidget
     $this->legend = "";
     if ($c->is_numeric)
     {
-      if ($c->choices[0] || $c->choices[1])
-        $this->legend = $c->first_number . " = " . $c->choices[0] . ", " . $c->last_number . " = " . $c->choices[1];
+        if ($c->choices[0] || $c->choices[1])
+          $this->legend = $c->first_number . " = " . $c->choices[0] . ", " . $c->last_number . " = " . $c->choices[1];
 
-      if ($c->first_number < $c->last_number)
-        $this->choices = range($c->first_number, $c->last_number);
-      else
-        $this->choices = array_reverse(range($c->last_number, $c->first_number));
+        if ($c->first_number < $c->last_number)
+          $this->choices = range($c->first_number, $c->last_number);
+        else
+          $this->choices = array_reverse(range($c->last_number, $c->first_number));
     }
     else
       $this->choices = $c->choices;
@@ -865,25 +813,34 @@ class ChoiceWidget extends ComponentWidget
     }
   }
 
-  function save($completion_id)
+  function save($parent)
   {
     global $wbes;
-    $c = &$this->component;
 
-    $table = $c->select_many ? "mchoice_response" : "choice_response";
+    $result = pg_query("
+      INSERT INTO choice_responses(revision_id, parent) VALUES ({$this->component->revision_id}, $parent);
+      SELECT currval('response_ids');
+    ", $wbes, __FILE__, __LINE__);
+
+    if (!$result) return false;
+
+    $nparent = (int)pg_result($result, 0, 0);
+    $table = $this->component->select_many ? "mchoice_question_responses" : "choice_question_responses";
+    $success = true;
 
     foreach(array_keys($this->questions) as $i)
     {
-      if ($c->select_many)
+      if ($this->component->select_many)
         $answer = pg_implode($this->answers[$i]);
       else
         $answer = addslashes($this->answers[$i]);
       $other = addslashes($this->others[$i]);
-      pg_query("
-        INSERT INTO $table(revision_id, completion_id, answer, other)
-        VALUES ({$this->component->revision_id}, $completion_id, '$answer', '$other');
+      $success = $success && pg_query("
+        INSERT INTO $table(revision_id, parent, answer, other)
+        VALUES ({$this->component->revision_id}, $nparent, '$answer', '$other');
       ", $wbes, __FILE__, __LINE__);
     }
+    return $success;
   }
 
   function showchoices($questionno, $tdparams = "")
@@ -921,13 +878,13 @@ class ChoiceWidget extends ComponentWidget
 
         if ($c->select_many)
         {
-          $checked = in_array($i, $this->answers[$questionno]) ? " checked" : "";
-          print("<input type=checkbox name=$name value=$i id=$id$checked>");
+            $checked = isset($this->answers) && in_array($i, $this->answers[$questionno]) ? " checked" : "";
+            print("<input type=checkbox name=$name value=$i id=$id$checked>");
         }
         else
         {
-          $checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
-          print("<input type=radio name=$name value=$i id=$id$checked>");
+            $checked = isset($this->answers[$questionno]) && $i === $this->answers[$questionno] ? " checked" : "";
+            print("<input type=radio name=$name value=$i id=$id$checked>");
         }
 
         if (!$c->stacked || $c->vertical)
@@ -944,9 +901,9 @@ class ChoiceWidget extends ComponentWidget
 
   function print_number($i)
   {
-    if($this->component->numbering_scheme == "arabic")
+    if($this->component->numbering_scheme == FLAG_ARABIC)
       print(($i+1) . ".  ");
-    else if($this->component->numbering_scheme == "alpha")
+    else if($this->component->numbering_scheme == FLAG_ALPHA)
     {
       $numLetters = $i / 26;
       $letter = $i % 26;
@@ -958,7 +915,7 @@ class ChoiceWidget extends ComponentWidget
 
       print(".  ");
     }
-    else if($this->component->numbering_scheme == "roman")
+    else if($this->component->numbering_scheme == FLAG_ROMAN)
       print(Numbers_Roman::toRoman($i+1) . ".  ");
   }
 
@@ -1026,7 +983,7 @@ class ChoiceWidget extends ComponentWidget
         print("</tr>");
       }
       print("\n</tbody>\n</table>\n");
-    } // if ($c->stacked && !$c->vertical)	
+     } // if ($c->stacked && !$c->vertical)
     else if($c->stacked && $c->vertical) // another addition [tyler]
     {
       if ($this->legend) print("<p><strong>" . $this->legend . "</strong></p>\n");

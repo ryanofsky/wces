@@ -249,10 +249,6 @@ class SurveyEditor extends FormWidget
 rearrange survey components by moving your mouse over the blue orbs at the left
 and making a selection from the popup menu. You can insert new survey components
 by clicking above and below existing components.</p>
-
-<HR NOSHADE WIDTH="400" SIZE="5">
-
-
 <?            
             print("<table border=0 cellpadding=0 cellspacing=0>\n");
             print("<tr><td colspan=5></td><td rowspan=$ncomponents><img src=\"$server_media/nada.gif\" width=1 height=1 id={$this->prefix}_insertmarker name={$this->prefix}_insertmarker>\n");
@@ -263,12 +259,7 @@ by clicking above and below existing components.</p>
 <?
               if ($i >= $ncomponents) break;
               $component = &$this->survey->components[$i];
-
-
-
               $w = $component->getwidget("{$this->prefix}_main_qwidget_$i", $this->form, $this->formmethod);
-
-
               $w->loadvalues();
 ?>
 <tr><td><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td><td colspan=3 bgcolor="#000000" background="<?=$server_media?>/0x000000.gif"><img src="<?=$server_media?>/nada.gif" width=1 height=1 alt="[ spacer ]"></td></tr>
@@ -634,7 +625,7 @@ by clicking above and below existing components.</p>
 
   function SurveyEditor_Menu_timeout()
   {
-    window.setTimeout("window.SurveyEditor_menu.hide()",2000);
+    window.setTimeout("window.SurveyEditor_menu.hide()",100);
   }
 
   function SurveyEditor_Menu_show(activenode,actionobject)
