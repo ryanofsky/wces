@@ -3,11 +3,12 @@
   require_once("wces/page.inc");
   require_once("wces/login.inc");
   require_once("wces/report_widget.inc");
-  login_protect(login_administrator | login_deptadmin);
+
+  LoginProtect(LOGIN_ADMIN | LOGIN_DEPT_ADMIN);
  
   $f =& new Form('wiz');
-  $report =& new Report('report', $f);
-  //DebugBreak();
+  $t =& new InitializerWidget('init', $f);
+  $report =& new Report('report', $t);
   $f->loadState();
 
   $seconds = 3600;
@@ -21,6 +22,7 @@
   print("<form name={$f->formName} action=\"{$f->pageName}\" method=post>\n");
   print($ISID);
   $f->display();
+  $t->display();
   $report->display();
   print("</form>");
 

@@ -8,7 +8,7 @@ require_once("wces/useredit.inc");
 
 param('user_id');
 
-login_protect(login_administrator | login_deptadmin);
+LoginProtect(LOGIN_ADMIN | LOGIN_DEPT_ADMIN);
 
 page_top("User Edit");
 
@@ -21,10 +21,12 @@ print("<input type=hidden name=user_id value=$user_id>");
 print($ISID);
 
 $f =& new Form("f");
-$q =& new UserEditor($user_id, "ue", $f);
+$t =& new InitializerWidget("init", $f);
+$q =& new UserEditor($user_id, "ue", $t);
 
 $f->loadState();
 $f->display();
+$t->display();
 
 if (!$q->done)
   $q->display();
