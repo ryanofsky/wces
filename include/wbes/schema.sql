@@ -560,7 +560,8 @@ BEGIN
     IF NOT FOUND THEN RAISE EXCEPTION''topic_contents(%) fails. called with empty topic'', $1; END IF;
   END LOOP;
 END;
-' LANGUAGE 'plpgsql';
+' LANGUAGE 'plpgsql'
+WITH (ISCACHABLE);
 
 -- if revision_id passed is a 0 revision, return the revision_id that contains the revision contents
 
