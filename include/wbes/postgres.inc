@@ -93,16 +93,75 @@ class pg_wrapper
   }
 }
 
+function array_fill($num, $val)
+{
+  return array_pad(array(), $num, $val); 
+}
+
+class pg_segmented_wrapper
+{
+  var $result;
+  var $splitcol;
+  var $row;
+  var $rkey = 0;
+  var $rows = 0;
+  var $split = false;
+  var $last;
+  
+  function pg_segmented_wrapper($result, $splitcol)
+  {
+    $this->result = $result;
+    $this->splitcol = $splitcol;
+    $this->rkey = 0;
+    $this->rows = pg_numrows($result);
+    
+    $this->last = NULL;
+    $this->row = $this->rkey < $this->rows ? pg_fetch_array($this->result,$this->rkey,PGSQL_ASSOC) : NULL;
+    
+    if (is_array($this->splitcol))
+      $this->split = array_pad(array(), count($this->splitcol), true);
+    else
+      $this->split = true;
+  } 
+  
+  function advance()
+  {
+    $this->last = $this->row;
+    ++$this->rkey;
+    if ($this->rkey < $this->rows)
+    {
+      $this->row = pg_fetch_array($this->result,$this->rkey,PGSQL_ASSOC);
+      
+      if (is_array($this->splitcol))
+      {
+        $changed = false; $this->split = array();
+        foreach($this->splitcol as $s)
+          $this->split[] = $changed = $changed || $this->last[$s] !== $this->row[$s];
+      }
+      else
+        $this->split = $this->last !== $this->row[$this->splitcol];
+    }
+    else
+    {
+      $this->row = NULL;
+      if (is_array($this->splitcol))
+        $this->split = array_pad(array(), count($this->splitcol), true);
+      else
+        $this->split = true;
+    }
+  }
+}
+
 function pg_explode($sa)
 {
   $ret = array(); $start = 1; $end = $quoted = $escaped = false; 
   
   $l = strlen($sa) - 1; // ignore braces at beginning and end {}
-
-  for($i = 1; ; ++$i)
+  $started = 1;
+  for($i = 1; $i <= $l; ++$i)
   {
-    if ($i >= $l)
-      $end = $i - 1;
+    if ($i == $l)
+      $end = $i;
     else
     {
       $c = $sa[$i];
@@ -135,10 +194,7 @@ function pg_explode($sa)
       if ($quoted) { $quoted = false; $started = $i + 2; } else $started = $i + 1;
       $end = false;
     }
-    
-    if ($i > $l) break;
   }
-  
   return $ret;
 }
 
