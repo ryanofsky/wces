@@ -10,7 +10,7 @@ page_top("New Semester Initialization");
 
 $i = 0;
 
-if (is_uploaded_file($userfile))
+if (isset($userfile) && is_uploaded_file($userfile))
 {
   if (!$questionsetid)
   {
