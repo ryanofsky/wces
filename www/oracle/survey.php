@@ -8,7 +8,7 @@ page_top("SEAS Oracle Homepage - Survey","survey.gif");
       <p>&nbsp;</p>
       
       <FONT face="Verdana,Trebuchet MS" size=-1><INPUT type=hidden 
-      value=feedback@oracle.seas.columbia.edu name=mail_dest> <INPUT type=hidden 
+      value="wces@columbia.edu" name=mail_dest> <INPUT type=hidden 
       value="Oracle Feedback" name=subject> <INPUT type=hidden value=true 
       name=echo_data> <INPUT type=hidden value=true name=tab_delim> <INPUT 
       type=hidden value=true name=cvt_nl> <INPUT type=hidden 
