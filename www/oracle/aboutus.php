@@ -1,33 +1,25 @@
-<%
-require_once("oracle/page.inc");
-page_top("SEAS Oracle Homepage - About Us","aboutus.gif");
-%>
-      <center><FONT face="Verdana,Trebuchet MS" size=+1>Oracle 00-01 Team</FONT></center>
-      <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Project 
-      Manager</I></B> <BR>James Zheng<BR></FONT></P><BR>
-      <P align=center><FONT face = "Verdana, Trebuchet MS" size = -1><B><I>Developers</I></B>
-      <BR>Deborah Leung: <I>Web Master</I><BR></FONT></P><BR>
-      <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Research 
-      Staff</I></B> <BR>Lawrence Lee<BR>Ronbir Chowdhary
-      <BR></FONT></P><BR>
-      <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Faculty 
-      Advisor</I></B> <BR>Dean Morton Friedman <BR>Dean Jack McGourty 
-      </FONT></P>
-      
-      <HR>
-      <P align = center><FONT face="Verdana,Trebuchet MS" size=-1>Oracle 99-00 Team</FONT>
-      <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Project
-      Manager</I></B> <BR>Boyle M Lee<BR></FONT></P><BR>
-      <P align=center><FONT face="Verdana,Trebuchet MS"
-      size=-1><B><I>Developers</I></B> <BR>Alex Haubold: <I>Database Manager,
-      System Admin, Systems Consultant</I> <BR>James Zheng: <I>Web Master,
-      Interface Developer, Javascript</I><BR></FONT></P><BR>
-      <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Research
-      Staff</I></B> <BR>Deborah Kar Wai Leung<BR>Hsing Hsing Li<BR>Kamesh
-      Adhikary<BR>Po Yau Chan<BR>Will Lim <BR></FONT></P><BR>
-      <P align=center><FONT face="Verdana,Trebuchet MS" size=-1><B><I>Faculty
-      Advisor</I></B> <BR>Dean Morton Friedman <BR>Dean Jack McGourty
-      </FONT></P>
-<%
-page_bottom();
-%>
+<%require_once("oracle/page.inc");page_top("SEAS Oracle Homepage - About Us","aboutus.gif");%> 
+
+The Oracle has a vast amount of digital information about academics here at the Fu Foundation School of Engineering and Applied Science. This site contains the largest compilation of Columbia course and professor information. Students can learn useful and interesting facts about our faculty and courses, including background, research, education and more.<br><br>
+      <left><FONT face="Verdana,Trebuchet MS" size=+1>Members of the Oracle Team</FONT><P align=left></left>
+<FONT face="Verdana,Trebuchet MS" size=-1><BR>
+James Zheng<BR>
+Russell Edward Yanofsky<BR>
+Takahiro Mark Kuba<BR>
+Corey Leong<BR><BR>
+
+Morton B. Friedman<BR>
+Vice Dean<BR> 
+Columbia University<BR>
+The Fu Foundation School of engineering and Applied Science<BR><BR>
+
+Jack McGourty<BR>
+Associate Dean<BR>
+Columbia University<BR>
+The Fu Foundation School of engineering and Applied Science<BR><BR>
+
+Jackie O. Pavlik <A href="mailto:wces@columbia.edu"> wces@columbia.edu</A><BR>
+Staff Associate of Information Technology<BR>
+Columbia University<BR>
+The Fu Foundation School of engineering and Applied Science<BR>
+            </FONT></P></left><%page_bottom();%>
