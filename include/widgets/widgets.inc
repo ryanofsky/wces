@@ -73,12 +73,11 @@ class Widget
 
   function readValue($name = "")
   {
-    global $HTTP_POST_VARS, $HTTP_GET_VARS;
     $full = $this->fullName($name);
-    if (isset($HTTP_POST_VARS[$full]))
-      return $HTTP_POST_VARS[$full];
-    else if (isset($HTTP_GET_VARS[$full]))
-      return $HTTP_GET_VARS[$full];
+    if (isset($_POST[$full]))
+      return $_POST[$full];
+    else if (isset($_GET[$full]))
+      return $_GET[$full];
     else
       return NULL;
   }
@@ -165,13 +164,7 @@ class ParentWidget extends Widget
   {
     if (isset($this->modalChild))
     {
-      foreach(array_keys($this->children) as $k)
-      {
-        $c = &$this->children[$k];
-        if (!isset($c)) continue;
-        if (isset($c->modal) && $c->modal) $c->display(); else $c->displayHidden();
-      }
-      $this->printHidden();
+      $this->printModalChildren();
     }
     else
       $this->printVisible();
@@ -190,6 +183,16 @@ class ParentWidget extends Widget
     $this->printState();
   }
 
+  function printModalChildren()
+  {
+    foreach(array_keys($this->children) as $k)
+    {
+      $c = &$this->children[$k];
+      if (!isset($c)) continue;
+      if (isset($c->modal) && $c->modal) $c->display(); else $c->displayHidden();
+    }
+    $this->printHidden();
+  }
   function printState()
   {}
 
@@ -239,11 +242,8 @@ class Form extends ParentWidget
 
   function loadState($isStale = null)
   {
-    global $HTTP_GET_VARS;
-
     $this->isStale = $this->readValue('isStale')
-      || (count(array_intersect($this->names,array_keys($HTTP_GET_VARS)))!= 0);
-
+      || (count(array_intersect($this->names,array_keys($_GET)))!= 0);
     if ($this->isStale)
       ParentWidget::loadState();
     else
