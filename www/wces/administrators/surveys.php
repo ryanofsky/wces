@@ -107,7 +107,7 @@ if (!$q || $q->state == SurveyEditor_done)
   $result = pg_query("
     SELECT question_period_id, displayname, year, semester
     FROM semester_question_periods
-    WHERE question_period_id = (SELECT get_question_period())
+    WHERE question_period_id = (SELECT get_next_question_period())
   ", $wces, __FILE__, __LINE__);
   extract(pg_fetch_array($result,0,PGSQL_ASSOC));
   
