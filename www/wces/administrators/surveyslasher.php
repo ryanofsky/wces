@@ -23,8 +23,15 @@ if(!isset($HTTP_POST_VARS['input']))
 <br>
 
 <?
+  $result = pg_query("
+    SELECT question_period_id, displayname, year, semester
+    FROM semester_question_periods
+    WHERE question_period_id = (SELECT get_anext_question_period())
+  ", $wces, __FILE__, __LINE__);
+  extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+  
     $sql = "SELECT topic_id, d.name AS name, section, year, s.code || ' ' || d.code AS code FROM wces_topics t, classes c, courses d, subjects s";
-    $sql = $sql . " WHERE c.class_id = t.class_id and c.course_id = d.course_id and d.subject_id = s.subject_id and t.category_id IS NOT NULL ORDER BY code, section";
+    $sql = $sql . " WHERE c.class_id = t.class_id and c.year = $year and c.semester = $semester and c.course_id = d.course_id and d.subject_id = s.subject_id and t.category_id IS NOT NULL ORDER BY code, section";
    
     $result = pg_query($sql, $wbes, __FILE__, __LINE__);
 ?>
