@@ -57,25 +57,43 @@ function makereport(&$wizard,$stdout,&$html,&$text)
   if ($outtext)
   {
     $text = "${line}[ $page / $pages ]\n\n";
-    $text .= "Report Information\n";
+    $text .= "Report Information\n\n";
     $text .= " - Administrator ID: " . login_getuni() . "\n";
     $text .= " - Date: " . date("l, F j, Y") . "\n";
     $text .= " - Time: " . date("g:i:s A") . "\n";
   }
 
   $result = pg_query("
-    SELECT r.ordinal, r.students, COUNT(*) AS responses
-    FROM (
-      SELECT t.ordinal, t.topic_id, t.question_period_id, SUM(cl.students) AS students
-      FROM rwtopics AS t
-      INNER JOIN classes AS cl USING (class_id)
-      GROUP BY t.ordinal, t.topic_id, t.question_period_id
-    ) AS r
-    LEFT JOIN survey_responses AS s USING (topic_id, question_period_id)
-    -- WHERE s.user_id IS NOT NULL TODO: restore this after completion record importing
-    GROUP BY r.ordinal, r.students
-    ORDER BY r.ordinal
-  ", $wces, __FILE__, __LINE__);
+    SELECT s.ordinal, s.students, r.responses
+    FROM 
+    (
+      -- this subselect contains the count of students for each ordinal
+      SELECT cc.ordinal, sum(cc.students) AS students
+      FROM
+      ( -- this subselect is needed to eliminate
+        -- duplicate class entries in the rwtopics
+        -- table that occur when a class has more than
+        -- one professor
+        SELECT t1.ordinal, cl1.students
+        FROM rwtopics AS t1
+        INNER JOIN classes AS cl1 USING (class_id)
+        GROUP BY t1.ordinal, t1.class_id, cl1.students
+      ) AS cc
+      GROUP BY cc.ordinal
+    ) AS s
+    INNER JOIN
+    (
+      -- this subselect contains the number of responses for each ordinal
+      SELECT t2.ordinal, COUNT(*) AS responses
+      FROM rwtopics AS t2
+      LEFT JOIN survey_responses AS r2 ON
+        r2.topic_id = t2.topic_id
+        AND r2.question_period_id = t2.question_period_id
+        AND r2.user_id IS NOT NULL
+      GROUP BY t2.ordinal
+    ) AS r ON s.ordinal = r.ordinal
+    ORDER BY s.ordinal
+  ", $wces, __FILE__, __LINE__);             
 
   $stats = new pg_segmented_wrapper($result, "ordinal");
 
@@ -144,7 +162,7 @@ function makereport(&$wizard,$stdout,&$html,&$text)
     INNER JOIN textresponse_components AS c ON c.revision_id = tr.revision_id
     ORDER BY t.ordinal, tr.revision_id
   ", $wces, __FILE__, __LINE__);
-
+  
   $textresponses = new pg_segmented_wrapper($result, array("ordinal", "revision_id"));
 
   $result = pg_query("
@@ -173,6 +191,8 @@ function makereport(&$wizard,$stdout,&$html,&$text)
       $pagehtml = '<hr style="page-break-before:always">' . "\n";
       $pagehtml .= "<font size=1>[ $page / $pages ]</font>\n";
     }
+    else
+      $pagehtml = false;
 
     report_makepage($text, $pagehtml, $stats, $classes, $professors, $departments, $questionperiods, $textresponses, $choices);
 
