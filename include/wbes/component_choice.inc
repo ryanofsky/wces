@@ -942,7 +942,7 @@ class ChoiceWidget extends ComponentWidget
       print(".  ");
     }
     else if($this->component->numbering_scheme == FLAG_ROMAN)
-      print(Numbers_Roman::toRoman($i+1) . ".  ");
+      print(Numbers_Roman::toNumeral($i+1) . ".  ");
   }
 
   function display($hidden = false, $showerrors = false)
