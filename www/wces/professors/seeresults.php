@@ -4,7 +4,7 @@ require_once("wces/page.inc");
 require_once("wces/login.inc");
 require_once("wces/ProfessorResults.inc");
 
-login_protect(login_professor);
+LoginProtect(LOGIN_PROFESSOR);
 
 $f =& new Form("f");
 $r =& new ProfessorResults("results", $f);

@@ -14,13 +14,13 @@ require_once("wces/component_abet.inc");
 require_once("wces/oldquestions.inc");
 require_once("config/survey.inc");
 
-login_protect(login_student);
+LoginProtect(LOGIN_STUDENT);
 
 param('topic_id');
 
 wces_connect();
 
-$user_id = login_getuserid();
+$user_id = LoginValue('user_id');
 
 $topic_id = (int)$topic_id;
 

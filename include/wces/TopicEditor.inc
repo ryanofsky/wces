@@ -43,7 +43,7 @@ class TopicEditor extends StatefullWidget
       SurveyEditor::DumpScript();
       if ($this->professor_mode)
       {
-        $user_id = (int)login_getuserid();
+        $user_id = (int)LoginValue('user_id');
         global $wces;
         wces_connect();
         $r = pg_result(pg_go("
@@ -123,7 +123,7 @@ class TopicEditor extends StatefullWidget
       $list = topics_list(get_question_period());
     else
     {
-      $user_id = (int)login_getuserid();
+      $user_id = (int)LoginValue('user_id');
       $list = array
       ( array
         ( "", "

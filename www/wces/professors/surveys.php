@@ -3,7 +3,7 @@
 require_once('wces/login.inc');
 require_once('wces/page.inc');
 
-login_protect(login_professor);
+LoginProtect(LOGIN_PROFESSOR);
 
 require_once('wces/TopicEditor.inc');
 

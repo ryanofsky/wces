@@ -125,7 +125,7 @@ class Subsurvey extends Component
     $this->our_specialization_id = $specialization_id;
     //print("Save 1: $specialization_id");
 
-    $user_id = login_getuserid();
+    $user_id = LoginValue('user_id');
 
     if($this->base_branch == 0)
       {$this->base_branch = $this->survey->save($specialization_id, null, $user_id, $save_id);}
@@ -197,7 +197,7 @@ class SubsurveyEditor extends ComponentEditor
     if(isset($this->survey))
         {
         //print("The survey is set.");
-        $user_id = login_getuserid();
+        $user_id = LoginValue('user_id');
 
         if($user_id == null || $user_id == "")
             {$user_id = 0;}
@@ -264,7 +264,7 @@ class SubsurveyWidget extends ComponentWidget
   {
     //$this->printValue("SUBmode", $this->component->mode);
     //$this->printValue("specializationID", $this->component->our_specialization_id);
-    $user_id = login_getuserid();
+    $user_id = LoginValue('user_id');
     $text = $this->component->is_html ? $this->component->text : nl2br(htmlspecialchars($this->component->text));
     $url = "subshow.php?specialization_id=" . $this->component->our_specialization_id . "&base_branch=" . $this->component->base_branch . "&user_id=$user_id&question_period_id=9";
     ?>

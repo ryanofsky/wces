@@ -22,8 +22,8 @@ function sendwarning($dump, $file, $line)
 
   $errorid = 0;
   $url = $server_url->toString(true,true,true);
-  $uni = function_exists("login_getuni") ? login_getuni() : "";
-  $user_id = function_exists("login_getuserid") ? login_getuserid() : "";
+  $uni = function_exists("LoginValue") ? LoginValue('uni') : "";
+  $user_id = function_exists("LoginValue") ? LoginValue('user_id') : "";
 
   if ($server_isproduction && function_exists("wces_oldconnect"))
   {
