@@ -245,7 +245,7 @@ CREATE TABLE groupings (
   linktype enum('classes','professors','subjects','departments','courses') NOT NULL default 'classes',
   questionsetid int(11) NOT NULL default '0',
   tarate enum('no','yes') NOT NULL default 'no',
-  evaluationid int(11) default NULL,
+  topicid int(11) default NULL,
   PRIMARY KEY (linkid,linktype,questionsetid)
 );
 
@@ -334,6 +334,7 @@ CREATE TABLE sentmails (
   sto tinytext,
   title tinytext,
   body text,
+  time timestamp(14) NOT NULL,
   PRIMARY KEY (sentmailid)
 );
 
@@ -372,15 +373,10 @@ CREATE TABLE tausers (
   PRIMARY KEY (tauserid)
 );
 
-CREATE TABLE templinks (
-  questionsetid int(11) NOT NULL default '0',
+CREATE TABLE topics (
+  topicid int(11) NOT NULL auto_increment,
   name tinytext,
-  professorid int(11) NOT NULL default '0'
-);
-
-CREATE TABLE tempusers (
-  userid int(11) NOT NULL default '0',
-  name tinytext
+  PRIMARY KEY (topicid)
 );
 
 CREATE TABLE users (
