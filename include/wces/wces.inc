@@ -122,13 +122,19 @@ function format_profs($profs, $link = false, $before = "", $after = "", $between
   if (strlen($profs) == 0) return "";
   $c = explode("\n", $profs);
   $str = "";
+  
+  if ($link && !is_string($link))
+  {
+    $link = "{$wces_path}administrators/info.php?user_id=";
+  };
+  
   for ($i = 0; $i < count($c); $i += FORMAT_PROF_COUNT)
   {
     if ($str) $str .= $between;
     $str .= $before;
-    if ($link) $str .= "<a href=\"{$wces_path}administrators/info.php?user_id=" . $c[$i + FORMAT_PROF_USER_ID] . '">';
+    if (is_string($link)) $str .= "<a href=\"$link" . $c[$i + FORMAT_PROF_USER_ID] . '">';
     $str .= $c[$i + FORMAT_PROF_FIRSTNAME] . " " . $c[$i + FORMAT_PROF_LASTNAME];
-    if ($link) $str .= "</a>";
+    if (is_string($link)) $str .= "</a>";
     $str .= $after;
   }
   return $str;
