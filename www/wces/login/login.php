@@ -10,15 +10,11 @@
   $rs = (int) rparam($rs,0);                 // requested status (status needed to access requested page)
   $de = (boolean) rparam($de,false);         // disable encryption
 
-  $badpw = false; $message = "";
-  if($uni || $pw) $badpw = !login_validate($uni, $pw);
- 
-  if ($badpw)
-    $message = "<p><b><font color=red>Invalid username or password</font></b></p>";
-  else
+  if (($uni || $pw) && login_validate($uni, $pw))
   {
+    $uni = $pw = "";
     $status = login_getstatus();
-    if ($rs & $status)
+    if ($rs & $status || !$rs) // ($status meets at least one required flag) || (there aren't any required flags)
     {
       if ($url) sloppyredirect($url);
     }
