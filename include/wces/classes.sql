@@ -660,9 +660,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
       AND
       (
         ag.code = ''CUinstructor'' OR
-        ag.code = ''BCinstructor'' OR
-        ag.code = ''CUNIX_instructor'' OR
-        ag.code = ''CUNIX_Instructor''
+        ag.code = ''BCinstructor''
       );
     
     IF FOUND THEN
@@ -677,6 +675,7 @@ CREATE FUNCTION login_parse(VARCHAR(12),VARCHAR(28), VARCHAR (28), VARCHAR(28),T
         (
           ag.code = ''CUstudent''   OR
           ag.code = ''BCstudent''   OR
+          ag.code = ''BC2student''  OR
           ag.code = ''CPMCstudent'' OR
           ag.code = ''TCstudent''   OR
           ag.code = ''UTSstudent''

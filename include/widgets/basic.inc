@@ -183,7 +183,7 @@ class ActionButton extends FormWidget
       {
         $p = strrpos($key,'-');
         $this->action = substr($key,$l,$p-$l);
-        $this->object = substr($key,$p);
+        $this->object = substr($key,$p+1);
         return;
       }
     }

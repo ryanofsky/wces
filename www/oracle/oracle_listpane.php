@@ -1,5 +1,6 @@
 <?
 
+require_once("wces/oracle.inc");
 require_once("wces/wces.inc");
 require_once("wbes/general.inc");
 
@@ -76,7 +77,7 @@ function db_makesearch($text,$fields)
   return $str;
 }
 
-$db = wces_connect();
+$db = wces_oldconnect();
 
 if ($mode == "professors")
 {
@@ -91,34 +92,25 @@ if ($mode == "professors")
   <script>AttachImage('courses','courselit.jpg'); AttachImage('search','searchlit.jpg');</script>
   <? 
 
-  $y = mysql_query("
-
-  SELECT p.professorid, p.name
+  $y = db_exec("
+  SELECT p.professorid, p.name,
+  SUBSTRING_INDEX(p.name,' ',-1) AS last,
+  SUBSTRING(p.name,1,LENGTH(p.name)-LOCATE(' ',REVERSE(p.name))) AS first
   FROM answersets AS a
   INNER JOIN classes as cl USING (classid)
   INNER JOIN professors AS p USING (professorid)
-  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
+  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4)
   GROUP BY p.professorid
-
-  ",$db);
-
-  $plist = array();
-  while($row = mysql_fetch_array($y))
-    if ($row["name"]) 
-    {
-      $pos = strrpos($row["name"]," ");
-      array_push($plist,array("first" => substr($row["name"],0,$pos), "last" => substr($row["name"],$pos), "professorid" => $row["professorid"]));
-    }
-
-  usort($plist,"pcmp");
+  ORDER BY last, first
+  ",$db, __FILE__, __LINE__);
 
   print("<font size=-1>\n");
   print('<ul>');
 
-  foreach($plist as $p)
+  while($r = mysql_fetch_array($y))
   {
     $professorid=0; $last=""; $first="";
-    extract($p);
+    extract($r);
     print("  <li><a href=\"oracle_infopane.php?professorid=$professorid\">$last, $first</a></li>\n");
   }
 print('</ul>');  
@@ -161,7 +153,7 @@ else if ($mode == "search")
 		  FROM answersets AS a
 		  INNER JOIN classes AS cl USING (classid)
 		  INNER JOIN professors AS p USING (professorid)
-		  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2) AND ($search)
+		  WHERE a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4) AND ($search)
       GROUP BY p.professorid
 		  LIMIT 100",$db,__FILE__,__LINE__);
 		}  
@@ -214,7 +206,7 @@ else // $mode == "courses"
   INNER JOIN courses AS c USING (courseid)
   INNER JOIN departments AS d USING (departmentid)
   LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
-  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2)
+  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND a.questionperiodid IN (1,2,4,5,7) AND a.topicid IN (1,2,4)
   GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);
 
   $departmentidprev = -1;

@@ -80,11 +80,11 @@ else if ($frame == "main")
   if ($help == "login")
   {
 ?>
-<p>You need to have a valid CUNIX ID and password use the course evaluation system.</p>
+<p>You need to have a University Network ID (UNI) and password use the course evaluation system.</p>
 <p align=center><img src="media/help/login.gif"></p>
 <p>Students and professors
 can use the <a href="http://www.columbia.edu/acis/accounts/create/current.html" target="_blank">AcIS Account Maintenance</a>
-page to create and manage CUNIX accounts.</p>
+page to create and activate their UNI's.</p>
 <?
   }
   else if ($help == "contents")
@@ -253,7 +253,7 @@ page to create and manage CUNIX accounts.</p>
   {
     if (isset($email) || isset($comments))
     {
-      mail("rey4@columbia.edu","documentation feedback","From: $email\n\n$comments");
+      sendfeedback($comments, $email, "Documentation Feedback");
       print("Your mail has been sent.");
     }
     else

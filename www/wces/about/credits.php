@@ -5,21 +5,22 @@ page_top("Credits");
 
 <p><img src="<?=$wces_path?>media/oracle_logo.gif" border=0></p>
 
-<p><b><i>Faculty Advisors</i></b></p>
-<p>Dean Morton Friedman<br>Dean Jack McGourty</p>
-
-
-<p><b><i>Project Manager</i></b></p>
-<p>James Zheng</p>
-
-<p><b><i>WCES Development Team</i></b></p>
-<p>Russell Edward Yanofsky<br>Takahiro Mark Kuba<br>Corey "Superfly" Leong</p>
-
-<p><b><i>Representative from SEAS Dean's Office</i></b></p>
-<p><a href="mailto:jackie@columbia.edu">Jackie O. Pavlik</a><br>(212) 854-6444</p>
-
-<p><b><i>Special Thanks To</i></b></p>
-<p>Alex Haubold<br>Boyle Lee<br></p>
+<p><b><i>Faculty Advisors</i></b>
+<p>Dean Morton Friedman
+<br>Dean Jack McGourty
+<br><b><i></i></b>&nbsp;
+<p><b><i>WCES Development Team</i></b>
+<p>Russell Edward Yanofsky
+<br>Takahiro Mark Kuba
+<p>Please send questions or comments to :&nbsp;<a href="mailto:jackie@columbia.edu"></a>
+<p>Jackie O. Pavlik&nbsp;&nbsp;
+<br>Staff Associate for Information Technology
+<br>Columbia University&nbsp;
+<br>Fu Foundation School of Engineering and Applied Science
+<p>Voice (212) 854-6444
+<br>e-mail <a href="mailto:jackie@columbia.edu">jackie@columbia.edu</a>
+<br><a href="mailto:jackie@columbia.edu"></a>&nbsp;
+<br><b><i></i></b>&nbsp;
 
 <p><b><i>Powered by</i></b></p>
 <blockquote>

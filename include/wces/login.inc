@@ -152,9 +152,11 @@ function login_whoami()
 
 function login_validate($uni,$password)
 {
-  global $wces;
+  global $wces, $LOGIN_SESSION;
   
   $uni = str_replace("@columbia.edu","",$uni);
+  $uni = str_replace("@barnard.edu","",$uni);
+  $uni = trim($uni);
   $dump = acisget($uni,$password);
   
   if (!$dump)
@@ -199,6 +201,10 @@ function login_validate($uni,$password)
   $result = pg_query("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
   $user_id = (int)pg_result($result,0,0);
   login_update($user_id);
+
+  if ($LOGIN_SESSION["userid"] == 0)
+    sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
+ 
   return true;
 };
 
@@ -255,12 +261,11 @@ function login_prompt($url, $rs, $de = false, $uni = "")
   if($luni)
   {
     if ($url && $rs && !($rs & login_getstatus()))
-      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as '$luni' with " . (($x = login_whoami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../about/feedback.php\">let us know</a>. You can use the form below to log in as another user.</small></p>");
+      print("<p><b><font color=red>Access Denied</font></b></p>\n<p><small>You are currently logged in as $luni with " . (($x = login_whoami()) ? $x : "no") . " privileges. You do not have permission to view <a href=\"$url\">$url</a>. If this is a mistake, please <a href=\"../about/feedback.php\">let us know</a>.</small></p>");
     else     
-      print("<p><small>You are currently logged in as $luni. You can use the form below to log in with another set of credentials.</small></p>");
+      print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
   }
-  
-  if ($uni)
+  else if ($uni)
     print("<p><b><font color=red>Invalid username or password.</font></b></p>\n");
 
   $securesite = "$server_sbase${wces_path}login/login.php";
@@ -268,7 +273,7 @@ function login_prompt($url, $rs, $de = false, $uni = "")
   $urlargs = "?url=" . urlencode($url) . "&rs=" . urlencode($rs) . $AASID;
 
 ?>  
-  <p><strong>Enter your CUNIX username and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
+  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$wces_path?>media/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
   <form method=post action="<?= $de ? $insecuresite : $securesite ?>">
   <input type=hidden name=url value="<?= htmlspecialchars($url) ?>">
   <input type=hidden name=rs value="<?= htmlspecialchars($rs) ?>">
@@ -287,10 +292,12 @@ function login_prompt($url, $rs, $de = false, $uni = "")
 ?><font size="-1"><b>Note:</b> The information entered in this form will
 be transmitted using your browser's SSL encryption. If you would like to
 connect with no encryption, click
-<a href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
+<a onclick="alert('Due to security concerns from AcIS, this function has been disabled. Sending your CUNIX username and password over a public network without encryption puts your information and Columbia\'s computer resources at risk. Please use the SSL features of this site.'); return false;" href="<?= $insecuresite . $urlargs ?>&de=1">here</a>.
 If you would like to view a secure version of this page so you can examine
 our site's certificate before entering your password, click
-<a href="<?= $securesite . $urlargs ?>">here</a>.</font>
+<a href="<?= $securesite . $urlargs ?>">here</a>. If your browser does not recognize our
+certificate, you'll need to download the latest AcIS
+<a href="http://www.columbia.edu/acis/access/secure/ca.html" target="_blank">root certificate</a> into your browser.</font>
 <?
   }
   else if ($de)
