@@ -1,5 +1,3 @@
-<!-- 68ACFF to  #007700 #007700 -->
-
 <?
 
 require_once("wbes/server.inc");
