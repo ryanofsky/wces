@@ -189,6 +189,9 @@ CREATE FUNCTION topic_update(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
     category_id_ ALIAS FOR $3; 
     topic_id_ INTEGER;
   BEGIN
+    IF class_id_ IS NULL THEN
+      RAISE EXCEPTION ''topic_update(%,%,%) failed. class_id_ is null!'', $1, $2, $3;
+    END IF;
     SELECT INTO topic_id_ topic_id FROM wces_topics WHERE ((parent_ IS NULL AND parent IS NULL) OR parent = parent_) AND class_id = class_id_;
     IF FOUND THEN
       IF category_id_ IS NOT NULL THEN
