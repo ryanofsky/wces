@@ -9,7 +9,6 @@ function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
   global $db_debug, $server_isproduction;
   
   if ($db_debug) $t = microtime();
-  
   $result = @pg_exec($db,$sql);
   if ($db_debug) $time = gettime(microtime()) - gettime($t);
   
@@ -34,7 +33,6 @@ function pg_query($sql, $db, $file = __FILE__, $line = __LINE__)
 
 function pg_show($result,$name = "Result", $showtypes = false)
 {
-  
   if ($result)
   {
     $rows = pg_numrows($result);
@@ -93,6 +91,69 @@ class pg_wrapper
     ++$this->rkey;
     return $this->row;
   }
+}
+
+function pg_explode($sa)
+{
+  $ret = array(); $start = 1; $end = $quoted = $escaped = false; 
+  
+  $l = strlen($sa) - 1; // ignore braces at beginning and end {}
+
+  for($i = 1; ; ++$i)
+  {
+    if ($i >= $l)
+      $end = $i;
+    else
+    {
+      $c = $sa[$i];
+      $is_comma = $c == ',';
+      $is_quote = $c == '"';
+      $is_escape = $c == '\\';
+    
+      if ($is_comma && !$quoted)
+        $end = $i;
+      else if ($is_quote)  
+      {
+        if ($quoted && !$escaped)
+        {
+          $end = $i;
+          $quoted = false;
+        }
+        else if (!$quoted)
+        {
+          $started = $i + 1;
+          $quoted = true;
+        }
+      }
+      
+      if ($escaped)
+        $escaped = false;
+      else if ($is_escape)
+        $escaped = true;
+    }
+    
+    if ($end)
+    {
+      if ($i > $started) $ret[] = stripslashes(substr($sa, $started, $i - $started));
+      $started = $i + 1;
+      $end = false;
+    }
+    
+    if ($i > $l) break;
+  }
+  
+  return $ret;
+}
+
+function pg_implode($a)
+{
+  $r = "";
+  foreach($a as $v)
+  {
+    if($r) $r .= ",";
+    $r .= '"' . addslashes($v) . '"';
+  }
+  return "'\{$r}'";
 }
 
 ?>
