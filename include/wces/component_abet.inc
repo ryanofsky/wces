@@ -67,7 +67,7 @@ class AbetFactory extends ChoiceFactory
 
 class NewAbetFactory extends AbetFactory
 {
-  var $ABET_REVISION = 1252;
+  var $ABET_REVISION = 1265;
   var $ABET_SKIP = array();
   var $noshow = false;
   function code() { return 100; }
@@ -75,7 +75,7 @@ class NewAbetFactory extends AbetFactory
 
 class BioAbetFactory extends AbetFactory
 {
-  var $ABET_REVISION = 1256;
+  var $ABET_REVISION = 1266;
   var $ABET_SKIP = array();
   var $noshow = false;
   function code() { return 101; }

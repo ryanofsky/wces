@@ -96,7 +96,7 @@ class Survey
       CREATE TEMPORARY TABLE tmp$this->orig_id AS
       SELECT branch_latest(bt.branch_id, $latest) AS revision_id, ordinal
       FROM list_items AS li
-      INNER JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
+      LEFT JOIN branch_topics_cache AS bt ON bt.base_branch_id = li.item_id AND bt.topic_id = $existing_topic
       WHERE li.revision_id = (SELECT revision_contents($this->orig_id));
 
       SELECT t.ordinal, t.revision_id, r.type

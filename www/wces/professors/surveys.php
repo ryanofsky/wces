@@ -25,7 +25,9 @@ $factories = array
   new TextFactory(),
   new HeadingFactory(),
   new PageBreakFactory(),
-  new AbetFactory()
+  new AbetFactory(),
+  new NewAbetFactory(),
+  new BioAbetFactory()  
 );
 
 if($topic_id)

@@ -95,9 +95,11 @@ if (!$q || $q->state == SurveyEditor_done)
     (
       SELECT 1 AS topic_id, 'Base Questions' AS name, 1 AS ordinal
       UNION
-      SELECT 3736, 'Base Engineering Questions', 2
+      SELECT 4396, 'Base SEAS Questions', 2      
+      UNION      
+      SELECT 3736, 'Base Engineering Questions', 3
       UNION
-      SELECT 3733, 'Base Bioengineering Questions', 3
+      SELECT 3733, 'Base Bioengineering Questions', 4
     ) AS t ORDER BY ordinal
    ", $wces, __FILE__, __LINE__);
     
@@ -111,8 +113,7 @@ if (!$q || $q->state == SurveyEditor_done)
     FROM question_periods AS q
     INNER JOIN question_periods_topics AS qt USING (question_period_id)
     INNER JOIN wces_topics AS t USING (topic_id)
-    INNER JOIN classes AS cl USING (class_id)
-    WHERE q.enddate > (select now()) AND t.category_id IS NOT NULL AND category_id <> 103
+    WHERE q.enddate > (select now()) AND t.class_id IS NOT NULL AND t.category_id IS NOT NULL AND t.category_id <> 103
     ORDER BY name
   ", $wces, __FILE__, __LINE__);
   topics_link($result, true);
