@@ -1,0 +1,13 @@
+OPT=-fpic
+INC=/usr/include/postgresql
+LIB=
+OUTPUT=distribution.so
+
+$(OUTPUT) : distribution.o
+	g++ -shared -o $(OUTPUT) distribution.o $(LIB)
+
+distribution.o : distribution.cpp
+	g++ $(OPT) -o distribution.o -c -I$(INC) distribution.cpp
+
+clean :
+	rm distribution.o $(OUTPUT)
