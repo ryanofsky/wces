@@ -29,7 +29,7 @@ function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursec
 {
   $classcache = array();
   
-  if (strlen($year) == 4 && strlen($semester) && ($semester == 1 || $semester == 2 || $semester == 3) && is_array($fieldorder) && isset($fieldorder["coursecode"]) && isset($fieldorder["section"]) && isset($fieldorder["professor"]) && isset($fieldorder["students"]))
+  if (strlen($year) == 4 && strlen($semester) && ($semester == 1 || $semester == 2 || $semester == 3) && is_array($fieldorder) && isset($fieldorder["coursecode"]) && isset($fieldorder["section"]) && (isset($fieldorder["professor"]) || (isset($fieldorder["pfirst"]) && isset($fieldorder["plast"]))) && isset($fieldorder["students"]))
   {
     taskwindow_start("Progress Window");
     taskwindow_cprint("<h2>Importing classes</h2>\n");
@@ -62,13 +62,24 @@ function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursec
             $classid = class_update($db, $classcode, $courseid);
             $classcache[$classcode] = $classid;
             db_exec("DELETE FROM enrollments WHERE classid = '$classid'", $db, __FILE__, __LINE__);
-            prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);
+            if (isset($fieldorder["professor"]))
+            {
+              prof_parsepidname($data[$fieldorder["professor"]],$first,$last,$middlei,$dept);
+            }
+            else if (isset($fieldorder["pfirst"]) && isset($fieldorder["pfirst"]))
+            {
+              $first = $data[$fieldorder["pfirst"]];
+              $last = $data[$fieldorder["plast"]];
+            }
+            else 
+              $first = $last = "";
+    
             $pids = prof_findwithfirstlast($db, $first, $last);
             $pid = prof_merge($db, $pids,Array("name" => prof_makefull($first,$middlei,$last)),Array("first" => $first, "middle" => $middlei, "last" => $last, "source" => "oldclasses"));
             $i = Array("professorid" => $pid);
             if ($data[$fieldorder["students"]]) $i["students"] = $data[$fieldorder["students"]];
             db_updatevalues($db, "classes", Array("classid" => $classid), $i);
-            //if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $courseid, "linktype" => "courses", "questionsetid" => $questionsetid), 0, "questionsetid");
+            if ($questionsetid) db_replace($db,"groupings",Array("linkid" => $classid, "linktype" => "classes", "questionsetid" => $questionsetid), 0, "questionsetid");
           }  
           $cunix = $data[$fieldorder["cunix"]];
           if ($cunix)
@@ -79,7 +90,7 @@ function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursec
           }
           else 
             $userid = ""; 
-          taskwindow_cprint("$coursecode Section $section added (courseid = $courseid, classid = $classid, professorid = $pid, userid = $userid)<br>\n");
+          taskwindow_cprint("$classid added. (identifier = $coursecode $section courseid = $courseid, professorid = $pid)<br>\n");
         }
         else
           taskwindow_cprint("<b>Warning:</b> Invalid course or section code (course = '$coursecode' && section = '$section')<br>\n");  
@@ -88,7 +99,9 @@ function importdeancsv($userfile, $year, $semester, $fieldorder = array("coursec
     }
     fclose ($fp); 
     taskwindow_end();  
-  }  
+  }
+  else
+    print("no good");  
 };
 
 /**
