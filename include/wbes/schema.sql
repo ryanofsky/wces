@@ -13,6 +13,7 @@ DROP TABLE surveys;
 DROP TABLE subsurvey_components;
 DROP TABLE revisions;
 DROP SEQUENCE revision_ids;
+DROP TABLE pagebreak_components;
 DROP TABLE list_items;
 DROP SEQUENCE list_item_ids;
 DROP TABLE topics;
@@ -86,6 +87,7 @@ CREATE SEQUENCE save_ids INCREMENT 1 START 100;
 -- 6 = a choice question
 -- 7 = a generic component (no merge defined for this type)
 -- 8 = a subsurvey component
+-- 9 = a page break component
 
 CREATE TABLE revisions
 (
@@ -171,6 +173,11 @@ CREATE TABLE subsurvey_components
 (
   survey_id INTEGER NOT NULL,
   flags INTEGER
+) INHERITS (revisions);
+
+CREATE TABLE pagebreak_components
+(
+  renumber BOOLEAN
 ) INHERITS (revisions);
 
 CREATE TABLE list_items
@@ -579,6 +586,7 @@ CREATE FUNCTION branch_latest(INTEGER, INTEGER) RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER);
 CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     type_        ALIAS FOR $1;
@@ -607,9 +615,12 @@ CREATE FUNCTION revision_create(INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INT
     ELSE IF type_ = 7 THEN
       INSERT INTO generic_components(type, parent, branch_id, revision, save_id, merged)
       VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
+    ELSE IF type_ = 9 THEN
+      INSERT INTO pagebreak_components(type, parent, branch_id, revision, save_id, merged)
+      VALUES (type_, parent_, branch_id_, revision_, save_id_, merged_);
     ELSE
       RAISE EXCEPTION ''revision_create(%,%,%,%,%,%) called with unknown type number'', $1, $2, $3, $4, $5, $6;
-    END IF; END IF; END IF; END IF; END IF; END IF;
+    END IF; END IF; END IF; END IF; END IF; END IF; END IF;
     RETURN currval(''revision_ids'');
   END;
 ' LANGUAGE 'plpgsql';
@@ -1130,6 +1141,38 @@ CREATE FUNCTION textresponse_component_save(INTEGER, INTEGER, INTEGER, TEXT, BOO
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION pagebreak_component_save(INTEGER, INTEGER, INTEGER, BOOLEAN);
+CREATE FUNCTION pagebreak_component_save(INTEGER, INTEGER, INTEGER, BOOLEAN) RETURNS INTEGER AS '
+  DECLARE
+    topic_id_  ALIAS FOR $1;
+    orig_id_   ALIAS FOR $2;
+    save_id_   ALIAS FOR $3;
+    renumber_  ALIAS FOR $4;
+    branch_id_ INTEGER := NULL;
+    changed    BOOLEAN := ''t'';
+    saveto     INTEGER;
+    rec RECORD;
+  BEGIN
+    IF orig_id_ IS NOT NULL THEN
+      SELECT INTO rec branch_id, renumber FROM pagebreak_components WHERE revision_id = orig_id_;
+      IF NOT FOUND THEN
+        RAISE EXCEPTION ''pagebreak_component_save(%,%,%,%) fails. bad orig_id'', $1, $2, $3, $4;
+      END IF;
+      branch_id_ := rec.branch_id;
+      changed := NOT (rec.renumber = renumber_);
+    END IF;
+
+    IF changed THEN
+      branch_id_ := branch_save(topic_id_, branch_id_);
+      saveto := revision_save_start(branch_id_, orig_id_, 9, save_id_);
+      UPDATE pagebreak_components SET renumber = renumber_ WHERE revision_id = saveto;
+      RETURN revision_save_end(branch_id_, saveto);
+    ELSE
+      RETURN branch_topics_add(topic_id_, branch_id_);
+    END IF;
+  END;
+' LANGUAGE 'plpgsql';
+
 CREATE FUNCTION choice_question_save(INTEGER, INTEGER, INTEGER, TEXT) RETURNS INTEGER AS '
   DECLARE
     topic_id_    ALIAS FOR $1;
@@ -1162,6 +1205,7 @@ CREATE FUNCTION choice_question_save(INTEGER, INTEGER, INTEGER, TEXT) RETURNS IN
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER);
 CREATE FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     common_id    ALIAS FOR $1;
@@ -1207,6 +1251,10 @@ CREATE FUNCTION revision_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEG
     IF t = 6 THEN
       RETURN choice_question_merge(common_id, primary_id, secondary_id, new_id);
     END IF;
+    
+    IF t = 9 THEN
+      RETURN pagebreak_merge(common_id, primary_id, secondary_id, new_id);
+    END IF;    
 
     RAISE EXCEPTION ''revision_merge(%,%,%,%) failed. Revision type unknown.'', $1, $2, $3, $4;
   END;
@@ -1303,6 +1351,26 @@ CREATE FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGER, INTEGER)
       rows    = integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t''),
       cols    = integer_merge(orig_row.cols, primary_row.cols, secondary_row.cols, ''t'')
       align   = boolean_merge(orig_row.align, primary_row.align, secondary_row.align, ''t'')
+    WHERE revision_id = new_id;
+    RETURN 1;
+  END;
+' LANGUAGE 'plpgsql';
+
+CREATE FUNCTION pagebreak_merge(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+  DECLARE
+    orig_id       ALIAS FOR $1;
+    primary_id    ALIAS FOR $2;
+    secondary_id  ALIAS FOR $3;
+    new_id        ALIAS FOR $4;
+    orig_row      RECORD;
+    primary_row   RECORD;
+    secondary_row RECORD;
+  BEGIN
+    SELECT INTO orig_row      renumber FROM text_components WHERE revision_id = orig_id;
+    SELECT INTO primary_row   renumber FROM text_components WHERE revision_id = primary_id;
+    SELECT INTO secondary_row renumber FROM text_components WHERE revision_id = secondary_id;
+    UPDATE choice_questions SET
+      renumber = boolean_merge(orig_row.renumber, primary_row.renumber, secondary_row.renumber, ''t'')
     WHERE revision_id = new_id;
     RETURN 1;
   END;
