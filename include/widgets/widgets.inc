@@ -55,9 +55,9 @@ class FormWidget // abstract, extends Widget
     global $HTTP_POST_VARS, $HTTP_GET_VARS;
     $attrname = $attrname ? $this->prefix . "_$attrname" : $this->prefix;
     if ($this->formmethod == WIDGET_GET)
-      return isset($HTTP_GET_VARS[$attrname]) ? $HTTP_GET_VARS[$attrname] : "";
+      return isset($HTTP_GET_VARS[$attrname]) ? $HTTP_GET_VARS[$attrname] : NULL;
     else if ($this->formmethod == WIDGET_POST)
-      return isset($HTTP_POST_VARS[$attrname]) ? $HTTP_POST_VARS[$attrname] : "";
+      return isset($HTTP_POST_VARS[$attrname]) ? $HTTP_POST_VARS[$attrname] : NULL;
     else
       assert(0);
   }
