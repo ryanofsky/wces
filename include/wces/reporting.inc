@@ -24,9 +24,9 @@ function centeralign($text,$width)
   $l = strlen($text);
   $x = floor(($width-$l)/2.0);
   if ($l < $width)
-    return $t . str_repeat(" ",$x) . "$text" . str_repeat(" ",$width - $x - $l);
+    return str_repeat(" ",$x) . $text . str_repeat(" ",$width - $x - $l);
   else
-    return $t . $text;
+    return $text;
 };
 
 function texttable($data,$formats)
@@ -47,7 +47,7 @@ function texttable($data,$formats)
     else  
     {
       $l = strlen($col);
-      if (!$widths[$colname] || ($l > $widths[$colname]))
+      if (!isset($widths[$colname]) || ($l > $widths[$colname]))
         $widths[$colname] = $l;
     }
   }
@@ -117,7 +117,7 @@ function report_mode($i1,$i2,$i3,$i4,$i5) // what is the resolution if there are
 function report_avg($i1,$i2,$i3,$i4,$i5)
 {
   $sum = $i1 + $i2 + $i3 + $i4 + $i5;
-  return $sum != 0 ? ((5.0 * $i1) + (4.0 * $i2) + (3.0 * $i3) + (2.0 * $i4) + (1.0 * i5)) / $sum : 0;
+  return $sum != 0 ? ((5.0 * $i1) + (4.0 * $i2) + (3.0 * $i3) + (2.0 * $i4) + (1.0 * $i5)) / $sum : 0;
 };
 
 function report_sd($i1,$i2,$i3,$i4,$i5,$avg)
@@ -200,6 +200,7 @@ function report_makequery(
     $main->addwhere("qs.type = 'public'");
   };
 
+  $criteria["classes"] = false;
   report_makecriteria($main,$criteria);
  
   if($groups["classes"])
@@ -507,14 +508,14 @@ function report_makepage($main,$list,$textresponses,$options,$groups,&$outhtml,&
         }  
         if ($options["outhtml"])
         {
-          $outhtml .= "<h5>" . $main->row["q$j"] . "</h5>";
+          $outhtml .= "<h5>" . $main->row["FR$j"] . "</h5>";
           $outhtml .= "<UL><LI>";
           $outhtml .= nl2br(stripcslashes(str_replace("\t","</LI><LI>",trim($textresponses->row["FR$j"]))));
           $outhtml .= "</LI></UL>";        
         }
         if ($options["outtext"])
         {
-           $outtext .= wordwrap($main->row["FR$i"],76) . "\n\n";
+           $outtext .= wordwrap($main->row["FR$j"],76) . "\n\n";
            $outtext .= " - ";
            $outtext .= wordwrap("    " . stripslashes(stripcslashes(str_replace("\t","\n - ",trim($textresponses->row["FR$j"])))),76);
            $outtext .= "\n\n";
@@ -576,9 +577,9 @@ function makereport($db,&$wizard,$stdout,&$html,&$text)
     if ($stdout) print ($outhtml);
   }
     
+  $line = "---------------------------------------------------------------------------\n";
   if ($text)
   {
-    $line = "---------------------------------------------------------------------------\n";
     $text = "$line\nPage $page of $pages\n\n";
     $text .= "Report Information\n";
     $text .= " - Administrator ID: " . login_getuni() . "\n";
@@ -710,7 +711,7 @@ class Report extends FormWidget
   function display()
   {
     global $server_wcespath,$db;
-    
+  
     if ($this->state == Report_wizard)
       $this->wizard->display(false);
     else
@@ -1072,6 +1073,7 @@ class ReportWizard extends Wizard
     if ($this->showstep == ReportWizard_depts) $c["departments"] = false;
     if ($this->showstep == ReportWizard_profs) $c["professors"] = false;
     if ($this->showstep == ReportWizard_courses) $c["courses"] = false;
+    $c["classes"] = false;
     report_makecriteria($this->query,$c);
     unset($c);
   }
@@ -1256,10 +1258,10 @@ class ReportWizard extends Wizard
 %>
 <p><font size="-1">Check the survey properties below to determine how results are to be aggregated. Surveys that have the checked properties in common will have their scores added up and averaged together. For example, checking 'departments' and 'Question Periods' will aggregate all surveys the come from the same department AND question period. To prevent any aggregation, select 'classes' and 'Question Periods.' To aggregate all surveys together, leave all properties unchecked.</font></p>
 <p>
-<% $this->groupclasses->display(); %> <% $this->groupclasses->displaylabel("classes"); %><br>
-<% $this->groupcourses->display(); %> <% $this->groupcourses->displaylabel("courses"); %><br>
-<% $this->groupprofessors->display(); %> <% $this->groupprofessors->displaylabel("professors"); %><br>
-<% $this->groupdepartments->display(); %> <% $this->groupdepartments->displaylabel("departments"); %><br>
+<% $this->groupclasses->display(); %> <% $this->groupclasses->displaylabel("Classes"); %><br>
+<% $this->groupcourses->display(); %> <% $this->groupcourses->displaylabel("Courses"); %><br>
+<% $this->groupprofessors->display(); %> <% $this->groupprofessors->displaylabel("Professors"); %><br>
+<% $this->groupdepartments->display(); %> <% $this->groupdepartments->displaylabel("Departments"); %><br>
 <% $this->groupquestionperiods->display(); %> <% $this->groupquestionperiods->displaylabel("Question Periods"); %><br>
 </p> 
 <%
@@ -1399,13 +1401,3 @@ function pcmp($a, $b)
 } 
 
 %>
-
-
-
-
-
-
-
-
-
-
