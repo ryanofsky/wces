@@ -235,10 +235,8 @@ CREATE TABLE divisions (
 );
 
 CREATE TABLE enrollments (
-  enrollmentid int(11) NOT NULL auto_increment,
   classid int(11) default NULL,
   userid int(11) default NULL,
-  PRIMARY KEY (enrollmentid),
   UNIQUE KEY classid(classid,userid)
 );
 
@@ -391,4 +389,14 @@ CREATE TABLE users (
   isadmin enum('false','true') NOT NULL default 'false',
   PRIMARY KEY (userid),
   UNIQUE KEY cunix(cunix)
+);
+
+CREATE TABLE warninglog (
+  errorid int(11) NOT NULL auto_increment,
+  date timestamp(14) NOT NULL,
+  file tinytext,
+  line int(11) default NULL,
+  uni tinytext,
+  dump text,
+  PRIMARY KEY (errorid)
 );
