@@ -120,51 +120,83 @@ class ActionButton extends FormWidget
   
   function loadvalues() // public abstract
   {
-    global $HTTP_POST_VARS, $HTTP_GET_VARS;
-    
-    if ($this->formmethod == WIDGET_GET)
-      $thearray = &$HTTP_GET_VARS;
-    else if ($this->formmethod == WIDGET_POST)
-      $thearray = &$HTTP_POST_VARS;
-    else
-      assert(0);
-    
-    $l = strlen($this->prefix);
-    foreach($thearray as $key => $value)
+    $this->object = "";
+    if($this->action = $this->loadattribute(""))
     {
-      if ($value && $this->prefix == substr($key,0,$l))
+      $p = strrpos($this->action,"-");
+      if ($p !== false)
       {
-        $p = strrpos($key,'_');
-        $this->action = substr($key,$l+1,$p-$l-1);
-        $this->object = substr($key,$p+1);
-        return;        
+        $this->object = substr($this->action,$p+1);
+        $this->action = substr($this->action,0,$p);
+      }
+    }
+    else
+    {
+      global $HTTP_POST_VARS, $HTTP_GET_VARS;
+      if ($this->formmethod == WIDGET_GET) $vars = &$HTTP_GET_VARS; else if ($this->formmethod == WIDGET_POST) $vars = &$HTTP_POST_VARS;
+      $pref = $this->prefix . '-';
+      $l = strlen($pref);
+      foreach($vars as $key => $value)
+      if ($value && $pref == substr($key,0,$l))
+      {
+        $p = strrpos($key,'-');
+        $this->action = substr($key,$l,$p-$l);
+        $this->object = substr($key,$p);
+        return;
       }
     }
   }
 
+  function dumpscript()
+  {
+     global $ActionButton_dumpscript;
+     if (!isset($ActionButton_dumpscript))
+     {
+       $ActionButton_dumpscript = true;
+?>
+<!-- Begin ActionButton Script -->
+<script>
+<!--
+  function ActionButton_go(action,object,actionobject)
+  {
+    //alert(actionobject.name + " set to '" + action + "'");
+    actionobject.value = action + '-' + object;
+    actionobject.form.submit();
+  }
+
+  function ActionButton_sgo(action,object,form,actionelement)
+  {
+    ActionButton_dyngo(action,object,document.forms[form][actionelement]);
+  }
+// -->
+</script>
+<!-- End ActionButton Script -->
+<?
+     }
+  }
+
   function display($label = false, $action = false, $object = false, $attribs = "")
   {
-    if ($label === false)
+    if ($label === false) // trigger an action for the next page load that can be reset by javascript
     {
-      $value = 0;
       if ($action === false)
       {
         $action = $this->action;
         $object = $this->object;
-        if ($action) $value = 1;
       }
-      print('<input type=hidden name="' . $this->prefix . '_' . $action . '_' . $object . '" value="' . $value . '">');  
+      $value = $action ? "$action-$object" : "";
+      print("<input type=hidden name=\"$this->prefix\" value=\"$value\">");
     }  
-    else
+    else // display form button that can trigger an action
     {
       if ($attribs) $attribs = " $attribs";  
-      print('<input type=submit name="' . $this->prefix . '_' . $action . '_' . $object . '" value="' . $label . '"' . $attribs . '>');
+      print('<input type=submit name="' . $this->prefix . '-' . $action . '-' . $object . '" value="' . $label . '"' . $attribs . '>');
     }  
   }
   
   function gethref($action,$object)
   {
-    return "javascript:document.forms['" . $this->form . "']['" .$this->prefix . "_" . $action . '_' . $object . "'].value = 1; void(document.forms['" . $this->form . "'].submit())";
+    return "javascript:ActionButton_sgo('$action','$object','$this->form','$this->prefix');";
   }
 };
 
