@@ -1,18 +1,22 @@
 CREATE TABLE surveys
 (
-  survey_id SERIAL PRIMARY KEY,
+  survey_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('survey_ids'),
   link_id INTEGER NOT NULL
 );
+
+CREATE SEQUENCE survey_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE surveys IS 'A survey is a list of survey_components. Each survey is linked to a set of objects by an entry in the links table.';
 
 CREATE TABLE survey_components
 (
-  survey_component_id SERIAL PRIMARY KEY,
+  survey_component_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('survey_component_ids'),
   survey_id INTEGER NOT NULL,
   component_id INTEGER NOT NULL,
   ordinal SMALLINT NOT NULL
 );
+
+CREATE SEQUENCE survey_component_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE survey_components IS 'survey_components stores information about which components are in each survey and in what order the components appear.';
 
@@ -20,22 +24,26 @@ COMMENT ON COLUMN survey_components.ordinal IS 'ordinals are just integers used 
 
 CREATE TABLE transforms
 (
-  transform_id SERIAL PRIMARY KEY,
+  transform_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('transform_ids'),
   link_id INTEGER NOT NULL,
   survey_id INTEGER NOT NULL
 );
+
+CREATE SEQUENCE transform_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE transforms IS 'each row represents a list of transform_operations that can be applied to a survey';
 
 CREATE TABLE transform_operations
 (
-  transform_operation_id SERIAL PRIMARY KEY,
+  transform_operation_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('transform_operation_ids'),
   transform_id INTEGER NOT NULL,
   component1_id INTEGER,
   component2_id INTEGER,
   ordinal SMALLINT NOT NULL,
   operation CHAR NOT NULL
 );
+
+CREATE SEQUENCE transform_operation_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE transform_operations IS 'A transform_operation contains instructions to add, remove, or swap components in a survey. Information about which survey is affected and what objects a group of transform_operations apply to is stored in the transform table.';
 
@@ -52,21 +60,25 @@ A value of 4 means *swap*. If question1 and question2 both exist in the survey, 
 
 CREATE TABLE survey_answers
 (
-  survey_answer_id SERIAL PRIMARY KEY,
+  survey_answer_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('survey_answer_ids'),
   survey_id INTEGER NOT NULL,
   object_id INTEGER,
   question_period_id INTEGER NOT NULL
 );
 
+CREATE SEQUENCE survey_answer_ids INCREMENT 1 START 1;
+
 COMMENT ON TABLE survey_answers IS 'survey_answers is a collection of answers entered by one person taking a survey in a particular question_period.';
 
 CREATE TABLE question_periods
 (
-  question_period_id SERIAL PRIMARY KEY,
+  question_period_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('question_period_ids'),
   displayname VARCHAR(100),
   begindate TIME,
   enddate TIME
 );
+
+CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE question_periods IS 'a list of question periods';
 
@@ -78,32 +90,40 @@ COMMENT ON COLUMN question_periods.enddate IS 'the date when the question_period
 
 CREATE TABLE users
 (
-  user_id SERIAL PRIMARY KEY
+  user_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('user_ids')
 );
+
+CREATE SEQUENCE user_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE users IS 'The users table is just here so the system can keep track of who has already filled out surveys. It might also be used in the future to determine permissions and access rights.';
 
 CREATE TABLE completions
 (
-  completion_id SERIAL PRIMARY KEY,
+  completion_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('completion_ids'),
   user_id INTEGER NOT NULL,
   question_period_id INTEGER NOT NULL,
   survey_id INTEGER NOT NULL
 );
 
+CREATE SEQUENCE completion_ids INCREMENT 1 START 1;
+
 COMMENT ON TABLE completions IS 'If a record exists for a particular user_id, question_period_id, and survey_id in this table then it means that the specified user filled out the specified survey in the specified question_period.';
 
 CREATE TABLE links
 (
-  link_id SERIAL PRIMARY KEY
+  link_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('link_ids')
 );
+
+CREATE SEQUENCE link_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE links IS 'Links are the mechanism by which objects in the WBES database associate with external data. The links table is meant to be *abstract* -- not useful by itself but inherited by sub-tables that will have its properties in common. Other tables in the database reference external data by simply referencing a link_id number in this table. Depending on which type of subtable the link_id actually points to, the link can be associated with any type of information based on any type of criteria. For example, the each survey and transform in a course evaluation system would store link_id''s corresponding to certain subsets of the courses in an external database. Also, the user''s in the users table and address book entries used by the mass mailing utilities can store links that point to entries in another external database, possibly an LDAP server. There is no built in limit to the methods that can be used to convert a link into lists of the external objects and of finding the links associated with one or more external objects. The database right now includes support for two types of links that inherit from this table. The data_links table and data_links_cache are used to provide quick mapping of links to objects in a separate (but local) postgres database (and vice versa). The generic_links table is used to store links simple lists of items which don''t need to be associated with an existing database.';
 
 CREATE TABLE objects
 (
-  object_id SERIAL PRIMARY KEY
+  object_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('object_ids'),
 );
+
+CREATE SEQUENCE object_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE objects IS 'Objects are the destinations of links. A link can point to 0 or more objects. For example if a survey is created and linked to several classes, the survey_answer id will stores a field that indicates which one of the classes the answer applies to. Like the links table, the objects table can also be an abstract class. Unlike the links table, however, the other tables that reference object_id''s are not actually linked with foreign keys. If a link type requires that destination objects have integer ids (like the data_links link type), then those integer ids can be stored directly in the other tables. Normally, however, a proxy table would be created that inherits from objects.';
 
@@ -136,9 +156,11 @@ CREATE INDEX data_links_cache_index ON data_links_cache USING BTREE (object_id, 
 
 CREATE TABLE generic_links
 (
-  generic_link_id SERIAL PRIMARY KEY,
+  generic_link_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('generic_link_ids'),
   link_names TEXT[]
 );
+
+CREATE SEQUENCE generic_link_ids INCREMENT 1 START 1;
 
 COMMENT ON TABLE generic_links IS 'Used to link to objects that is not part of a relational database. The targets of the link are just a number of text strings which are stored in an array. For example, if a professor wanted to create a survey and link it to each of his course''s three textbooks, he could use a generic link with the names of the three textbooks. Each textbook name would be one element of an array. The array can also be set to NULL. If a survey was created with this type of link, it would mean that each person taking the survey would be able to enter in a string describing what the survey is about. (We used this technique to evaluate TAs because there is no information about them in the database.)';
 
@@ -146,7 +168,7 @@ COMMENT ON COLUMN generic_links.link_names IS 'see comment on the generic_links 
 
 CREATE TABLE components
 (
-  component_id SERIAL PRIMARY KEY,
+  component_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('component_ids'),
   component_type SMALLINT,
   component_text TEXT,
   is_html BOOLEAN NOT NULL,
@@ -155,16 +177,16 @@ CREATE TABLE components
   was_answered BOOLEAN NOT NULL
 );
 
+CREATE SEQUENCE component_ids INCREMENT 1 START 1;
+
 COMMENT ON TABLE components IS 'Abstract table inherited by other tables which store information about survey components. Survey components include questions as well as display items like headings, pictures and blocks of text.';
 
 COMMENT ON COLUMN components.component_type IS 'Integer identifier for different question types.
 
 1 - multiple choice question
-2 - ratings question
-3 - text response question
-4 - picture
-5 - block of text (or html)
-6 - heading';
+2 - text response question
+3 - block of text (or html)
+4 - heading';
 
 COMMENT ON COLUMN components.component_text IS 'Text of the question.';
 
@@ -256,21 +278,23 @@ COMMENT ON COLUMN rating_descriptions.last_text IS 'see description of table rat
 
 CREATE TABLE text_responses
 (
-  width SMALLINT NOT NULL,
-  height SMALLINT NOT NULL
+  rows SMALLINT NOT NULL,
+  cols SMALLINT NOT NULL
 )
 INHERITS(components);
 
 COMMENT ON TABLE text_responses IS 'component type for text response questions';
-COMMENT ON COLUMN text_responses.width IS 'width of the textarea field in characters';
-COMMENT ON COLUMN text_responses.height IS 'height of the textarea field in characters';
+COMMENT ON COLUMN text_responses.cols IS 'width of the textarea field in characters';
+COMMENT ON COLUMN text_responses.rows IS 'height of the textarea field in characters';
 
 CREATE TABLE component_answers
 (
-  component_answer_id SERIAL PRIMARY KEY,
+  component_answer_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('component_answer_ids'),
   survey_answer_id INTEGER NOT NULL,
   component_id INTEGER NOT NULL
 );
+
+CREATE SEQUENCE component_answer_ids INCREMENT 1 START 1; 
 
 COMMENT ON TABLE component_answers IS 'abstract table whose descendants can store responses entered into survey components.';
 
