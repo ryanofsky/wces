@@ -195,14 +195,14 @@ function report_findgroups($topicstable, $groupings, $orderings)
     }
     
     $tempname = substr(md5(uniqid(rand(),1)),0,20);
-    
-    pg_query("
+
+    $r = pg_query("
       CREATE TEMPORARY TABLE tab$tempname AS
       SELECT $tcols
       FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
       LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & COURSES ? "
       LEFT JOIN courses AS c ON c.course_id = t.course_id
-      LEFT JOIN subjects AS s ON s.subject_id = c.course_id" : "") . ($joins & PROFESSORS ? "
+      LEFT JOIN subjects AS s ON s.subject_id = c.subject_id" : "") . ($joins & PROFESSORS ? "
       LEFT JOIN users AS u ON u.user_id = t.user_id" : "") . ($joins & DEPARTMENTS ? "
       LEFT JOIN departments AS d ON d.department_id = t.department_id" : "") ."
       GROUP BY $group_s
@@ -213,7 +213,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
       ' LANGUAGE 'sql';
     
       UPDATE $topicstable SET ordinal = fun$tempname($fcols);
-    
+ 
       DROP FUNCTION fun$tempname($fargs);
       DROP TABLE tab$tempname;
     ", $wces, __FILE__, __LINE__);

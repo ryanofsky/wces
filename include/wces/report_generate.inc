@@ -18,9 +18,9 @@ function makereport(&$wizard,$stdout,&$html,&$text)
   $groups = Array
   (
     CLASSES => $wizard->groupclasses->checked,
-    COURSES => $wizard->groupcourses->checked,
+    COURSES => $wizard->groupcourses->checked || $wizard->groupclasses->checked,
     PROFESSORS => $wizard->groupprofessors->checked,
-    DEPARTMENTS => $wizard->groupdepartments->checked,
+    DEPARTMENTS => $wizard->groupdepartments->checked || $wizard->groupcourses->checked || $wizard->groupclasses->checked,
     QUESTION_PERIODS => $wizard->groupquestionperiods->checked
   );
 
