@@ -1,3 +1,4 @@
+-- DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VARCHAR(28),char(1),varchar(10));
 DROP TABLE classes;
 DROP SEQUENCE class_ids;
 DROP TABLE courses ;
@@ -40,7 +41,7 @@ DROP FUNCTION school_update(VARCHAR(252));
 DROP FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP);
 DROP FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP,INTEGER);
 DROP FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEXT,TEXT);
-DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VARCHAR(28),char(1),varchar(10));
+DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,TEXT,TEXT,TEXT,TEXT,TEXT);
 DROP FUNCTION cunix_associate(INTEGER,INTEGER);
 DROP FUNCTION get_profs(INTEGER);
 DROP FUNCTION get_question_period();
@@ -302,7 +303,7 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
         INSERT INTO users (firstname, lastname, flags) VALUES (firstname_, lastname_, 4);
         i := currval(''user_ids'');
       END IF;
-
+    
       INSERT INTO professor_hooks(user_id, source, name) VALUES (i, source_, name_);
       RETURN i;
     ELSE IF source_ = 2 THEN
@@ -332,18 +333,21 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
     ELSE IF source_ = 3 OR source_ = 4 THEN
       SELECT INTO i user_id FROM professor_hooks WHERE source = source_ AND firstname = firstname_ AND lastname = lastname_;
       IF FOUND THEN RETURN i; END IF;
+       
+      SELECT INTO i user_id FROM professor_hooks WHERE source IN (3,4) AND firstname = firstname_ AND lastname = lastname_;
       
-      FOR rec IN SELECT user_id FROM professor_hooks WHERE source = 2 AND firstname = firstname_ AND lastname = lastname_ LOOP
-        IF i IS NULL THEN i := rec.user_id ELSE i := NULL; EXIT; END IF;
-      END LOOP;
+      IF i IS NULL THEN
+        FOR rec IN SELECT user_id FROM professor_hooks WHERE source = 2 AND firstname = firstname_ AND lastname = lastname_ GROUP BY user_id LOOP
+          IF i IS NULL THEN i := rec.user_id; ELSE i := NULL; EXIT; END IF;
+        END LOOP;
+      END IF;
       
       IF i IS NULL THEN
         INSERT INTO users (firstname, lastname, flags) VALUES (firstname_, lastname_, 4);
         i := currval(''user_ids'');
       END IF;
-
-      INSERT INTO professor_hooks(user_id, source, name) VALUES (i, source_, firstname_, lastname_);
-      
+        
+      INSERT INTO professor_hooks(user_id, source, firstname, lastname) VALUES (i, source_, firstname_, lastname_);
       RETURN i;
     ELSE
       RAISE EXCEPTION ''profesor_replace(%,%,%,%,%) fails. unknown source'', $1, $2, $3, $4, $5;
@@ -835,6 +839,7 @@ CREATE FUNCTION enrollment_update(INTEGER,INTEGER,INTEGER,TIMESTAMP) RETURNS INT
   END;
 ' LANGUAGE 'plpgsql';
 
+DROP FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP,INTEGER);
 CREATE FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCHAR(28),INTEGER,TIMESTAMP,INTEGER) RETURNS INTEGER AS '
   DECLARE
     uni_s   ALIAS FOR $1;
@@ -908,7 +913,7 @@ CREATE FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEX
   END;
 ' LANGUAGE 'plpgsql';
 
-CREATE FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VARCHAR(28),char(1),varchar(10)) RETURNS INTEGER AS '
+CREATE FUNCTION professor_hooks_update(INTEGER,SMALLINT,TEXT,TEXT,TEXT,TEXT,TEXT) RETURNS INTEGER AS '
   DECLARE
     userid      ALIAS FOR $1;
     src         ALIAS FOR $2;
@@ -919,20 +924,20 @@ CREATE FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),
     pid_s       ALIAS FOR $7;
     i INTEGER;
   BEGIN
-    IF src = 1 THEN
-      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 1 and name = name_s;
-    ELSE IF src = 2 THEN
-      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 2 AND firstname = firstname_s AND lastname = lastname_s AND middle = middle_s AND pid = pid_s;
-    ELSE IF src = 3 THEN
-      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 3 AND firstname = firstname_s AND lastname = lastname_s;
-    ELSE IF src = 4 THEN
-      SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 4 AND firstname = firstname_s AND lastname = lastname_s;
-    ELSE
-      RETURN 0;
-    END IF; END IF; END IF; END IF;
-    
-    IF FOUND THEN RETURN i; END IF;
-    
+     IF src = 1 THEN
+       SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 1 and name = name_s;
+     ELSE IF src = 2 THEN
+       SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 2 AND firstname = firstname_s AND lastname = lastname_s AND middle = middle_s AND pid = pid_s;
+     ELSE IF src = 3 THEN
+       SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 3 AND firstname = firstname_s AND lastname = lastname_s;
+     ELSE IF src = 4 THEN
+       SELECT INTO i professor_hook_id FROM professor_hooks WHERE user_id = userid AND source = 4 AND firstname = firstname_s AND lastname = lastname_s;
+     ELSE
+       RETURN 0;
+     END IF; END IF; END IF; END IF;
+     
+     IF FOUND THEN RETURN i; END IF;
+     
     INSERT INTO professor_hooks (user_id, source, name, firstname, lastname, middle, pid) VALUES (userid, src, name_s, firstname_s, lastname_s, middle_s, pid_s);
     RETURN currval(''professor_hook_ids'');
   END;
