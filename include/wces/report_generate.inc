@@ -66,12 +66,13 @@ function makereport(&$wizard,$stdout,&$html,&$text, $options = array())
 }
 
 $makeall_survey_responses = 'survey_responses';                                        
-$makeall_text_responses = 'textresponse_responses';                                    
+$makeall_text_responses = 'textresponse_responses';        
+$makeall_choice_responses = 'choice_responses';                            
 $report_skip_lines = false;
 
 function makeall($stdout,&$html,&$text,&$groups, $options = array())
 {
-  global $wces_path, $wces, $makeall_survey_responses, $makeall_text_responses, $report_skip_lines;
+  global $wces_path, $wces, $makeall_survey_responses, $makeall_text_responses, $report_skip_lines, $makeall_choice_responses;
 
   $result = pg_go("
     SELECT s.ordinal, s.students, r.responses
@@ -149,19 +150,24 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   }
   else
   {
-    $result = pg_go("
-      SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
-      FROM rwtopics AS t
-      INNER JOIN classes AS cl USING (class_id)
-      INNER JOIN courses AS c ON c.course_id = cl.course_id
-      INNER JOIN subjects AS s USING (subject_id)
-      INNER JOIN users AS u USING (user_id)
-      ORDER BY t.ordinal
-    ", $wces, __FILE__, __LINE__);
-
-    $classes = new pg_segmented_wrapper($result, "ordinal");
-
-    $professors = NULL;
+    if (isset($options['skipclasslist']))
+      $classes = $professors = null;
+    else
+    {
+      $result = pg_go("
+        SELECT t.ordinal, t.class_id, u.user_id, u.firstname, u.lastname, s.code AS scode, c.code AS ccode, c.name, cl.section
+        FROM rwtopics AS t
+        INNER JOIN classes AS cl USING (class_id)
+        INNER JOIN courses AS c ON c.course_id = cl.course_id
+        INNER JOIN subjects AS s USING (subject_id)
+        INNER JOIN users AS u USING (user_id)
+        ORDER BY t.ordinal
+      ", $wces, __FILE__, __LINE__);
+  
+      $classes = new pg_segmented_wrapper($result, "ordinal");
+  
+      $professors = NULL;
+    }
   }
 
   $result = pg_go("
@@ -178,7 +184,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
   if (isset($options['taresponses']) && $options['taresponses'])
   {
     $result = pg_go("
-      SELECT DISTINCT t.ordinal, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
+      SELECT DISTINCT t.ordinal, tr.parent, tr.response_id, tr.name, tr.overall, tr. knowledgeability,
         tr.approachability, tr.availability, tr.communication, tr.comments
       FROM rwtopics AS t
       INNER JOIN $makeall_survey_responses AS r USING (topic_id, question_period_id)
@@ -197,7 +203,7 @@ function makeall($stdout,&$html,&$text,&$groups, $options = array())
       q.revision_id AS qrevision_id, q.qtext, c.ctext, choice_dist(qr.answer) AS dist, c.branch_id
     FROM (SELECT DISTINCT ordinal, topic_id, question_period_id FROM rwtopics) AS t
     INNER JOIN $makeall_survey_responses AS r USING (topic_id, question_period_id)
-    INNER JOIN choice_responses AS cr ON cr.parent = r.response_id
+    INNER JOIN $makeall_choice_responses AS cr ON cr.parent = r.response_id
     INNER JOIN choice_question_responses AS qr ON qr.parent = cr.response_id
     INNER JOIN choice_questions AS q ON q.revision_id = qr.revision_id
     INNER JOIN choice_components AS c ON c.revision_id = cr.revision_id
