@@ -24,7 +24,7 @@ function parse_date($str)
     return $timestamp;
 }
 
-login_protect(login_administrator);
+LoginProtect(LOGIN_ADMIN);
 
 define("QuestionPeriodEditor_save", 1);
 define("QuestionPeriodEditor_cancel", 2);
@@ -55,9 +55,13 @@ class QuestionPeriodEditor extends StatefullWidget
     $this->oracleDate =& new TextBox(0, 30, "", "oracleDate", $this);
   }
 
-  function loadInitialState()
+  function loadState($new)
   {
-    StatefullWidget::loadInitialState();
+    assert(isset($new));
+    StatefullWidget::loadState($new);
+    
+    if (!$new) return;
+    
     global $wces;
     if ($this->question_period_id > 0)
     {
@@ -197,7 +201,7 @@ class QuestionPeriodList extends StatefullWidget
       return $this->editor;
 
       case QuestionPeriodList_delete:
-        $this->deleteq((int)$this->event->object);
+        $this->deleteq((int)$param);
       break;
     };
   }
@@ -207,10 +211,10 @@ class QuestionPeriodList extends StatefullWidget
     global $wces;
     wces_connect();
     $ref = (int)pg_result(pg_go("SELECT references_question_period($question_period_id)", $wces, __FILE__, __LINE__),0,0);
-    if ($ref != 0)
-      $this->message = "<p><font color=red>Unable to delete question period $question_period_id because there are survey responses associated with it.</font></p>";
-    else
+    if ($ref == 0)
       pg_go("DELETE FROM semester_question_periods WHERE question_period_id = $question_period_id", $wces, __FILE__, __LINE__);
+    else
+      $this->message = "<p><font color=red>Unable to delete question period $question_period_id because there are survey responses associated with it.</font></p>";
   }
   
   function printVisible()
@@ -219,6 +223,9 @@ class QuestionPeriodList extends StatefullWidget
     
     if (isset($this->editor->message))
       print($this->editor->message);
+    
+    if (isset($this->message))
+      print($this->message);
 
     wces_connect();
     $r = pg_go("SELECT question_period_id, displayname, EXTRACT(EPOCH FROM begindate) AS begindate, EXTRACT(EPOCH FROM enddate) AS enddate, semester, year FROM semester_question_periods ORDER BY begindate, enddate", $wces, __FILE__, __LINE__);
