@@ -123,7 +123,7 @@ if ($mode == "search")
       $result = pg_go("
         SELECT u.user_id AS id, (u.lastname || ', ' || u.firstname) AS name
         FROM ($select_classes) AS l
-        INNER JOIN enrollments AS e ON e.class_id = l.class_id AND e.status = 3
+        INNER JOIN enrollments_p AS e ON e.class_id = l.class_id
         INNER JOIN users AS u USING (user_id)
         WHERE $search
         GROUP BY u.user_id, u.lastname, u.firstname
@@ -184,7 +184,7 @@ else if ($mode == "professors")
   $result = pg_go("
     SELECT DISTINCT u.user_id, u.firstname, u.lastname, d.department_id, d.code, d.name
     FROM ($select_classes) AS l
-    INNER JOIN enrollments AS e ON e.class_id = l.class_id AND e.status = 3
+    INNER JOIN enrollments_p AS e ON e.class_id = l.class_id
     INNER JOIN users AS u ON u.user_id = e.user_id
     LEFT JOIN departments AS d USING (department_id)
     ORDER BY d.code, d.department_id, u.lastname

@@ -202,10 +202,10 @@ function ShowProfessor($user_id)
   
   $classes = pg_go("
     SELECT e.class_id, get_class(e.class_id) AS class_info
-    FROM enrollments AS e
+    FROM enrollments_p AS e
     INNER JOIN ($select_classes) AS l USING (class_id)
     INNER JOIN classes AS cl ON cl.class_id = l.class_id
-    WHERE e.user_id = $user_id AND e.status = 3
+    WHERE e.user_id = $user_id
     GROUP BY e.class_id, cl.semester, cl.year
     ORDER BY cl.year DESC, cl.semester DESC, class_info
   ", $wces, __FILE__, __LINE__);

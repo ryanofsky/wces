@@ -125,14 +125,14 @@ function importRegCsv($filename, $onlyYear = false, $onlySemester = false)
     $professors = parse_csv_professor($pstr);
     
     if (count($professors) > 0)
-      pg_go("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__); 
+      pg_go("DELETE FROM enrollments_p WHERE class_id = $class_id", $wces,__FILE__,__LINE__); 
     
     foreach($professors as $p)
     {
       $prof = adarray_map("nullquot", $p);
       $user_id = (int)pg_result(pg_go("SELECT professor_find($prof[full], $prof[first], $prof[middlei], $prof[last], NULL, 1)", $wces, __FILE__, __LINE__),0,0) ;   
       if (!$user_id) die("user_id not found for professor $prof[last] on row $row");
-      pg_go("INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
+      pg_go("INSERT INTO enrollments_p (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 4, NULL)", $wces, __FILE__, __LINE__); 
       if ($p['url'])
         pg_go("SELECT professor_data_update($user_id,$prof[url],NULL,NULL,NULL,NULL)", $wces, __FILE__, __LINE__);
       if ($p['email'])
@@ -449,7 +449,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
         if ($firstname || $lastname)
         {
           pg_go("
-            DELETE FROM enrollments WHERE class_id = $class_id AND status = 3
+            DELETE FROM enrollments_p WHERE class_id = $class_id
               AND (lastseen IS NULL OR lastseen <= $date)
           ", $wces,__FILE__,__LINE__);       
 
@@ -467,7 +467,7 @@ function importDeanCsv($userfile, $year, $semester, $parent_topic, $category_id,
       if (isset($fields["cunix"]))
         pg_go("
           UPDATE enrollments SET status = 0
-          WHERE class_id = $class_id AND status = 1 
+          WHERE class_id = $class_id AND status & 1 <> 0 
             AND (lastseen IS NULL OR lastseen <= $date)
         ", $wces, __FILE__, __LINE__);
         
