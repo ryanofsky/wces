@@ -393,7 +393,6 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
 ?><br><h4>On this page</h4>
  <table border=0>
  <tr><td>Question Period:</td><td><b><?=ucwords($semester)?> <?=$year?> <?=$description?></b></td></tr>
- <tr><td>Department:</td><td><b>Computer Science (COMS)</b></td></tr>
  <tr><td>Professor:</td><td><b><a href="<?=$wces_path?>administrators/info.php?professorid=<?=$profid?>"><?=$pname?></a></b></td></tr>
  <tr><td>Class:</td><td><b><a href="<?=$wces_path?>administrators/info.php?classid=<?=$classid?>"><?=$cname?></a></b></td></tr>
  </table>
@@ -535,6 +534,8 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
   /////////////////////////////////////////////////////////////////////////////
   // TA SECTION
   
+  
+  
   $sqloptions = array ("standard" => false, "custom" => false);
   $groups = Array("classes" => $classid ? true : false, "courses" => false, "professors" => true, "departments" => true, "questionperiods" => true);
   $ratings = $listclasses = $listprofessors = $abet = $responses = false;
@@ -550,6 +551,7 @@ function nshowresults($db,$questionperiodid,$classid,$showcsv)
   $displayoptions = array("pies" => false);
 
   $outhtml = "<br>"; $text = false;
+  
   report_makepage($text, $outhtml, $displayoptions, $groups, $header, $listclasses,
     $listprofessors, $ratings, $abet, $responses, $tas, true);
     
