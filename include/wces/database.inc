@@ -1,5 +1,6 @@
 <%
 
+require_once("wces/general.inc");
 require_once("wces/taskwindow.inc");
 require_once("wces/database_selectmonster.inc");
 
