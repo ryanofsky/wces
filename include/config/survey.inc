@@ -10,15 +10,15 @@ require_once('wces/component_abet.inc');
 $survey_factories = array
 ( 
   new SurveyFactory(),
+  new AbetFactory(),
+  new NewAbetFactory(),
+  new BioAbetFactory(),
   new ChoiceFactory(),
   new ChoiceQuestionFactory(),
   new TextResponseFactory(),
   new TextFactory(),
   new HeadingFactory(),
-  new PageBreakFactory(),
-  new AbetFactory(),
-  new NewAbetFactory(),
-  new BioAbetFactory()
+  new PageBreakFactory()
 );
 
 ?>

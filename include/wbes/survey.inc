@@ -59,6 +59,30 @@ class SurveyGlobals
     }
     return $load;
   }
+  
+  function doLoad()
+  {
+    foreach (array_keys($this->loads) as $type)
+      while (!$this->loadComplete[$type])
+      {
+        $this->loadComplete[$type] = true;
+        $this->cfactories[$type]->load($this->loads[$type], $this);
+      }
+  
+    foreach (array_reverse(array_keys($this->loads)) as $type)
+    {
+      $loads =& $this->loads[$type];
+      foreach (array_keys($loads) as $lk)
+      {
+        $load =& $loads[$lk];
+        foreach (array_keys($load->targets) as $tk)
+        {
+          $target =& $load->targets[$tk];
+          $target->finishLoad($load->component);
+        }
+      }
+    }
+  }
 };
 
 class SurveyLoadTarget
@@ -120,26 +144,8 @@ function & LoadSurvey($item_id, $specialization_id, &$factories, $save_id = null
   $load =& $surveyGlobals->getLoad(1, $component_id, $specialization_id);
   $load->addTarget(new SurveyLoadTarget($dest, 0, $revision_id, $item_id));
 
-  foreach (array_keys($surveyGlobals->loads) as $type)
-    while (!$surveyGlobals->loadComplete[$type])
-    {
-      $surveyGlobals->loadComplete[$type] = true;
-      $surveyGlobals->cfactories[$type]->load($surveyGlobals->loads[$type], $surveyGlobals);
-    }
+  $surveyGlobals->doLoad();
 
-  foreach (array_reverse(array_keys($surveyGlobals->loads)) as $type)
-  {
-    $loads =& $surveyGlobals->loads[$type];
-    foreach (array_keys($loads) as $lk)
-    {
-      $load =& $loads[$lk];
-      foreach (array_keys($load->targets) as $tk)
-      {
-        $target =& $load->targets[$tk];
-        $target->finishLoad($load->component);
-      }
-    }
-  }
   return $dest[0];
 };
 
@@ -161,7 +167,6 @@ function SaveSurvey(&$survey, $specialization_id, $user_id)
   pg_go("COMMIT", $wbes, __FILE__, __LINE__);
   
   return pg_result($r, 0, 0);
-  
 }
 
 class SurveyFactory extends ComponentFactory
