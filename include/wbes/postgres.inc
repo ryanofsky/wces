@@ -153,7 +153,7 @@ function pg_implode($a)
     if($r) $r .= ",";
     $r .= '"' . addslashes($v) . '"';
   }
-  return "'\{$r}'";
+  return "'\{" . addslashes($r) . "}'";
 }
 
 ?>
