@@ -49,13 +49,16 @@ class ImageUpload extends Widget
     $this->Widget($name, $parent);
   }
 
-  function loadState()
+  function loadState($new)
   {
-    global $wces, $server_upload;
+    assert(isset($new));
+    if ($new) return;
+    
+    global $wces, $WCES_CONFIG_UPLOAD_PHYSICAL_PATH;
 
     $extensions = array(1 => ".gif", 2 => ".jpg", 3 => ".png");
 
-    $file = &$_FILES[$this->name];
+    $file = &$_FILES[$this->name()];
     
     if (is_array($file) && is_uploaded_file($tname = $file['tmp_name']))
     {
@@ -82,7 +85,7 @@ class ImageUpload extends Widget
       // resulting filename
       $this->file_name = $picture_id . '-' . $fname;
       
-      $whole_name = $server_upload . $this->file_name;
+      $whole_name = $WCES_CONFIG_UPLOAD_PHYSICAL_PATH . $this->file_name;
       
       if (!move_uploaded_file($tname, $whole_name))
       {
@@ -106,7 +109,7 @@ class ImageUpload extends Widget
   function display()
   {
     $this->printValue("id", $this->picture_id);
-    print('<input name="' . $this->name . '" type=file>');
+    print('<input name="' . $this->name() . '" type=file>');
   }
 }
 
@@ -150,6 +153,10 @@ class UserEditor extends ParentWidget
     
     if ($this->show_admin)
     {
+      $this->is_admin =& new CheckBox("is_admin", $this);
+      $this->is_dadmin =& new CheckBox("is_dadmin", $this);
+      $this->is_prof =& new CheckBox("is_prof", $this);
+      $this->is_student =& new CheckBox("is_student", $this);
       $this->optout =& new CheckBox("optout", $this);
     }
   }
@@ -190,7 +197,11 @@ class UserEditor extends ParentWidget
 
     if ($this->show_admin)
     {
-      $this->optout->checked = (bool)($flags & 128);
+      $this->optout->checked = (bool)($flags & 0x80);
+      $this->is_admin->checked = (bool)($flags & 0x1);
+      $this->is_dadmin->checked = (bool)($flags & 0x2);
+      $this->is_prof->checked = (bool)($flags & 0x4);
+      $this->is_student->checked = (bool)($flags & 0x8);
     }
   }
   
@@ -248,17 +259,25 @@ class UserEditor extends ParentWidget
 
     if ($this->show_admin)
     {
-      $oo = $this->optout->checked ? "flags | 128" : "flags & ~128";
-      $result = $result && pg_go("UPDATE users SET flags = $oo WHERE user_id = $this->user_id
+      $plus = $minus = 0;
+      if ($this->optout->checked) $plus |= 0x80; else $minus |= 0x80;
+      if ($this->is_admin->checked) $plus |= 0x1; else $minus |= 0x1;
+      if ($this->is_dadmin->checked) $plus |= 0x2; else $minus |= 0x2;
+      if ($this->is_prof->checked) $plus |= 0x4; else $minus |= 0x4;
+      if ($this->is_student->checked) $plus |= 0x8; else $minus |= 0x8;
+      $result = $result && pg_go("UPDATE users SET flags = ((flags | $plus) & ~$minus) WHERE user_id = $this->user_id
       ", $wces, __FILE__, __LINE__);
     }
 
     return (bool)$result;
   }
   
-  function loadState()
+  function loadState($new)
   {
-    ParentWidget::loadState();
+    assert(isset($new));
+    ParentWidget::loadState($new);
+    
+    if ($new) return $this->loadInitialState();
 
     if ($this->event->event == UserEditor_save)
     {
@@ -297,10 +316,20 @@ class UserEditor extends ParentWidget
 
 <tr><td>First Name:</td><td><? $this->firstName->display(); ?></td></tr>
 <tr><td>Last Name:</td><td><? $this->lastName->display(); ?></td></tr>
-<tr><td valign=top>Email:</td><td><? $this->email->display(); ?><br>
+<tr><td valign=top>Email:</td><td><? $this->email->display(); ?>
+<? if ($this->show_admin) { ?>
+<br>
+<? $this->optout->display(); $this->optout->displaylabel("Don't send reminder emails"); ?>
+<? } ?>
+</td></tr>
 
 <? if ($this->show_admin) { ?>
-<? $this->optout->display(); $this->optout->displaylabel("Don't send reminder emails"); ?></td></tr>
+<tr><td valign=top>Status:</td><td>
+<? $this->is_admin->display(); $this->is_admin->displaylabel("Administrator"); ?><br>
+<? $this->is_dadmin->display(); $this->is_dadmin->displaylabel("Department Administrator"); ?><br>
+<? $this->is_prof->display(); $this->is_prof->displaylabel("Professor"); ?><br>
+<? $this->is_student->display(); $this->is_student->displaylabel("Student"); ?>
+</td></tr>
 <? } ?>
 
 <tr><td>Department:</td><td><? $this->department->display(); ?></td></tr>
