@@ -99,11 +99,11 @@ function simplesplit($splitchar,$name,&$first,&$last)
 function redirect($url)
 {
   global $server_cheapredirects, $server_isproduction, $server_url;
-
+   
   if (headers_sent())
   {
     sendwarning("Redirect was attempted after headers had already been sent.", __FILE__, __LINE__);
-    if ($server_isproduction) 
+    if ($server_isproduction)
       sloppyredirect($url);
   }
   else
@@ -126,8 +126,7 @@ function redirect($url)
 */
 function sloppyredirect($url)
 {
-  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");
-  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
+  print("<meta http-equiv=\"refresh\" content=\"0; URL=$url\">\n");  print("<script>\n<!-- \nwindow.location = '". addslashes($url) . "';\n// -->\n</script>\n");
   print("Click <a href=\"$url\">here</a> to proceed.");
   exit();
 }
@@ -246,7 +245,7 @@ function nullquot($str)
 
 function nulldate($timestamp)
 {
-  return $timestamp ? "'" . date("Y-m-d G:i:s", $timestamp) . "'" : "NULL"; 
+  return $timestamp ? "'" . date("Y-m-d G:i:s", $timestamp) . "'" : "NULL";
 }
 
 function mnullquot($str)
@@ -267,7 +266,7 @@ function adarray_map($func, $aa) // associative safe
   reset($aa);
   while(list($key) = each($aa))
     $r[$key] = $func($aa[$key]);
-  return $r;  
+  return $r;
 }
 
 function addurlparam($url, $param)
@@ -294,7 +293,7 @@ function bprint($str, $mod = 10)
   if (++$i % $mod == 0)
   {
     $i = 0;
-    flush(); 
+    flush();
   }
 }
 
@@ -329,6 +328,85 @@ function includeScript($src, $print="headPrint", $version="javascript")
     $print("// -->\n</script>");
     fclose($fp);
   }
+}
+
+// call_new does the same sort of job that call_user_func_array would
+// except that it is used to call constructors instead of normal
+// functions.
+//
+//   $a = call_new('my_class', array(1,2,3)
+//
+// is roughly equivalent to
+//
+//   $a = new my_class(1,2,3);
+//
+// if the constructor is expecting an argument to be passed by reference
+// call_new() can be invoked like
+//
+//  $a = new my_class(array(&$b, $c));
+//
+// In this case $b will be passed by reference and $c will be copied
+// by value.
+
+// XXX: this should be modified to return a referene to the new object
+// instead of copying it.
+
+function call_new($class, $args)
+{
+  $s_args = '$class,$args';
+  $s_body = 'return new $class(';
+
+  $n = count($s_args);
+
+  for($i = 0; $i < $n; ++$i)
+  {
+    if ($i != 0) $s_body .= ",";
+    $s_body .= "\$args[$i]";
+  };
+
+  $s_body .= ");";
+
+  print("<p>s_args = $s_args</p>\n");
+  print("<p>s_body = $s_body</p>\n");
+
+  $f = create_function($s_args, $s_body);
+  $f($class, $args);
+};
+
+function & ifnull(&$a, $b)
+{
+  if (isset($a)) return $a; else return $b; 
+}
+
+/* Opens a javascript debug console. Messages can be printed to it
+   using the javascript function called p(). This is better than 
+   using alert() statements in many cases, since it doesn't interrupt
+   event handling.
+*/
+
+function JavascriptDebug()
+{
+?>
+<script>
+<!--
+
+var d = window.open("about:blank","debug");
+d.document.open();
+d.document.write("<form><textarea rows=20 cols=80 id=t></textarea></form>");
+d.document.close();
+
+var t = d.document.all['t'];
+
+function p(str)
+{
+  t.value += '*' + str + '*\n';
+}
+
+p("DEBUG WINDOW")
+
+// -->
+</script>  
+<?
 }
 
 ?>
