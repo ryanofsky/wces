@@ -1,0 +1,148 @@
+<script>
+<!--
+
+  var happyrollover = document.images && window.Image ? true : false;
+  var happytree = happyrollover && RegExp && (document.all || document.getElementById) ? true : false;
+
+  // fix for Netscape 3 string object
+  if (happyrollover && !String.prototype.slice) String.prototype.slice = new Function("start","len","if(len<0 || len>this.length) len = this.length; var ret = new String(); for(var i = start; i < len; i++) ret += this.charAt(i); return ret");
+
+  function getImage(oldimage,filename)
+  {
+    var p = oldimage.src.lastIndexOf("/");
+    var q = oldimage.src.lastIndexOf("\\");
+    var i = new Image();
+    i.src = oldimage.src.slice(0,(p>q && p>0) ? p+1 : (q>0)?q+1 : 0) + filename;;
+    return i;
+  }; 
+
+ function AttachPushed(img, filename)
+  {
+    if(happyrollover)
+    {
+      var i = document.images[img];
+      i.flipimage = getImage(i,filename);
+      i.pushed = false;
+    };
+  };
+  
+  function button_push(img)
+  {
+    if(happyrollover)
+    {
+      var i = document.images[img];
+      if (!i.pushed)
+      {  
+        i.pushed = true;
+        var temp = i.src;
+        i.src = i.flipimage.src;
+        i.flipimage.src = temp;
+      }; 
+    };  
+  };
+  
+  function button_unpush(img)
+  {
+    if(happyrollover)
+      window.setTimeout("button_realunpush('" + img + "')", 0);  // defeat ie's lazy refresh
+  };
+  
+  function button_realunpush(img)
+  {
+    var i = document.images[img];
+    if (i.pushed)
+    {
+      i.pushed = false;
+      var temp = i.src;
+      i.src = i.flipimage.src;
+      i.flipimage.src = temp;
+    };   
+  };
+
+
+// -->
+</script>
+
+
+
+
+
+
+
+
+<form>
+<table border=0 cellspacing=0 cellpadding=0>
+  <tr>
+    <td width=3 height=3><img src="wb1.gif" width=3 height=3></td>
+    <td height=3 background="wb2.gif"><img src="wb2.gif" width=1 height=3></td>
+    <td width=3 height=3><img src="wb3.gif" width=3 height=3></td>
+  </tr>
+  <tr>
+    <td width=3 background="wb4.gif"><img src="wb4.gif" width=3 height=1></td>
+    <td>
+      <table border=0 cellspacing=0 cellpadding=0>
+        <tr>
+          <td colspan=4 bgcolor="#08286B" background="wbtitle.jpg">
+            <a onmousedown="button_push('wizard_x')" onmouseup="button_unpush('wizard_x')"   onmouseout="button_unpush('wizard_x')" href="javascript:void(test_controller.move(-1))" onclick="return false;"><img name="wizard_x" src="close.gif" border=0 height=18 width=20 align=right></a><img src="nada.gif" width=2 height=1><font face="System" color="#FFFFFF">Reporting Wizard</font>
+            <script>AttachPushed('wizard_x','closepressed.gif')</script>
+          </td>
+        </tr>
+        <tr><td colspan=4 bgcolor="#D6D3CE" width=506 height=1><img src="nada.gif" width="1" height="1"></td></tr>
+        <tr><td bgcolor="#000000" width=160 height=8><img src="nada.gif" width=160 height=8></td><td colspan=3 bgcolor="#D6D3CE" width=340 height=8><img src="nada.gif" width=340 height=8></td></tr>
+        <tr>
+          <td bgcolor="#000000" width=160 height=296>
+<table border=0 cellpadding=0 cellspacing=0>
+<tr><td><img src="node_top.gif" width=40 height=16></td><td><font face=verdana size="-1" color="#FFFFFF">Start</font></td></tr><tr><td><img src="node_connect.gif" width=40 height=16></td></tr>
+<tr><td background="node_connect.gif"><img src="node_mida.gif" width=40 height=16></td><td><img src="nada.gif" width=8 height=16 align=middle><font face=verdana size="-1" color="#FFFFFF">Question Period</font></td></tr> <tr><td background="node_connect.gif"><img src="nada.gif" width=40 height=16></td><td>&nbsp;</td></tr>
+<tr><td background="node_connect.gif"><img src="node_mid.gif"  width=40 height=16></td><td><img src="nada.gif" width=8 height=16 align=middle><font face=verdana size="-1" color="#FFFFFF">Data</font></td></tr>            <tr><td background="node_connect.gif"><img src="nada.gif" width=40 height=16></td><td>&nbsp;</td></tr>
+<tr><td background="node_connect.gif"><img src="node_mid.gif"  width=40 height=16></td><td><img src="nada.gif" width=8 height=16 align=middle><font face=verdana size="-1" color="#FFFFFF">Output</font></td></tr>          <tr><td background="node_connect.gif"><img src="nada.gif" width=40 height=16></td><td>&nbsp;</td></tr>
+<tr><td background="node_connect.gif"><img src="node_mid.gif"  width=40 height=16></td><td><img src="nada.gif" width=8 height=16 align=middle><font face=verdana size="-1" color="#FFFFFF">Limits</font></td></tr>          <tr><td background="node_connect.gif"><img src="nada.gif" width=40 height=16></td><td>&nbsp;</td></tr>
+<tr><td background="node_connect.gif"><img src="node_mid.gif"  width=40 height=16></td><td><img src="nada.gif" width=8 height=16 align=middle><font face=verdana size="-1" color="#FFFFFF">Aggregation</font></td></tr>     <tr><td background="node_connect.gif"><img src="nada.gif" width=40 height=16></td><td>&nbsp;</td></tr>
+<tr><td><img src="node_bot.gif" width=40 height=16></td><td><font face=verdana size="-1" color="#FFFFFF">Finish</font></td></tr>
+</table>
+          </td>
+          <td bgcolor="#D6D3CE" width=8 valign=top><img src="nada.gif" width=8 height=1></td>
+          <td bgcolor="#D6D3CE" width=324 height=296 valign=top>
+<font face=verdana>
+<p>Which question set do you like?</p>
+<select size=5>
+<option value=1>Fall 2000 Final</option>
+<option value=2>Fall 2000 Imported</option>
+<option value=3>Spring 2000 Imported</option>
+<option value=4>Fall 1999 Imported</option>
+<option value=5>Spring 1999</option>
+</select>
+</font>
+          </td>
+          <td bgcolor="#D6D3CE" width=8 valign=top><img src="nada.gif" width=8 height=1></td>
+        </tr>
+        <tr>
+          <td colspan=4 bgcolor="#000000" width=506 height=5><img src="nada.gif" width="1" height="5"></td>
+        </tr>
+        <tr>
+          <td colspan=4 bgcolor="#D6D3CE" height=40>
+             <table align=right border=0 cellspacing=0 cellpadding=0>
+               <tr>
+                 <td><input type=button style="font-family: Verdana; width:64 px" value="Cancel"></td>
+                 <td><img src="nada.gif" width=8 height=1></td>
+                 <td><input type=button style="font-family: Verdana; width:64 px" value="&lt; Back"></td>
+                 <td><input type=button style="font-family: Verdana; width:64 px" value="Next &gt;"></td>
+                 <td><img src="nada.gif" width=16 height=1></td>
+                 <td><input type=button style="font-family: Verdana; width:64 px" value="Finish"></td>
+                 <td><img src="nada.gif" width=8 height=1></td>
+               <tr>
+             </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+    <td width=3 background="wb6.gif"><img src="wb6.gif" width=3 height=1></td>
+  </tr>
+  <tr>
+    <td width=3 height=3><img src="wb7.gif" width=3 height=3></td>
+    <td height=3 background="wb8.gif"><img src="wb8.gif" width=1 height=3></td>
+    <td width=3 height=3><img src="wb9.gif" width=3 height=3></td>
+  </tr>
+</table>
+</body>
+</form>
