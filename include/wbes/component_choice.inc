@@ -133,7 +133,7 @@ class ChoiceEditor extends ComponentEditor
       $this->layout->loadvalues();      
       $this->controls->loadvalues();    
       $this->rows->loadvalues();
-      $this->orientation->loadvalues();    
+      $this->orientation->loadvalues();
     }  
     else
     {
@@ -363,22 +363,42 @@ class ChoiceEditor extends ComponentEditor
   
   function display()
   {
+    global $SurveyEditor_ns4, $server_media;
+    
     ComponentEditor::display();
     $p = $this->prefix;
+    
+    DynamicList::dumpscript();
+    
+    $show_sing = $this->qtype->selected == "single";
+    $show_mult = $this->qtype->selected == "multiple";
+    $show_clst = $this->ctype->selected == "text" || $this->ctype->selected == "ntext";
+    $show_txto = $this->ctype->selected == "text";
+    $show_othr = $this->other->checked;
+    $show_numr = $this->ctype->selected == "ntext" || $this->ctype->selected == "num";
+    $show_nlab = $this->ctype->selected == "num";
+    $show_rows = $this->controls->selected == "select";
+    $show_ornt = $this->layout->selected == "under" && $this->controls->selected == "buttons";
 ?>    
 <table>
 <tr>
   <td valign=top><strong>Questions:</strong></td>
   <td>
-    <? $this->qtype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?><br>
+    <? $this->qtype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+    <a href="javascript:showhelp('choice_mult')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
+    <br>
     
-    <div id=<?=$p?>_single style="display: <?= $this->qtype->selected == "single" ? "block" : "none" ?>">
+    <? if (!$SurveyEditor_ns4 || $show_sing) { ?>
+    <div id=<?=$p?>_single style="display: <?= $show_sing ? "block" : "none" ?>">
     <?$this->question->display(false);?><br>
     </div>
+    <? } else $this->question->display(true); ?>
     
-    <div id=<?=$p?>_multiple style="display: <?= $this->qtype->selected == "multiple" ? "block" : "none" ?>">
+    <? if (!$SurveyEditor_ns4 || $show_mult) { ?>
+    <div id=<?=$p?>_multiple style="display: <?= $show_mult ? "block" : "none" ?>">
     <?$this->questions->display(false);?>
     </div>
+    <? } else $this->questions->display(true); ?>
     
   </td>
 </tr>
@@ -386,39 +406,54 @@ class ChoiceEditor extends ComponentEditor
   <td valign=top><strong>Choices:</strong></td>
   <td>
     <?= $this->ctype->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+    <a href="javascript:showhelp('choice_type')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
  
-    <div id=<?=$p?>_choicelist style="display: <?= $this->ctype->selected == "text" || $this->ctype->selected == "ntext" ? "block" : "none" ?>">
+    <? if (!$SurveyEditor_ns4 || $show_clst) { ?>
+    <div id=<?=$p?>_choicelist style="display: <?= $show_clst ? "block" : "none" ?>">
     <? $this->choices->display(false); ?>
     </div>
+    <? } else $this->choices->display(true); ?>
 
-    <table id=<?=$p?>_textoptions style="display: <?= $this->ctype->selected == "text" ? "block" : "none" ?>">
+    <? if (!$SurveyEditor_ns4 || $show_txto) { ?>
+    <table id=<?=$p?>_textoptions style="display: <?= $show_txto ? "block" : "none" ?>">
     <tr>
       <td><? $this->select_many->display(); ?></td> 
-      <td><? $this->select_many->displaylabel("Allow users to select more than one choice"); ?></td>
+      <td>
+        <? $this->select_many->displaylabel("Allow users to select more than one choice"); ?>
+        <a href="javascript:showhelp('choice_more')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
+      </td>
     </tr>
     <tr>
       <td valign=top><? $this->other->display(false,"onclick=\"${p}_refresh(this.form)\""); ?></td>
-      <td><? $this->other->displaylabel('Include an "other" choice'); ?></td>
+      <td>
+        <? $this->other->displaylabel('Include an "other" choice'); ?>
+        <a href="javascript:showhelp('choice_other')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
+      </td>
     </tr>
-    <tr id=<?=$p?>_olabel style="display: <?= $this->other->checked ? "block" : "none" ?>">
-      <td>&nbsp;</td>
-      <td><? $this->other_label->display(); ?></td>
+    <? if (!$SurveyEditor_ns4 || $show_othr) { ?>
+    <tr>
+      <td></td>
+      <td><div id=<?=$p?>_olabel style="display: <?= $show_othr ? "block" : "none" ?>"><? $this->other_label->display(); ?></div></td>
     </tr>
+    <? } else $this->other_label->display(true); ?>
     </table>
+    <? } else { $this->select_many->display(true); $this->other->display(true); $this->other_label->display(true); } ?>
   
-    <table id=<?=$p?>_numchoice style="display: <?= $this->ctype->selected == "ntext" || $this->ctype->selected == "num" ? "block" : "none" ?>">
+    <? if (!$SurveyEditor_ns4 || $show_numr) { ?>
+    <table id=<?=$p?>_numchoice style="display: <?= $show_numr ? "block" : "none" ?>">
     <tr>
       <td>First Value:</td>
       <td><? $this->first_number->display(); ?></td>
     </tr>
     <tr>
-    <tr>  
       <td>Last Value:</td>
       <td><? $this->last_number->display(); ?></td>
     </tr>
     </table>
+    <? } else { $this->first_number->display(true); $this->last_number->display(true); } ?>
 
-    <table id=<?=$p?>_sparsechoice  style="display: <?= $this->ctype->selected == "num" ? "block" : "none" ?>">
+    <? if (!$SurveyEditor_ns4 || $show_nlab) { ?>
+    <table id=<?=$p?>_sparsechoice style="display: <?= $show_nlab ? "block" : "none" ?>">
     <tr>
       <td>First Label:</td>
       <td><? $this->first_label->display(); ?></td>
@@ -428,6 +463,8 @@ class ChoiceEditor extends ComponentEditor
       <td><? $this->last_label->display(); ?></td>
     </tr>
     </table>
+    <? } else { $this->first_label->display(true); $this->last_label->display(true); } ?>
+    
   </td> 
 </tr>
 <tr>
@@ -436,22 +473,32 @@ class ChoiceEditor extends ComponentEditor
     <table>
     <tr>
       <td>Layout:</td>
-      <td><? $this->layout->display(false, "onchange=\"${p}_refresh(this.form)\""); ?></td>
+      <td>
+        <? $this->layout->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
+        <a href="javascript:showhelp('choice_where')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
+      </td>
     </tr>
     <tr>
       <td>Controls:</td>
       <td>
         <? $this->controls->display(false, "onchange=\"${p}_refresh(this.form)\""); ?>
-        <span id=<?=$p?>_selrows style="display: <?= $this->controls->selected == "select" ? "inline" : "none" ?>">
+        
+        <? if (!$SurveyEditor_ns4 || $show_rows) { ?>
+        <span id=<?=$p?>_selrows style="display: <?= $show_rows ? "inline" : "none" ?>">
         with
         <? $this->rows->display(); ?>
         rows
         </span>
+        <? } else $this->rows->display(true); ?>
         
-        <span id=<?=$p?>_borient style="display: <?= $this->layout->selected == "under" && $this->controls->selected == "buttons" ? "inline" : "none" ?>">
+        <? if (!$SurveyEditor_ns4 || $show_ornt) { ?>
+        <span id=<?=$p?>_borient style="display: <?= $show_ornt ? "inline" : "none" ?>">
         oriented
         <? $this->orientation->display(); ?>
         </span>
+        <? } else $this->orientation->display(true); ?>
+        
+        <a href="javascript:showhelp('choice_comp')"><img src="<?=$server_media?>/help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a>
         
       </td>  
     </tr>
@@ -466,31 +513,32 @@ class ChoiceEditor extends ComponentEditor
 
 function <?=$p?>_refresh(form)
 {
-  if (!document.all)
-  {
-    form.submit();
-    return;
-  }
-  else
+  if (document.all || document.getElementById)
   {
     var qtype = form.<?= $this->qtype->prefix ?>.value;
     var ctype = form.<?= $this->ctype->prefix ?>.value;
     var other = form.<?= $this->other->prefix ?>.checked;
     var cntrl = form.<?= $this->controls->prefix ?>.value;
     var lyout = form.<?= $this->layout->prefix ?>.value;
-    document.all["<?=$p?>_single"].style.display = qtype == "single" ? "block" : "none";
-    document.all["<?=$p?>_multiple"].style.display = qtype == "multiple" ? "block" : "none";
-    document.all["<?=$p?>_choicelist"].style.display = ctype == "text" || ctype == "ntext" ? "block" : "none";
-    document.all["<?=$p?>_textoptions"].style.display = ctype == "text" ? "block" : "none";
-    document.all["<?=$p?>_numchoice"].style.display = ctype == "ntext" || ctype == "num" ? "block" : "none";
-    document.all["<?=$p?>_sparsechoice"].style.display = ctype == "num" ? "block" : "none";
-    document.all["<?=$p?>_selrows"].style.display = cntrl == "select" ? "inline" : "none";
-    document.all["<?=$p?>_borient"].style.display = lyout == "under" && cntrl == "buttons" ? "inline" : "none";
-    document.all["<?=$p?>_olabel"].style.display = other ? "block" : "none";
+    elem("<?=$p?>_single").style.display = qtype == "single" ? "block" : "none";
+    elem("<?=$p?>_multiple").style.display = qtype == "multiple" ? "block" : "none";
+    elem("<?=$p?>_choicelist").style.display = ctype == "text" || ctype == "ntext" ? "block" : "none";
+    elem("<?=$p?>_textoptions").style.display = ctype == "text" ? "block" : "none";
+    elem("<?=$p?>_numchoice").style.display = ctype == "ntext" || ctype == "num" ? "block" : "none";
+    elem("<?=$p?>_sparsechoice").style.display = ctype == "num" ? "block" : "none";
+    elem("<?=$p?>_selrows").style.display = cntrl == "select" ? "inline" : "none";
+    elem("<?=$p?>_borient").style.display = lyout == "under" && cntrl == "buttons" ? "inline" : "none";
+    elem("<?=$p?>_olabel").style.display = other ? "block" : "none";
+  }
+  else
+  {
+    if (form.onsubmit) form.onsubmit();
+    form.submit();
+    return;
   }
 }
 
--->
+// -->
 </script>
 <?
   }
@@ -501,7 +549,7 @@ class ChoiceWidget extends ComponentWidget
   var $choices;
   var $other;
   var $legend;
-  
+
   function ChoiceWidget(&$c,$prefix,$form,$formmethod)
   {
     $this->ComponentWidget($c,$prefix,$form,$formmethod);
@@ -539,10 +587,28 @@ class ChoiceWidget extends ComponentWidget
       foreach($this->questions as $k => $v)
       	$this->questions[$k] = nl2br(htmlspecialchars($v));
     }
+    
+    $this->answers = array();
+    $this->others = array();
+    $this->errors = array();
   }
   
-  function loadvalues() // public abstract
+  function loadvalues()
   {
+    foreach ($this->questions as $i => $text)
+    {
+  	  $c = &$this->component;
+  	  $name = "q$i";
+  	  if ($c->select_many) $name .= "[]";
+  	  $a = $this->loadattribute($name);
+  	  if ($c->select_many)
+  	    $this->answers[$i] = is_array($a) ? $a : array();
+      else if ($a !== "")
+        $this->answers[$i] = (int)$a;
+      else  
+        $this->errors[$i] = "Question '$text' is not filled in.";
+      $this->others[$i] = $this->loadattribute('q' . $i . '_' . $this->other);
+    }  
   }
   
   function showchoices($questionno, $tdparams = "")
@@ -556,7 +622,10 @@ class ChoiceWidget extends ComponentWidget
   	{
       print("<select name=$name" . ($c->rows > 1 ? " size=" . $c->rows : "") . ($c->select_many ? " multiple" : "") . ">\n");
       foreach($this->choices as $i => $choice)
-        print("  <option value=$i>$choice\n");
+      {
+        $selected = (!$c->select_many && $i === $this->answers[$questionno]) && ($c->select_many && is_array($this->answers) && in_array($i, $this->answers[$questionno])) ? " selected" : "";
+        print("  <option value=$i$selected>$choice\n");
+      }  
       print("</select>\n");
   	}
   	else
@@ -576,40 +645,50 @@ class ChoiceWidget extends ComponentWidget
         $id = $this->prefix . '_q' . $questionno . '_' . $i;
         
         if ($c->select_many)
-        	print("<input type=checkbox name=$name value=$i id=$id>");
+        {
+        	$checked = in_array($i, $this->answers[$questionno]) ? " checked" : "";
+        	print("<input type=checkbox name=$name value=$i id=$id$checked>");
+        }	
         else
-        	print("<input type=radio name=$name value=$i id=$id>");
-        	
+        {
+        	$checked = $i === $this->answers[$questionno] ? " checked" : "";
+        	print("<input type=radio name=$name value=$i id=$id$checked>");
+        }
+
         if (!$c->stacked)
           print(" <label for=$id>$choice</label>");
         
         if ($i == $this->other)
-          print(" <input type=textbox size=20 name=$id>");
+        {
+          print(" <input type=textbox size=20 name=$id value=\"" . htmlspecialchars($this->others[$questionno]) . "\">");
+        }  
       }  
- 		
     }
     if ($c->stacked) print("</td>\n");
   }
   
-  function display()
+  function display($hidden = false, $showerrors = true)
   {
     global $server_media;
-    
-  // COMPONENT PROPERTIES  
-  //
-  // $questions = array();
-  // $choices = array();
-  // 
-  // $first_number = 0;
-  // $last_number = 0;
-  // 
-  // $is_numeric = false;
-  // $select_many = false;
-  // $other_choice = "";
-  // $stacked = false;
-  // $vertical = false;
-  // $rows = 0;
-  // is_html
+
+    if($hidden)
+    {
+      foreach($this->answers as $i => $v)
+      {
+        $name = "q$i";
+        if (is_array($v))
+          $this->printarrayattribute($name, $v);
+        else
+          $this->printattribute($name, $v);
+      }
+
+      foreach($this->others as $i => $v)
+      {
+        $this->printattribute('q' . $i . '_' . $this->other, $v);
+      }
+      return;
+    }
+
 
     $c = &$this->component;
     $n = count($this->choices);
@@ -639,6 +718,7 @@ class ChoiceWidget extends ComponentWidget
       foreach ($this->questions as $i => $text)
       {
         $row = !$row; $color = $row ? 'bgcolor="#FFFFFF" background="' . $server_media . '/0xFFFFFF.gif"' : 'bgcolor="#EEEEEE" background="' . $server_media . '/0xEEEEEE.gif"';
+        if ($this->errors[$i] && $showerrors) $text = "<b><font color=red>$text</font></b>";
         print("<tr>\n<td $color>$text</td>\n");
         $this->showchoices($i, "$color align=center");
         print("</tr>");
@@ -650,9 +730,10 @@ class ChoiceWidget extends ComponentWidget
       if ($this->legend) print("<p><strong>" . $this->legend . "</strong></p>\n");
       foreach ($this->questions as $i => $text)
       {
+        if ($this->errors[$i] && $showerrors) $text = "<b><font color=red>$text</font></b>";
         print("$text<br>\n");
         $this->showchoices($i);
-        print("\n");
+        print("<br><br>\n");
       }
     }    
   }
