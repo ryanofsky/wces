@@ -1,10 +1,10 @@
 <%
-
-$oracleroot = "/oracle/";
+require_once("wces/server.inc");
 
 function page_top($title,$headimage)
 {
   global $oracleroot;
+
 %>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <!-- This page was created by Mark Sainz & Alexander Haubold for Columbia University, 1999-->
@@ -93,7 +93,7 @@ p            { font-family: Verdana,Trebuchet MS, Arial, Helvetica, sans-serif; 
 
 function page_bottom()
 {
-
+  global $oracleroot;
 %>
 
   </td>

@@ -1,6 +1,5 @@
 <style type="text/css">
 <!--
-
 body                    { font-family: Arial, Helvetica, sans-serif; }
 p                       { font-family: Arial, Helvetica, sans-serif; }
 h3                      { font-family: Arial, Helvetica, sans-serif; }
@@ -12,10 +11,11 @@ h4                      { font-family: Arial, Helvetica, sans-serif; }
 <%
 require_once("wces/wces.inc");
 require_once("wces/reporting.inc");
+require_once("wces/general.inc");
 
-$professorid = $professorid + 0;
-$courseid = $courseid + 0;
-$classid = $classid + 0;
+param($professorid);
+param($courseid);
+param($classid);
 
 $db = wces_connect();
 
@@ -68,7 +68,7 @@ else if ($classid || $courseid)
   if (!$courseid)
     $courseid = db_getvalue($db,"classes",Array("classid" => $classid),"courseid");
   else if (!$classid)
-    $classid = mysql_result(mysql_query("SELECT classid FROM classes WHERE courseid = '" . addslashes($courseid) . "'",$db),0);
+    $classid = mysql_result(mysql_query("SELECT classid FROM classes WHERE courseid = '" . addslashes($courseid) . "' ORDER BY year DESC, semester DESC, section LIMIT 1",$db),0);
 
   $infoq = mysql_query(
   "SELECT cl.section, cl.year, cl.semester, cl.students, cl.name as cname, p.name as pname, p.professorid, c.code, c.name, c.information, d.code as dcode, d.name as dname, s.code as scode, s.name as sname, dv.name as dvname, sc.name as scname

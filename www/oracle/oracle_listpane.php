@@ -10,7 +10,6 @@ a:hover { text-decoration: underline; )
 <base target=info>
 <script language="JavaScript">
 <!--
-
 var happy = document.images && window.Image;
 
 // fix for problematic Netscape 3 string object
@@ -55,6 +54,11 @@ ul                      { font-family: Arial, Helvetica, sans-serif; list-style-
 
 require_once("wces/wces.inc");
 require_once("wces/reporting.inc");
+require_once("wces/general.inc");
+
+param($mode);
+param($searchfor);
+param($searchin);
 
 function db_makesearch($text,$fields)
 {
@@ -202,8 +206,31 @@ else // $mode == "courses"
   <%  
 
   $y = mysql_query("
-  SELECT c.courseid, c.name, c.code, s.code AS scode, d.name AS dname, d.departmentid FROM answersets AS a  INNER JOIN classes as cl USING (classid)  INNER JOIN courses AS c USING (courseid)  INNER JOIN departments AS d USING (departmentid)  LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND (a.questionperiodid < 6)  GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);  $departmentidprev = -1;
-  $first = true;  while($row = mysql_fetch_array($y))  {    $departmentid = 0; $courseid = 0; $scode = ""; $code = ""; $name = ""; $dname = "";    extract($row);    if ($departmentidprev != $departmentid)    {      if ($first) $first = false; else print("</ul></font>");      print("<h5>$dname</h5>\n<font size=-1><ul>\n");    };      $departmentidprev = $departmentid;      print("<li><a href=\"oracle_infopane.php?courseid=$courseid\">($scode$code) $name </a></li>\n");  }  print("</ul></font>");
+
+  SELECT c.courseid, c.name, c.code, s.code AS scode, d.name AS dname, d.departmentid FROM answersets AS a
+  INNER JOIN classes as cl USING (classid)
+  INNER JOIN courses AS c USING (courseid)
+  INNER JOIN departments AS d USING (departmentid)
+  LEFT JOIN subjects AS s ON (c.subjectid = s.subjectid)
+  WHERE (a.responses > 0) AND (a.questionsetid = 1) AND (a.questionperiodid < 6)
+  GROUP BY c.courseid ORDER BY d.name, s.code, c.code",$db);
+
+  $departmentidprev = -1;
+
+  $first = true;
+  while($row = mysql_fetch_array($y))
+  {
+    $departmentid = 0; $courseid = 0; $scode = ""; $code = ""; $name = ""; $dname = "";
+    extract($row);
+    if ($departmentidprev != $departmentid)
+    {
+      if ($first) $first = false; else print("</ul></font>");
+      print("<h5>$dname</h5>\n<font size=-1><ul>\n");
+    };  
+    $departmentidprev = $departmentid;  
+    print("<li><a href=\"oracle_infopane.php?courseid=$courseid\">($scode$code) $name </a></li>\n");
+  }
+  print("</ul></font>");
 
 }
 
