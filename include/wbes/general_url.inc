@@ -76,7 +76,7 @@ class URL
     }  
     $url .= $this->path;
     if ($includexpath) $url .= $this->xpath;
-    if ($includequery) $url .= $this->query;
+    if ($includequery && $this->query != '?') $url .= $this->query;
     return $url;
   }
 }
