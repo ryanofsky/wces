@@ -1,10 +1,12 @@
+<!-- 68ACFF to  #007700 #007700 -->
+
 <?
 
 require_once("wbes/server.inc");
 require_once("wces/login.inc");
 require_once("wces/oracle.inc");
 
-$wces_path = "/wces/";
+$wces_path = "/";
 $wces_this = $server_url->toString(false,true,true);
 $wces_ns4 = substr($HTTP_SERVER_VARS["HTTP_USER_AGENT"],0,9) == "Mozilla/4" && strpos($HTTP_SERVER_VARS["HTTP_USER_AGENT"], "compatible;") === false;
 
@@ -33,44 +35,36 @@ function showhelp(topic)
 <body class=main>
 <table width="100%" border=0 cellspacing=0 cellpadding=0>
 <tr>
-  <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
+  <td colspan=2 bgcolor="#007700" class=sidelinks><img src="<?=$wces_path?>media/nada.gif" width=1 height=10 alt=spacer></td>
 </tr>
 <tr>
-  <td colspan=2 bgcolor="#68ACFF"><img src="<?=$wces_path?>media/nada.gif" width=1 height=15 alt=spacer></td>
+  <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
 </tr>
 <tr>
   <td colspan=2>
     <table width="100%" border=0 cellspacing=0 cellpadding=0>
     <tr bgcolor="#FFFDEC">
-      <td><a href="<?=$wces_path?>index.php<?=$QSID?>"><img src="<?=$wces_path?>media/page/Left_Logo.gif" width=164 height=72 border=0 alt=Home></a></td>
-      <td><img src="<?=$wces_path?>media/page/Middle_Header.gif" width=396 height=72 alt="Columbia University Web Based Course Evaluation System"></td>
-      <td bgcolor="#FFFDEC" align=right><img src="<?=$wces_path?>media/page/Right_Logo.gif" width=113 height=72 alt=Crown></td>
+      <td><img src="<?=$wces_path?>media/nada.gif" width=3 height=83 alt=spacer><a href="<?=$wces_path?>index.php<?=$QSID?>"><img src="<?=$wces_path?>media/dart/thayer-logo-sm.gif" width=154 height=78 border=0 alt=Home></a><br><img src="<?=$wces_path?>media/nada.gif" width=1 height=5 alt=spacer></td>
+      <td><img src="<?=$wces_path?>media/dart/wces.jpg" width=390 height=23 alt="Columbia University Web Based Course Evaluation System"></td>
     </tr>
     </table>
-  </td>
-</tr>
-</table><table width="100%" border=0 cellspacing=0 cellpadding=0>
-<tr>
-  <td bgcolor="#68ACFF">&nbsp;</td>
-  <td bgcolor="#68ACFF" align=right class=extlinks>
-    <a href="http://www.columbia.edu/">Columbia University</a> |
-    <a href="http://www.engineering.columbia.edu/">SEAS</a> |
-    <a href="<?=$wces_path?>about/feedback.php<?=$QSID?>">Feedback</a>
   </td>
 </tr>
 <tr>
   <td colspan=2 bgcolor="#000000"><img src="<?=$wces_path?>media/nada.gif" width=1 height=3 alt=spacer></td>
 </tr>
+</table><table width="100%" border=0 cellspacing=0 cellpadding=0>
 <? if ($minimal) { ?>
 </table>
 <? } else { ?>
 <tr>
   <td valign=top bgcolor="#DEDEDE" class=sidelinks>
 <?
+  $user_id = login_getuserid();
   $uni = login_getuni();
   $status = login_getstatus();
 
-  if ($uni)
+  if ($user_id)
   {
     page_link("Log off $uni","login/logout.php$QSID",true);
     if ($fake = login_getfakeuni())
@@ -106,7 +100,6 @@ function showhelp(topic)
       //page_link("Past Averages",    "professors/respond/historygraph.php", $QSID);
       //page_link("Edit Profile",     "professors/infoedit.php", $QSID);
     }
-    page_link("Update Association", "login/profsearch.php");
   }
 
   if (false && ($status & login_student))
@@ -120,7 +113,7 @@ function showhelp(topic)
   page_link("Credits", "about/credits.php", $QSID);
 ?>
   </td>
-  <td valign="top" width="99%" background="<?=$wces_path?>media/page/Background_Logo.gif">
+  <td valign="top" width="99%" background="<?=$wces_path?>media/dart/back.gif">
     <table width="100%" border=0 cellspacing=0 cellpadding=0>
     <tr>
       <td valign="top">
@@ -178,7 +171,7 @@ function page_link($caption,$link,$extlink = "",$params='style="white-space: now
 function page_spacer()
 {
   global $wces_path;
-  print("    <p><img src=\"$wces_path/media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
+  print("    <p><img src=\"{$wces_path}media/0x000000.gif\" align=absmiddle width=140 height=2 alt=\"[ spacer ]\"></p>\n");
 }
 
 function page_showhelp($topic)

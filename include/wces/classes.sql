@@ -44,6 +44,9 @@ DROP FUNCTION professor_hooks_update(INTEGER,SMALLINT,VARCHAR(60),VARCHAR(28),VA
 DROP FUNCTION cunix_associate(INTEGER,INTEGER);
 DROP FUNCTION get_profs(INTEGER);
 DROP FUNCTION get_question_period();
+DROP FUNCTION text_join(TEXT, TEXT, TEXT);
+DROP FUNCTION professor_merge(INTEGER, INTEGER);
+
 
 CREATE TABLE classes
 (
@@ -147,7 +150,7 @@ CREATE TABLE users
   uni VARCHAR(12) UNIQUE,
   lastname VARCHAR(28),
   firstname VARCHAR(28),
-  email VARCHAR(28),
+  email VARCHAR(60),
   department_id INTEGER,
   flags INTEGER NOT NULL,
   lastlogin TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -207,8 +210,9 @@ CREATE INDEX last_idx ON professor_hooks (lastname);
 COMMENT ON COLUMN professor_hooks.source IS '
 1 - Regripper Dump from RegRipper (first, last, MI, not separated)
 2 - Registrar PID files from cunix /wwws/data/cu/bulletin/uwb-test/include/ (first, last, MI, separated)
-3 - Imported from the original WCES's professor table (first and last separated, no MI)
-4 - Imported from the original WCES's class table OR from the registrar spreadsheets (first and last separated, no MI)
+3 - Imported from the original WCES''s professor table (first and last separated, no MI)
+4 - Imported from the original WCES''s class table OR from the registrar spreadsheets (first and last separated, no MI)
+';
 
 CREATE TABLE acis_groups
 (
@@ -282,12 +286,11 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
       SELECT INTO i user_id FROM professor_hooks WHERE source = 2 AND name = name_;
       
       IF NOT FOUND THEN
-        INSERT INTO users (firstname, lastname) VALUES (firstname_, lastname_);
+        INSERT INTO users (firstname, lastname, flags) VALUES (firstname_, lastname_, 4);
         i := currval(''user_ids'');
       END IF;
 
       INSERT INTO professor_hooks(user_id, source, name) VALUES (i, source_, name_);
-      
       RETURN i;
     ELSE IF source_ = 2 THEN
       SELECT INTO i user_id FROM professor_hooks WHERE source = 2
@@ -305,7 +308,7 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
       END LOOP;
       
       IF i IS NULL THEN
-        INSERT INTO users (firstname, lastname) VALUES (firstname, lastname);
+        INSERT INTO users (firstname, lastname, flags) VALUES (firstname, lastname, 4);
         i := currval(''user_ids'');
       END IF;
       
@@ -322,7 +325,7 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
       END LOOP;
       
       IF i IS NULL THEN
-        INSERT INTO users (firstname, lastname) VALUES (firstname_, lastname_);
+        INSERT INTO users (firstname, lastname, flags) VALUES (firstname_, lastname_, 4);
         i := currval(''user_ids'');
       END IF;
 
@@ -331,7 +334,7 @@ CREATE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, INTEGER) RETURNS IN
       RETURN i;
     ELSE
       RAISE EXCEPTION ''profesor_replace(%,%,%,%,%) fails. unknown source'', $1, $2, $3, $4, $5;
-    END IF; END IF; END IF
+    END IF; END IF; END IF;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -944,9 +947,6 @@ CREATE FUNCTION text_join(TEXT, TEXT, TEXT) RETURNS INTEGER AS '
   END;
 ' LANGUAGE 'plpgsql';
     
-' LANGUAGE 'plpgsql';
-
-DROP FUNCTION professor_merge(INTEGER, INTEGER);
 CREATE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     primary_id ALIAS FOR $1;

@@ -26,7 +26,6 @@ define("CALLNUMBER",18);        // 5 digit call number
 
 function importregcsv($filename)
 {
-  return 0; // this function is half-implemented
   global $wces;
 
   $fp = fopen ($filename,"r");
@@ -47,54 +46,66 @@ function importregcsv($filename)
     else
     {
       $semester = $data[SEMESTER] == 'spring' ? 0 : $data[SEMESTER] == 'summer' ? 1 : 2;
-      $divstr = "$data[DIVISIONCODE],$data[DIVISIONSCODE],$data[DIVISION]";
-      $sdata = array_map($data, "mnullquot");
+      $divstr = "${data[DIVISIONCODE]},{$data[DIVISIONSCODE]},{$data[DIVISION]}";
+      $pstr = $data[INSTRUCTOR];
+      $sdata = array_map("mnullquot",$data);
 
       if (isset($subject_cache[$data[SUBJECTCODE]]))
         $subject_id = $subject_cache[$data[SUBJECTCODE]];
       else
         $subject_id = $subject_cache[$data[SUBJECTCODE]] = (int)pg_result(pg_query("
-          SELECT subject_update($sdata[SUBJECTCODE],$sdata[SUBJECT])
+          SELECT subject_update({$sdata[SUBJECTCODE]},{$sdata[SUBJECT]})
         ", $wces, __FILE__, __LINE__),0,0);
+
+      if (!$subject_id) die("subject_id not found for subject {$data[SUBJECTCODE]} on row $row");
 
       if (isset($school_cache[$data[SCHOOL]]))
         $school_id = $school_cache[$data[SCHOOL]];
       else
         $school_id = $school_cache[$data[SCHOOL]] = (int)pg_result(pg_query("
-          SELECT school_update($sdata[SCHOOL])
+          SELECT school_update({$sdata[SCHOOL]})
         ", $wces, __FILE__, __LINE__),0,0);
 
       if (isset($dept_cache[$data[DEPARTMENTCODE]]))
         $dept_id = $dept_cache[$data[DEPARTMENTCODE]];
       else
         $dept_id = $dept_cache[$data[DEPARTMENTCODE]] = (int)pg_result(pg_query("
-          SELECT department_update($sdata[DEPARTMENTCODE],$sdata[DEPARTMENT])
+          SELECT department_update({$sdata[DEPARTMENTCODE]},{$sdata[DEPARTMENT]})
         ", $wces, __FILE__, __LINE__),0,0);
 
-      if (isset($div_cache[$data[div]]))
+      if (isset($div_cache[$divstr]))
         $div_id = $div_cache[$divstr];
       else
         $div_id = $div_cache[$divstr] = (int)pg_result(pg_query("
-          SELECT division_update($sdata[DIVISIONCODE],$sdata[DIVISIONSCODE],$sdata[DIVISION])
+          SELECT division_update({$sdata[DIVISIONCODE]},{$sdata[DIVISIONSCODE]},{$sdata[DIVISION]})
         ", $wces, __FILE__, __LINE__),0,0);
 
-      $course_id = pg_result(pg_query("SELECT course_update($subject_id,$sdata[COURSECODE],$sdata[DIVISIONSCODE],$sdata[COURSE],NULL)", $wces, __FILE__, __LINE__),0,0);
-      $class_id  = pg_result(pg_query("SELECT class_update($course_id,$sdata[CLASSSECTION],$sdata[YEAR],$semester,$cname,$sdata[TIME],$sdata[LOCATION],$sdata[STUDENTS],$sdata[CALLNUMBER],$department_id,$division_id,$school_id)", $wces, __FILE__, __LINE__),0,0); //cache
+      $course_id = pg_result(pg_query("SELECT course_update($subject_id,{$sdata[COURSECODE]},{$sdata[DIVISIONSCODE]},{$sdata[COURSE]},NULL)", $wces, __FILE__, __LINE__),0,0);
+      if (!$course_id) die("course_id not found for course {$data[SUBJECTCODE]} {$sdata[COURSECODE]} on row $row");
 
-      prof_parserrname($data[INSTRUCTOR],$full,$email,$url);
+      $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "NULL" : quot($data[CLASSNAME]);
+      $class_id  = pg_result(pg_query("SELECT class_update($course_id,{$sdata[CLASSSECTION]},{$sdata[YEAR]},$semester,$cname,{$sdata[TIME]},{$sdata[LOCATION]},{$sdata[STUDENTS]},{$sdata[CALLNUMBER]},$dept_id,$div_id,$school_id)", $wces, __FILE__, __LINE__),0,0); //cache
+      if (!$class_id) die("class_id not found for class {$data[SUBJECTCODE]} {$sdata[COURSECODE]} {$sdata[CLASSSECTION]} on row $row");
 
-      $professor_id = (int)pg_result("SELECT professor_find('$full', '$first', '$m', '$last', NULL, 1)", $wces, __FILE__, __LINE__);
+      $professors = parse_csv_professor($pstr);
+      
+      if (count($professors) > 0)
+        pg_query("DELETE FROM enrollments WHERE class_id = $class_id AND status = 3", $wces,__FILE__,__LINE__); 
+      
+      foreach($professors as $p)
+      {
+        $prof = adarray_map("nullquot", $p);
+        $user_id = (int)pg_result(pg_query("SELECT professor_find($prof[full], $prof[first], $prof[middlei], $prof[last], NULL, 1)", $wces, __FILE__, __LINE__),0,0) ;   
+        if (!$user_id) die("user_id not found for professor $prof[last] on row $row");
+        pg_query("INSERT INTO enrollments (user_id, class_id, status, lastseen) VALUES ($user_id, $class_id, 3, NULL)", $wces, __FILE__, __LINE__); 
+        if ($p['url'])
+          pg_query("SELECT professor_data_update($user_id,$prof[url],NULL,NULL,NULL,NULL)", $wces, __FILE__, __LINE__);
+        if ($p['email'])
+          pg_query("UPDATE users SET email = COALESCE(email,$prof[email]) WHERE user_id = $user_id", $wces, __FILE__, __LINE__);
+        
+      }
 
-      $cname = (!$data[CLASSNAME] || $data[CLASSNAME] == $data[COURSE]) ? "" : $data[CLASSNAME];
-
-      $pids = prof_findwithfull($db,$full);
-      //$pids = array_merge($pids,prof_findwithclassid($db,$classid));
-      $pid = prof_merge($db, $pids,Array("name" => $full, "email" => $email, "url" => $url),Array("fullname" => $full, "source" => "regweb"));
-      db_updatevalues($db, "classes", Array("classid" => $classid), Array("professorid" => $pid));
-      print($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (classid = $classid, courseid = $courseid,professorid = $pid)<br>\n");
-      if (!$data[COURSE]) taskwindow_cprint("<b>Warning:</b> Coursename not specified in row $row<br>\n");
-      if (!$subjectid || !$classid || !$courseid) taskwindow_cprint("<b>Warning:</b> Insertion error in row $row<br>\n");
-      //if (0 + $data[COURSECODE] < 1000) taskwindow_cprint("<b>Warning:</b> Invalid course number in row $row<br>\n");
+      print($data[SUBJECTCODE].$data[COURSECODE]." Section ".$data[CLASSSECTION]." ".$data[SEMESTER]." ".$data[YEAR]." (class_id = $class_id, course_id = $course_id,professor_id = $user_id)<br>\n");
     };
     if (((++$i) % 10) == 1) flush();
   }
@@ -111,12 +122,6 @@ function prof_fixname(&$first,&$last)
     $first = "";
 }
 
-function prof_fixfull(&$name)
-{
-  $name = ucwords(strtolower(trim($name)));
-  if ($name == "Faculty" || $name == ". Faculty") $name = "";
-}
-
 function prof_parsemiddlei(&$first,&$middlei)
 {
   $l = strlen($first);
@@ -129,8 +134,9 @@ function prof_parsemiddlei(&$first,&$middlei)
     $middlei = "";
 }
 
-function prof_parsefull($name)
+function prof_parsefull(&$name, &$first, &$middlei, &$last)
 {
+  $name = trim($name);
   $p = strrpos($name,' ');
   if ($p === false)
   {
@@ -143,8 +149,6 @@ function prof_parsefull($name)
     $last = substr($name,$p+1);
     prof_parsemiddlei($first,$middlei);
   }
-  return array($first,$middlei,$last);
-
 }
 
 function prof_parsepidname($name,&$first,&$last,&$middlei,&$dept)
@@ -167,20 +171,33 @@ function prof_parsepidname($name,&$first,&$last,&$middlei,&$dept)
   return true;
 }
 
-function prof_parserrname($name,&$full,&$email,&$url)
+function parse_csv_professor($pstr)
 {
-  $full = $name;
-  $email = "";
-  $url = "";
-  if (ereg("([^-<>]*) -.*",$name,$result))
+  $professors = array();
+  $strs = explode("<br>", $pstr);
+  
+  foreach($strs as $str)
   {
-    $full = $result[1];
-    if (ereg(".*<a href=\"mailto:([^<>]+)\">.*",$name,$result))
-      $email = $result[1];
-    if (ereg(".*<a [^>]*href=\"?(http[^>]*)\"?>",$data[INSTRUCTOR],$result))
-      $url = $result[1];
-  };
-  prof_fixfull($full);
+    if (!$str) continue;
+    
+    $email = $url = ""; $full = $str; 
+    if (ereg("([^-<>]*) -.*",$str,$result))
+    {
+      $full = $result[1];
+      if (ereg(".*<a href=\"mailto:([^<>]+)\">.*",$str,$result))
+        $email = $result[1];
+      if (ereg(".*<a [^>]*href=\"?(http[^>]*)\"?>",$str,$result))
+        $url = $result[1];
+    };    
+    
+    prof_parsefull($full, $first, $middlei, $last);
+    
+    if (!$last)
+      sendwarning("Unable to professor informationparse:\n\n  $str\n\nin:\n\n  $pstr", __FILE__, __LINE__);
+    else if (strtolower($last) != "faculty")
+      $professors[] = compact("full", "first", "middlei", "last", "email", "url");
+  }
+  return $professors;
 };
 
 function prof_makefull($first,$middlei,$last)

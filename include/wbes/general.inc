@@ -251,6 +251,15 @@ function aarray_map($func, &$aa) // associative safe, in place array_map
     $aa[$key] = $func($aa[$key]);
 }
 
+function adarray_map($func, $aa) // associative safe
+{
+  $r = array();
+  reset($aa);
+  while(list($key) = each($aa))
+    $r[$key] = $func($aa[$key]);
+  return $r;  
+}
+
 function addurlparam($url, $param)
 {
   if (strlen($param) == 0)

