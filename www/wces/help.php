@@ -54,7 +54,8 @@ function AttachImage(img, filename)
 }
 // -->
 </script>
-<p align=right><a target=main href="<?=$page?>?frame=main&help=contents"
+<p align=right style="margin-top: 0px; margin-bottom: 0px;"><a
+target=main href="<?=$page?>?frame=main&help=contents"
 onmouseover="swap('b1')" onmouseout="swap('b1')"><img name=b1
 src="media/help/contents1.gif" alt="Contents" width=20 height=20
 border=0></a><a target=main href="<?=$page?>?frame=main&help=feedback"
