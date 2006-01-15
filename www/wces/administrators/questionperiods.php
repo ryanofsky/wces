@@ -121,7 +121,7 @@ class QuestionPeriodEditor extends StatefullWidget
         SELECT currval('question_period_ids');
       ", $wces, __FILE__, __LINE__);
       if (!$r) return false;
-      $this->question_period_ids = (int)pg_result($r, 0, 0);
+      $this->question_period_id = (int)pg_result($r, 0, 0);
       return true;
     }
     else
