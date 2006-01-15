@@ -785,20 +785,20 @@ CREATE OR REPLACE FUNCTION course_update(INTEGER,SMALLINT,CHAR(1),VARCHAR(124),T
     ccode     ALIAS FOR $2;
     dcode     ALIAS FOR $3;
     name_s    ALIAS FOR $4;
-    info      ALIAS FOR $5;
+    inf       ALIAS FOR $5;
     courseid INTEGER;
   BEGIN
     SELECT INTO courseid course_id FROM courses WHERE subject_id = subjectid AND code = ccode AND divisioncode = dcode;
     IF NOT FOUND THEN
       INSERT INTO courses (subject_id, code, divisioncode, name, information)
-      VALUES (subjectid, ccode, dcode, name_s, info);
+      VALUES (subjectid, ccode, dcode, name_s, inf);
       RETURN currval(''course_ids'');
     ELSE
       IF name_s IS NOT NULL AND char_length(name_s) > 0 THEN
         UPDATE courses SET name = name_s WHERE course_id = courseid;
       END IF;
-      IF info IS NOT NULL AND char_length(info) > 0 THEN
-        UPDATE courses SET information = info WHERE course_id = courseid;
+      IF inf IS NOT NULL AND char_length(inf) > 0 THEN
+        UPDATE courses SET information = inf WHERE course_id = courseid;
       END IF;
       RETURN courseid;
     END IF;
@@ -1312,7 +1312,7 @@ CREATE OR REPLACE FUNCTION get_course(INTEGER) RETURNS TEXT AS '
 
 CREATE OR REPLACE FUNCTION get_question_period() RETURNS INTEGER AS '
   DECLARE
-    curtime DATETIME;
+    curtime TIMESTAMP;
     i INTEGER;
   BEGIN
     curtime := NOW();
@@ -1326,7 +1326,7 @@ CREATE OR REPLACE FUNCTION get_question_period() RETURNS INTEGER AS '
 
 CREATE OR REPLACE FUNCTION get_next_question_period() RETURNS INTEGER AS '
   DECLARE
-    curtime DATETIME;
+    curtime TIMESTAMP;
     i INTEGER;
   BEGIN
     curtime := NOW();
@@ -1340,7 +1340,7 @@ CREATE OR REPLACE FUNCTION get_next_question_period() RETURNS INTEGER AS '
 
 CREATE OR REPLACE FUNCTION get_anext_question_period () RETURNS integer AS '
   DECLARE
-    curtime DATETIME;
+    curtime TIMESTAMP;
     i INTEGER;
   BEGIN
     curtime := NOW();

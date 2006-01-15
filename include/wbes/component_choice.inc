@@ -1028,9 +1028,9 @@ class ChoiceQuestion extends Component
   var $revision_id;
   var $item_id;
 
-  function getChildren()
+  function & getChildren()
   {
-    return null;
+    return $null;
   }
 
   function saveComponent($component_id, $children)

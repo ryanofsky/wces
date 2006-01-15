@@ -25,6 +25,7 @@ class ProfResponseList extends StatefullWidget
       $this->loadChild($this->response, $isNew);
       return $this->response;
     }
+    return $null;
   }
   
   function printModalChildren()

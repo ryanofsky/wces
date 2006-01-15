@@ -184,7 +184,7 @@ Number of surveys completed: <b><?=$responses?></b><br>
       print("</tr>\n");
     }
     print("</table>\n");
-    ob_flush(); flush();
+    @ob_flush(); flush();
 
     $r = pg_go("
       SELECT i.user_id, u.uni, CASE WHEN i.responses = 0 THEN 0 WHEN i.classes <= i.responses THEN 2 ELSE 1 END AS level

@@ -383,7 +383,9 @@ CREATE OR REPLACE FUNCTION branch_ancestor_generate() RETURNS INTEGER AS '
 
 -- record all descendants of branch_id_
 CREATE OR REPLACE FUNCTION branch_ancestor_generate(INTEGER) RETURNS INTEGER AS '
-  DECLARE branch_id_ ALIAS FOR $1;
+  DECLARE
+    branch_id_ ALIAS FOR $1;
+    rec RECORD;
   BEGIN
     FOR rec IN SELECT branch_id FROM branches WHERE parent = branch_id_ LOOP
       PERFORM branch_ancestor_generate(ancestor_id_, rec.branch_id);
@@ -440,7 +442,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
     branch_info RECORD;
     arrays RECORD;
     array_length INTEGER;
-    parent RECORD;
+    parent_ RECORD;
     bid INTEGER;
     type_ INTEGER;
   BEGIN
@@ -513,7 +515,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
         array_integer_cast(''{'' || s_cids  || ''}'') AS cids,
         array_integer_cast(''{'' || s_types || ''}'') AS types;
 
-      SELECT INTO parent latest_id, revision_component(latest_id) AS component_id
+      SELECT INTO parent_ latest_id, revision_component(latest_id) AS component_id
       FROM branches WHERE branch_id = bid;
 
       IF NOT FOUND THEN
@@ -550,7 +552,7 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
     --   1.4.2.17
     --   1.4.2.3.3.2
     --
-    -- and the record variable parent will start out with information about revision 1.5
+    -- and the record variable parent_ will start out with information about revision 1.5
 
     DECLARE
       i INTEGER;
@@ -568,35 +570,35 @@ CREATE OR REPLACE FUNCTION branch_latest(INTEGER) RETURNS INTEGER AS '
         type_ := arrays.types[j];
         common_id := arrays.prids[j];
         primary_id := arrays.rids[j];
-        secondary_id := parent.latest_id;
+        secondary_id := parent_.latest_id;
         common_component_id := revision_component(common_id);
         primary_component_id = arrays.cids[j];
-        secondary_component_id := parent.component_id;
+        secondary_component_id := parent_.component_id;
 
         -- If common, primary, or secondary ids are equivalent, the new revision can
         -- be a just link to a preexisting component instead of a merge.
 
-        parent.component_id := component_merge(common_component_id,
+        parent_.component_id := component_merge(common_component_id,
           primary_component_id, secondary_component_id, type_);
 
         -- helpful revision numbering convention, not at all neccessary
-        IF parent.component_id = secondary_component_id THEN
+        IF parent_.component_id = secondary_component_id THEN
           revision_ := 0;
         ELSE
           revision_ := 1;
         END IF;
 
         INSERT INTO revisions (parent, branch_id, revision, save_id, merged, component_id)
-        VALUES (secondary_id, bid, revision_, revision_save(secondary_id), primary_id, parent.component_id);
-        parent.latest_id := currval(''revision_ids'');
+        VALUES (secondary_id, bid, revision_, revision_save(secondary_id), primary_id, parent_.component_id);
+        parent_.latest_id := currval(''revision_ids'');
 
         UPDATE branches SET
-          outdated = false, latest_id = parent.latest_id
+          outdated = false, latest_id = parent_.latest_id
         WHERE branch_id = bid;
       END LOOP;
     END;
 
-    RETURN parent.latest_id;
+    RETURN parent_.latest_id;
   END;
 ' LANGUAGE 'plpgsql';
 
@@ -774,7 +776,7 @@ CREATE OR REPLACE FUNCTION branch_create_parent(INTEGER, INTEGER) RETURNS INTEGE
     bid INTEGER;
     branch RECORD;
     siblings RECORD;
-  BEGIN;
+  BEGIN
     SELECT INTO branch parent, outdated, latest_id FROM branches
       WHERE branch_id = branch_id_ FOR UPDATE;
     IF NOT FOUND THEN
@@ -960,14 +962,14 @@ CREATE OR REPLACE FUNCTION branch_move(INTEGER, INTEGER, INTEGER) RETURNS INTEGE
     WHERE b.branch_id = branch_id_;
 
     IF NOT FOUND OR branch_info.latest_parent IS NULL THEN
-      RAISE ERROR ''branch_move(%,%,%) fails. Could not find latest revision on branch % being moved'', $1, $2, $3, branch_id_;
+      RAISE EXCEPTION ''branch_move(%,%,%) fails. Could not find latest revision on branch % being moved'', $1, $2, $3, branch_id_;
     END IF;
 
     SELECT INTO new_parent_branch_info latest_id, outdated
     FROM branches WHERE branch_id = new_parent_branch;
 
     IF NOT FOUND THEN
-      RAISE ERROR ''branch_move(%,%,%) fails. Could not find information about new parent branch %'', $1, $2, $3, new_parent_branch;
+      RAISE EXCEPTION ''branch_move(%,%,%) fails. Could not find information about new parent branch %'', $1, $2, $3, new_parent_branch;
     END IF;
 
     IF new_parent_branch_info.latest_id IS NULL THEN
@@ -1019,7 +1021,7 @@ CREATE OR REPLACE FUNCTION revision_make_parent_clone(INTEGER, INTEGER, INTEGER)
     revision INTEGER;
   BEGIN
     IF neq(revision_branch(parent_revision_id), branch_parent(branch_id_)) THEN
-      RAISE ERROR ''make_first_cloned_child(%,%,%) fails. not a child branch'', $1, $2, $3;
+      RAISE EXCEPTION ''make_first_cloned_child(%,%,%) fails. not a child branch'', $1, $2, $3;
     END IF;
 
     RETURN revision_make_parent_clone_i(parent_revision_id, branch_id_, save_id_, revision_component(parent_revision_id));
@@ -1028,7 +1030,7 @@ CREATE OR REPLACE FUNCTION revision_make_parent_clone(INTEGER, INTEGER, INTEGER)
 
 -- actual implementation of revision_make_parent_clone,
 -- takes redundant parameters and skips error checking
-CREATE OR REPLACE FUNCTION revision_make_parent_clone_i(INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
+CREATE OR REPLACE FUNCTION revision_make_parent_clone_i(INTEGER, INTEGER, INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     parent_revision_id ALIAS FOR $1;
     branch_id_ ALIAS FOR $2;
@@ -1269,7 +1271,7 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
     orig_revision_id   ALIAS FOR $4;
     orig_item_id       ALIAS FOR $5;
     import_mode        ALIAS FOR $6;
-    iid       INTEGER:
+    iid       INTEGER;
     bid       INTEGER;
     rid       INTEGER;
     orig      RECORD;
@@ -1652,7 +1654,7 @@ CREATE OR REPLACE FUNCTION choice_question_merge(INTEGER, INTEGER, INTEGER) RETU
     SELECT INTO secondary_row qtext FROM components_choice_question WHERE component_id = secondary_id;
     INSERT INTO components_choice_question (type, qtext) VALUES
     ( 6,
-      text_merge(orig_row.qtext, primary_row.qtext, secondary_row.qtext, ''t'')
+      text_merge(orig_row.qtext, primary_row.qtext, secondary_row.qtext)
     );
     RETURN currval(''component_ids'');
   END;
@@ -1694,7 +1696,7 @@ CREATE OR REPLACE FUNCTION survey_merge(INTEGER, INTEGER, INTEGER) RETURNS INTEG
 
     INSERT INTO components_survey (type, ctext, flags) VALUES
     ( 1,
-      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
     );
 
@@ -1720,13 +1722,13 @@ CREATE OR REPLACE FUNCTION choice_component_merge(INTEGER, INTEGER, INTEGER) RET
 
     INSERT INTO components_choice (type, ctext, flags, choices, other_choice, first_number, last_number, rows) VALUES
     ( 2,
-      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags),
-      text_array_merge(orig_row.choices, primary_row.choices, secondary_row.choices, ''t''),
-      text_merge(orig_row.other_choice, primary_row.other_choice, secondary_row.other_choice, ''t''),
-      integer_merge(orig_row.first_number, primary_row.first_number, secondary_row.first_number, ''t''),
-      integer_merge(orig_row.last_number, primary_row.last_number, secondary_row.last_number, ''t''),
-      integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t'')
+      text_array_merge(orig_row.choices, primary_row.choices, secondary_row.choices),
+      text_merge(orig_row.other_choice, primary_row.other_choice, secondary_row.other_choice),
+      integer_merge(orig_row.first_number, primary_row.first_number, secondary_row.first_number),
+      integer_merge(orig_row.last_number, primary_row.last_number, secondary_row.last_number),
+      integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows)
     );
 
     new_id := currval(''component_ids'');
@@ -1751,7 +1753,7 @@ CREATE OR REPLACE FUNCTION text_component_merge(INTEGER, INTEGER, INTEGER, INTEG
 
     INSERT INTO components_text (type, ctext, flags) VALUES
     ( type_,
-      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags)
     );
 
@@ -1774,10 +1776,10 @@ CREATE OR REPLACE FUNCTION textresponse_component_merge(INTEGER, INTEGER, INTEGE
 
     INSERT INTO components_text_question (type, ctext, flags, rows, cols) VALUES
     ( 3,
-      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext, ''t''),
+      text_merge(orig_row.ctext, primary_row.ctext, secondary_row.ctext),
       bitmask_merge(orig_row.flags, primary_row.flags, secondary_row.flags),
-      integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows, ''t''),
-      integer_merge(orig_row.cols, primary_row.cols, secondary_row.cols, ''t'')
+      integer_merge(orig_row.rows, primary_row.rows, secondary_row.rows),
+      integer_merge(orig_row.cols, primary_row.cols, secondary_row.cols)
     );
 
     RETURN currval(''component_ids'');
@@ -1799,7 +1801,7 @@ CREATE OR REPLACE FUNCTION pagebreak_merge(INTEGER, INTEGER, INTEGER) RETURNS IN
 
     INSERT INTO components_choice_question (type, renumber) VALUES
     ( 6,
-      boolean_merge(orig_row.renumber, primary_row.renumber, secondary_row.renumber, ''t'')
+      boolean_merge(orig_row.renumber, primary_row.renumber, secondary_row.renumber)
     );
 
     RETURN currval(''component_ids'');
@@ -2000,6 +2002,7 @@ CREATE TABLE dead_branches
   specialization_id INTEGER NOT NULL
 );
 
+--unfinished
 CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RETURNS VOID AS '
   DECLARE
     specialization_id_ ALIAS FOR $1;
@@ -2064,25 +2067,30 @@ CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RE
         
       
       
-      SELECT 
+      --SELECT
+    END LOOP;
       
   END;
 ' LANGUAGE 'plpgsql';
 
+-- unfinished
 CREATE OR REPLACE FUNCTION specialization_move(INTEGER, INTEGER) RETURNS VOID AS '
   DECLARE
     specialization_id_ ALIAS FOR $1;
     new_parent ALIAS FOR $2;
-    rec
+    rec RECORD;
+    rec1 RECORD;
   BEGIN
     SELECT INTO rec parent FROM specializations WHERE specialization_id = specialization_id_;
     IF NOT FOUND THEN
-       ...die
+       --die
     END IF;
     
     specialization_move_one();
     
-    FOR rec1 IN SELECT * FROM specializations WHERE parent = specialization_id_
+    FOR rec1 IN SELECT * FROM specializations WHERE parent = specialization_id_ LOOP
+    --
+    END LOOP;
   END;
 ' LANGUAGE 'plpgsql';
 

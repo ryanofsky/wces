@@ -43,7 +43,7 @@ function LoginLink($requiredStatus = null, $destUrl = null)
   return $r . $ASID;
 }
 
-function & LoginValue($param)
+function LoginValue($param)
 {
   $login =& LoginInstance();
   return $login->get($param);
@@ -77,7 +77,7 @@ define("LOGIN_ADMIN",           0x00000008);
 define("LOGIN_ANY",             0x0000000F);
 define("LOGIN_KNOWN_PROFESSOR", 0x10000000);
 
-session_restore();
+session_initialize(true);
 
 class WcesLogin
 {

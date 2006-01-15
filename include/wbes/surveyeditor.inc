@@ -79,7 +79,16 @@ class SurveyEditor extends StatefullWidget
         {
           $factories =& $GLOBALS['WCES_CONFIG_FACTORIES'];
           $factory = $factories[$this->insert->choose];
+          // XXX: Suppress inappropriate notice in PHP 4.4.0 "Notice: Only
+          // variable references should be returned by reference" that occurs
+          // at "return new Whatever;" statements in WhateverFactory::create()
+          // methods. Another way to fix this is to say $whatever =& Whatever;
+          // return Whatever inside the methods. Also, if can you do something
+          // to bump the object's reference count by stashing away a reference
+          // to $this in the constructor, that will also suppress the notice.
+          $old = error_reporting(E_ALL & ~E_NOTICE);
           $q = &$factory->create();
+          error_reporting($old);
           $q->neverSaved = true;
           $this->addEvent(SurveyEditor_modify, $this->survey->insert($q, $param));
         }
@@ -143,6 +152,7 @@ class SurveyEditor extends StatefullWidget
         $this->message = "<font color=red><i>Survey Builder: No changes were saved</i></font>";
       break;
     }
+    return $null;
   }
 
   function loadState($new)

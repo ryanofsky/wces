@@ -152,6 +152,7 @@ class QuestionPeriodEditor extends StatefullWidget
         $this->message = "<p><font color=red>Question Period Editor: Changes to question period $this->question_period_id were not saved.</font></p>";
       break;
     };
+    return $null;
   }
   
   function display()
@@ -204,6 +205,7 @@ class QuestionPeriodList extends StatefullWidget
         $this->deleteq((int)$param);
       break;
     };
+    return $null;
   }
   
   function deleteq($question_period_id)

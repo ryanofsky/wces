@@ -25,7 +25,7 @@ function pg_go($sql, $db, $file = __FILE__, $line = __LINE__)
     else
       print("<br>Error: " . pg_errormessage($db));
     print("</p>\n");
-    ob_flush(); flush();
+    @ob_flush(); flush();
     if ($server_isproduction && !$result)
       sendwarning("Query failed.\nError message: " . pg_errormessage() . "\nQuery: $sql",$file,$line);
   }

@@ -5,6 +5,9 @@
 function session_initialize($existing_only = false)
 {
   global $AUSID, $AQSID, $AASID, $AISID, $USID, $QSID, $ASID, $ISID;
+  // avoid calling session_start twice if this is called from multiple places
+  if (isset($AUSID) && ($existing_only || $AUSID))
+    return (bool)$AUSID;
 
   $sn = session_name();
   
@@ -36,21 +39,9 @@ function session_initialize($existing_only = false)
   return true;
 }
 
-// Call session_initialize only if there is a pre-existing session
-
-function session_restore()
-{
-  // avoid doing duplicate work if session_restore is called
-  // from different places.
-  global $AUSID;
-  if (isset($AUSID)) return (bool)$AUSID;
-
-  return session_initialize(true);
-}
-
 function session_kill()
 {
-  if (session_restore()) session_destroy();
+  if (session_initialize(true)) session_destroy();
   
   global $AUSID, $AQSID, $AASID, $AISID, $USID, $QSID, $ASID, $ISID;
   $AUSID = $AQSID = $AASID = $AISID = $USID = $QSID = $ASID = $ISID = '';

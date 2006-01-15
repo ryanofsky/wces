@@ -58,7 +58,7 @@ class TopicEditor extends StatefullWidget
         if ($r != 't')
         {
           $this->error = "<p><font color=red>Invalid Survey</font></p>"; 
-          return null;
+          return $null;
         } 
       }
       $login =& LoginInstance();
@@ -67,6 +67,7 @@ class TopicEditor extends StatefullWidget
       $this->barePage = $this->editor->barePage;
       return $this->editor;
     }
+    return $null;
   }
 
   function loadState($new)

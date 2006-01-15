@@ -311,6 +311,7 @@ class TaSurvey extends StatefullWidget
       if (isset($this->tas[$this->event->param]))
         array_splice($this->tas, $this->event->param, 1);
     }
+    return $null;
   }
 
   function loadState($new)

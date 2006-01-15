@@ -174,7 +174,7 @@ class Component
 
   function & getChildren()
   {
-    return null;
+    return $null;
   }
 
   function saveChildren($specialization_id, $save_id)

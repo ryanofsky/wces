@@ -49,6 +49,7 @@ class Report extends TabbedWidget
         $this->loadChild($this->email, $new);
       return $this->email;
     };
+    return $null;
   }
 
   function loadState($new)
