@@ -109,7 +109,8 @@ function showhelp(topic)
 
   function printLinks()
   {
-    global $wces_this, $WCES_CONFIG_PATH, $wces_ns4, $QSID, $ASID;      
+    global $wces_this, $WCES_CONFIG_PATH, $wces_ns4, $QSID, $ASID,
+           $WCES_COLUMBIA; 
 
     $login =& LoginInstance();
 
@@ -136,7 +137,8 @@ function showhelp(topic)
       $this->printLink("Student Usage",    "administrators/susage.php", $QSID);
       $this->printLink("Professor Usage",  "administrators/pusage.php", $QSID);
       $this->printLink("Enrollment Database", "administrators/info.php", $QSID);
-      $this->printLink("Reporting Wizard", "administrators/report_choose.php", $QSID);
+      $report_href = $WCES_COLUMBIA ? "report_choose.php" : "report.php";
+      $this->printLink("Reporting Wizard", "administrators/$report_href", $QSID);
       $this->printLink("Mass Mailing",     "administrators/massmail.php", $QSID);
       $this->printLink("Data Import",      "administrators/import.php", $QSID);
       $this->printLink("Question Periods", "administrators/questionperiods.php", $QSID);
@@ -146,7 +148,8 @@ function showhelp(topic)
     if ($status & LOGIN_DEPT_ADMIN)
     {
       $this->printSpacer();
-      $this->printLink("Reporting Wizard", "administrators/report_choose.php", $QSID);
+      $report_href = $WCES_COLUMBIA ? "report_choose.php" : "report.php";
+      $this->printLink("Reporting Wizard", "administrators/$report_href", $QSID);
     }
   
     if ($status & LOGIN_PROFESSOR)

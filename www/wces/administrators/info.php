@@ -25,7 +25,7 @@ param('course_name');
 
 function PrintUser(&$uni, &$user_id)
 {
-  global $wces, $ASID;
+  global $wces, $ASID, $WCES_COLUMBIA;
   
   if ($uni)
     $query = "WHERE u.uni = '" . addslashes($uni) . "'";
@@ -100,7 +100,8 @@ function PrintUser(&$uni, &$user_id)
   PrintAffils($user_id);
   PrintProfessorInfo($user_id);
   PrintEnrollments($user_id);
-  PrintLDAP($uni);     
+  if ($WCES_COLUMBIA)
+    PrintLDAP($uni);     
 }
 
 function DeleteEnrollment($user_id, $class_id)
@@ -301,7 +302,7 @@ function PrintProfessorInfo($user_id)
 
 function PrintClassInfo($class_id)
 {
-  global $wces, $wces_path, $server_url, $ASID;
+  global $wces, $wces_path, $server_url, $ASID, $WCES_COLUMBIA;
   
   $class_id = (int)$class_id;
   
@@ -335,7 +336,8 @@ function PrintClassInfo($class_id)
   if ($code) print ("<p><i>Course Code:</i> <a href=\"info.php?course_id=$course_id$ASID\">$code</a></p>");
 
   $url = "http://www.columbia.edu/cu/bulletin/uwb/subj/$scode/$divisioncode$code-$year" . ($semester + 1) . "-$section/";
-  print("<p>Directory of Classes: <a href=\"$url\">View</a><p>\n");
+  if ($WCES_COLUMBIA)
+    print("<p>Directory of Classes: <a href=\"$url\">View</a><p>\n");
 
   print("<hr>\n<h3>Known Enrollments</h3>");
 

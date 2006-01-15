@@ -55,7 +55,7 @@ class MassEmail extends ParentWidget
 
   function loadInitialState()
   {
-    global $MassEmail_students, $wces, $server_massreply;
+    global $MassEmail_students, $wces, $server_feedback;
     wces_connect();
 
     $user_id = LoginValue('user_id');
@@ -70,7 +70,7 @@ class MassEmail extends ParentWidget
         $this->from->text = $email;
     }
     $this->to = "";
-    $this->replyto->text = $server_massreply;
+    $this->replyto->text = $server_feedback;
     $this->subject->text = "WCES Reminder";
     $this->text->text = "Dear %name%,\n\nCome to http://oracle.seas.columbia.edu/ so you can rate these %nmissingclasses% classes:\n\n%missingclasses%\n\nWin prizes!";
   }
@@ -497,14 +497,13 @@ class MassEmail extends ParentWidget
         if ($address)
         {
           taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
-          //$email = $address = "rey4@columbia.edu"; // debug
           
           // XXX: need to add Errors-To: header to set the address that
           // postfix uses as the FROM address when connecting to the
           // recieving SMTP server, and which also gets tacked
           // on as the message's Return-Path
           
-          mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
+          safe_mail($address, $this->subject->text, $text, "From: $from\nReply-To: $replyto\nX-Mailer: PHP/" . phpversion());
         }
         else
         {

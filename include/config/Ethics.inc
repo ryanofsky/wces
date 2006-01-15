@@ -45,8 +45,6 @@ $WBES_LOGIN_SECURE_HANDLER = 'https://oracle.seas.columbia.edu/ethics/login/logi
 // Only allow logins over ssl connections
 $WBES_LOGIN_SSL_ONLY = true;
 
-$WBES_CONFIG_MEDIA_PATH = "/wces/media/";
-
 $WCES_DISABLE_LINKS = false;
 
 $ethics_item_id = 1627;

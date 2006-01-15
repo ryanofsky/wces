@@ -6,7 +6,9 @@ param('upload');
 param('import');
 
 function printform()
-{ ?>
+{ global $WCES_COLUMBIA;
+
+?>
 
   <FORM ENCTYPE="multipart/form-data" METHOD=POST name=form1>
   <INPUT TYPE="hidden" name="MAX_FILE_SIZE" value="8388608">
@@ -20,7 +22,7 @@ function printform()
   </FIELDSET>
   
   <br>&nbsp;<br>
-
+<? if ($WCES_COLUMBIA) { ?>
   <FIELDSET>
   <LEGEND align="top">Legacy Database Import</LEGEND>
   <table>
@@ -33,6 +35,7 @@ function printform()
   <tr><td>&nbsp;</td><td><INPUT type="submit" NAME="import" VALUE="Go"></td></tr></table>
   
   </FIELDSET>
+<? } ?>
   </FORM>
 
   <?

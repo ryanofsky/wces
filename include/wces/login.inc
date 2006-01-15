@@ -248,7 +248,7 @@ class LoginWidget extends ParentWidget
 
   function printVisible()
   {
-    global $WBES_CONFIG_MEDIA_PATH, $WBES_CONFIG_PATH, $ISID, $server_url, $WBES_LOGIN_LOGOUT;
+    global $ISID, $server_url, $WBES_LOGIN_LOGOUT;
   
     $mode = WIDGET_FORM | WIDGET_URL;
     
@@ -279,7 +279,7 @@ class LoginWidget extends ParentWidget
       print("<p><b><font color=red>$this->error</font></b></p>\n");
     
 ?>  
-  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$WBES_CONFIG_MEDIA_PATH?>help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
+  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$GLOBALS["WCES_CONFIG_PATH"]?>help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
   <table>
   <tr><td>Username:</td><td><input name=<?=$this->name('uni')?> type=text value="<?=$this->uni?>" size=20></td></tr>
   <tr><td>Password:</td><td><input name=<?=$this->name('pw')?> type=password size=20></td></tr>

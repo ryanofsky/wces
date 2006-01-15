@@ -153,8 +153,7 @@ function legacy_report_profemail($db,&$wizard,$subject,$message,$debug)
     }  
     else
     {
-      $address = "rey4@columbia.edu"; //FOR DEBUGGING
-      if (mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion()))
+      if (safe_mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion()))
       {
         print("<font size=\"-1\">Successfully sent report to Professor $name ($address, $professorid)</font><br>\n");
       }

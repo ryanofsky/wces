@@ -28,7 +28,8 @@
   <li><a href="<?=$wces_path?>administrators/susage.php<?=$QSID?>">Student Usage</a> - See a report on student usage of WCES during the current question period.</li>
   <li><a href="<?=$wces_path?>administrators/pusage.php<?=$QSID?>">Professor Usage</a> - See a detailed report of professor usage of WCES during the current question period.</li>
   <li><a href="<?=$wces_path?>administrators/info.php<?=$QSID?>">Enrollment Database</a> - See information about users and classes.</li>
-  <li><a href="<?=$wces_path?>administrators/report_choose.php<?=$QSID?>">Reporting Wizard</a> - View and print past results.</li>
+  <? $report_href = $WCES_COLUMBIA ? "report_choose.php" : "report.php"; ?>
+  <li><a href="<?=$wces_path?>administrators/<?=$report_href?><?=$QSID?>">Reporting Wizard</a> - View and print past results.</li>
   <li><a href="<?=$wces_path?>administrators/massmail.php<?=$QSID?>">Mass Mail</a> - Send reminder and thank-you emails to students.</li>
   <li><a href="<?=$wces_path?>administrators/import.php<?=$QSID?>">Data Import</a> - Upload data into the WCES course database.</li>  
 </ul>
@@ -41,7 +42,8 @@
 ?>
 <p><img align=right src="<?=$wces_path?>media/admin.jpg" width=125 height=125>Here is a list of the options currently available for department administrators:</p>
 <ul>
-  <li><a href="<?=$wces_path?>administrators/report_choose.php<?=$QSID?>">Reporting Wizard</a> - View and print past survey results for courses within your department.</li>
+  <? $report_href = $WCES_COLUMBIA ? "report_choose.php" : "report.php"; ?>
+  <li><a href="<?=$wces_path?>administrators/<?=$report_href?><?=$QSID?>">Reporting Wizard</a> - View and print past survey results for courses within your department.</li>
 </ul>
 <?
   }

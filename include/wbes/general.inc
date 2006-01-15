@@ -3,6 +3,13 @@
 require_once("wbes/general_url.inc");
 require_once("wces/database.inc");
 
+function safe_mail($to, $subject, $text, $headers)
+{
+  global $WBES_DEBUG, $WBES_DEVELOPER;
+  return mail($WBES_DEBUG === false ? $to : $WBES_DEVELOPER,
+              $subject, $text, $headers);
+}
+
 /**
 * Puts a warning into the database and sends an obnoxious email to an administrator
 * It should be used like an assert, to ensure that unexpected conditions do
@@ -35,7 +42,7 @@ function sendwarning($dump, $file, $line)
   $message = "An error was encountered at $file:$line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
 
   if ($server_isproduction)
-    mail($server_dev, "WCES Warning from $file in line $line", wordwrap($message));
+    safe_mail($server_dev, "WCES Warning from $file in line $line", wordwrap($message));
   else
     print("<pre>" . wordwrap($message) . "</pre>");
     
@@ -47,7 +54,7 @@ function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
   global $server_dev, $server_feedback;
   if (!$from) $from = "Anonymous";
   if ($server_dev != $server_feedback)
-    mail($server_feedback,$subject,"Feedback from $from\n\n$comments");
+    safe_mail($server_feedback,$subject,"Feedback from $from\n\n$comments");
   $comments .= "\n\n----------------------------------------\n";
 
   if (isset($_SERVER) && is_array($_SERVER))
@@ -67,7 +74,7 @@ function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
       $comments .= "$key = $value\n";
     }
   }
-  mail($server_dev,"$subject+","WCES Feedback from $from\n\n$comments");
+  safe_mail($server_dev,"$subject+","WCES Feedback from $from\n\n$comments");
 }
 
 /**

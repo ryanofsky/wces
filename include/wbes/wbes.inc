@@ -4,8 +4,8 @@ $wbes = false;
 
 function wbes_connect()
 {
-  global $wbes, $wbes_database;
-  if (!$wbes) $wbes = server_pginit($wbes_database);
+  global $wbes, $WBES_DATABASE_NAME;
+  if (!$wbes) $wbes = server_pginit($WBES_DATABASE_NAME);
 }
 
 ?>

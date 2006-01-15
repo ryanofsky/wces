@@ -171,7 +171,7 @@ class legacy_Report extends legacy_FormWidget
        print("<strong>Subject: $subject</strong>\n\n");
        print($email);
        print("</pre>");
-       mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion());
+       safe_mail($address,$subject,$email, "To: $address\nFrom: $from\nReply-To: $from\nX-Mailer: PHP/" . phpversion());
        print("<h3>Done.</h3>"); 
     }
     else
