@@ -1,13 +1,13 @@
-OPT=
-INC=/usr/include/postgresql
-LIB=/lib/libpostgres.a
-OUTPUT=scattered_distribution.dll
+CXXFLAGS = -O2 -Wall -I/usr/include/postgresql
+LDLIBS = -lpostgres
 
-$(OUTPUT) : scattered_distribution.o
-	g++ -shared -o $(OUTPUT) scattered_distribution.o $(LIB)
+%.so: %.o
+	$(CXX) $(LDFLAGS) $(TARGET_ARCH) -shared $^ $(LOADLIBES) $(LDLIBS) -o $@
 
+scattered_distribution.so : scattered_distribution.o
 scattered_distribution.o : scattered_distribution.cpp
-	g++ $(OPT) -o scattered_distribution.o -c -I$(INC) scattered_distribution.cpp
 
 clean :
-	rm scattered_distribution.o $(OUTPUT)
+	rm -f scattered_distribution.o distribution.o
+
+.PHONY : clean
