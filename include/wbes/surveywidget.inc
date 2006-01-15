@@ -12,7 +12,6 @@ class SurveyWidget extends ParentWidget
 {
   // parameters
   var $specialization_id, $base_branch_id, $user_id, $question_period_id;
-  var $backup = true;
   var $anonymous = false;
   var $replacements = false;
   var $save_id = false;
@@ -158,7 +157,7 @@ class SurveyWidget extends ParentWidget
     //   form_vals TEXT
     // );
     //
-    if ($this->backup)
+    if (false)
     {
       $failure = $failure || !pg_go("
         INSERT INTO safe_backup (user_id, topic_id, item_id, specialization_id, form_vals)
