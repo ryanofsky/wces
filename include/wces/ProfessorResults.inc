@@ -55,7 +55,7 @@ class ProfessorResults extends ParentWidget
 
   function printVisible()
   {
-    global $wces;
+    global $wces, $WCES_COLUMBIA;
 
     $user_id = LoginValue('user_id');
     wces_connect();
@@ -91,7 +91,8 @@ class ProfessorResults extends ParentWidget
     }
 
     // display links to fall 2001 data (stored in cheesyresponses mysql tables)
-
+    if ($WCES_COLUMBIA) {
+    
     list($db, $professor_id) = legacy_info();
 
     $questionperiods = db_exec("
@@ -189,6 +190,8 @@ class ProfessorResults extends ParentWidget
 
       print("</ul>");
     }
+
+    }
   }
 
   function printModalChildren()
@@ -225,7 +228,7 @@ class ResultPage extends ParentWidget
   {
     $user_id = LoginValue('user_id');
 
-    ob_flush(); flush();
+    @ob_flush(); flush();
 
     if ($this->era == ERA_LEGACY)
     {
