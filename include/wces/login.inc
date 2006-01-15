@@ -8,8 +8,6 @@ require_once("wces/wces.inc");
 require_once("wbes/postgres.inc");
 require_once("widgets/basic.inc");
 
-require_once("$WBES_LOGIN_INCLUDE");
-
 function & LoginInstance()
 {
   if (!isset($GLOBALS['LoginInstance'])) 
@@ -227,23 +225,33 @@ class LoginWidget extends ParentWidget
 
     // let form values override externally specifed values
     $plaintext = $this->readValue('plaintext');    
+    if (isset($plaintext))
+      $this->plaintext = (bool)$plaintext;
+
+    if ($this->validate())
+    {
+      $login =& LoginInstance();
+      $this->done = $login->meetsStatus($this->requestedStatus);
+    }
+  }
+
+  function validate()
+  {
     $uni = $this->readValue('uni');
     $pw = $this->readValue('pw');
     
-    if (isset($plaintext))
-      $this->plaintext = (bool)$plaintext;
-      
     if (isset($uni))
       $this->uni = $uni;
     
     if (isset($pw))
     {
       $login =& LoginInstance();
-      if ($login->validate($this->uni, $pw, $this->error))
-        $this->done = $login->meetsStatus($this->requestedStatus);
+      return $login->validate($this->uni, $pw, $this->error);
     }
     else
       $this->error = $this->readValue('error');
+
+    return false;
   }
 
   function printVisible()
@@ -277,9 +285,9 @@ class LoginWidget extends ParentWidget
     
     if ($this->error)
       print("<p><b><font color=red>$this->error</font></b></p>\n");
-    
+
+    $this->printGreeting();
 ?>  
-  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$GLOBALS["WCES_CONFIG_PATH"]?>help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
   <table>
   <tr><td>Username:</td><td><input name=<?=$this->name('uni')?> type=text value="<?=$this->uni?>" size=20></td></tr>
   <tr><td>Password:</td><td><input name=<?=$this->name('pw')?> type=password size=20></td></tr>
@@ -333,6 +341,12 @@ class LoginWidget extends ParentWidget
     print("<p>&nbsp;</p>\n<p>&nbsp;</p>\n<p>&nbsp;</p>\n");
   }
 
+  function printGreeting()
+  {
+    ?>
+  <p><strong>Enter your Columbia UNI and password to log in:</strong> <a href="javascript:showhelp('login')"><img src="<?=$GLOBALS["WCES_CONFIG_MEDIA_PATH"]?>help/question.gif" width=16 height=16 border=0 align=absmiddle alt=help></a></p>
+    <?
+  }
   function bounceUrl()
   {
     if ($this->done && $this->destUrl)
@@ -344,5 +358,7 @@ class LoginWidget extends ParentWidget
         $this->base . $GLOBALS['WBES_LOGIN_HANDLER']);
   }
 }
+
+require_once("$WBES_LOGIN_INCLUDE");
 
 ?>
