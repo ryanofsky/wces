@@ -138,18 +138,9 @@ CREATE TABLE enrollments
 CREATE TABLE enrollments_p () INHERITS (enrollments);
 ALTER TABLE enrollments ADD CONSTRAINT enrollments_status CHECK (status IN (0,1,2,3,4));
 ALTER TABLE enrollments_p ADD CONSTRAINT enrollments_p_only CHECK (status = 4);
-ALTER TABLE users ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
-ALTER TABLE professor_hooks ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
-ALTER TABLE enrollments_p ADD CONSTRAINT enrollments_p_only CHECK (status = 4);
 
 COMMENT ON COLUMN enrollments.status IS '1 - student, 2 - ta, 3 - ta and student, 4 - professor, 0 - dropped class';
 
-CREATE INDEX class_idx ON enrollments (class_id);
-CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
-CREATE INDEX user_idx ON enrollments (user_id);
-CREATE INDEX ta_ratings_parent_idx ON ta_ratings (parent);
-CREATE INDEX enrollment_p_class ON enrollments_p (class_id);
-CREATE INDEX enrollment_p_user ON enrollments_p (user_id);
 CREATE UNIQUE INDEX enrollment_p_idx ON enrollments_p (user_id, class_id);
 
 CREATE TABLE professor_data
@@ -159,8 +150,16 @@ CREATE TABLE professor_data
   picname VARCHAR(124),
   statement TEXT,
   profile TEXT,
-  education TEXT
+  education TEXT,
+  picture_id INTEGER
 );
+
+CREATE TABLE pictures (
+  file_id INTEGER PRIMARY KEY NOT NULL DEFAULT nextval('picture_ids'),
+  name text NOT NULL
+);
+
+CREATE SEQUENCE picture_ids INCREMENT 1 START 1;
 
 CREATE TABLE professor_hooks
 (
@@ -171,6 +170,7 @@ CREATE TABLE professor_hooks
   firstname VARCHAR(28),
   lastname VARCHAR(28),
   middle VARCHAR(1),
+  uni VARCHAR(16),
   pid varchar(10) UNIQUE
 );
 
@@ -203,6 +203,20 @@ CREATE TABLE acis_affiliations
   PRIMARY KEY(user_id, acis_group_id)
 );
 
+CREATE TABLE question_periods
+(
+  question_period_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('question_period_ids'),
+  displayname VARCHAR(60),
+  begindate TIMESTAMP,
+  enddate TIMESTAMP,
+  semester INTEGER,
+  year INTEGER,
+  profdate TIMESTAMP,
+  oracledate TIMESTAMP
+);
+
+CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
+
 CREATE TABLE sent_mails
 (
   sent_mail_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('sent_mail_ids'),
@@ -228,8 +242,8 @@ CREATE SEQUENCE sent_mail_ids INCREMENT 1 START 1;
 CREATE TABLE wces_topics
 (
   topic_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('topic_ids'),
-  class_id INTEGER NOT NULL,
-  question_period_id INTEGER NOT NULL,
+  class_id INTEGER,
+  question_period_id INTEGER,
   item_id INTEGER NOT NULL,
   specialization_id INTEGER NOT NULL,
   category_id INTEGER,
@@ -266,6 +280,22 @@ CREATE TABLE wces_prof_topics
   UNIQUE (class_topic_id, user_id)
 );
 
+CREATE TABLE wces_course_topics
+(
+  topic_id INTEGER PRIMARY KEY not null default nextval('topic_ids'),
+  course_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  specialization_id INTEGER NOT NULL,
+  UNIQUE (course_id)
+);
+
+CREATE INDEX class_idx ON enrollments (class_id);
+CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
+CREATE INDEX user_idx ON enrollments (user_id);
+CREATE INDEX ta_ratings_parent_idx ON ta_ratings (parent);
+CREATE INDEX enrollment_p_class ON enrollments_p (class_id);
+CREATE INDEX enrollment_p_user ON enrollments_p (user_id);
+
 CREATE INDEX enrollment_prof_idx ON enrollments (user_id) WHERE status = 3;
 ALTER TABLE classes ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
 ALTER TABLE classes ADD CONSTRAINT department_fk FOREIGN KEY (department_id) REFERENCES departments;
@@ -289,7 +319,8 @@ ALTER TABLE wces_topics ADD CONSTRAINT specialization_fk FOREIGN KEY (specializa
 ALTER TABLE ta_ratings ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 ALTER TABLE sent_mails ADD CONSTRAINT question_period_fk FOREIGN KEY (question_period_id) REFERENCES question_periods;
 ALTER TABLE wces_prof_topics ADD CONSTRAINT topic_fk FOREIGN KEY (class_topic_id) REFERENCES wces_topics (topic_id);
-
+ALTER TABLE users ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
+ALTER TABLE professor_hooks ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
 
 -- can't currently create these due to errors in data
 ALTER TABLE wces_topics ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
@@ -303,16 +334,16 @@ ALTER TABLE responses_survey ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERE
 
 -- foreign keys from temporary tables, these should be moved into whatever files
 -- the tables are declared in. also, some of these tables are probably obsolete
-ALTER TABLE temp_class ADD CONSTRAINT class_fk FOREIGN KEY (newid) REFERENCES classes(class_id);
-ALTER TABLE temp_course ADD CONSTRAINT course_fk FOREIGN KEY (newid) REFERENCES courses(course_id);
-ALTER TABLE temp_dept ADD CONSTRAINT department_fk FOREIGN KEY (newid) REFERENCES departments(department_id);
-ALTER TABLE temp_div ADD CONSTRAINT division_fk FOREIGN KEY (newid) REFERENCES divisions(division_id);
-ALTER TABLE temp_sch ADD CONSTRAINT school_fk FOREIGN KEY (newid) REFERENCES schools(school_id);
-ALTER TABLE temp_subj ADD CONSTRAINT subject_fk FOREIGN KEY (newid) REFERENCES subjects(subject_id);
-ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES categories(category_id);
-ALTER TABLE temp_prof ADD CONSTRAINT prof_fk FOREIGN KEY (newid) REFERENCES users(user_id);
-ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
-ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
+--ALTER TABLE temp_class ADD CONSTRAINT class_fk FOREIGN KEY (newid) REFERENCES classes(class_id);
+--ALTER TABLE temp_course ADD CONSTRAINT course_fk FOREIGN KEY (newid) REFERENCES courses(course_id);
+--ALTER TABLE temp_dept ADD CONSTRAINT department_fk FOREIGN KEY (newid) REFERENCES departments(department_id);
+--ALTER TABLE temp_div ADD CONSTRAINT division_fk FOREIGN KEY (newid) REFERENCES divisions(division_id);
+--ALTER TABLE temp_sch ADD CONSTRAINT school_fk FOREIGN KEY (newid) REFERENCES schools(school_id);
+--ALTER TABLE temp_subj ADD CONSTRAINT subject_fk FOREIGN KEY (newid) REFERENCES subjects(subject_id);
+--ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES categories(category_id);
+--ALTER TABLE temp_prof ADD CONSTRAINT prof_fk FOREIGN KEY (newid) REFERENCES users(user_id);
+--ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
+--ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 
 CREATE OR REPLACE FUNCTION references_class(INTEGER) RETURNS INTEGER AS '
   SELECT

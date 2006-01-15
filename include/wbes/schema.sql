@@ -4,7 +4,7 @@ CREATE SEQUENCE branch_ids INCREMENT 1 START 300;
 CREATE SEQUENCE revision_ids INCREMENT 1 START 400;
 CREATE SEQUENCE component_ids INCREMENT 1 START 500;
 CREATE SEQUENCE save_ids INCREMENT 1 START 600;
-CREATE SEQUENCE question_period_ids INCREMENT 1 START 700;
+CREATE SEQUENCE topic_ids INCREMENT 1 START 700;
 CREATE SEQUENCE response_ids INCREMENT 1 START 800;
 
 CREATE TABLE revisions
@@ -141,17 +141,10 @@ CREATE TABLE cached_branch_ancestors
   descendant_id INTEGER NOT NULL
 );
 
-CREATE TABLE question_periods
-(
-  question_period_id INTEGER PRIMARY KEY DEFAULT NEXTVAL('question_period_ids'),
-  displayname VARCHAR(60),
-  begindate TIMESTAMP,
-  enddate TIMESTAMP
-);
-
 CREATE TABLE responses
 (
-  response_id INTEGER PRIMARY KEY DEFAULT NEXTVAL ('response_ids'),
+  response_id INTEGER UNIQUE DEFAULT NEXTVAL ('response_ids'),
+  item_id INTEGER NOT NULL,
   revision_id INTEGER NOT NULL,
   parent INTEGER
 );
