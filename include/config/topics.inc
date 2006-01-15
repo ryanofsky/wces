@@ -5,7 +5,7 @@ require_once('wces/TopicEditor.inc');
 
 function topics_list($question_period_id)
 {
-  
+  global $WCES_COLUMBIA; 
   /*
   
 
@@ -63,7 +63,8 @@ values (1627, 25134, 1754);
   (  // heading, sql, name type
     array
     ( '<h5>Base Surveys</h5>', 
-      "
+      $WCES_COLUMBIA
+      ? "
         SELECT * FROM
         (
           SELECT 0 AS topic_id, 1 AS item_id, 1 AS specialization_id, 'Base Questions' AS name, 1 AS ordinal, 't'::BOOLEAN AS modified, NULL AS parent
@@ -83,6 +84,11 @@ values (1627, 25134, 1754);
           SELECT 0, 1627, 25134, 'Business School Questions', 8, 't', NULL                 
          
         ) AS t ORDER BY ordinal
+      " : "
+        SELECT t.topic_id, t.item_id, t.specialization_id, 
+          b.name, b.ordinal, 't'::BOOLEAN as modified, NULL AS parent
+        FROM wces_base_topics AS b
+        INNER JOIN wces_topics AS t USING (topic_id)
       ",
       TOPICS_LITERAL
     ),

@@ -272,6 +272,13 @@ CREATE TABLE ta_ratings
 )
 INHERITS (responses);
 
+CREATE TABLE wces_base_topics
+(
+  topic_id INTEGER PRIMARY KEY not null default nextval('topic_ids'),
+  name TEXT,
+  ordinal INTEGER NOT NULL
+);
+
 CREATE TABLE wces_prof_topics
 (
   topic_id INTEGER PRIMARY KEY not null default nextval('topic_ids'),
