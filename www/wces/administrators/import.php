@@ -4,6 +4,7 @@ require_once("wces/import.inc");
 
 param('upload');
 param('import');
+param('userfile');
 
 function printform()
 { global $WCES_COLUMBIA;
@@ -43,7 +44,7 @@ function printform()
 
 LoginProtect(LOGIN_ADMIN);
 
-page_top("WCES Mission");
+page_top("Data Import");
 
 if ($upload && is_uploaded_file($userfile))
 {
