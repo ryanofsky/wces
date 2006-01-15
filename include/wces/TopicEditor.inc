@@ -179,6 +179,7 @@ class QuestionPeriodSelector extends ParentWidget
       print("&nbsp;");
     }
     $this->box->selected = get_question_period();
+    $this->box->notFoundMessage = "-- No Question Periods Found --";
     $this->box->display();
     print("&nbsp;");
     $this->event->displayButton("Refresh", 1);

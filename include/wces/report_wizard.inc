@@ -204,17 +204,21 @@ class ReportWizard extends Wizard
     if (!is_array($t) || !(count($t) > 0))
     {
       wces_connect();
-      if ($this->depts)
-        $t = false;
-      else
-        $t = array((int)pg_result(pg_go("SELECT category_id FROM categories ORDER BY category_id LIMIT 1", $wces, __FILE__, __LINE__),0,0));
+      $t = false;
+      if (!$this->depts)
+      {
+        $result = pg_go("SELECT category_id FROM categories ORDER BY category_id LIMIT 1", $wces, __FILE__, __LINE__);
+        if (pg_numrows($result))
+          $t = array((int) pg_result($result, 0, 0));
+      }
     }
     else if (in_array("all",$t)) $t = false;
 
     if (!is_array($q) || !(count($q) > 0))
     {
       wces_connect();
-      $q = array(get_question_period());
+      $question_period_id = get_question_period();
+      $q = $question_period_id ? array($question_period_id) : false;
     }
     else if (in_array("all",$q)) $q = false;
 

@@ -12,6 +12,7 @@ class SqlBox extends Widget
   {
     $this->Widget($name, $parent);
     $this->sql = (string)$sql;
+    $this->notFoundMessage = "";
     $this->multiple = (bool)$multiple;
     $this->selected = $multiple ? array() : null;
   }
@@ -91,6 +92,10 @@ class SqlBox extends Widget
         print("  <option value=$id selected>$name\n");
       else  
         print("  <option value=$id>$name\n");
+    }
+    if ($n == 0 && $this->notFoundMessage)
+    {
+      print("  <option value=\"\">{$this->notFoundMessage}\n");
     }
     print("</select>");
   }

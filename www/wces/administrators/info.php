@@ -123,15 +123,17 @@ function PrintEnrollments($user_id)
   
   $userid = (int)LoginValue('user_id');
   $restricted = !(LoginValue('status') & LOGIN_ADMIN) && $user_id != $userid;
-  $surveys = (bool)(LoginValue('status') & LOGIN_ADMIN);
-
   $question_period_id = get_question_period();
+  $surveys = (bool)(LoginValue('status') & LOGIN_ADMIN) && $question_period_id;
 
-  $question_period_name = pg_result(pg_go("
-    SELECT displayname
-     FROM question_periods
-    WHERE question_period_id = $question_period_id
-  ", $wces, __FILE__, __LINE__), 0, 0);
+  if ($question_period_id)
+  {
+    $question_period_name = pg_result(pg_go("
+      SELECT displayname
+       FROM question_periods
+      WHERE question_period_id = $question_period_id
+    ", $wces, __FILE__, __LINE__), 0, 0);
+  }
 
   $classes = pg_go("
     SELECT e.status, get_class(e.class_id) AS class, get_profs(e.class_id) AS profs" . ($surveys ? ",

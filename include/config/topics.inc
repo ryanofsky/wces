@@ -102,7 +102,10 @@ values (1627, 25134, 1754);
       "
         SELECT t.topic_id, t.item_id, t.specialization_id, get_class(t.class_id) AS name, specialization_modified(t.item_id, t.specialization_id) AS modified, t.category_id
         FROM wces_topics AS t
-        WHERE t.question_period_id = $question_period_id
+        WHERE
+        " . ($question_period_id
+             ? "(t.question_period_id = $question_period_id)" 
+             : "(0 = 1)") . "
         ORDER BY name
       ", 
       TOPICS_CLASS

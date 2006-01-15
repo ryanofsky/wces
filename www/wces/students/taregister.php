@@ -47,6 +47,16 @@ class TaRegister extends ParentWidget
     if (isset($this->search->text))
       $this->form->addUrlVar($this->search->name(), $this->search->text);
     
+
+    $question_period_id = get_question_period();
+    if (!$question_period_id)
+    {
+      print("<p>Currently, there aren't any classes set up to be evaluated. "
+            . "You'll have to return to this page at a later date to register "
+            . "as a TA.");
+      return;
+    }
+    
     $user_id = (int)LoginValue('user_id');
     $r = pg_go("
       SELECT class_id, get_class(class_id) AS class,
@@ -87,8 +97,6 @@ class TaRegister extends ParentWidget
     $this->search->display();
     print(" <input type=submit value=\"Search Classes\">\n");
 
-    $question_period_id = get_question_period();
-    
     if (!isset($this->search->text)) return;
     
     $terms = parse_search($this->search->text);

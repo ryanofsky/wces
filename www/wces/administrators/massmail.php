@@ -294,14 +294,23 @@ class MassEmail extends ParentWidget
       print("</select><br>\n");
       
       $this->question_periods->display();
+
+      $question_period_id = get_question_period();
+
       $this->topics->sql = "
         SELECT 0 AS id, 'All Classes' AS name, 0 as ordinal
-        UNION
-        SELECT topic_id, get_class(class_id), 1
-        FROM wces_topics
-        WHERE question_period_id = " . get_question_period() . "
-        ORDER BY ordinal, name
       ";
+
+      if ($question_period_id)
+      {
+        $this->topics->sql .= "
+          UNION
+          SELECT topic_id, get_class(class_id), 1
+          FROM wces_topics
+          WHERE question_period_id = " . get_question_period() . "
+          ORDER BY ordinal, name
+        ";
+      }
       $this->topics->display("size=4 multiple");
       
     ?></td>

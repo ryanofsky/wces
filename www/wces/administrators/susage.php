@@ -11,16 +11,20 @@ $f =& new Form(null, $_SERVER['PHP_SELF']);
 $u =& new StudentUsage('usage', $f);
 $f->loadState();
 
-// get information about selected question period
-$result = pg_go("
-  SELECT question_period_id, displayname, year, semester
-  FROM question_periods
-  WHERE question_period_id = {$u->options->question_period_id}
-", $wces, __FILE__, __LINE__);
+$displayname = "";
+if ($u->options->question_period_id)
+{
+  // get information about selected question period
+  $result = pg_go("
+    SELECT displayname
+    FROM question_periods
+    WHERE question_period_id = {$u->options->question_period_id}
+  ", $wces, __FILE__, __LINE__);
 
-extract(pg_fetch_array($result,0,PGSQL_ASSOC));
+  $displayname = pg_fetch_result($result,0,0);
+}
 
-page_top("Student Usage Data for $displayname");
+page_top("Student Usage Data" . ($displayname ? " for $displayname" : ""));
 
 $u->display();
 

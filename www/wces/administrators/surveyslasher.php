@@ -19,6 +19,11 @@ wbes_connect();
 
 $first = true;
 $question_period_id = get_question_period();
+
+if (!$question_period_id) {
+?><p>No question periods found. Click <a href="<?=$wces_path?>administrators/questionperiods.php">here</a> to create one.</p><?
+} else {
+
 print("<p><b>Question Periods:</b> ");
 foreach(get_question_periods() as $id => $name)
 {
@@ -145,6 +150,9 @@ else
 
 
     }
+
+}
+
 page_bottom();    
     
 ?>

@@ -113,6 +113,12 @@ class StudentUsage extends ParentWidget
   {
     global $wces, $wces_path, $ASID;
 
+    if (!$this->options->question_period_id)
+    {
+      print("<p>No question periods found. Click <a href=\"{$wces_path}administrators/questionperiods.php\">here</a> to create one.</p>");
+      return;
+    }
+
     $this->options->display();
 
     $times = array();
@@ -209,7 +215,7 @@ Number of surveys completed: <b><?=$responses?></b><br>
     (
       2 => "Students who completed all of their surveys",
       1 => "Students who completed at least one of their surveys",
-      0 => "Students who completed at none of their surveys"
+      0 => "Students who completed none of their surveys"
     );
 
     while ($students->row)
@@ -250,6 +256,12 @@ class ProfessorUsage extends ParentWidget
   function printVisible()
   {
     global $wces, $wces_path;
+
+    if (!$this->options->question_period_id)
+    {
+      print("<p>No question periods found. Click <a href=\"{$wces_path}administrators/questionperiods.php\">here</a> to create one.</p>");
+      return;
+    }
 
     $this->options->display();
 
@@ -322,7 +334,7 @@ class ProfessorUsage extends ParentWidget
         else if ($r->row['status'] == 1)
           print("Classes with professors who have recently logged in:");
         else
-          print("Classes without professors who have recently logged in:");
+          print("Classes with professors who haven't recently logged in:");
         print("</font></strong></td></tr>\n");
       }
 
