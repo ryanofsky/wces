@@ -144,9 +144,9 @@ class Wizard extends ParentWidget
   <td>
     <table border=0 cellspacing=0 cellpadding=0>
     <tr>
-      <td height=18 colspan=4 bgcolor="#08286B" background="<?=$wces_path?>media/wizard/title.jpg">
-        <a onmousedown="button_push('<?=$wizardx?>')" onmouseup="button_unpush('<?=$wizardx?>')" onmouseout="button_unpush('<?=$wizardx?>')" href="<?=$this->cancelUrl?>"><img name="<?=$wizardx?>" src="<?=$wces_path?>media/wizard/close.gif" border=0 height=18 width=20 align=right></a><img src="<?=$wces_path?>media/nada.gif" width=2 height=1><font face="System" color="#FFFFFF">Reporting Wizard</font>
-        <script>AttachPushed('<?=$wizardx?>','wizardclosep.gif')</script>
+      <td height=18 colspan=4 bgcolor="#08286B" background="<?=$wces_path?>media/wizard/title.png" style="padding: 1px">
+        <a onmousedown="button_push('<?=$wizardx?>')" onmouseup="button_unpush('<?=$wizardx?>')" onmouseout="button_unpush('<?=$wizardx?>')" href="<?=$this->cancelUrl?>"><img name="<?=$wizardx?>" src="<?=$wces_path?>media/wizard/close.gif" border=0 height=18 width=20 align=right></a><img src="<?=$wces_path?>media/nada.gif" width=2 height=1><font face="System" color="#FFFFFF"><span style="font-family: System, Verdana, Arial, Helvetica, sans-serif; font-weight: bold; font-color: white; font-size: small">Reporting Wizard</span></font>
+        <script>AttachPushed('<?=$wizardx?>','closep.gif')</script>
       </td>
     </tr>
     <tr><td colspan=4 bgcolor="#D6D3CE" width=506 height=1><img src="<?=$wces_path?>media/nada.gif" width="1" height="1"></td></tr>
@@ -167,7 +167,7 @@ class Wizard extends ParentWidget
       $href = "javascript:document.forms['{$this->form->formName}']['$showStepName'].value = $key; void(document.forms['" . $this->form->formName . "'].submit())";
       $suffix = ($key == $showStep ? "a" : (isset($visited[$key]) && $visited[$key] ? "v" : ""));
       if ($key == $first)
-      {?><tr><td><a href="<?=$href?>"><img src="<?=$wces_path?>media/wizard/node_top<?=$suffix?>.gif" width=40 height=16 border=0></a></td><td><a href="<?=$href?>"><font face=verdana size="-1" color="#FFFFFF"><?=$value?></font></a></td></tr><tr><td><img src="<?=$wces_path?>media/wizard/node_connect.gif" width=40 height=16></td></tr><?="\n"?><?}
+      {?><tr><td valign=bottom><a href="<?=$href?>"><img src="<?=$wces_path?>media/wizard/node_top<?=$suffix?>.gif" width=40 height=16 border=0></a></td><td><a href="<?=$href?>"><font face=verdana size="-1" color="#FFFFFF"><?=$value?></font></a></td></tr><tr><td><img src="<?=$wces_path?>media/wizard/node_connect.gif" width=40 height=16></td></tr><?="\n"?><?}
       else if ($key == $last)
       {?><tr><td><a href="<?=$href?>"><img src="<?=$wces_path?>media/wizard/node_bot<?=$suffix?>.gif" width=40 height=16 border=0></a></td><td><a href="<?=$href?>"><font face=verdana size="-1" color="#FFFFFF"><?=$value?></font></a></td></tr><?="\n"?><?}
       else

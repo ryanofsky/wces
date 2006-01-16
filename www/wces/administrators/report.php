@@ -18,7 +18,7 @@
   header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $seconds) . ' GMT');
   header('Last-Modified: ' . gmdate('D, d M Y H:i:s', getlastmod()) . ' GMT');
 
-  page_top("Administrative Report",$report->hideMenus);
+  page_top("Reporting Wizard",$report->hideMenus);
  
   print("<form name={$f->formName} action=\"{$f->pageName}\" method=post>\n");
   print($ISID);
