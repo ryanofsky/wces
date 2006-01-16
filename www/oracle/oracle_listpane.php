@@ -196,7 +196,9 @@ else if ($mode == "professors")
     extract($users->row);
     if ($users->split)
     {
-      $dept = $department_id ? "$name ($code)" : "<i>Unknown</i>"; 
+      $dept = $department_id ? "$name ($code)" : $users->rkey
+              ? "<i>Unknown</i>" : "Professors";
+         ; 
       print("<h5>$dept</h5>\n<font size=-1>\n<ul>\n");
     }
     print("  <li><a href=\"oracle_infopane.php?user_id=$user_id\">$lastname, $firstname</a></li>\n");
@@ -231,7 +233,8 @@ else // $mode == "courses"
     extract($classes->row);
     if ($classes->split)
     {
-      $dept = $department_id ? "$name ($code)" : "<i>Unknown</i>"; 
+      $dept = $department_id ? "$name ($code)" : $classes->rkey 
+              ? "<i>Unknown</i>" : "Courses"; 
       print("<h5>$dept</h5>\n<font size=-1>\n<ul>\n");
     }
     print("  <li><a href=\"oracle_infopane.php?course_id=$course_id\">" . format_ccourse($course_info, "<i>%c</i><br>%n") . "</a></li>\n");

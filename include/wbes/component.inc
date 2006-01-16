@@ -9,6 +9,7 @@ require_once("widgets/dynamiclist.inc");
 
 define("FLAG_LOCKED", 0x01000000);
 define("FLAG_ISHTML", 0x02000000);
+define("FLAG_SIMPLE", 0x04000000); // kludge, see SimpleResults.inc
 
 // When copying a component from one survey to another
 // the later changes to the component in the source survey

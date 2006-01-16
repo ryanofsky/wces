@@ -9,5 +9,6 @@ $WCES_COLUMBIA = false;
 $WBES_LOGIN_INCLUDE = "config/DemoLogin.inc";
 $WBES_LOGIN = "DemoLogin";
 $WCES_CONFIG_UPLOAD_PHYSICAL_PATH = "/home/russ/devel/wces/www/wces/upload/";
+$WCES_COLUMBIA = false;
 
 ?>

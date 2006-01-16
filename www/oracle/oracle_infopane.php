@@ -60,7 +60,7 @@ wces_connect();
 
 function ShowClass($class_id)
 {
-  global $oracle_branch_id, $show_distributions, $wces, $select_classes, $set_question_periods, $wces_path, $oracle_root, $set_question_periods, $base_base_branch_id;
+  global $oracle_branch_id, $show_distributions, $wces, $select_classes, $wces_path, $oracle_root;
 
   $class_id = (int)$class_id;
 

@@ -6,12 +6,28 @@ require_once("wces/wces.inc");
 // SimpleResults exists to provides a uniform interface for
 // retrieving responses to base questions
 
-//$select_classes = "SELECT DISTINCT class_id FROM wces_topics WHERE make_public";
+// The SimpleResults interface (and the client code which uses it) is
+// tied to the base question format used at Columbia and should not
+// be used in new code. When the WCES_COLUMBIA configuration variable
+// is enabled it works by retrieving results with item ids and and 
+// question period ids from the Columbia database hardcoded in the
+// source. When WCES_COLUMBIA is disabled it shows results from survey
+// components with a special FLAG_SIMPLE flag set.
+
 $select_classes = "SELECT class_id FROM wces_topics AS tsct WHERE tsct.make_public AND EXISTS (SELECT * FROM question_periods AS tscq WHERE tscq.question_period_id = tsct.question_period_id AND tscq.oracledate < (SELECT NOW()))";
-$set_question_periods = "(2,23,28)";
-$base_item_id = 14; // comments
-$oracle_item_id = 13; // multiple choice except for quality of text question
-$oracle_quality_of_text = 305; // multiple choice for quality of text question
+
+if ($WCES_COLUMBIA)
+{
+  $set_question_periods = "(2,23,28)";
+  $base_item_id = 14; // comments
+  $oracle_item_id = 13; // multiple choice except for quality of text question
+  $oracle_quality_of_text = 305; // multiple choice for quality of text question
+}
+else
+{
+  $set_question_periods = "(SELECT question_period_id FROM question_periods
+                            WHERE oracledate < (SELECT NOW()))";
+}
 
 function & array_get(&$array, $index)
 {
@@ -34,7 +50,7 @@ class SimpleResults
 
   function SimpleResults($class_ids, $includeComments)
   {
-    global $wces, $set_question_periods, $oracle_item_id, $oracle_quality_of_text, $base_item_id;
+    global $wces, $set_question_periods, $oracle_item_id, $oracle_quality_of_text, $base_item_id, $WCES_COLUMBIA;
     wces_connect();
 
     $class_ids = array_unique($class_ids);
@@ -73,7 +89,11 @@ class SimpleResults
       INNER JOIN responses_choice_question AS qr ON qr.parent = cr.response_id
       INNER JOIN revisions AS qrv ON qrv.revision_id = qr.revision_id
       INNER JOIN components_choice_question AS q ON q.component_id = qrv.component_id
-      WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND cr.item_id IN ($oracle_item_id, $oracle_quality_of_text)
+      WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods 
+        AND 
+      " . ($WCES_COLUMBIA
+           ? "cr.item_id IN ($oracle_item_id, $oracle_quality_of_text)"
+           : "c.flags & " . FLAG_SIMPLE . " <> 0") . "
       GROUP BY t.class_id, q.qtext, qr.revision_id
       ORDER BY qr.revision_id
     ", $wces, __FILE__, __LINE__);
@@ -105,7 +125,11 @@ class SimpleResults
         INNER JOIN responses_text_question AS tr ON tr.parent = r.response_id
         INNER JOIN revisions AS rv ON rv.revision_id = tr.revision_id
         INNER JOIN components_text_question AS c USING (component_id)
-        WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods AND tr.item_id = $base_item_id
+        WHERE t.class_id IN ($classes) AND t.question_period_id IN $set_question_periods 
+          AND 
+        " . ($WCES_COLUMBIA 
+             ? "tr.item_id = $base_item_id"
+             : "c.flags & " . FLAG_SIMPLE . " <> 0") . "
       ", $wces, __FILE__, __LINE__);
 
       $n = pg_numrows($r);
@@ -120,7 +144,8 @@ class SimpleResults
     // OLD CLASS_ID's
 
     // if we don't need to look in the old database, just return now
-    if (count($this->distributions) >= count($class_ids)) return;
+    if (!$WCES_COLUMBIA || count($this->distributions) >= count($class_ids))
+      return;
 
     $old_new_map = array();
     $r = pg_go("SELECT oldid, newid FROM temp_class WHERE newid IN ($classes)", $wces, __FILE__, __LINE__);

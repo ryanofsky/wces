@@ -296,6 +296,13 @@ CREATE TABLE wces_course_topics
   UNIQUE (course_id)
 );
 
+CREATE TABLE presps (
+  user_id INTEGER NOT NULL,
+  course_id INTEGER NOT NULL,
+  data text,
+  PRIMARY KEY (user_id, course_id)
+);
+
 CREATE INDEX class_idx ON enrollments (class_id);
 CREATE INDEX student_class_idx ON enrollments (class_id) WHERE status = 1;
 CREATE INDEX user_idx ON enrollments (user_id);
@@ -328,13 +335,14 @@ ALTER TABLE sent_mails ADD CONSTRAINT question_period_fk FOREIGN KEY (question_p
 ALTER TABLE wces_prof_topics ADD CONSTRAINT topic_fk FOREIGN KEY (class_topic_id) REFERENCES wces_topics (topic_id);
 ALTER TABLE users ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
 ALTER TABLE professor_hooks ADD constraint uni_rule CHECK (uni IS NULL OR char_length(uni) > 0);
+ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
+ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 
 -- can't currently create these due to errors in data
 ALTER TABLE wces_topics ADD CONSTRAINT class_fk FOREIGN KEY (class_id) REFERENCES classes;
 ALTER TABLE wces_topics ADD CONSTRAINT category_fk FOREIGN KEY (category_id) REFERENCES categories;
 ALTER TABLE saves ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 ALTER TABLE responses_survey ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
-
 
 -- might someday create an items table...
 --ALTER TABLE wces_topics ADD CONSTRAINT item_fk FOREIGN KEY (item_id) REFERENCES ???;
@@ -349,8 +357,6 @@ ALTER TABLE responses_survey ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERE
 --ALTER TABLE temp_subj ADD CONSTRAINT subject_fk FOREIGN KEY (newid) REFERENCES subjects(subject_id);
 --ALTER TABLE temp_topic ADD CONSTRAINT category_fk FOREIGN KEY (newid) REFERENCES categories(category_id);
 --ALTER TABLE temp_prof ADD CONSTRAINT prof_fk FOREIGN KEY (newid) REFERENCES users(user_id);
---ALTER TABLE presps ADD CONSTRAINT course_fk FOREIGN KEY (course_id) REFERENCES courses;
---ALTER TABLE presps ADD CONSTRAINT user_fk FOREIGN KEY (user_id) REFERENCES users;
 
 CREATE OR REPLACE FUNCTION references_class(INTEGER) RETURNS INTEGER AS '
   SELECT
@@ -1062,6 +1068,7 @@ CREATE OR REPLACE FUNCTION user_update(VARCHAR(12),VARCHAR(28),VARCHAR(28),VARCH
   END;
 ' LANGUAGE 'plpgsql';
 
+-- broken: uses picname column instead of picture_id
 CREATE OR REPLACE FUNCTION professor_data_update(INTEGER,VARCHAR(252),VARCHAR(124),TEXT,TEXT,TEXT) RETURNS INTEGER AS '
   DECLARE
     userid   ALIAS FOR $1;
@@ -1157,6 +1164,7 @@ CREATE OR REPLACE FUNCTION professor_unused_uni(INTEGER) RETURNS BOOLEAN AS '
   SELECT EXISTS (SELECT * FROM users WHERE user_id = $1 AND lastlogin IS NULL)
 ' LANGUAGE 'sql';
 
+-- broken: uses picname column instead of picture_id
 CREATE OR REPLACE FUNCTION professor_merge(INTEGER, INTEGER) RETURNS INTEGER AS '
   DECLARE
     primary_id ALIAS FOR $1;

@@ -21,6 +21,7 @@ NUM_STUDENTS = 100
 NUM_PROFESSORS = 20
 NUM_CLASSES = 20
 STUDENTS_PER_CLASS = (20, 10)
+FLAG_ORACLE = 0x04000000
 
 if 0 and True:
   NUM_STUDENTS=5
@@ -45,7 +46,7 @@ BASE_SURVEY = kw(table="components_survey", cols={"type": 1},
                  children=[kw(table="components_choice",
                               cols={"type": 2,
                                     "ctext": "",
-                                    "flags": 0,
+                                    "flags": FLAG_ORACLE,
                                     "choices": PgSQL.PgArray
                                       (["excellent", "very good",
                                         "satisfactory", "poor", "disastrous"]),
@@ -65,7 +66,7 @@ BASE_SURVEY = kw(table="components_survey", cols={"type": 1},
                            kw(table="components_text_question",
                               cols={"type": 3,
                                     "ctext": "Comments:",
-                                    "flags": 0,
+                                    "flags": FLAG_ORACLE,
                                     "rows": 5, 
                                     "cols": 60},
                              children=None)])
