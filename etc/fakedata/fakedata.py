@@ -12,16 +12,18 @@ COURSES = ("Introduction to %s",
            "Seminar In Applied %s")
 ADMIN_FNAME = "Andrew T."
 ADMIN_LNAME = "Administrator"
-PROF_FNAMES = ("Vestuvius", "Manjeta", "Laureena", "Nervante", "Cooletto")
-PROF_LNAMES = ("Bolingrove", "Cockingham", "Peresanto", "Ninsemburg", "Faresh")
-STUD_FNAMES = ("Neenosh", "Farlo", "Tendrum", "Padril", "Cerfake", "Ichla")
-STUD_LNAMES = ("Beep", "Tam", "Dool", "Fair", "Gorb", "Yelk", "Fide", "Slam")
+PROF_NAMES = (("Vestuvius", "Manjeta", "Laureena", "Nervante", "Cooletto"),
+              ("Bolingrove", "Cockingham", "Peresanto", "Ninsburg", "Faresh"))
+STUD_NAMES = (("Neenosh", "Farlo", "Tendrum", "Padril", "Cerfake", "Ichla"),
+              ("Beep", "Tam", "Dool", "Fair", "Gorb", "Yelk", "Fide", "Slam"))
 EMAIL_SUFFIX = "@columbia.edu"
+URL_PREFIX = "http://www.columbia.edu/~"
 NUM_STUDENTS = 100
 NUM_PROFESSORS = 20
-NUM_CLASSES = 20
+NUM_CLASSES = 30
 STUDENTS_PER_CLASS = (20, 10)
 FLAG_ORACLE = 0x04000000
+PICTURES_DIR = "www/wces/upload"
 
 if 0 and True:
   NUM_STUDENTS=5
@@ -91,7 +93,7 @@ QUESTION_PERIODS = [kw(cols={"displayname": "Fall 2003 Midterm Evaluations",
 def fakedata():
   conn = db_connect()
   cursor = conn.cursor()
- 
+
   # -- Administrator -- #
   admin_id = db_insert(cursor, "users", "user_ids",
                        uni="admin",
@@ -103,23 +105,43 @@ def fakedata():
  
   # -- Professors -- #
   professors = []
+  names = random_names(PROF_NAMES)
   for i in range(1, 1+NUM_PROFESSORS):
+    firstname, lastname = names.next()
     user_id = db_insert(cursor, "users", "user_ids",
                         uni="prof%i" % i,
-                        lastname=random.choice(PROF_LNAMES),
-                        firstname=random.choice(PROF_FNAMES),
+                        firstname=firstname,
+                        lastname=lastname,
                         email="prof%i%s" % (i, EMAIL_SUFFIX),
                         lastlogin=None,
                         flags=0x4)
+    
     professors.append(user_id)
+
+  # -- Professor Profiles -- #
+  pictures = []
+  if PICTURES_DIR:
+    for picture in os.listdir(PICTURES_DIR):
+      picture_id = db_insert(cursor, "pictures", "picture_ids", name=picture)
+      pictures.append(picture_id)
+
+  i = 0
+  for user_id in professors:
+    if i == 0:
+      random.shuffle(pictures)
+    db_insert(cursor, "professor_data", None, user_id=user_id,
+              statement=random_comment(), picture_id=pictures[i]) 
+    i = (i + 1) % len(pictures)
 
   # -- Students -- #
   students = []
+  names = random_names(STUD_NAMES)
   for i in range(1, 1+NUM_STUDENTS):
+    firstname, lastname = names.next()
     user_id = db_insert(cursor, "users", "user_ids",
                         uni="student%i" % i,
-                        lastname=random.choice(STUD_LNAMES),
-                        firstname=random.choice(STUD_FNAMES),
+                        firstname=firstname,
+                        lastname=lastname,
                         email="student%i%s" % (i, EMAIL_SUFFIX),
                         lastlogin=None,
                         flags=0x8)
@@ -292,6 +314,13 @@ def respond_component(cursor, component, parent):
   for _component in children:
     respond_component(cursor, _component, response_id)
 
+def random_names((first, last)):
+  "Return random names without duplicates (until it runs out of combinations)"
+  lf = len(first)
+  n = lf * len(last)
+  while True:
+    for i in random.sample(xrange(n), n) :
+      yield first[i % lf], last[i // lf]
 
 def random_comment():
   fp = os.popen("fortune", "r")
