@@ -63,7 +63,7 @@ function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
 {
   global $WBES_FEEDBACK, $WBES_DEVELOPER;
   if (!$from) $from = "Anonymous";
-  if ($WBES_FEEDBACK, $WBES_DEVELOPER)
+  if ($WBES_FEEDBACK != $WBES_DEVELOPER)
     safe_mail($WBES_FEEDBACK,$subject,"Feedback from $from\n\n$comments");
   $comments .= "\n\n----------------------------------------\n";
 
