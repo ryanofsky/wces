@@ -17,9 +17,6 @@ $year = 2002;
 $semester = 2;
 $answer = 0;
 
-$db_debug = false;
-$server_isproduction = false;
-
 page_top('Distinguished Faculty Nominations', 1);
 ob_flush(); flush();
 

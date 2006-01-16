@@ -8,10 +8,13 @@ $WBES_SERVER = "apache";
 // Whether or this installation is being used for testing and development
 // or if it's being accessed by real users. If set to true, it intercepts
 // any outgoing mail and redirects it to the developer address to prevent
-// test mail from going to real users. It set to false, it will also enable
-// warning emails to the developer address whenever there is a runtime
-// error to make it easier to debug problems affecting real users.
+// test mail from going to real users. Also enables detailed error
+// messages on SQL errors
 $WBES_DEBUG = true;
+
+// Whether to send warning emails to the developer address whenever there
+// is a runtime error to make it easier to debug problems
+$WBES_DEBUG_WARNINGS = true;
 
 // Name of wbes database
 $WBES_DATABASE_NAME = "wces";

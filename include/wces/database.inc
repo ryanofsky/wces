@@ -59,13 +59,13 @@ function db_show($result,$name = "Result", $showtypes = false)
 
 function db_exec($sql, $db, $file = __FILE__, $line = __LINE__)
 {
-  global $db_debug, $server_isproduction;
+  global $db_debug, $WBES_DEBUG;
   
   if ($db_debug) $t = microtime();
   $result = mysql_query($sql,$db);
   if ($db_debug) $time = gettime(microtime()) - gettime($t);
   
-  if ($db_debug || (!$result && !$server_isproduction))
+  if ($db_debug || (!$result && $WBES_DEBUG))
   {
     print("<p>SQL Query in <b>$file</b>, line <b>$line</b><br>\n");
     print('<pre style="background-color:#DDDDDD; width:100%">' . $sql . "\n</pre><br>\n");

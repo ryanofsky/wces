@@ -3,7 +3,7 @@
 require_once("wbes/general_url.inc");
 require_once("wces/database.inc");
 
-function safe_mail($to, $subject, $text, $headers)
+function safe_mail($to, $subject, $text, $headers=null)
 {
   global $WBES_DEBUG, $WBES_DEVELOPER;
   return mail($WBES_DEBUG === false ? $to : $WBES_DEVELOPER,
@@ -11,7 +11,7 @@ function safe_mail($to, $subject, $text, $headers)
 }
 
 /**
-* Puts a warning into the database and sends an obnoxious email to an administrator
+* Puts a warning into the database and sends an obnoxious email to the developer
 * It should be used like an assert, to ensure that unexpected conditions do
 * not go unnoticed.
 *
@@ -21,28 +21,38 @@ function safe_mail($to, $subject, $text, $headers)
 */
 function sendwarning($dump, $file, $line)
 {
-  global $server_url, $server_isproduction, $server_dev;
-  static $recursive_call = 0;
+  global $WBES_DEBUG_WARNINGS, $WBES_DEVELOPER, $server_url, $wces;
 
+  static $recursive_call = 0;
   if ($recursive_call) return;
   $recursive_call = 1;
 
-  $errorid = 0;
+  $warning_id = 0;
   $url = $server_url->toString(true,true,true);
   $uni = function_exists("LoginValue") ? LoginValue('uni') : "";
   $user_id = function_exists("LoginValue") ? LoginValue('user_id') : "";
 
-  if ($server_isproduction && function_exists("wces_oldconnect"))
+  if (function_exists("wces_connect"))
   {
-    $db = wces_oldconnect();
-    $errorid = db_addrow($db, "warninglog", array("url" => $url, "file" => $file, "line" => $line, "uni" => $uni, "dump" => $dump));
+    wces_connect();
+    $result = pg_go("
+      INSERT INTO warnings (url, file, line, uni, dump)
+      VALUES ('" . addslashes($url) . "',
+              '" . addslashes($file) . "',
+               " . (int)$line . ",
+              '" . addslashes($uni) . "',
+              '" . addslashes($dump) . "');
+      SELECT currval('warning_ids');
+    ", $wces, __FILE__, __LINE__);
+
+    $warning_id = pg_result($result, 0, 0);
   }
 
-  if ($user_id) $uni = "'$uni' ($user_id) was logged in at the time\n";
-  $message = "An error was encountered at $file:$line while loading $url.\n\nThe error id is $errorid, and the text of the error message is as follows:\n\n$dump\n\n$uni";
+  if ($user_id || $uni) $uni = "'$uni' ($user_id) was logged in at the time\n";
+  $message = "An error was encountered at $file:$line while loading $url.\n\nThe warning id is $warning_id, and the text of the error message is as follows:\n\n$dump\n\n$uni";
 
-  if ($server_isproduction)
-    safe_mail($server_dev, "WCES Warning from $file in line $line", wordwrap($message));
+  if ($WBES_DEBUG_WARNINGS)
+    safe_mail($WBES_DEVELOPER, "WCES Warning from $file in line $line", wordwrap($message));
   else
     print("<pre>" . wordwrap($message) . "</pre>");
     
@@ -51,10 +61,10 @@ function sendwarning($dump, $file, $line)
 
 function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
 {
-  global $server_dev, $server_feedback;
+  global $WBES_FEEDBACK, $WBES_DEVELOPER;
   if (!$from) $from = "Anonymous";
-  if ($server_dev != $server_feedback)
-    safe_mail($server_feedback,$subject,"Feedback from $from\n\n$comments");
+  if ($WBES_FEEDBACK, $WBES_DEVELOPER)
+    safe_mail($WBES_FEEDBACK,$subject,"Feedback from $from\n\n$comments");
   $comments .= "\n\n----------------------------------------\n";
 
   if (isset($_SERVER) && is_array($_SERVER))
@@ -74,7 +84,7 @@ function sendfeedback($comments, $from, $subject = "WCES WEB FEEDBACK")
       $comments .= "$key = $value\n";
     }
   }
-  safe_mail($server_dev,"$subject+","WCES Feedback from $from\n\n$comments");
+  safe_mail($WBES_DEVELOPER,"$subject+","WCES Feedback from $from\n\n$comments");
 }
 
 /**
@@ -111,13 +121,12 @@ function simplesplit($splitchar,$name,&$first,&$last)
 */
 function redirect($url, $exit = true)
 {
-  global $server_cheapredirects, $server_isproduction, $server_url;
+  global $server_cheapredirects, $server_url;
    
   if (headers_sent())
   {
     sendwarning("Redirect was attempted after headers had already been sent.", __FILE__, __LINE__);
-    if ($server_isproduction)
-      sloppyredirect($url);
+    sloppyredirect($url);
   }
   else
   {

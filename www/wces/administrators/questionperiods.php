@@ -7,8 +7,6 @@ require_once("wbes/postgres.inc");
 require_once("wces/page.inc");
 require_once("wces/login.inc");
 
-$server_isproduction = false;
-
 function format_date($timestamp, $time = true)
 {
   return $timestamp ? date("m/d/Y" . ($time ? " g:i a" : ""), $timestamp) : "";

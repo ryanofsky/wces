@@ -2,11 +2,9 @@
   // old globals predating config file, should gradually phase these out
   $wces_path = $WCES_CONFIG_PATH;
   $oracle_root = $ORACLE_PATH;
-  $server_isproduction = !$WBES_DEBUG;
   $server_media = $WCES_CONFIG_MEDIA_PATH;
   $server_tempdir = "";
   $server_feedback = $WBES_FEEDBACK;
-  $server_dev = $WBES_DEVELOPER;
 
   require_once("wbes/general_url.inc");
 
@@ -55,7 +53,6 @@
   }
   else if ($WBES_SERVER == "iis-isapi")
   {
-    $server_isproduction = false;
     $server_win32 = true;
     $server_cheapredirects = false;
     $server_url = new URL
@@ -70,13 +67,6 @@
   }
   else
     die("Fatal Error in <b>" . __FILE__ . ", line <b>" . __LINE__ . "</b>: Invalid Server Type '$WBES_SERVER'");
-
-  if (!$server_isproduction)
-  {
-    ini_set ('display_startup_errors', 1);
-    ini_set ('display_errors', 1);
-    error_reporting (E_ALL);
-  }
 
 if (!isset($PHP_SELF)) $PHP_SELF = $_SERVER['PHP_SELF'];
 
