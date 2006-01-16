@@ -82,12 +82,14 @@ class MassEmail extends ParentWidget
     if ($new) return $this->loadInitialState();
     
     global $wces;
+
     $this->to = $this->readValue("to");
     $this->category_id = (int)$this->readValue("category_id");
 
     if ($this->event->event == MassEmail_load && $this->event->param)
     {
       $sent_mail_id = (int)$this->event->param;
+      wces_connect();
       $r = pg_go("
         SELECT sent_mail_id, mail_from, reply_to, mail_to, subject, body, category_id, question_period_id
         FROM sent_mails WHERE sent_mail_id = $sent_mail_id
@@ -175,6 +177,7 @@ class MassEmail extends ParentWidget
       $this->event->displayButton('Cancel', MassEmail_back);
       print("</p>");
       
+      wces_connect();
       $r = pg_go("
         SELECT category_id AS id, name FROM categories
       ", $wces, __FILE__, __LINE__);
@@ -505,7 +508,7 @@ class MassEmail extends ParentWidget
       {
         if ($address)
         {
-          taskwindow_cprint("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
+          print("[ $sofar  /  $total  ] Sending to " . htmlspecialchars($address) . " <br>\n");
           
           // XXX: need to add Errors-To: header to set the address that
           // postfix uses as the FROM address when connecting to the
@@ -516,7 +519,7 @@ class MassEmail extends ParentWidget
         }
         else
         {
-          taskwindow_cprint("<font color=red>[ $sofar / $total ] Missing email address for UNI " . $user["cunix"] . "</font><br>\n");
+          print("<font color=red>[ $sofar / $total ] Missing email address for UNI " . $user["cunix"] . "</font><br>\n");
           print("<p><strong><font color=red>Missing email address for UNI " . $user["cunix"] . "</font></strong></p>\n");
         }
         if ($sofar % 5 == 0) { taskwindow_flush(); }
