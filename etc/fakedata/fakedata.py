@@ -4,6 +4,7 @@ import re
 import os
 
 DATABASE = "wces"
+PICTURES_DIR = "www/wces/upload"
 SUBJECTS = (("GEO", "Geology", ("Nesis", "Plesis")),
             ("SEI", "Seismology", ("Dentrate", "Conflate")),
             ("ELE", "Electrology", ("Plestro", "Festo")))
@@ -22,17 +23,9 @@ NUM_STUDENTS = 100
 NUM_PROFESSORS = 20
 NUM_CLASSES = 30
 STUDENTS_PER_CLASS = (20, 10)
-FLAG_ORACLE = 0x04000000
-PICTURES_DIR = "www/wces/upload"
-
-if 0 and True:
-  NUM_STUDENTS=5
-  NUM_PROFESSORS=2
-  NUM_CLASSES=2
-  STUDENTS_PER_CLASS = (3, 0)
-
 YEAR = 2003
 SEMESTER = 2
+FLAG_SIMPLE = 0x04000000
 
 class kw:
   def __init__(self, **args):
@@ -48,7 +41,7 @@ BASE_SURVEY = kw(table="components_survey", cols={"type": 1},
                  children=[kw(table="components_choice",
                               cols={"type": 2,
                                     "ctext": "",
-                                    "flags": FLAG_ORACLE,
+                                    "flags": FLAG_SIMPLE,
                                     "choices": PgSQL.PgArray
                                       (["excellent", "very good",
                                         "satisfactory", "poor", "disastrous"]),
@@ -68,7 +61,7 @@ BASE_SURVEY = kw(table="components_survey", cols={"type": 1},
                            kw(table="components_text_question",
                               cols={"type": 3,
                                     "ctext": "Comments:",
-                                    "flags": FLAG_ORACLE,
+                                    "flags": FLAG_SIMPLE,
                                     "rows": 5, 
                                     "cols": 60},
                              children=None)])

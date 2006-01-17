@@ -24,8 +24,8 @@ $WBES_DATABASE_NAME = "wces";
 $WBES_FEEDBACK = "wces@columbia.edu";
 
 // Developer email address. This is the address test and warning emails are
-// sent to (see SERVER_DEBUG). Feedback form responses are also BCCed to this
-// address
+// sent to (see SERVER_DEBUG and SERVER_DEBUG_WARNING). Feedback form
+// responses are also BCCed to this address
 $WBES_DEVELOPER = "rey4@columbia.edu";
 
 // URL to page which does nothing but call LoginInstance()->handle(). The
@@ -78,6 +78,7 @@ $WCES_CONFIG_MEDIA_PATH = "{$WCES_CONFIG_PATH}media/";
 $WCES_CONFIG_HELP_PATH = "{$WCES_CONFIG_PATH}help.php";
 
 // URL and physical path to upload directory
+// The PHP interpreter needs to have write access to this directory
 $WCES_CONFIG_UPLOAD_PATH = "/wces/upload/";
 $WCES_CONFIG_UPLOAD_PHYSICAL_PATH = "/home/httpd/apps/wces/www/wces/upload/";
 

@@ -1,0 +1,118 @@
+==================
+WCES INSTALL GUIDE
+==================
+
+Required Software
+
+  Postgresql 7.x or 8.x (http://www.postgresql.org/)
+  PHP 4.x (http://www.php.net)
+    ...compiled with postgres and gd extensions
+
+Optional Software
+
+  JpGraph (http://www.aditus.nu/jpgraph/)
+    ...accessible via include("jpgraph/jpgraph.php")
+  PEAR Roman Numerals Module (http://pear.php.net/Numbers ??)
+    ...accessible via include("Numbers/Roman.php")
+  Python 2.3+ (http://www.python.org/)
+  pyPgSQL (http://pypgsql.sourceforge.net/)
+
+Instructions
+
+  1) Once the software listed above is installed, the first step is to
+     create a postgres database for WCES. The following commands create a
+     database called "wces":
+
+     [Start up the postgres terminal]
+     $ psql -Upostgres template1
+
+     [Inside the terminal, create the database and exit]
+     template1=# create database wces;
+     template1=# \q
+
+  2) The database uses some functions written in PL/pgSQL. To work, they need
+     the "plpgsql" language handler installed. The following command will add
+     that handler to the database:
+
+     $ createlang -Upostgres plpgsql wces
+
+  3) The database also uses some functions written in C++. To install them,
+     you should edit the "dynamic_library_path" option in
+     $PGDATA/postgresql.conf, inserting the full paths to the "etc/postgres"
+     and "etc/postgres2" directories. Then run:
+
+     $ make -C etc/postgres -f makefile-linux
+     $ make -C etc/postgres2 -f makefile-linux
+     $ psql -Upostgres wces < etc/postgres/install.sql
+     $ psql -Upostgres wces < etc/postgres2/install.sql
+
+     Note: $PGDATA is PostgreSQL's data directory, usually something like
+     "/var/lib/postgresql/data". If you can't edit the configuration file
+     there, another option is to hardcode the paths to the compiled modules in
+     the CREATE FUNCTION statments inside the install.sql files
+
+     Another note: You can ignore any "ERROR: ... does not exist" messages
+     you see when running the install.sql scripts. They've got DROP statements
+     that only succeed when updating an existing database.
+
+  4) Once the plpgsql hander and C++ functions are installed, you can load
+     the rest of the WCES database definition. It is created by two SQL
+     scripts that can be run with:
+
+     $ psql -Upostgres wces < include/wbes/schema.sql
+     $ psql -Upostgres wces < include/wces/classes.sql
+
+  5) [optional] WCES can't do much until the database is populated with data.
+     For any real application you'll need to write code to do this. But there's
+     also a little script called "fakedata.py" which you can run to insert some
+     data for demonstration purposes. It requires Python 2.3 and the pyPgSQL
+     module. And if your database has a name other than "wces", you'll need to
+     tweak the "DATABASE =" assignment at the top of the script. After that,
+     though, it can be run with:
+
+     $ python etc/fakedata/fakedata.py
+
+  6) After going through the steps above, the database should be all set up.
+     The next step is to make a WCES configuration file. The configuration
+     file is just a short PHP script that gets executed at every page load and
+     sets some global variables used by the WCES code. WCES comes with two
+     configuration files: config/Columbia.inc and config/Demo.inc. You can
+     use and tweak either of these files or create your own. There's a detailed
+     description of every configuration variable in config/Columbia.inc.
+     Whatever you decide to do, remember the path of your configuration file,
+     you'll use it in step 7.
+
+  7) The last step is to configure PHP and whatever web server you're using
+     to serve the WCES pages. The specific steps you take will depend on
+     how your system is set up, but you'll need to ensure the following things:
+
+     - The web server is configured to serve .php scripts and static files
+       from the "www" directory
+
+     - The PHP interpreter has write access to the picture upload directory
+       ($WCES_CONFIG_UPLOAD_PHYSICAL_PATH from the WCES configuration file)
+
+     - The following PHP options are set for the WCES site:
+
+         error_reporting = E_ALL
+         magic_quotes_gpc = Off
+         include_path = <full path to "include" directory>
+         auto_prepend_file = <path to WCES configuration file from step 6>
+
+       PHP provides a lot of ways to set these options. You can put them
+       in your php.ini file, put them in the windows registry or in .htaccess
+       files, or (for options besides "auto_prepend_file") reset the values
+       inside the WCES configuration file.
+
+     Here's an example Apache configuration for WCES:
+
+       LoadModule php4_module modules/libphp4.so
+       DocumentRoot /home/wces/www
+       <Directory /home/wces/www>
+         AddType application/x-httpd-php .php
+         AddDirectoryIndex index.php
+         php_value error_reporting E_ALL
+         php_value magic_quotes_gpc Off
+         php_value include_path ".:/usr/lib.php:/home/wces/include"
+         php_value auto_prepend_file "config/Demo.inc"
+       </Directory>
