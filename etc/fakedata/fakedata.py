@@ -321,8 +321,19 @@ def random_comment():
     fortune = fp.read()
   finally:
     fp.close()
+
   # get rid of the attribution so they look more look like real comments
-  return _re_attrib.sub("", fortune)
+  fortune = _re_attrib.sub("", fortune)
+
+  try:
+    fortune = fortune.decode("utf8")
+  except UnicodeDecodeError:
+    fortune = random_comment();
+
+  if not fortune:
+    fortune = random_comment();
+
+  return fortune.encode("utf8")
 
 _re_attrib = re.compile(r"\s+\-\-.{,100}$", re.DOTALL)
 
