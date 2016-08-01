@@ -1,3 +1,5 @@
+CREATE SEQUENCE class_ids INCREMENT 1 START 1;
+
 CREATE TABLE classes
 (
   class_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('class_ids'),
@@ -28,11 +30,11 @@ CREATE TABLE classes
   UNIQUE (course_id, section, year, semester)
 );
 
-CREATE SEQUENCE class_ids INCREMENT 1 START 1;
-
 COMMENT ON COLUMN classes.semester IS '0 - spring, 1 - summer, 2 - fall';
 
 COMMENT ON COLUMN classes.division_id IS 'TODO: See if this attribute is shared among all classes in a course. If so, move it to the courses table.';
+
+CREATE SEQUENCE course_ids INCREMENT 1 START 1;
 
 CREATE TABLE courses
 (
@@ -55,7 +57,7 @@ CREATE TABLE courses
   UNIQUE (subject_id, code, divisioncode)
 );
 
-CREATE SEQUENCE course_ids INCREMENT 1 START 1;
+CREATE SEQUENCE subject_ids INCREMENT 1 START 1;
 
 CREATE TABLE subjects
 (
@@ -64,7 +66,7 @@ CREATE TABLE subjects
   name VARCHAR(124)
 );
 
-CREATE SEQUENCE subject_ids INCREMENT 1 START 1;
+CREATE SEQUENCE department_ids INCREMENT 1 START 1;
 
 CREATE TABLE departments
 (
@@ -73,7 +75,7 @@ CREATE TABLE departments
   name VARCHAR(124)
 );
 
-CREATE SEQUENCE department_ids INCREMENT 1 START 1;
+CREATE SEQUENCE division_ids INCREMENT 1 START 1;
 
 CREATE TABLE divisions
 (
@@ -84,7 +86,7 @@ CREATE TABLE divisions
   UNIQUE (name, code, shortcode)
 );
 
-CREATE SEQUENCE division_ids INCREMENT 1 START 1;
+CREATE SEQUENCE school_ids INCREMENT 1 START 1;
 
 CREATE TABLE schools
 (
@@ -92,7 +94,7 @@ CREATE TABLE schools
   name VARCHAR(252) NOT NULL UNIQUE
 );
 
-CREATE SEQUENCE school_ids INCREMENT 1 START 1;
+CREATE SEQUENCE user_ids INCREMENT 1 START 1;
 
 CREATE TABLE users
 (
@@ -105,8 +107,6 @@ CREATE TABLE users
   flags INTEGER NOT NULL,
   lastlogin TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE SEQUENCE user_ids INCREMENT 1 START 1;
 
 COMMENT ON COLUMN users.flags IS '
 Bitmask    | Nonzero when the user...
@@ -154,12 +154,14 @@ CREATE TABLE professor_data
   picture_id INTEGER
 );
 
+CREATE SEQUENCE picture_ids INCREMENT 1 START 1;
+
 CREATE TABLE pictures (
   file_id INTEGER PRIMARY KEY NOT NULL DEFAULT nextval('picture_ids'),
   name text NOT NULL
 );
 
-CREATE SEQUENCE picture_ids INCREMENT 1 START 1;
+CREATE SEQUENCE professor_hook_ids INCREMENT 1 START 1;
 
 CREATE TABLE professor_hooks
 (
@@ -174,7 +176,6 @@ CREATE TABLE professor_hooks
   pid varchar(10) UNIQUE
 );
 
-CREATE SEQUENCE professor_hook_ids INCREMENT 1 START 1;
 CREATE INDEX name_idx ON professor_hooks (name);
 CREATE INDEX first_idx ON professor_hooks (firstname);
 CREATE INDEX last_idx ON professor_hooks (lastname);
@@ -186,6 +187,8 @@ COMMENT ON COLUMN professor_hooks.source IS '
 4 - Imported from the original WCES''s class table OR from the registrar spreadsheets (first and last separated, no MI)
 ';
 
+CREATE SEQUENCE acis_group_ids INCREMENT 1 START 1;
+
 CREATE TABLE acis_groups
 (
   acis_group_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('acis_group_ids'),
@@ -194,14 +197,14 @@ CREATE TABLE acis_groups
   status INTEGER
 );
 
-CREATE SEQUENCE acis_group_ids INCREMENT 1 START 1;
-
 CREATE TABLE acis_affiliations
 (
   user_id INTEGER NOT NULL,
   acis_group_id INTEGER NOT NULL,
   PRIMARY KEY(user_id, acis_group_id)
 );
+
+CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
 
 CREATE TABLE question_periods
 (
@@ -215,7 +218,7 @@ CREATE TABLE question_periods
   oracledate TIMESTAMP
 );
 
-CREATE SEQUENCE question_period_ids INCREMENT 1 START 1;
+CREATE SEQUENCE sent_mail_ids INCREMENT 1 START 1;
 
 CREATE TABLE sent_mails
 (
@@ -237,8 +240,6 @@ CREATE TABLE sent_mails_topics
   topic_id INTEGER NOT NULL
 );
 
-CREATE SEQUENCE sent_mail_ids INCREMENT 1 START 1;
-
 CREATE TABLE wces_topics
 (
   topic_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('topic_ids'),
@@ -251,13 +252,13 @@ CREATE TABLE wces_topics
   cancelled BOOLEAN NOT NULL
 );
 
+CREATE SEQUENCE survey_category_ids INCREMENT 1 START 100;
+
 CREATE TABLE categories
 (
   category_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('survey_category_ids'),
   name TEXT
 );
-
-CREATE SEQUENCE survey_category_ids INCREMENT 1 START 100;
 
 CREATE TABLE ta_ratings
 (

@@ -193,6 +193,8 @@ CREATE TABLE cached_choice_responses
   dist INTEGER[] NOT NULL
 );
 
+CREATE SEQUENCE warning_ids INCREMENT 1 START 1;
+
 CREATE TABLE warnings (
   warning_id INTEGER NOT NULL PRIMARY KEY DEFAULT NEXTVAL('warning_ids'),
   date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -202,8 +204,6 @@ CREATE TABLE warnings (
   uni TEXT,
   dump TEXT
 );
-
-CREATE SEQUENCE warning_ids INCREMENT 1 START 1;
 
 CREATE INDEX survey_response_ut ON responses_survey(user_id, topic_id);
 CREATE INDEX survey_response_u ON responses_survey(user_id);
