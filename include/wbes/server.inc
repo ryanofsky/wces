@@ -26,7 +26,6 @@
     // on apache, SERVER_NAME is canonical name determined from apache 
     // configuration. HTTP_HOST is the actual host used in the HTTP
     // request
-    
     $server_url = new URL
     (
       isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on",
@@ -34,6 +33,24 @@
       $_SERVER["SERVER_PORT"],
       $_SERVER["SCRIPT_NAME"],
       isset($_SERVER["PATH_INFO"]) ? $_SERVER["PATH_INFO"] : "",
+      $_SERVER["QUERY_STRING"]
+    );
+  }
+  else if ($WBES_SERVER == "cgi")
+  {
+    $server_win32 = false;
+    $server_cheapredirects = false;
+
+    // on apache, SERVER_NAME is canonical name determined from apache
+    // configuration. HTTP_HOST is the actual host used in the HTTP
+    // request
+    $server_url = new URL
+    (
+      isset($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] == "on",
+      $_SERVER["HTTP_HOST"],
+      $_SERVER["SERVER_PORT"],
+      $_SERVER["PATH_INFO"],
+      "",
       $_SERVER["QUERY_STRING"]
     );
   }
