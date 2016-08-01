@@ -685,7 +685,7 @@ CREATE OR REPLACE FUNCTION branch_make_specialization(INTEGER, INTEGER, INTEGER)
       FOR UPDATE;
       
       IF NOT FOUND THEN
-        RAISE EXCEPTION ''associated_revision(%,%,%) fails. specialization % or one of its ancestors has no row in the database'', $1, $2, $3;
+        RAISE EXCEPTION ''associated_revision(%,%,%) fails. specialization % or one of its ancestors has no row in the database'', $1, $2, $3, $2;
       END IF;
 
       IF sid IS NULL THEN RETURN NULL; END IF;
@@ -711,6 +711,7 @@ CREATE OR REPLACE FUNCTION branch_make_parent_speclzn(INTEGER, INTEGER, INTEGER,
     sid INTEGER;
     bid INTEGER;
     cbid INTEGER;
+    pbid INTEGER;
   BEGIN
     SELECT INTO sid specialization_id FROM item_specializations
     WHERE branch_id = orig_branch_id AND item_id = item_id_;
@@ -788,7 +789,7 @@ CREATE OR REPLACE FUNCTION branch_create_parent(INTEGER, INTEGER) RETURNS INTEGE
       RAISE NOTICE ''branch_create_parent(%,%) fails. branch % does not exist.'', $1, $2, branch_id_;
     END IF;
 
-    bid := branch_create_child(branch.parent)
+    bid := branch_create_child(branch.parent);
     PERFORM branch_move(branch_id_, bid, save_id_);
 
     RETURN bid;
@@ -919,6 +920,7 @@ CREATE OR REPLACE FUNCTION branch_move(INTEGER, INTEGER, INTEGER) RETURNS INTEGE
     siblings RECORD;
     latest_revision INTEGER;
     new_parent_branch_info RECORD;
+    branch_info RECORD;
   BEGIN
     SELECT INTO parent_ parent FROM branches WHERE branch_id = branch_id_ FOR UPDATE;
     IF NOT FOUND THEN
@@ -935,7 +937,7 @@ CREATE OR REPLACE FUNCTION branch_move(INTEGER, INTEGER, INTEGER) RETURNS INTEGE
     END IF;
 
     IF (parent_ IS NOT NULL AND p IS NOT NULL) AND parent_ <> p THEN
-      RAISE EXCEPTION ''branch_move(%,%,%) fails. this function is currently only implemented for the case where the new parent is a child of the old parent'', $1, $2, $3, branch_id_;
+      RAISE EXCEPTION ''branch_move(%,%,%) fails. this function is currently only implemented for the case where the new parent is a child of the old parent'', $1, $2, $3;
     END IF;
 
     IF parent_ IS NOT NULL THEN
@@ -996,7 +998,7 @@ CREATE OR REPLACE FUNCTION branch_move(INTEGER, INTEGER, INTEGER) RETURNS INTEGE
     -- update cached_branch_ancestors
 
     INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
-    VALUES (new_parent_branch, branch_id_)
+    VALUES (new_parent_branch, branch_id_);
 
     INSERT INTO cached_branch_ancestors (ancestor_id, descendant_id)
     SELECT new_parent_branch, descendant_id
@@ -1042,7 +1044,7 @@ CREATE OR REPLACE FUNCTION revision_make_parent_clone_i(INTEGER, INTEGER, INTEGE
     save_id_ ALIAS FOR $3;
     parent_component_id ALIAS FOR $4;
     rec RECORD;
-    revision INTEGER;
+    revision_ INTEGER;
   BEGIN
     SELECT INTO rec revision_id, component_id, revision
     FROM revisions
@@ -1281,9 +1283,12 @@ CREATE OR REPLACE FUNCTION revision_save(INTEGER, INTEGER, INTEGER, INTEGER, INT
     rid       INTEGER;
     orig      RECORD;
     i         INTEGER;
+    bottom_branch INTEGER;
+    branch_id_ INTEGER;
+    branch_latest INTEGER;
   BEGIN
     IF import_mode IS NULL THEN
-      RETURN revision_save(component_id_, specialization_id_, save_id_, orig_revision_id, orig_item_id)
+      RETURN revision_save(component_id_, specialization_id_, save_id_, orig_revision_id, orig_item_id);
     ELSIF component_id_ IS NULL OR specialization_id_ IS NULL or save_id_ IS NULL OR orig_revision_id IS NULL OR orig_item_id IS NULL THEN
       RAISE EXCEPTION ''revision_save(%,%,%,%,%,%) called with invalid arguments'', $1, $2, $3, $4, $5, $6;
     END IF;
@@ -2014,10 +2019,13 @@ CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RE
     old_parent ALIAS FOR $2;
     new_parent ALIAS FOR $3;
     rec RECORD;
-    orig_rev RECORD;
+    orig_rec RECORD;
     primary_rev RECORD;
-    secondary_rev RECORD;
+    secondary_rec RECORD;
     orig_id INTEGER;
+    cid INTEGER;
+    bid INTEGER;
+    rid INTEGER;
   BEGIN
     FOR rec IN
       -- left join in order to catch errors
@@ -2037,7 +2045,7 @@ CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RE
 
       SELECT INTO secondary_rec revision_id, component_id
       FROM revisions
-      WHERE revision_id = (SELECT branch_find(rec.item_id, new_parent);
+      WHERE revision_id = (SELECT branch_find(rec.item_id, new_parent));
 
       -- if original is not null and secondary is null then
       -- don''t bother adding the component
@@ -2061,7 +2069,7 @@ CREATE OR REPLACE FUNCTION specialization_move_one(INTEGER, INTEGER, INTEGER) RE
         rid := nextval(''revision_ids'');
 
 
-        UPDATE branches (branch_id, parent, outdated, latest_id)
+        INSERT INTO branches (branch_id, parent, outdated, latest_id)
         VALUES (bid, secondary.branch_id, ''f'', rid);
 
         INSERT INTO revisions (revision_id, parent, branch_id, revision, save_id, merged, component_id)
@@ -2091,7 +2099,7 @@ CREATE OR REPLACE FUNCTION specialization_move(INTEGER, INTEGER) RETURNS VOID AS
        --die
     END IF;
     
-    specialization_move_one();
+    --specialization_move_one();
     
     FOR rec1 IN SELECT * FROM specializations WHERE parent = specialization_id_ LOOP
     --

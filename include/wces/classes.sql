@@ -417,7 +417,7 @@ CREATE OR REPLACE FUNCTION professor_find(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, IN
       END IF;
 
       INSERT INTO professor_hooks (user_id, source, name, firstname, lastname, middle, pid)
-      VALUES (i, source_, name_, firstname_, lastname_, middle_, pid_)
+      VALUES (i, source_, name_, firstname_, lastname_, middle_, pid_);
 
       RETURN i;
     ELSE IF source_ = 3 OR source_ = 4 THEN
@@ -554,11 +554,11 @@ CREATE OR REPLACE FUNCTION strpos(text,text,integer) RETURNS integer AS '
   DECLARE
     haystack ALIAS FOR $1;
     needle ALIAS FOR $2;
-    offset ALIAS FOR $3;
+    offset_ ALIAS FOR $3;
     i INTEGER;
   BEGIN
-    IF offset > char_length(haystack) THEN RETURN 0; END IF;
-    i := position(needle in substring(haystack from offset));
+    IF offset_ > char_length(haystack) THEN RETURN 0; END IF;
+    i := position(needle in substring(haystack from offset_));
     IF i = 0 THEN RETURN 0; ELSE RETURN offset+i-1; END IF;
   END;
 ' LANGUAGE 'plpgsql';
