@@ -111,8 +111,10 @@ Instructions
        <Directory /home/wces/www>
          AddType application/x-httpd-php .php
          AddDirectoryIndex index.php
-         php_value error_reporting E_ALL
+         php_value error_reporting 2047
          php_value magic_quotes_gpc Off
          php_value include_path ".:/usr/lib.php:/home/wces/include"
          php_value auto_prepend_file "config/Demo.inc"
        </Directory>
+
+       pear install Numbers_Roman
