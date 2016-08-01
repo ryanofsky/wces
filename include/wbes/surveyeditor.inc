@@ -16,7 +16,7 @@ define("SurveyEditor_save",6);
 define("SurveyEditor_cancel",7);
 define("SurveyEditor_preview",8);
 
-function cell($width = false, $height = false, $color = false, $tdattr = '', $imgattr = '')
+function cell($width = false, $height = false, $color = false, $tdattr = '')
 {
   global $SurveyEditor_ns4, $server_media;
   $cell = '<td';
