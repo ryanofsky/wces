@@ -185,7 +185,7 @@ function report_findgroups($topicstable, $groupings, $orderings)
     $funname = substr(uniqid('fun'),0,31);
 
     pg_go("
-      CREATE TEMPORARY TABLE $tabname AS
+      CREATE TEMPORARY TABLE $tabname WITH OIDS AS
       SELECT $tcols
       FROM $topicstable AS t" . ($joins & CLASSES || $sjoins & QUESTION_PERIODS ? "
       LEFT JOIN classes AS cl ON cl.class_id = t.class_id" : "") . ($joins & COURSES ? "
