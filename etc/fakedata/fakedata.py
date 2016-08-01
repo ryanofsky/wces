@@ -76,11 +76,11 @@ QUESTION_PERIODS = [kw(cols={"displayname": "Fall 2003 Midterm Evaluations",
                        response_rate=(.9, .1)),
                     kw(cols={"displayname": "Fall 2003 Final Evaluations",
                              "begindate": PgSQL.Timestamp(2003, 12, 1),
-                             "enddate": PgSQL.Timestamp(2010, 12, 15),
+                             "enddate": PgSQL.Timestamp(2030, 12, 15),
                              "year": YEAR,
                              "semester": SEMESTER,
-                             "profdate": PgSQL.Timestamp(2010, 12, 15),
-                             "oracledate": PgSQL.Timestamp(2010, 12, 15)},
+                             "profdate": PgSQL.Timestamp(2030, 12, 15),
+                             "oracledate": PgSQL.Timestamp(2030, 12, 15)},
                        response_rate=(.3, .1))]
 
 def fakedata():
