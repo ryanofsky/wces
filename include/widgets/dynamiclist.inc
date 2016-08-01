@@ -178,9 +178,9 @@ class DynamicList extends Widget
     }
 
     form.DynamicList_lists[form.DynamicList_lists.length] = box;
-    DynamicList_GenericButton(form[prefix + "{$ws}additem"]    , box, "this.list.madd()");
-    DynamicList_GenericButton(form[prefix + "{$ws}modifyitem"] , box, "this.list.modify()");
-    DynamicList_GenericButton(form[prefix + "{$ws}removeitem"] , box, "this.list.mremove()");
+    DynamicList_GenericButton(form[prefix + "{$ws}additem"]    , box, "this.dlist.madd()");
+    DynamicList_GenericButton(form[prefix + "{$ws}modifyitem"] , box, "this.dlist.modify()");
+    DynamicList_GenericButton(form[prefix + "{$ws}removeitem"] , box, "this.dlist.mremove()");
     return box;
   };
 
@@ -348,7 +348,7 @@ class DynamicList extends Widget
     if (button)
     {
       button.onclick = new Function(action);
-      button.list = list;
+      button.dlist = list;
     }  
   };
 
