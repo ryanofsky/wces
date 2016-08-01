@@ -4,6 +4,9 @@ extern "C"
 #include "postgres.h"
 #include "fmgr.h"
 #include "utils/array.h"
+#include "catalog/pg_type.h"
+
+PG_MODULE_MAGIC;
 
 PG_FUNCTION_INFO_V1(int_scat_distf);
 PG_FUNCTION_INFO_V1(int_scat_modef);
@@ -13,18 +16,30 @@ Datum int_scat_modef(PG_FUNCTION_ARGS);
 
 }
 
-ArrayType * alloc_int32_array(int nelems)
+// From https://github.com/greenplum-db/postgis/blob/master/libpgcommon/pgsql_compat.h
+/* Define ARR_OVERHEAD_NONULLS for PostgreSQL < 8.2 */
+#ifndef ARR_OVERHEAD_NONULLS
+#define ARR_OVERHEAD_NONULLS(x) ARR_OVERHEAD((x))
+#endif
+/* PostgreSQL < 8.3 uses VARATT_SIZEP rather than SET_VARSIZE for varlena types */
+#ifndef SET_VARSIZE
+#define SET_VARSIZE(var, size)   VARATT_SIZEP(var) = size
+#endif
+
+static ArrayType * alloc_int32_array(int nelems)
 {
+  // based on new_intArrayType contrib/intarray/_int.c
   ArrayType * result;
-  int nbytes = sizeof(int32) * nelems + ARR_OVERHEAD(1);
+  int nbytes = sizeof(int32) * nelems + ARR_OVERHEAD_NONULLS(1);
   result = (ArrayType *) palloc(nbytes);
-  result->size = nbytes;
-  result->ndim = 1;
-  result->flags = 0;
+  MemSet(result, 0, nbytes);
+  SET_VARSIZE(result, nbytes);
+  ARR_NDIM(result) = 1;
+  ARR_ELEMTYPE(result) = INT4OID;
   ARR_DIMS(result)[0] = nelems;
   ARR_LBOUND(result)[0] = 1;
   return result;
-}  
+}
 
 Datum int_scat_distf(PG_FUNCTION_ARGS)
 {

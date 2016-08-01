@@ -41,8 +41,8 @@ Instructions
      $PGDATA/postgresql.conf, inserting the full paths to the "etc/postgres"
      and "etc/postgres2" directories. Then run:
 
-     $ make -C etc/postgres -f makefile-linux
-     $ make -C etc/postgres2 -f makefile-linux
+     $ make -C etc/postgres
+     $ make -C etc/postgres2
      $ psql -Upostgres wces < etc/postgres/install.sql
      $ psql -Upostgres wces < etc/postgres2/install.sql
 
