@@ -25,7 +25,7 @@ function cell($width = false, $height = false, $color = false, $tdattr = '', $im
   if ($color !== false) $cell .= " bgcolor=\"#$color\"";
   if ($SurveyEditor_ns4) $cell .= " background=\"$server_media/$color.gif\"";
   $cell .= "$tdattr>";
-  if ($SurveyEditor_ns4 || true)
+  if ($SurveyEditor_ns4)
   {
     if ($width === false) $width = 1;
     if ($height === false) $height = 1;
