@@ -2,7 +2,7 @@
 
 require_once("config/Columbia.inc");
 
-$WBES_SERVER = "cgi";
+$WBES_SERVER = "apache";
 $WBES_DATABASE_NAME = "wces";
 $WBES_DEVELOPER = "apache@localhost";
 $WBES_LOGIN_BOUNCER = null;
